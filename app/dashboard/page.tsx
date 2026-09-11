@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Bolt, Check, Spark, Users } from "@/components/icons";
-import { OfferCard } from "@/components/offer-card";
 import { TurnstileField } from "@/components/turnstile-field";
-import { offers } from "@/lib/mock-data";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
+import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Home" };
 
@@ -20,10 +21,14 @@ const claimCopy: Record<string, string> = {
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const [state, params] = await Promise.all([getRewardSnapshot(), searchParams]);
+  const [state, params, supabase] = await Promise.all([getRewardSnapshot(), searchParams, createSupabaseServerClient()]);
+  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const liveOfferwall = user && isAyetConfigured() ? buildAyetOfferwallUrl(user.id) : null;
+  const payout = getFaucetPayPackConfig();
+  const payoutCredits = Number(payout.amountCredits ?? 5000);
   const canClaim = state.signedIn && state.claimReady && Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const progress = Math.min(100, (state.availableCredits / 5000) * 100);
-  const away = Math.max(0, 5000 - state.availableCredits);
+  const progress = Math.min(100, (state.availableCredits / payoutCredits) * 100);
+  const away = Math.max(0, payoutCredits - state.availableCredits);
 
   return (
     <AppShell active="home">
@@ -51,11 +56,14 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
       </section>
 
-      <section className="app-section"><div className="app-section-head"><div><span className="app-eyebrow">Best for you</span><h2>High-value matches</h2></div><Link href="/earn">See all <ArrowUpRight /></Link></div><div className="offers-app-grid">{offers.slice(0,3).map((offer, index) => <OfferCard key={offer.id} offer={offer} featured={index === 0} />)}</div></section>
+      <section className="app-section">
+        <div className="app-section-head"><div><span className="app-eyebrow">Verified opportunities</span><h2>{liveOfferwall ? "Live earning inventory is connected." : "No payable inventory is being simulated."}</h2></div><Link href="/earn">Open Earn <ArrowUpRight /></Link></div>
+        <article className="invite-card"><div className="invite-icon"><Bolt /></div><div><span className="app-eyebrow">{liveOfferwall ? "Provider live" : "Provider gate"}</span><h3>{liveOfferwall ? "Open provider-backed offers, surveys and quests." : "Earning opportunities appear only after the provider callback chain is configured."}</h3><p>{liveOfferwall ? "Credits are created after a signed server callback, not when a card is clicked." : "This dashboard deliberately avoids fabricated offer values while monetization is not authoritative."}</p></div><Link href="/earn" className="icon-button" aria-label="Open verified earning opportunities"><ArrowUpRight /></Link></article>
+      </section>
 
       <section className="dashboard-lower-grid">
-        <article className="progress-card"><div className="app-eyebrow">First withdrawal</div><div className="progress-value"><strong>{formatUsdFromCredits(state.availableCredits)}</strong><span>/ $5.00</span></div><div className="progress-track large"><span style={{width:`${progress}%`}} /></div><p>{away > 0 ? <>You&apos;re only <strong>{formatUsdFromCredits(away)} away.</strong></> : <strong>You reached the withdrawal threshold.</strong>}</p><Link href="/earn" className="inline-action"><Bolt /> Find a quick reward</Link></article>
-        <article className="invite-card"><div className="invite-icon"><Users /></div><div><span className="app-eyebrow">Grow together</span><h3>Your next active invite unlocks a bonus.</h3><p>Rewards activate after your friend completes a verified quest.</p></div><Link href="/invite" className="icon-button"><ArrowUpRight /></Link></article>
+        <article className="progress-card"><div className="app-eyebrow">Next withdrawal</div><div className="progress-value"><strong>{formatUsdFromCredits(state.availableCredits)}</strong><span>/ {formatUsdFromCredits(payoutCredits)}</span></div><div className="progress-track large"><span style={{width:`${progress}%`}} /></div><p>{away > 0 ? <>You&apos;re only <strong>{formatUsdFromCredits(away)} away.</strong></> : <strong>You reached the configured withdrawal threshold.</strong>}</p><Link href="/earn" className="inline-action"><Bolt /> Open earning opportunities</Link></article>
+        <article className="invite-card"><div className="invite-icon"><Users /></div><div><span className="app-eyebrow">Grow together</span><h3>Your next active invite unlocks a bonus.</h3><p>Rewards activate after your friend completes their first provider-confirmed earning action.</p></div><Link href="/invite" className="icon-button" aria-label="Open referral page"><ArrowUpRight /></Link></article>
       </section>
     </AppShell>
   );
