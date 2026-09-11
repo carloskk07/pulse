@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
 
   const admin = createSupabaseAdminClient();
   if (!admin) return walletRedirect(request, "service-not-configured");
+  await recordReleaseEvidence("turnstile");
 
   const { data, error } = await admin.rpc("reserve_withdrawal", {
     p_user_id: user.id,
@@ -80,13 +82,8 @@ export async function POST(request: NextRequest) {
 
   if (reserved.status === "insufficient") return walletRedirect(request, "insufficient");
   if (reserved.status === "held") return walletRedirect(request, "held");
-  if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) {
-    return walletRedirect(request, "reserve-failed");
-  }
-
-  if (reserved.status === "active" && reserved.destination !== destination) {
-    return walletRedirect(request, "already-processing");
-  }
+  if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) return walletRedirect(request, "reserve-failed");
+  if (reserved.status === "active" && reserved.destination !== destination) return walletRedirect(request, "already-processing");
 
   try {
     const payout = await provider.send({
@@ -101,6 +98,7 @@ export async function POST(request: NextRequest) {
 
     const finalized = await finalize(admin, reserved.withdrawal_id, "paid", payout.externalId, "FaucetPay payout completed");
     if (finalized.error) return walletRedirect(request, "processing");
+    await recordReleaseEvidence("faucetpay_payout");
     return walletRedirect(request, "paid");
   } catch (error) {
     if (error instanceof FaucetPayApiError && error.retryable) {

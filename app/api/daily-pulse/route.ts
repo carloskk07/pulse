@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
 
   const admin = createSupabaseAdminClient();
   if (!admin) return dashboardRedirect(request, "service-not-configured");
+  await recordReleaseEvidence("turnstile");
 
   await admin.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
   const { error } = await admin.rpc("claim_daily_pulse", { p_user_id: user.id });
