@@ -1,9 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { getReleaseReadiness } from "@/lib/release-readiness";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export const metadata = { title: "Economics" };
+export const metadata = { title: "Operations" };
 export const dynamic = "force-dynamic";
 
 type ProviderRow = { provider: string; revenue_micros: number; conversions: number; chargebacks: number };
@@ -41,6 +42,12 @@ function ratio(numerator: number, denominator: number) {
   return denominator > 0 ? (numerator / denominator) * 100 : 0;
 }
 
+function badgeClass(state: string) {
+  if (state === "SETUP_REQUIRED") return "admin-badge setup";
+  if (state === "READY_FOR_EXTERNAL_PROOF") return "admin-badge proof";
+  return "admin-badge";
+}
+
 export default async function AdminEconomicsPage() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) notFound();
@@ -48,17 +55,22 @@ export default async function AdminEconomicsPage() {
   if (!user) redirect("/auth?next=/admin");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
+  const readiness = await getReleaseReadiness();
   const admin = createSupabaseAdminClient();
-  if (!admin) notFound();
 
-  const now = new Date();
-  const from = new Date(now);
-  from.setUTCHours(0, 0, 0, 0);
-  const to = new Date(from);
-  to.setUTCDate(to.getUTCDate() + 1);
+  let snapshot: Snapshot = {};
+  let economicsError = true;
+  if (admin) {
+    const now = new Date();
+    const from = new Date(now);
+    from.setUTCHours(0, 0, 0, 0);
+    const to = new Date(from);
+    to.setUTCDate(to.getUTCDate() + 1);
+    const result = await admin.rpc("admin_economics_snapshot", { p_from: from.toISOString(), p_to: to.toISOString() });
+    snapshot = (result.data ?? {}) as Snapshot;
+    economicsError = Boolean(result.error) || snapshot.status !== "ok";
+  }
 
-  const { data, error } = await admin.rpc("admin_economics_snapshot", { p_from: from.toISOString(), p_to: to.toISOString() });
-  const snapshot = (data ?? {}) as Snapshot;
   const revenue = Number(snapshot.revenue_micros ?? 0);
   const rewards = Number(snapshot.reward_credits ?? 0);
   const contribution = Number(snapshot.contribution_micros ?? 0);
@@ -71,9 +83,14 @@ export default async function AdminEconomicsPage() {
 
   return (
     <AppShell active="admin">
-      <div className="admin-head"><div><span className="app-eyebrow">Private economics</span><h1>Contribution cockpit</h1><p>UTC today · decisions should follow verified margin, not pageviews.</p></div><span className="admin-badge">{error || snapshot.status !== "ok" ? "Setup required" : "Live ledger"}</span></div>
+      <div className="admin-head"><div><span className="app-eyebrow">Private operations</span><h1>Release + economics cockpit</h1><p>Production authority requires working contracts and external evidence, not only a green build.</p></div><span className={badgeClass(readiness.state)}>{readiness.state.replaceAll("_", " ")}</span></div>
 
-      {error || snapshot.status !== "ok" ? <div className="preview-banner">Apply migration 0005 and configure ADMIN_EMAILS to activate the economics snapshot.</div> : null}
+      <section className="readiness-panel">
+        <div className="readiness-summary"><div><span className="app-eyebrow">Release authority</span><h2>{readiness.ready ? "Production gate closed cleanly." : readiness.state === "READY_FOR_EXTERNAL_PROOF" ? "Automated gates pass. External proof remains." : "Production promotion is blocked."}</h2><p>The checklist verifies the public URL, authentication authority, financial integrations, database schema and runtime contracts. External provider flows remain explicitly untrusted until controlled smoke evidence is recorded.</p></div><div className="readiness-counts"><span>{readiness.passed} pass</span><span>{readiness.failed} fail</span><span>{readiness.pending} pending</span></div></div>
+        <div className="readiness-list">{readiness.checks.map((item) => <article className={`readiness-item ${item.status}`} key={item.id}><span className="readiness-dot" /><div><strong>{item.label}</strong><small>{item.detail}</small></div></article>)}</div>
+      </section>
+
+      {economicsError ? <div className="preview-banner">Economics snapshot is not authoritative yet. Apply migrations through 0007 and complete the setup blockers shown above.</div> : null}
 
       <section className="admin-kpi-grid">
         <article className="admin-kpi primary"><span>Provider revenue</span><strong>{moneyFromMicros(revenue)}</strong><small>Confirmed provider economics</small></article>
