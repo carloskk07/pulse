@@ -69,9 +69,9 @@ export class AyetProvider implements MonetizationProvider {
     const url = new URL(request.url);
     const type = callbackType(url);
     const transactionId = url.searchParams.get("transaction_id")?.trim();
-    const userId = (url.searchParams.get("external_identifier") ?? url.searchParams.get("uid") ?? url.searchParams.get("sub_id"))?.trim();
+    const userId = (url.searchParams.get("external_identifier") ?? url.searchParams.get("uid") ?? url.searchParams.get("sub_id"))?.trim() || undefined;
     if (!transactionId) throw new Error("MISSING_TRANSACTION_ID");
-    if (!userId) throw new Error("MISSING_USER_ID");
+    if (type === "conversion" && !userId) throw new Error("MISSING_USER_ID");
 
     const payoutUsdMicros = decimalToMicros(url.searchParams.get("payout_usd"));
     const originalExternalId = type === "chargeback" ? transactionId.replace(/^r-/, "") : undefined;
