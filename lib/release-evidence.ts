@@ -5,7 +5,12 @@ export type ReleaseEvidenceKind = "turnstile" | "ayet_callback" | "faucetpay_pay
 
 function configuredValues(kind: ReleaseEvidenceKind) {
   if (kind === "turnstile") {
-    return [process.env.TURNSTILE_SECRET_KEY, process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY];
+    return [
+      process.env.TURNSTILE_SECRET_KEY,
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+      process.env.NEXT_PUBLIC_SITE_URL,
+      process.env.TURNSTILE_ALLOWED_HOSTNAMES?.trim() || "auto",
+    ];
   }
   if (kind === "ayet_callback") {
     return [process.env.AYET_API_KEY, process.env.AYET_ADSLOT_ID, process.env.AYET_REWARD_SHARE_BPS ?? "7000"];
