@@ -1,12 +1,14 @@
 export type NormalizedConversion = {
   provider: string;
   externalId: string;
+  originalExternalId?: string;
+  callbackType: "conversion" | "chargeback";
   userId: string;
   payoutUsdMicros: number;
   rewardCredits: number;
-  status: "pending" | "confirmed" | "reversed";
+  status: "confirmed" | "reversed";
   occurredAt: string;
-  raw: unknown;
+  raw: Record<string, string>;
 };
 
 export interface MonetizationProvider {
