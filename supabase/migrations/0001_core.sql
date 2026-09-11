@@ -97,7 +97,8 @@ create table if not exists public.app_config (
   updated_at timestamptz not null default now()
 );
 
-create or replace view public.user_balances as
+create or replace view public.user_balances
+with (security_invoker = true) as
 select
   user_id,
   coalesce(sum(case when state = 'available' then credits else 0 end), 0)::bigint as available_credits,

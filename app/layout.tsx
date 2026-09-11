@@ -10,7 +10,9 @@ export const metadata: Metadata = {
   description:
     "Complete simple quests, build your streak and turn spare minutes into real rewards.",
   applicationName: "Reward Pulse",
+  manifest: "/manifest.webmanifest",
   keywords: ["rewards", "crypto rewards", "quests", "surveys", "earn online"],
+  twitter: { card: "summary_large_image", title: "Reward Pulse", description: "Your spare minutes have value." },
   openGraph: {
     title: "Reward Pulse",
     description: "Your spare minutes have value.",
