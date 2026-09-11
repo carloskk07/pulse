@@ -34,7 +34,8 @@ The payout integration remains disabled until every required value is present. `
 7. Success changes the reserve entry to `withdrawn` but it still counts against the balance.
 8. A definitive failure on the initial provider attempt changes the reserve entry to `reversed`, restoring credits.
 9. A transient or unknown initial failure keeps the reserve in `submitted` for recovery.
-10. Once a withdrawal is already in an unknown/submitted recovery state, later retry failures never auto-refund it. Only a provider success using the original idempotency key closes it automatically; otherwise the reserve remains for safe operator investigation.
-11. Users over the configured risk threshold are held before any external send.
+10. HTTP `409 Conflict`, rate limits, timeouts, unreadable responses and server errors are treated as uncertain/retryable rather than proof that a payout did not happen.
+11. Once a withdrawal is already in an unknown/submitted recovery state, later retry failures never auto-refund it. Only a provider success using the original idempotency key closes it automatically; otherwise the reserve remains for safe operator investigation.
+12. Users over the configured risk threshold are held before any external send.
 
 The database, not the browser, is the financial authority. This recovery rule intentionally favors preventing double payment over prematurely returning an amount whose provider outcome is still unknown.

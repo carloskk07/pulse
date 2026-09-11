@@ -72,7 +72,9 @@ export class FaucetPayProvider implements PayoutProvider {
     }
 
     if (!response.ok || payload.success !== true) {
-      const retryable = response.status === 429 || response.status >= 500;
+      // 409 is an idempotency/conflict-class response. Without an authoritative
+      // payout record it is financially unsafe to interpret it as "not paid".
+      const retryable = response.status === 409 || response.status === 429 || response.status >= 500;
       throw new FaucetPayApiError(payload.message || `FaucetPay request failed (${response.status}).`, retryable, response.status);
     }
 
