@@ -20,6 +20,7 @@ declare
   v_callback_key text := p_callback_type || ':' || p_external_id;
   v_original_reward bigint;
   v_original_event_id uuid;
+  v_original_user_id uuid;
   v_debit bigint;
 begin
   if p_provider is null or p_external_id is null or p_callback_type not in ('conversion', 'chargeback') then
@@ -35,16 +36,9 @@ begin
     return jsonb_build_object('status', 'duplicate');
   end if;
 
-  if not exists (select 1 from auth.users where id = p_user_id) then
-    return jsonb_build_object('status', 'unknown_user');
-  end if;
-
-  insert into public.profiles(id) values (p_user_id)
-  on conflict (id) do nothing;
-
   if p_callback_type = 'chargeback' then
-    select id, reward_credits
-      into v_original_event_id, v_original_reward
+    select id, reward_credits, user_id
+      into v_original_event_id, v_original_reward, v_original_user_id
     from public.monetization_events
     where provider = p_provider
       and external_id = p_original_external_id
@@ -61,11 +55,11 @@ begin
     values (p_provider, v_callback_key, encode(digest(coalesce(p_payload, '{}'::jsonb)::text, 'sha256'), 'hex'), now());
 
     insert into public.monetization_events(provider, external_id, user_id, event_type, status, payout_usd_micros, reward_credits, payload, occurred_at)
-    values (p_provider, p_external_id, p_user_id, 'chargeback', 'reversed', p_payout_usd_micros, v_debit, coalesce(p_payload, '{}'::jsonb), p_occurred_at);
+    values (p_provider, p_external_id, v_original_user_id, 'chargeback', 'reversed', p_payout_usd_micros, v_debit, coalesce(p_payload, '{}'::jsonb), p_occurred_at);
 
     insert into public.ledger_entries(user_id, event_key, entry_type, state, credits, usd_micros, metadata)
     values (
-      p_user_id,
+      v_original_user_id,
       p_provider || ':chargeback:' || p_external_id,
       'chargeback',
       'available',
@@ -76,6 +70,13 @@ begin
 
     return jsonb_build_object('status', 'reversed', 'credits', v_debit);
   end if;
+
+  if not exists (select 1 from auth.users where id = p_user_id) then
+    return jsonb_build_object('status', 'unknown_user');
+  end if;
+
+  insert into public.profiles(id) values (p_user_id)
+  on conflict (id) do nothing;
 
   if p_payout_usd_micros <= 0 or p_reward_credits <= 0 then
     return jsonb_build_object('status', 'invalid_amount');
