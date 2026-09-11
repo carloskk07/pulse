@@ -6,40 +6,23 @@ Reward Pulse must not be promoted to a real-money production state merely becaus
 
 - `SETUP_REQUIRED`: at least one blocking configuration or database contract is missing.
 - `READY_FOR_EXTERNAL_PROOF`: all automated checks pass, but controlled external smoke evidence is incomplete.
-- `READY`: automated checks pass and all required external smoke evidence has been recorded.
+- `READY`: automated checks pass and all required external smoke evidence matches the current configuration.
 
 The public endpoint `/api/readiness` exposes only the aggregate state and returns HTTP 200 only for `READY`. It never exposes secret names, secret values, database errors or provider details. The detailed checklist is available only in the authenticated `/admin` cockpit.
 
 ## Required migration
 
-Apply migrations in order through:
+Apply migrations in order through `0007_release_readiness.sql`. Migration 0007 writes an explicit schema marker and creates the server-only evidence recorder.
 
-```text
-0007_release_readiness.sql
-```
+## Automatic external proof
 
-Migration 0007 writes an explicit schema marker and creates the external-proof record without overwriting evidence if the migration is re-applied.
+Evidence is created by the real server flows, not by a manual checkbox:
 
-## Controlled external proof
+1. A successful Turnstile verification in a protected Daily Pulse or withdrawal flow records `turnstile` evidence.
+2. A valid signed ayeT conversion callback that is credited or safely deduplicated records `ayet_callback` evidence.
+3. A FaucetPay payout that reaches the local `paid` finalization records `faucetpay_payout` evidence.
 
-Do not mark a proof true until the corresponding real flow has completed successfully and its ledger/provider evidence has been inspected:
-
-1. Turnstile: complete a protected signup, claim or withdrawal flow and confirm server verification.
-2. ayeT: send one valid signed conversion callback and verify exactly one monetization event plus one ledger credit.
-3. FaucetPay: complete one controlled payout and verify one withdrawal, one provider payout id and a persistent withdrawn ledger debit.
-
-After all three are independently proven, update the proof record:
-
-```sql
-update public.app_config
-set value = '{"turnstile":true,"ayet_callback":true,"faucetpay_payout":true}'::jsonb,
-    version = version + 1,
-    reason = 'Controlled external smoke evidence completed',
-    updated_at = now()
-where key = 'release_external_proof';
-```
-
-If any provider is rotated, materially reconfigured or fails reconciliation, set the corresponding proof back to `false` until a new controlled smoke test passes.
+Each evidence row stores only a SHA-256 fingerprint of the configuration that was proven. Secret values are never written to the database. If a key, adslot, payout amount, currency or other evidence-bound setting changes, the runtime fingerprint changes and the old proof becomes invalid automatically. The gate then returns to `READY_FOR_EXTERNAL_PROOF` until that flow is proven again.
 
 ## Promotion rule
 
@@ -50,7 +33,9 @@ CI = PASS
 /api/readiness = READY / HTTP 200
 admin economics RPC = callable
 latest schema marker >= 7
-external proof = all true
+current Turnstile fingerprint = proven
+current ayeT callback fingerprint = proven
+current FaucetPay payout fingerprint = proven
 ```
 
 A green build without these release checks is not a production authorization.

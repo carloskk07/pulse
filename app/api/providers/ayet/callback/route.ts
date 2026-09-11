@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { AyetProvider } from "@/providers/ayet";
 
@@ -16,8 +17,6 @@ export async function GET(request: NextRequest) {
   if (!process.env.AYET_API_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) return response({ ok: false, error: "provider-not-configured" }, 503);
 
   if (!(await provider.verifyCallback(request))) {
-    // Do not create any financial state for unverifiable callbacks.
-    // 200 prevents a retry storm from intentionally invalid traffic.
     return response({ ok: false, ignored: "invalid-signature" });
   }
 
@@ -28,12 +27,8 @@ export async function GET(request: NextRequest) {
     return response({ ok: false, ignored: error instanceof Error ? error.message : "invalid-callback" });
   }
 
-  if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) {
-    return response({ ok: false, ignored: "invalid-user-id" });
-  }
-  if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) {
-    return response({ ok: false, ignored: "non-positive-conversion" });
-  }
+  if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) return response({ ok: false, ignored: "invalid-user-id" });
+  if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) return response({ ok: false, ignored: "non-positive-conversion" });
 
   const admin = createSupabaseAdminClient();
   if (!admin) return response({ ok: false, error: "database-not-configured" }, 503);
@@ -53,6 +48,10 @@ export async function GET(request: NextRequest) {
   if (error) return response({ ok: false, error: "processing-failed" }, 500);
   const result = data as { status?: string } | null;
   if (result?.status === "orphan_chargeback") return response({ ok: false, error: "orphan-chargeback" }, 503);
+
+  if (event.callbackType === "conversion" && (result?.status === "credited" || result?.status === "duplicate")) {
+    await recordReleaseEvidence("ayet_callback");
+  }
 
   return response({ ok: true, status: result?.status ?? "processed" });
 }
