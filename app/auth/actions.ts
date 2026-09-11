@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -10,50 +11,64 @@ function safeNext(value: FormDataEntryValue | null) {
   return next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
 }
 
-function authError(code: string, next: string) {
-  return `/auth?error=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`;
+function authError(code: string, next: string, ref?: string | null) {
+  const params = new URLSearchParams({ error: code, next });
+  if (ref) params.set("ref", ref);
+  return `/auth?${params.toString()}`;
 }
 
 export async function signIn(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const next = safeNext(formData.get("next"));
-  if (!supabase) redirect(authError("service-not-configured", next));
+  const ref = cleanReferralCode(formData.get("ref"));
+  if (!supabase) redirect(authError("service-not-configured", next, ref));
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!email || !password) redirect(authError("missing-credentials", next));
+  if (!email || !password) redirect(authError("missing-credentials", next, ref));
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) redirect(authError("invalid-credentials", next));
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) redirect(authError("invalid-credentials", next, ref));
 
+  if (data.user && ref) await bindReferralForUser(data.user.id, ref);
   redirect(next);
 }
 
 export async function signUp(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const next = safeNext(formData.get("next"));
-  if (!supabase) redirect(authError("service-not-configured", next));
+  const ref = cleanReferralCode(formData.get("ref"));
+  if (!supabase) redirect(authError("service-not-configured", next, ref));
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!email || password.length < 8) redirect(authError("invalid-signup", next));
+  if (!email || password.length < 8) redirect(authError("invalid-signup", next, ref));
 
   const requestHeaders = await headers();
   const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip);
-  if (!verification.success) redirect(authError(verification.missingConfig ? "verification-not-configured" : "verification-failed", next));
+  if (!verification.success) redirect(authError(verification.missingConfig ? "verification-not-configured" : "verification-failed", next, ref));
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const callback = new URL("/auth/callback", siteUrl);
+  callback.searchParams.set("next", next);
+  if (ref) callback.searchParams.set("ref", ref);
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}` },
+    options: { emailRedirectTo: callback.toString() },
   });
 
-  if (error) redirect(authError("signup-failed", next));
-  if (data.session) redirect(next);
+  if (error) redirect(authError("signup-failed", next, ref));
+  if (data.session && data.user) {
+    if (ref) await bindReferralForUser(data.user.id, ref);
+    redirect(next);
+  }
 
-  redirect(`/auth?message=check-email&next=${encodeURIComponent(next)}`);
+  const params = new URLSearchParams({ message: "check-email", next });
+  if (ref) params.set("ref", ref);
+  redirect(`/auth?${params.toString()}`);
 }
 
 export async function signOut() {

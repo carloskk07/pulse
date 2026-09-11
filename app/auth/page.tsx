@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { TurnstileField } from "@/components/turnstile-field";
+import { cleanReferralCode } from "@/lib/referrals";
 import { signIn, signUp } from "./actions";
 
 export const metadata = { title: "Sign in" };
 
-type Props = { searchParams: Promise<{ error?: string; message?: string; next?: string }> };
+type Props = { searchParams: Promise<{ error?: string; message?: string; next?: string; ref?: string }> };
 
 const errorCopy: Record<string, string> = {
   "service-not-configured": "Authentication is not configured yet.",
@@ -21,6 +22,7 @@ const errorCopy: Record<string, string> = {
 export default async function AuthPage({ searchParams }: Props) {
   const params = await searchParams;
   const next = params.next?.startsWith("/") && !params.next.startsWith("//") ? params.next : "/dashboard";
+  const ref = cleanReferralCode(params.ref);
 
   return (
     <main className="auth-page">
@@ -36,11 +38,13 @@ export default async function AuthPage({ searchParams }: Props) {
 
         <div className="auth-card">
           <div><span className="app-eyebrow">Welcome</span><h2>Continue your Pulse</h2><p>Use the same credentials on every device.</p></div>
+          {ref ? <div className="auth-alert success">Verified invite attached. Referral bonuses unlock only after the first confirmed earning conversion.</div> : null}
           {params.error ? <div className="auth-alert error">{errorCopy[params.error] ?? "Something went wrong."}</div> : null}
-          {params.message === "check-email" ? <div className="auth-alert success">Check your email to confirm your account.</div> : null}
+          {params.message === "check-email" ? <div className="auth-alert success">Check your email to confirm your account. Your invite will stay attached.</div> : null}
 
           <form action={signIn} className="auth-form">
             <input type="hidden" name="next" value={next} />
+            {ref ? <input type="hidden" name="ref" value={ref} /> : null}
             <label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label>
             <label>Password<input required name="password" type="password" autoComplete="current-password" placeholder="••••••••" /></label>
             <button className="button button-lg" type="submit">Sign in</button>
@@ -50,6 +54,7 @@ export default async function AuthPage({ searchParams }: Props) {
 
           <form action={signUp} className="auth-form">
             <input type="hidden" name="next" value={next} />
+            {ref ? <input type="hidden" name="ref" value={ref} /> : null}
             <label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label>
             <label>Password<input required minLength={8} name="password" type="password" autoComplete="new-password" placeholder="8+ characters" /></label>
             <TurnstileField action="signup" />
