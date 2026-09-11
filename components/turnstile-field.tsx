@@ -7,7 +7,7 @@ export function TurnstileField({ action }: { action: string }) {
   return (
     <>
       <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
-      <div className="cf-turnstile turnstile-field" data-sitekey={siteKey} data-action={action} data-theme="dark" />
+      <div className="cf-turnstile turnstile-field" data-sitekey={siteKey} data-action={action} data-theme="dark" data-appearance="interaction-only" />
     </>
   );
 }
