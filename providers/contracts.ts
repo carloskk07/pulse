@@ -22,7 +22,9 @@ export type PayoutRequest = {
   destination: string;
   asset: string;
   amountCredits: number;
+  amountSmallestUnits: number;
   idempotencyKey: string;
+  ipAddress?: string | null;
 };
 
 export interface PayoutProvider {
