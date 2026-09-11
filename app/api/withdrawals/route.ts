@@ -22,6 +22,16 @@ type ReservedWithdrawal = {
   payout_amount_units?: number;
 };
 
+type ActiveWithdrawalRow = {
+  id: string;
+  idempotency_key: string;
+  destination: string;
+  asset: string;
+  amount_credits: number;
+  payout_amount_units: number | null;
+  status: "requested" | "held" | "submitted";
+};
+
 async function finalize(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
   withdrawalId: string,
@@ -37,6 +47,48 @@ async function finalize(
   });
 }
 
+async function executeReservedPayout(
+  request: NextRequest,
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  provider: FaucetPayProvider,
+  userId: string,
+  reserved: ReservedWithdrawal,
+  ip: string | undefined,
+  recovery: boolean,
+) {
+  if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) {
+    return walletRedirect(request, "reserve-failed");
+  }
+
+  try {
+    const payout = await provider.send({
+      userId,
+      destination: reserved.destination,
+      asset: reserved.asset,
+      amountCredits: Number(reserved.amount_credits),
+      amountSmallestUnits: Number(reserved.payout_amount_units),
+      idempotencyKey: reserved.idempotency_key,
+      ipAddress: ip,
+    });
+
+    const finalized = await finalize(admin, reserved.withdrawal_id, "paid", payout.externalId, recovery ? "FaucetPay payout recovered with the original idempotency key" : "FaucetPay payout completed");
+    if (finalized.error) return walletRedirect(request, "processing");
+    await recordReleaseEvidence("faucetpay_payout");
+    return walletRedirect(request, "paid");
+  } catch (error) {
+    // Once a payout is in an unknown/submitted state, never restore its credits merely
+    // because a later retry failed. Only a provider success using the same idempotency
+    // key can close it automatically; otherwise the reserve remains financially safe.
+    if (recovery || (error instanceof FaucetPayApiError && error.retryable)) {
+      await finalize(admin, reserved.withdrawal_id, "submitted", null, error instanceof Error ? error.message : "Payout state is still unknown");
+      return walletRedirect(request, "processing");
+    }
+
+    await finalize(admin, reserved.withdrawal_id, "failed", null, error instanceof Error ? error.message : "Payout failed");
+    return walletRedirect(request, "failed");
+  }
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return walletRedirect(request, "service-not-configured");
@@ -44,16 +96,49 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL("/auth?next=/wallet", request.url), 303);
 
-  const config = getFaucetPayPackConfig();
-  if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
-
   const formData = await request.formData();
-  const destination = String(formData.get("destination") ?? "").trim();
-  if (!destination || destination.length > 200) return walletRedirect(request, "invalid-destination");
-
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip);
   if (!verification.success) return walletRedirect(request, verification.missingConfig ? "verification-not-configured" : "verification-failed");
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) return walletRedirect(request, "service-not-configured");
+  await recordReleaseEvidence("turnstile");
+
+  const { data: activeData, error: activeError } = await admin
+    .from("withdrawals")
+    .select("id,idempotency_key,destination,asset,amount_credits,payout_amount_units,status")
+    .eq("user_id", user.id)
+    .in("status", ["requested", "held", "submitted"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeError) return walletRedirect(request, "reserve-failed");
+  const active = activeData as ActiveWithdrawalRow | null;
+
+  if (active) {
+    if (active.status === "held") return walletRedirect(request, "held");
+    if (!process.env.FAUCETPAY_SCOPED_KEY) return walletRedirect(request, "payout-not-configured");
+
+    const reserved: ReservedWithdrawal = {
+      status: active.status,
+      withdrawal_id: active.id,
+      idempotency_key: active.idempotency_key,
+      destination: active.destination,
+      asset: active.asset,
+      amount_credits: active.amount_credits,
+      payout_amount_units: active.payout_amount_units ?? undefined,
+    };
+
+    return executeReservedPayout(request, admin, new FaucetPayProvider(), user.id, reserved, ip, true);
+  }
+
+  const config = getFaucetPayPackConfig();
+  if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
+
+  const destination = String(formData.get("destination") ?? "").trim();
+  if (!destination || destination.length > 200) return walletRedirect(request, "invalid-destination");
 
   const provider = new FaucetPayProvider();
   try {
@@ -62,10 +147,6 @@ export async function POST(request: NextRequest) {
     if (error instanceof FaucetPayApiError && error.retryable) return walletRedirect(request, "provider-temporary");
     return walletRedirect(request, "invalid-destination");
   }
-
-  const admin = createSupabaseAdminClient();
-  if (!admin) return walletRedirect(request, "service-not-configured");
-  await recordReleaseEvidence("turnstile");
 
   const { data, error } = await admin.rpc("reserve_withdrawal", {
     p_user_id: user.id,
@@ -79,34 +160,8 @@ export async function POST(request: NextRequest) {
 
   if (error) return walletRedirect(request, "reserve-failed");
   const reserved = (data ?? {}) as ReservedWithdrawal;
-
   if (reserved.status === "insufficient") return walletRedirect(request, "insufficient");
   if (reserved.status === "held") return walletRedirect(request, "held");
-  if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) return walletRedirect(request, "reserve-failed");
-  if (reserved.status === "active" && reserved.destination !== destination) return walletRedirect(request, "already-processing");
 
-  try {
-    const payout = await provider.send({
-      userId: user.id,
-      destination: reserved.destination,
-      asset: reserved.asset,
-      amountCredits: Number(reserved.amount_credits),
-      amountSmallestUnits: Number(reserved.payout_amount_units),
-      idempotencyKey: reserved.idempotency_key,
-      ipAddress: ip,
-    });
-
-    const finalized = await finalize(admin, reserved.withdrawal_id, "paid", payout.externalId, "FaucetPay payout completed");
-    if (finalized.error) return walletRedirect(request, "processing");
-    await recordReleaseEvidence("faucetpay_payout");
-    return walletRedirect(request, "paid");
-  } catch (error) {
-    if (error instanceof FaucetPayApiError && error.retryable) {
-      await finalize(admin, reserved.withdrawal_id, "submitted", null, error.message);
-      return walletRedirect(request, "processing");
-    }
-
-    await finalize(admin, reserved.withdrawal_id, "failed", null, error instanceof Error ? error.message : "Payout failed");
-    return walletRedirect(request, "failed");
-  }
+  return executeReservedPayout(request, admin, provider, user.id, reserved, ip, reserved.status === "active");
 }
