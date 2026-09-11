@@ -28,8 +28,12 @@ export async function GET(request: NextRequest) {
     return response({ ok: false, ignored: error instanceof Error ? error.message : "invalid-callback" });
   }
 
-  if (!uuidPattern.test(event.userId)) return response({ ok: false, ignored: "invalid-user-id" });
-  if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) return response({ ok: false, ignored: "non-positive-conversion" });
+  if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) {
+    return response({ ok: false, ignored: "invalid-user-id" });
+  }
+  if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) {
+    return response({ ok: false, ignored: "non-positive-conversion" });
+  }
 
   const admin = createSupabaseAdminClient();
   if (!admin) return response({ ok: false, error: "database-not-configured" }, 503);
@@ -38,7 +42,7 @@ export async function GET(request: NextRequest) {
     p_provider: event.provider,
     p_external_id: event.externalId,
     p_original_external_id: event.originalExternalId ?? null,
-    p_user_id: event.userId,
+    p_user_id: event.userId ?? null,
     p_callback_type: event.callbackType,
     p_payout_usd_micros: event.payoutUsdMicros,
     p_reward_credits: event.rewardCredits,
