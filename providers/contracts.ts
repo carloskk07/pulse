@@ -3,7 +3,7 @@ export type NormalizedConversion = {
   externalId: string;
   originalExternalId?: string;
   callbackType: "conversion" | "chargeback";
-  userId: string;
+  userId?: string;
   payoutUsdMicros: number;
   rewardCredits: number;
   status: "confirmed" | "reversed";
