@@ -76,9 +76,6 @@ async function executeReservedPayout(
     await recordReleaseEvidence("faucetpay_payout");
     return walletRedirect(request, "paid");
   } catch (error) {
-    // Once a payout is in an unknown/submitted state, never restore its credits merely
-    // because a later retry failed. Only a provider success using the same idempotency
-    // key can close it automatically; otherwise the reserve remains financially safe.
     if (recovery || (error instanceof FaucetPayApiError && error.retryable)) {
       await finalize(admin, reserved.withdrawal_id, "submitted", null, error instanceof Error ? error.message : "Payout state is still unknown");
       return walletRedirect(request, "processing");
@@ -98,7 +95,7 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip);
+  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: ["withdrawal", "withdrawal-retry"] });
   if (!verification.success) return walletRedirect(request, verification.missingConfig ? "verification-not-configured" : "verification-failed");
 
   const admin = createSupabaseAdminClient();

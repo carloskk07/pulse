@@ -46,7 +46,7 @@ export async function signUp(formData: FormData) {
 
   const requestHeaders = await headers();
   const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip);
+  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "signup" });
   if (!verification.success) redirect(authError(verification.missingConfig ? "verification-not-configured" : "verification-failed", next, ref));
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

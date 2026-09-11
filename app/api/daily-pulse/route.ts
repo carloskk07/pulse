@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip);
+  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "daily_pulse" });
   if (!verification.success) return dashboardRedirect(request, verification.missingConfig ? "verification-not-configured" : "verification-failed");
 
   const admin = createSupabaseAdminClient();
