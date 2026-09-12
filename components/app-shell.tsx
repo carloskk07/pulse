@@ -2,7 +2,7 @@ import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Brand } from "./brand";
-import { Bolt, Home, Trend, Users, Wallet } from "./icons";
+import { Bolt, Home, Spark, Trend, Users, Wallet } from "./icons";
 
 const links = [
   { id: "home", href: "/dashboard", label: "Home", Icon: Home },
@@ -35,7 +35,11 @@ export async function AppShell({ children, active }: { children: React.ReactNode
 
   const admin = isAdminEmail(user?.email);
   const sidebarLinks = admin
-    ? [...links, { id: "admin", href: "/admin", label: "Ops", Icon: Trend }, { id: "leads", href: "/admin/leads", label: "Leads", Icon: Users }]
+    ? [...links,
+        { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
+        { id: "leads", href: "/admin/leads", label: "Leads", Icon: Users },
+        { id: "prospects", href: "/admin/prospects", label: "Prospects", Icon: Spark },
+      ]
     : links;
 
   return (
