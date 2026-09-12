@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 16;
-export const RELEASE_SCHEMA_MIGRATION = "0016_pulse_direct_session_state_fix.sql";
+export const RELEASE_SCHEMA_VERSION = 18;
+export const RELEASE_SCHEMA_MIGRATION = "0018_advertiser_outbound_pipeline.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -114,7 +114,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, Reward Exchange, Opportunity Intelligence, Pulse Direct and database access contracts cannot be verified without database access."));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
     checks.push(check("external-proof", "External smoke evidence", "pending", "Provider smoke evidence is still required after setup.", true));
   } else {
     const { error: connectivityError } = await admin.from("app_config").select("key").limit(1);
@@ -131,6 +131,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         rewardExchangeContract,
         opportunityIntelligenceContract,
         pulseDirectContract,
+        businessIntakeContract,
+        advertiserOutboundContract,
         { data: proofRow, error: proofError },
       ] = await Promise.all([
         admin.from("app_config").select("value,version").eq("key", "release_schema").maybeSingle(),
@@ -141,6 +143,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         admin.rpc("release_reward_exchange_contract"),
         admin.rpc("release_opportunity_intelligence_contract"),
         admin.rpc("release_pulse_direct_contract"),
+        admin.rpc("release_business_intake_contract"),
+        admin.rpc("release_advertiser_outbound_contract"),
         admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
       ]);
 
@@ -154,13 +158,23 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       const rewardExchangeOk = !rewardExchangeContract.error && rewardExchangeContract.data === true;
       const opportunityIntelligenceOk = !opportunityIntelligenceContract.error && opportunityIntelligenceContract.data === true;
       const pulseDirectOk = !pulseDirectContract.error && pulseDirectContract.data === true;
-      const contractsOk = !economics.error && !referral.error && securityOk && withdrawalReadOk && rewardExchangeOk && opportunityIntelligenceOk && pulseDirectOk;
+      const businessIntakeOk = !businessIntakeContract.error && businessIntakeContract.data === true;
+      const advertiserOutboundOk = !advertiserOutboundContract.error && advertiserOutboundContract.data === true;
+      const contractsOk = !economics.error
+        && !referral.error
+        && securityOk
+        && withdrawalReadOk
+        && rewardExchangeOk
+        && opportunityIntelligenceOk
+        && pulseDirectOk
+        && businessIntakeOk
+        && advertiserOutboundOk;
       checks.push(check(
         "runtime-contracts",
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, verified referrals, least-privilege security, Wallet recovery, Reward Exchange, Opportunity Intelligence and hardened prefunded Pulse Direct contracts are proven."
+          ? "Economics, referrals, security, Wallet recovery, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake and private advertiser outbound contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 
