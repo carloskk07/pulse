@@ -17,6 +17,20 @@ function authError(code: string, next: string, ref?: string | null) {
   return `/auth?${params.toString()}`;
 }
 
+function turnstileAuthError(verification: Awaited<ReturnType<typeof verifyTurnstile>>) {
+  if (verification.missingConfig) return "verification-not-configured";
+
+  const codes = new Set(verification.errorCodes ?? []);
+  if (codes.has("missing-token") || codes.has("missing-input-response")) return "verification-token-missing";
+  if (codes.has("timeout-or-duplicate")) return "verification-expired";
+  if (codes.has("invalid-input-secret") || codes.has("missing-input-secret")) return "verification-key-mismatch";
+  if (codes.has("hostname-mismatch")) return "verification-hostname";
+  if (codes.has("action-mismatch")) return "verification-action";
+  if (codes.has("verification-unavailable") || codes.has("internal-error")) return "verification-unavailable";
+  if (codes.has("invalid-input-response") || codes.has("bad-request")) return "verification-token-invalid";
+  return "verification-failed";
+}
+
 export async function signIn(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const next = safeNext(formData.get("next"));
@@ -47,7 +61,13 @@ export async function signUp(formData: FormData) {
   const requestHeaders = await headers();
   const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "signup" });
-  if (!verification.success) redirect(authError(verification.missingConfig ? "verification-not-configured" : "verification-failed", next, ref));
+  if (!verification.success) {
+    console.warn("Turnstile signup verification failed", {
+      missingConfig: Boolean(verification.missingConfig),
+      errorCodes: verification.errorCodes ?? [],
+    });
+    redirect(authError(turnstileAuthError(verification), next, ref));
+  }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const callback = new URL("/auth/callback", siteUrl);
