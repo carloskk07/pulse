@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app-shell";
-import { ArrowUpRight, Bolt, Shield, Spark, Trend } from "@/components/icons";
+import { ArrowUpRight, Shield, Spark, Trend } from "@/components/icons";
 import { getRankedOpportunities } from "@/lib/opportunities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
