@@ -30,6 +30,14 @@ export async function GET(request: NextRequest) {
   if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) return response({ ok: false, ignored: "invalid-user-id" });
   if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) return response({ ok: false, ignored: "non-positive-conversion" });
 
+  // ayeT sandbox conversions carry synthetic payouts. They are useful to prove
+  // transport + HMAC configuration, but must never create financial authority.
+  if (request.nextUrl.searchParams.get("is_sandbox") === "1") {
+    if (event.callbackType !== "conversion") return response({ ok: true, status: "sandbox-ignored" });
+    await recordReleaseEvidence("ayet_callback");
+    return response({ ok: true, status: "sandbox-verified" });
+  }
+
   const admin = createSupabaseAdminClient();
   if (!admin) return response({ ok: false, error: "database-not-configured" }, 503);
 
