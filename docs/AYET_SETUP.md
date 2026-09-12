@@ -28,7 +28,7 @@ The endpoint validates `X-Ayetstudios-Security-Hash` with HMAC-SHA256 using the 
 
 ## Authority rules
 
-- `external_identifier` must be the authenticated Supabase user UUID.
+- For production conversions, `external_identifier` must be the authenticated Supabase user UUID.
 - Browser activity never changes a balance.
 - The signed provider callback is the conversion authority.
 - The callback `adslot_id` must exactly match `AYET_ADSLOT_ID`.
@@ -36,8 +36,18 @@ The endpoint validates `X-Ayetstudios-Security-Hash` with HMAC-SHA256 using the 
 - Chargebacks reverse the exact original Reward Pulse credit rather than recalculating today's reward share.
 - Invalid signatures or wrong/missing adslots never write financial state.
 - Orphan chargebacks return a retryable error so an out-of-order conversion can arrive first.
-- ayeT sandbox callbacks may prove transport, HMAC and adslot wiring, but they never create ledger state and never record `PRODUCT_READY` earning evidence.
-- Duplicate production callbacks remain idempotent and do not refresh earning evidence. Current provider evidence is created only when a fresh production conversion is actually credited.
+- ayeT sandbox callbacks are non-financial. After valid HMAC, adslot binding and parsing, Pulse records a separate `ayet_transport` fingerprint so `/admin/product` can show that callback transport is wired correctly.
+- A sandbox identifier does not need to be a real Supabase user UUID because sandbox callbacks can never touch the ledger or satisfy `PRODUCT_READY`.
+- Duplicate production callbacks remain idempotent and do not refresh earning evidence. Current financial provider evidence is created only when a fresh production conversion is actually credited.
+
+## Recommended proof sequence
+
+1. Add the callback URL above to the ayeT placement.
+2. Configure a sandbox identifier in ayeT and trigger one sandbox offer.
+3. Confirm `/admin/product` reports that ayeT transport/HMAC/adslot binding is proven while **Real earning proof** remains blocked.
+4. Open the live offerwall as a signed-in Pulse user so `externalIdentifier` is that user's Supabase UUID.
+5. Complete one real payable action.
+6. Confirm the callback created a confirmed monetization event, an available ledger entry and current `ayet_callback` evidence.
 
 ## Database
 
