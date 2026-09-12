@@ -1,5 +1,6 @@
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getAyetExpectedCurrencyRate } from "@/providers/ayet";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
@@ -26,6 +27,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const checks: ProductReadinessCheck[] = [];
   const provider = getPrimaryConfiguredRewardProvider();
   const payout = getFaucetPayPackConfig();
+  const expectedAyetRate = provider?.id === "ayet" ? getAyetExpectedCurrencyRate() : null;
 
   checks.push({
     id: "auth",
@@ -91,8 +93,10 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     detail: providerProof && confirmedMonetizationEvents > 0
       ? `${confirmedMonetizationEvents} confirmed monetization event(s) exist with current provider evidence.`
       : providerTransportProof
-        ? "ayeT sandbox transport, HMAC and adslot binding are proven for the current configuration. A fresh production conversion must now credit the authoritative ledger."
-        : "A real provider callback must credit at least one authoritative monetization event. A sandbox callback can first prove transport/HMAC/adslot without satisfying PRODUCT_READY.",
+        ? `ayeT sandbox preflight is proven for the current configuration, including HMAC, adslot binding and ${expectedAyetRate} credits/US$1 reward-rate alignment. A fresh production conversion must now credit the authoritative ledger.`
+        : provider?.id === "ayet"
+          ? `Run one ayeT sandbox callback after configuring currency_conversion_rate=${expectedAyetRate}. It must prove HMAC, adslot binding and reward-rate alignment before the first real conversion.`
+          : "A real provider callback must credit at least one authoritative monetization event. A non-financial provider preflight may be used first without satisfying PRODUCT_READY.",
   });
   checks.push({
     id: "payout-proof",
