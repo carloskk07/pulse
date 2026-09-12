@@ -12,13 +12,16 @@ type Props = { searchParams: Promise<{ direct?: string }> };
 
 const directCopy: Record<string, string> = {
   "already-completed": "You already completed this protected campaign.",
-  "campaign-exhausted": "That Drop just reached its funded limit. No unpaid action was started.",
-  "campaign_not_active": "That Drop is not accepting new starts right now.",
-  "campaign_ended": "That Drop has ended.",
-  "not_started": "That Drop has not opened yet.",
+  capacity_reserved: "All currently funded slots are temporarily reserved. Try this Drop again shortly.",
+  completion_cap_reached: "This Drop reached its verified completion limit.",
+  campaign_not_active: "That Drop is not accepting new starts right now.",
+  campaign_ended: "That Drop has ended.",
+  not_started: "That Drop has not opened yet.",
+  "origin-rejected": "The protected start was rejected by the request security check.",
   unavailable: "The protected start could not be reserved. No reward was promised or deducted.",
   invalid: "That campaign link is not valid.",
   "session-error": "The protected session could not be created safely.",
+  "destination-error": "The advertiser destination did not pass the secure redirect check.",
   "service-unavailable": "Pulse Direct is temporarily unavailable. No funded action was started.",
 };
 
@@ -56,8 +59,6 @@ export default async function EarnPage({ searchParams }: Props) {
   const quickWins = ranked.filter((item) => item.quickWin).slice(0, 4);
   const topRanked = ranked.slice(0, 8);
   const activeTreasury = treasuries.find((item) => item.enabled && !item.killSwitch && item.availableCredits > 0) ?? null;
-  const bestHref = best?.actionHref ?? primaryChannel?.href ?? null;
-  const bestExternal = Boolean(!best?.actionHref && primaryChannel?.href);
 
   return (
     <AppShell active="earn">
@@ -83,7 +84,12 @@ export default async function EarnPage({ searchParams }: Props) {
             </div>
             <div className="drop-value"><small>{best ? "Reward" : "Inventory"}</small><strong>{best ? formatUsdFromCredits(best.baseRewardCredits) : primaryChannel ? "Live" : "Closed"}</strong></div>
           </div>
-          {bestHref ? <a className="button button-light direct-primary-action" href={bestHref} target={bestExternal ? "_blank" : undefined} rel={bestExternal ? "noopener sponsored" : undefined}>{best?.pulseProtected ? "Start protected Drop" : "Open live inventory"} <ArrowUpRight /></a> : null}
+          {best?.pulseProtected ? (
+            <form action="/api/direct/start" method="post" className="direct-start-form">
+              <input type="hidden" name="campaign" value={best.externalId} />
+              <button className="button button-light direct-primary-action" type="submit">Start protected Drop <ArrowUpRight /></button>
+            </form>
+          ) : primaryChannel ? <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open live inventory <ArrowUpRight /></a> : null}
         </article>
 
         <aside className="drop-aside">
@@ -107,7 +113,7 @@ export default async function EarnPage({ searchParams }: Props) {
                 <h3>{item.title}</h3>
                 <div className="quick-win-value"><strong>{formatUsdFromCredits(item.baseRewardCredits)}</strong><span>~{item.estimatedMinutes} min</span></div>
                 <div className="quick-win-foot"><span>{item.expectedCreditsPerMinute == null ? "Value learning" : `${formatUsdFromCredits(item.expectedCreditsPerMinute)} expected / min`}</span><b>{Math.round(item.confidence * 100)}%</b></div>
-                {item.actionHref ? <a className="inline-action direct-inline-action" href={item.actionHref}>Start protected <ArrowUpRight /></a> : null}
+                {item.pulseProtected ? <form action="/api/direct/start" method="post" className="direct-start-form compact"><input type="hidden" name="campaign" value={item.externalId} /><button className="inline-action direct-inline-action" type="submit">Start protected <ArrowUpRight /></button></form> : null}
               </article>
             ))}
           </div>
@@ -127,7 +133,7 @@ export default async function EarnPage({ searchParams }: Props) {
                 <div className="reward-metric"><small>Time</small><strong>{item.estimatedMinutes ? `${item.estimatedMinutes}m` : "—"}</strong></div>
                 <div className="reward-metric"><small>Health</small><strong className={`health-text ${item.healthState}`}>{healthLabel(item)}</strong></div>
                 <div className="reward-metric"><small>Confidence</small><strong className="reward-confidence">{Math.round(item.confidence * 100)}%</strong></div>
-                {item.actionHref ? <a className="direct-row-action" href={item.actionHref} aria-label={`Start ${item.title}`}>Start <ArrowUpRight /></a> : null}
+                {item.pulseProtected ? <form action="/api/direct/start" method="post" className="direct-start-form compact"><input type="hidden" name="campaign" value={item.externalId} /><button className="direct-row-action" type="submit" aria-label={`Start ${item.title}`}>Start <ArrowUpRight /></button></form> : null}
               </article>
             ))}
           </div>
