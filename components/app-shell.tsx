@@ -5,10 +5,10 @@ import { Brand } from "./brand";
 import { Bolt, Home, Users, Wallet } from "./icons";
 
 const links = [
-  { href: "/dashboard", label: "Home", Icon: Home },
-  { href: "/earn", label: "Earn", Icon: Bolt },
-  { href: "/wallet", label: "Wallet", Icon: Wallet },
-  { href: "/invite", label: "Invite", Icon: Users },
+  { id: "home", href: "/dashboard", label: "Home", Icon: Home },
+  { id: "earn", href: "/earn", label: "Drops", Icon: Bolt },
+  { id: "wallet", href: "/wallet", label: "Wallet", Icon: Wallet },
+  { id: "invite", href: "/invite", label: "Invite", Icon: Users },
 ];
 
 function initials(value: string) {
@@ -32,8 +32,8 @@ export async function AppShell({ children, active }: { children: React.ReactNode
       <aside className="app-sidebar">
         <Brand />
         <nav className="app-nav" aria-label="Application">
-          {links.map(({ href, label: navLabel, Icon }) => (
-            <Link key={href} className={active === navLabel.toLowerCase() ? "active" : ""} href={href}><Icon />{navLabel}</Link>
+          {links.map(({ id, href, label: navLabel, Icon }) => (
+            <Link key={href} className={active === id ? "active" : ""} href={href}><Icon />{navLabel}</Link>
           ))}
         </nav>
         <div className="sidebar-user">
@@ -44,8 +44,8 @@ export async function AppShell({ children, active }: { children: React.ReactNode
       </aside>
       <main className="app-content">{children}</main>
       <nav className="bottom-nav" aria-label="Mobile application navigation">
-        {links.map(({ href, label: navLabel, Icon }) => (
-          <Link key={href} className={active === navLabel.toLowerCase() ? "active" : ""} href={href}><Icon /><span>{navLabel}</span></Link>
+        {links.map(({ id, href, label: navLabel, Icon }) => (
+          <Link key={href} className={active === id ? "active" : ""} href={href}><Icon /><span>{navLabel}</span></Link>
         ))}
       </nav>
     </div>
