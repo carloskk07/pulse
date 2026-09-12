@@ -13,13 +13,11 @@ export default async function ReferralLanding({ params }: Props) {
   if (!code) notFound();
 
   const admin = createSupabaseAdminClient();
-  let inviter = "A Reward Pulse member";
+  if (!admin) notFound();
 
-  if (admin) {
-    const { data } = await admin.from("profiles").select("handle").eq("referral_code", code).maybeSingle();
-    if (!data) notFound();
-    inviter = data.handle || inviter;
-  }
+  const { data, error } = await admin.from("profiles").select("handle").eq("referral_code", code).maybeSingle();
+  if (error || !data) notFound();
+  const inviter = data.handle || "A Reward Pulse member";
 
   return (
     <main className="referral-landing">
