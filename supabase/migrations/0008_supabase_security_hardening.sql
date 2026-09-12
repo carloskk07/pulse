@@ -3,7 +3,7 @@
 -- and removal of unnecessary SECURITY DEFINER authority from server-only RPCs.
 
 grant usage on schema public to authenticated, service_role;
-revoke create on schema public from anon, authenticated;
+revoke create on schema public from public, anon, authenticated;
 
 -- New Supabase projects no longer expose new public tables automatically.
 -- Keep anonymous users away from the application data plane entirely.
@@ -89,9 +89,8 @@ using ((select auth.uid()) = inviter_id or (select auth.uid()) = invitee_id);
 
 -- These functions are only invoked by trusted server code using service_role.
 -- service_role already bypasses RLS, so SECURITY DEFINER adds authority without
--- adding capability. Keep only the auth.users bootstrap trigger as a definer.
+-- adding capability for functions that touch only the application schema.
 alter function public.claim_daily_pulse(uuid) security invoker;
-alter function public.apply_monetization_callback(text,text,text,uuid,text,bigint,bigint,timestamptz,jsonb) security invoker;
 alter function public.reserve_withdrawal(uuid,text,text,text,text,bigint,bigint) security invoker;
 alter function public.finalize_withdrawal(uuid,text,text,text) security invoker;
 alter function public.admin_economics_snapshot(timestamptz,timestamptz) security invoker;
@@ -99,6 +98,11 @@ alter function public.bind_referral(uuid,text) security invoker;
 alter function public.reward_referral_on_conversion() security invoker;
 alter function public.reverse_referral_on_chargeback() security invoker;
 alter function public.record_release_evidence(text,text) security invoker;
+
+-- The monetization callback verifies existence in auth.users. Keep this one
+-- privileged, but expose it only to service_role and pin every lookup schema.
+alter function public.apply_monetization_callback(text,text,text,uuid,text,bigint,bigint,timestamptz,jsonb) security definer;
+alter function public.apply_monetization_callback(text,text,text,uuid,text,bigint,bigint,timestamptz,jsonb) set search_path = pg_catalog, public, extensions;
 
 -- The auth trigger must cross from auth.users into public.profiles. Its execute
 -- permission remains revoked from client roles and its lookup path is pinned.
