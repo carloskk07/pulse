@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { ProductPreview } from "@/components/product-preview";
 import { SocialProofPanel } from "@/components/social-proof-panel";
-import { ArrowUpRight, Bolt, Check, Clock, Shield, Spark, Trend } from "@/components/icons";
+import { ArrowUpRight, Check, Clock, Shield, Trend } from "@/components/icons";
 import { getPublicSocialProof } from "@/lib/social-proof";
 
 export const revalidate = 60;
