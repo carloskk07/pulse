@@ -8,12 +8,14 @@ Commercial outreach remains frozen until the consumer product is proven end-to-e
 2. Authentication works with production Supabase configuration.
 3. Turnstile is configured and has current controlled smoke evidence.
 4. At least one real earning route is configured.
-5. At least one earning callback has current controlled smoke evidence.
+5. At least one fresh production earning callback for the current provider configuration has created an authoritative monetization event and ledger credit.
 6. Reward settlement reaches the authoritative ledger without manual repair.
 7. FaucetPay payout pack is fully configured, including exact provider units.
 8. At least one controlled FaucetPay payout has current evidence.
 9. Wallet/withdrawal recovery contracts remain green.
 10. No fabricated offers, balances, payouts, users or activity are needed to make the product appear functional.
+
+Sandbox callbacks, duplicate callbacks and browser-side activity never satisfy the real earning proof. Provider evidence is valid only when a fresh production conversion is credited under the currently configured provider fingerprint.
 
 ## Frozen until PRODUCT_READY
 
