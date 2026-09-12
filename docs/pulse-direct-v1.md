@@ -13,24 +13,27 @@ A campaign has four monetary values:
 
 The database rejects campaigns where `price_per_action_usd_micros < reward_credits * 1000`. This protects against a negative gross contribution being configured accidentally. It does not claim to include taxes, payout fees, support, infrastructure, acquisition cost or other operating costs.
 
-A campaign cannot activate unless available advertiser funding can cover at least one full action.
+A campaign cannot activate unless available advertiser funding can cover at least one full action. Funding references are unique and idempotent: replaying the same verified funding reference with the same campaign and amount does not increase the funded balance twice; conflicting reuse is rejected.
 
 ## Protected start
 
-The user never goes directly from a public card to the advertiser.
+The user never goes directly from a public card to the advertiser. Starting a Drop is a state-changing operation and therefore uses POST rather than a prefetchable GET.
 
 ```text
 Pulse Drop
    ↓
-GET /api/direct/start?campaign=<campaign-id>
+POST /api/direct/start
+campaign=<campaign-id>
    ↓
 authenticated Pulse user
+   ↓
+same-origin request check
    ↓
 atomic campaign budget reservation
    ↓
 pseudonymous pulse_session_id created
    ↓
-HTTPS redirect to advertiser
+303 HTTPS redirect to advertiser
 ```
 
 The advertiser receives only:
@@ -40,7 +43,9 @@ The advertiser receives only:
 
 The Pulse user id, email, balance and internal financial identity are not appended to the destination URL.
 
-The default session reservation lasts 60 minutes. Expired reservations return to campaign availability.
+The default session reservation lasts 60 minutes. Expired reservations return to campaign availability. Reserved sessions also count against the campaign completion cap, preventing simultaneous starts from oversubscribing either prefunded money or the maximum completion count.
+
+A temporary lack of immediately available capacity caused only by outstanding reservations does not permanently exhaust the campaign. A later start first releases expired reservations and can use the recovered capacity.
 
 ## Advertiser callback
 
@@ -115,9 +120,9 @@ SETTLED COMPLETIONS
 EXHAUSTED / COMPLETED / PAUSED
 ```
 
-Funding is recorded separately in `direct_campaign_funding` with an operator-supplied funding reference for auditability.
+Funding is recorded separately in `direct_campaign_funding` with a unique operator-supplied funding reference for auditability.
 
-Campaigns automatically stop exposing their normalized opportunity when the completion cap or available funding can no longer cover another complete action.
+A campaign is only permanently exhausted when settled spend leaves insufficient total unspent funding for another full action, or its completion cap is reached. Budget merely held by live sessions is treated as temporary reserved capacity.
 
 ## Reversal authority
 
@@ -135,7 +140,7 @@ All Pulse Direct campaign, funding, session and event tables have RLS enabled an
 
 The public surface contains only:
 
-- authenticated protected-start route;
+- authenticated same-origin protected-start POST;
 - secret-authenticated callback route;
 - normalized opportunity presentation.
 
