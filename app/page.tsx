@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { ProductPreview } from "@/components/product-preview";
+import { SocialProofPanel } from "@/components/social-proof-panel";
 import { ArrowUpRight, Bolt, Check, Shield, Spark, Trend } from "@/components/icons";
+import { getPublicSocialProof } from "@/lib/social-proof";
+
+export const revalidate = 60;
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -12,7 +16,9 @@ const structuredData = {
   description: "Complete simple quests and turn spare minutes into real rewards.",
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const socialProof = await getPublicSocialProof();
+
   return (
     <main className="marketing-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
@@ -40,6 +46,8 @@ export default function HomePage() {
         <div><strong>Verified events</strong><span>Provider callbacks create rewards</span></div>
         <div><strong>Real ledger</strong><span>Every credit is traceable</span></div>
       </section>
+
+      <SocialProofPanel proof={socialProof} />
 
       <section className="section shell" id="how">
         <div className="section-heading narrow"><span className="section-kicker">Designed for momentum</span><h2>From first click to first verified reward in a few clear steps.</h2><p>No maze of banners. No endless tutorial. The product teaches itself while you use it.</p></div>
