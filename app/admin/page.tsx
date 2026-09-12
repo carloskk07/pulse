@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { getDirectCampaignSnapshot } from "@/lib/direct-campaigns";
 import { getReleaseReadiness } from "@/lib/release-readiness";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -56,7 +57,11 @@ export default async function AdminEconomicsPage() {
   if (!user) redirect("/auth?next=/admin");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [readiness, treasuries] = await Promise.all([getReleaseReadiness(), getTreasurySnapshot()]);
+  const [readiness, treasuries, direct] = await Promise.all([
+    getReleaseReadiness(),
+    getTreasurySnapshot(),
+    getDirectCampaignSnapshot(),
+  ]);
   const admin = createSupabaseAdminClient();
 
   let snapshot: Snapshot = {};
@@ -92,10 +97,10 @@ export default async function AdminEconomicsPage() {
         <div className="readiness-list">{readiness.checks.map((item) => <article className={`readiness-item ${item.status}`} key={item.id}><span className="readiness-dot" /><div><strong>{item.label}</strong><small>{item.detail}</small></div></article>)}</div>
       </section>
 
-      {economicsError ? <div className="preview-banner">Economics snapshot is not authoritative yet. Apply migrations through 0011 and complete the setup blockers shown above.</div> : null}
+      {economicsError ? <div className="preview-banner">Economics snapshot is not authoritative yet. Apply migrations through 0013 and complete the setup blockers shown above.</div> : null}
 
       <section className="admin-kpi-grid">
-        <article className="admin-kpi primary"><span>Provider revenue</span><strong>{moneyFromMicros(revenue)}</strong><small>Confirmed provider economics</small></article>
+        <article className="admin-kpi primary"><span>Total monetization revenue</span><strong>{moneyFromMicros(revenue)}</strong><small>Provider + Pulse Direct confirmed economics</small></article>
         <article className="admin-kpi"><span>User rewards</span><strong>{moneyFromCredits(rewards)}</strong><small>Claims + earning rewards − reversals</small></article>
         <article className={`admin-kpi ${contribution >= 0 ? "positive" : "danger"}`}><span>Gross contribution</span><strong>{moneyFromMicros(contribution)}</strong><small>{margin.toFixed(1)}% contribution margin</small></article>
         <article className="admin-kpi"><span>Verified active users</span><strong>{active.toLocaleString("en-US")}</strong><small>{arpDau.toFixed(4)} USD revenue / active</small></article>
@@ -119,8 +124,33 @@ export default async function AdminEconomicsPage() {
       </section>
 
       <section className="admin-panel">
-        <div className="app-section-head"><div><span className="app-eyebrow">Revenue sources</span><h2>Provider economics</h2></div></div>
-        <div className="admin-provider-table"><div className="admin-provider-row header"><span>Provider</span><span>Revenue</span><span>Conversions</span><span>Chargebacks</span></div>{(snapshot.providers ?? []).length ? (snapshot.providers ?? []).map((provider) => <div className="admin-provider-row" key={provider.provider}><strong>{provider.provider}</strong><span>{moneyFromMicros(Number(provider.revenue_micros ?? 0))}</span><span>{Number(provider.conversions ?? 0)}</span><span>{Number(provider.chargebacks ?? 0)}</span></div>) : <div className="empty-ledger">No provider revenue recorded in this UTC day yet.</div>}</div>
+        <div className="app-section-head"><div><span className="app-eyebrow">Owned inventory</span><h2>Pulse Direct</h2></div><span className={`admin-badge ${direct.activeCount > 0 ? "" : "setup"}`}>{direct.activeCount} ACTIVE</span></div>
+        <div className="admin-secondary-grid">
+          <article><span>Advertiser funding</span><strong>{moneyFromMicros(direct.fundedUsdMicros)}</strong></article>
+          <article><span>Reserved sessions</span><strong>{moneyFromMicros(direct.reservedUsdMicros)}</strong></article>
+          <article><span>Settled spend</span><strong>{moneyFromMicros(direct.spentUsdMicros)}</strong></article>
+          <article><span>Gross contribution</span><strong>{moneyFromMicros(direct.grossContributionUsdMicros)}</strong></article>
+          <article><span>Campaigns</span><strong>{direct.campaignCount}</strong></article>
+          <article><span>Active</span><strong>{direct.activeCount}</strong></article>
+        </div>
+        <div className="admin-provider-table direct-campaign-table">
+          <div className="admin-provider-row header"><span>Campaign</span><span>Funded</span><span>User reward</span><span>Completions</span><span>Status</span></div>
+          {direct.campaigns.length ? direct.campaigns.map((campaign) => (
+            <div className="admin-provider-row" key={campaign.id}>
+              <strong className="direct-campaign-title">{campaign.title}<small>{campaign.advertiserName} · {campaign.actionType}</small></strong>
+              <span>{moneyFromMicros(campaign.fundedUsdMicros)}</span>
+              <span>{moneyFromCredits(campaign.rewardCredits)}</span>
+              <span>{campaign.completionCount} / {campaign.maxCompletions}</span>
+              <span className={`direct-status ${campaign.status}`}>{campaign.status}</span>
+            </div>
+          )) : <div className="empty-ledger">No direct advertiser campaign exists yet. Pulse will not synthesize one for appearance.</div>}
+        </div>
+        <p className="admin-panel-note">A direct campaign starts as a draft, receives operator-verified prefunding, and only then can be activated. Starting a protected Drop reserves one full advertiser action budget before redirecting the user.</p>
+      </section>
+
+      <section className="admin-panel">
+        <div className="app-section-head"><div><span className="app-eyebrow">Revenue sources</span><h2>Monetization economics</h2></div></div>
+        <div className="admin-provider-table"><div className="admin-provider-row header"><span>Source</span><span>Revenue</span><span>Conversions</span><span>Chargebacks</span></div>{(snapshot.providers ?? []).length ? (snapshot.providers ?? []).map((provider) => <div className="admin-provider-row" key={provider.provider}><strong>{provider.provider}</strong><span>{moneyFromMicros(Number(provider.revenue_micros ?? 0))}</span><span>{Number(provider.conversions ?? 0)}</span><span>{Number(provider.chargebacks ?? 0)}</span></div>) : <div className="empty-ledger">No monetization revenue recorded in this UTC day yet.</div>}</div>
       </section>
 
       <section className="admin-decision-card"><span className="app-eyebrow">North star</span><h2>Contribution per verified active user</h2><strong>${contributionDau.toFixed(4)}</strong><p>Grow traffic only when this stays healthy after rewards, reversals and treasury subsidy. Infrastructure, taxes and paid acquisition are intentionally not claimed as included yet.</p></section>
