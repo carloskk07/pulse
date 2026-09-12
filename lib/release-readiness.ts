@@ -1,9 +1,10 @@
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
+import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 9;
-export const RELEASE_SCHEMA_MIGRATION = "0009_withdrawal_read_contract.sql";
+export const RELEASE_SCHEMA_VERSION = 11;
+export const RELEASE_SCHEMA_MIGRATION = "0011_reward_exchange_foundation.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -28,11 +29,6 @@ export type ReleaseReadinessReport = {
 
 function configured(...keys: string[]) {
   return keys.every((key) => Boolean(process.env[key]?.trim()));
-}
-
-function validBps() {
-  const value = Number(process.env.AYET_REWARD_SHARE_BPS ?? "7000");
-  return Number.isInteger(value) && value >= 0 && value <= 10_000;
 }
 
 function publicSiteReady() {
@@ -103,8 +99,13 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   const turnstileConfigured = configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY");
   checks.push(check("turnstile", "Human verification", turnstileConfigured ? "pass" : "fail", turnstileConfigured ? "Turnstile public and server keys are configured." : "Configure both Turnstile keys before enabling claims, signup and withdrawals."));
 
-  const ayetConfigured = configured("AYET_API_KEY", "AYET_ADSLOT_ID") && validBps();
-  checks.push(check("ayet", "ayeT monetization", ayetConfigured ? "pass" : "fail", ayetConfigured ? "Offerwall credentials and reward share are configured." : "Configure ayeT API key, adslot and a valid reward-share basis-point value."));
+  const rewardProvider = getPrimaryConfiguredRewardProvider();
+  checks.push(check(
+    "reward-provider",
+    "Reward provider",
+    rewardProvider ? "pass" : "fail",
+    rewardProvider ? `At least one verified earning route is configured (${rewardProvider.id}).` : "Configure at least one reward provider adapter before exposing payable inventory.",
+  ));
 
   const faucetPay = getFaucetPayPackConfig();
   checks.push(check("faucetpay", "FaucetPay payout pack", faucetPay.ready ? "pass" : "fail", faucetPay.ready ? "Scoped payout key and fixed payout pack are configured." : "Configure the scoped key, payout currency, credits, exact provider units and display label."));
@@ -113,7 +114,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals and database access contracts cannot be verified without database access."));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, Reward Exchange and database access contracts cannot be verified without database access."));
     checks.push(check("external-proof", "External smoke evidence", "pending", "Provider smoke evidence is still required after setup.", true));
   } else {
     const { error: connectivityError } = await admin.from("app_config").select("key").limit(1);
@@ -127,6 +128,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         referral,
         securityContract,
         withdrawalReadContract,
+        rewardExchangeContract,
         { data: proofRow, error: proofError },
       ] = await Promise.all([
         admin.from("app_config").select("value,version").eq("key", "release_schema").maybeSingle(),
@@ -134,6 +136,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         admin.from("profiles").select("referral_code").limit(1),
         admin.rpc("release_security_contract"),
         admin.rpc("release_withdrawal_read_contract"),
+        admin.rpc("release_reward_exchange_contract"),
         admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
       ]);
 
@@ -144,27 +147,33 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
 
       const securityOk = !securityContract.error && securityContractPasses(securityContract.data);
       const withdrawalReadOk = !withdrawalReadContract.error && withdrawalReadContract.data === true;
-      const contractsOk = !economics.error && !referral.error && securityOk && withdrawalReadOk;
+      const rewardExchangeOk = !rewardExchangeContract.error && rewardExchangeContract.data === true;
+      const contractsOk = !economics.error && !referral.error && securityOk && withdrawalReadOk && rewardExchangeOk;
       checks.push(check(
         "runtime-contracts",
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, verified referrals, least-privilege security and RLS-scoped Wallet recovery reads are proven."
+          ? "Economics, verified referrals, least-privilege security, Wallet recovery and Reward Exchange treasury/catalog contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 
       const proofValue = proofRow?.value;
       const turnstileProof = !proofError && releaseEvidenceMatches(proofValue, "turnstile");
-      const ayetProof = !proofError && releaseEvidenceMatches(proofValue, "ayet_callback");
+      const providerEvidenceKey = rewardProvider?.evidenceKey;
+      const providerProof = Boolean(providerEvidenceKey) && !proofError && releaseEvidenceMatches(proofValue, providerEvidenceKey!);
       const faucetPayProof = !proofError && releaseEvidenceMatches(proofValue, "faucetpay_payout");
-      const proofComplete = turnstileProof && ayetProof && faucetPayProof;
-      const missing = [!turnstileProof ? "Turnstile" : null, !ayetProof ? "ayeT callback" : null, !faucetPayProof ? "FaucetPay payout" : null].filter(Boolean).join(", ");
+      const proofComplete = turnstileProof && providerProof && faucetPayProof;
+      const missing = [
+        !turnstileProof ? "Turnstile" : null,
+        !providerProof ? "reward provider callback" : null,
+        !faucetPayProof ? "FaucetPay payout" : null,
+      ].filter(Boolean).join(", ");
       checks.push(check(
         "external-proof",
         "External smoke evidence",
         proofComplete ? "pass" : "pending",
-        proofComplete ? "Current Turnstile, ayeT and FaucetPay configurations all have matching controlled smoke evidence." : `Awaiting current-configuration evidence: ${missing || "external flows"}.`,
+        proofComplete ? "Current human-verification, earning-provider and payout configurations all have matching controlled smoke evidence." : `Awaiting current-configuration evidence: ${missing || "external flows"}.`,
         true,
       ));
     } else {

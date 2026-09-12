@@ -11,10 +11,36 @@ export type NormalizedConversion = {
   raw: Record<string, string>;
 };
 
+export type NormalizedOpportunity = {
+  provider: string;
+  externalId: string;
+  title: string;
+  category: string;
+  payoutUsdMicros: number;
+  baseRewardCredits: number;
+  estimatedMinutes?: number | null;
+  completionProbability?: number | null;
+  trackingReliability?: number | null;
+  payoutReliability?: number | null;
+  reversalRate?: number | null;
+  countryCodes: string[];
+  devicePlatforms: string[];
+  metadata?: Record<string, unknown>;
+};
+
 export interface MonetizationProvider {
   readonly name: string;
   verifyCallback(request: Request): Promise<boolean>;
   normalizeCallback(request: Request): Promise<NormalizedConversion>;
+}
+
+export interface OpportunityProvider {
+  readonly name: string;
+  listOpportunities(input: {
+    userId?: string;
+    countryCode?: string;
+    devicePlatform?: string;
+  }): Promise<NormalizedOpportunity[]>;
 }
 
 export type PayoutRequest = {
