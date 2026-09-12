@@ -14,10 +14,21 @@ function response(body: Record<string, unknown>, status = 200) {
 
 export async function GET(request: NextRequest) {
   const provider = new AyetProvider();
-  if (!process.env.AYET_API_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) return response({ ok: false, error: "provider-not-configured" }, 503);
+  const configuredAdslot = process.env.AYET_ADSLOT_ID?.trim();
+  if (!process.env.AYET_API_KEY || !configuredAdslot || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return response({ ok: false, error: "provider-not-configured" }, 503);
+  }
 
   if (!(await provider.verifyCallback(request))) {
     return response({ ok: false, ignored: "invalid-signature" });
+  }
+
+  // The publisher API key authenticates ayeT, but it can cover more than one
+  // placement/adslot. Bind financial authority to the exact live earning route
+  // configured by Pulse so a valid callback from another adslot cannot credit it.
+  const callbackAdslot = request.nextUrl.searchParams.get("adslot_id")?.trim();
+  if (!callbackAdslot || callbackAdslot !== configuredAdslot) {
+    return response({ ok: false, ignored: "invalid-adslot" });
   }
 
   let event;
@@ -30,11 +41,10 @@ export async function GET(request: NextRequest) {
   if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) return response({ ok: false, ignored: "invalid-user-id" });
   if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) return response({ ok: false, ignored: "non-positive-conversion" });
 
-  // ayeT sandbox conversions carry synthetic payouts. They are useful to prove
-  // transport + HMAC configuration, but must never create financial authority.
+  // ayeT sandbox conversions prove transport + HMAC + adslot binding only.
+  // They must never create financial authority or PRODUCT_READY evidence.
   if (request.nextUrl.searchParams.get("is_sandbox") === "1") {
     if (event.callbackType !== "conversion") return response({ ok: true, status: "sandbox-ignored" });
-    await recordReleaseEvidence("ayet_callback");
     return response({ ok: true, status: "sandbox-verified" });
   }
 
@@ -57,7 +67,10 @@ export async function GET(request: NextRequest) {
   const result = data as { status?: string } | null;
   if (result?.status === "orphan_chargeback") return response({ ok: false, error: "orphan-chargeback" }, 503);
 
-  if (event.callbackType === "conversion" && (result?.status === "credited" || result?.status === "duplicate")) {
+  // Only a fresh production conversion that actually created authoritative
+  // financial state may certify the current provider configuration. A duplicate
+  // or sandbox callback is deliberately insufficient evidence.
+  if (event.callbackType === "conversion" && result?.status === "credited") {
     await recordReleaseEvidence("ayet_callback");
   }
 
