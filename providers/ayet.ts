@@ -35,6 +35,10 @@ function rewardShareBps() {
   return Math.max(0, Math.min(10_000, Math.round(configured)));
 }
 
+function expectedCurrencyRateMicros() {
+  return Math.round((CREDITS_PER_USD * rewardShareBps() * 1_000_000) / 10_000);
+}
+
 function rewardCreditsForPayout(payoutUsdMicros: number) {
   return Math.floor((Math.abs(payoutUsdMicros) * CREDITS_PER_USD * rewardShareBps()) / 10_000 / 1_000_000);
 }
@@ -89,6 +93,19 @@ export class AyetProvider implements MonetizationProvider {
       raw: Object.fromEntries(url.searchParams.entries()),
     };
   }
+}
+
+export function isAyetRewardRateAligned(value: string | undefined) {
+  if (!value) return false;
+  try {
+    return decimalToMicros(value) === expectedCurrencyRateMicros();
+  } catch {
+    return false;
+  }
+}
+
+export function getAyetExpectedCurrencyRate() {
+  return expectedCurrencyRateMicros() / 1_000_000;
 }
 
 export function buildAyetOfferwallUrl(userId: string) {
