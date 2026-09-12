@@ -2,8 +2,8 @@ import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
-export const RELEASE_SCHEMA_VERSION = 8;
-export const RELEASE_SCHEMA_MIGRATION = "0008_supabase_security_hardening.sql";
+export const RELEASE_SCHEMA_VERSION = 9;
+export const RELEASE_SCHEMA_MIGRATION = "0009_withdrawal_read_contract.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -113,7 +113,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals and the v8 security contract cannot be verified without database access."));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals and database access contracts cannot be verified without database access."));
     checks.push(check("external-proof", "External smoke evidence", "pending", "Provider smoke evidence is still required after setup.", true));
   } else {
     const { error: connectivityError } = await admin.from("app_config").select("key").limit(1);
@@ -126,12 +126,14 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         economics,
         referral,
         securityContract,
+        withdrawalReadContract,
         { data: proofRow, error: proofError },
       ] = await Promise.all([
         admin.from("app_config").select("value,version").eq("key", "release_schema").maybeSingle(),
         admin.rpc("admin_economics_snapshot", { p_from: "1970-01-01T00:00:00.000Z", p_to: "1970-01-02T00:00:00.000Z" }),
         admin.from("profiles").select("referral_code").limit(1),
         admin.rpc("release_security_contract"),
+        admin.rpc("release_withdrawal_read_contract"),
         admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
       ]);
 
@@ -141,14 +143,15 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       checks.push(check("schema", "Schema version", schemaOk ? "pass" : "fail", schemaOk ? `Database schema marker is v${schemaVersion}.` : `Apply migrations through ${RELEASE_SCHEMA_MIGRATION}.`));
 
       const securityOk = !securityContract.error && securityContractPasses(securityContract.data);
-      const contractsOk = !economics.error && !referral.error && securityOk;
+      const withdrawalReadOk = !withdrawalReadContract.error && withdrawalReadContract.data === true;
+      const contractsOk = !economics.error && !referral.error && securityOk && withdrawalReadOk;
       checks.push(check(
         "runtime-contracts",
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, verified referrals and the v8 least-privilege database contract are proven."
-          : "One or more required runtime or database-security contracts are missing or have drifted.",
+          ? "Economics, verified referrals, least-privilege security and RLS-scoped Wallet recovery reads are proven."
+          : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 
       const proofValue = proofRow?.value;
