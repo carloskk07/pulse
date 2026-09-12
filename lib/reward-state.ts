@@ -1,3 +1,4 @@
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type RewardSnapshot = {
@@ -20,24 +21,17 @@ export type LedgerItem = {
   createdAt: string;
 };
 
-const demoSnapshot: RewardSnapshot = {
+const disconnectedSnapshot: RewardSnapshot = {
   preview: true,
   signedIn: false,
-  userLabel: "Demo member",
-  trustLevel: 1,
-  availableCredits: 4820,
+  userLabel: "Preview",
+  trustLevel: 0,
+  availableCredits: 0,
   pendingCredits: 0,
-  streakDays: 6,
-  claimReady: true,
-  claimRewardCredits: 12,
+  streakDays: 0,
+  claimReady: false,
+  claimRewardCredits: 0,
 };
-
-const demoLedger: LedgerItem[] = [
-  { id: "demo-1", label: "Survey completed", state: "available", credits: 420, createdAt: new Date().toISOString() },
-  { id: "demo-2", label: "Daily Pulse", state: "available", credits: 10, createdAt: new Date(Date.now() - 3_600_000).toISOString() },
-  { id: "demo-3", label: "App quest", state: "available", credits: 1200, createdAt: new Date(Date.now() - 86_400_000).toISOString() },
-  { id: "demo-4", label: "Withdrawal", state: "withdrawn", credits: -1000, createdAt: new Date(Date.now() - 3 * 86_400_000).toISOString() },
-];
 
 function utcDay(date = new Date()) {
   return date.toISOString().slice(0, 10);
@@ -71,21 +65,27 @@ function labelForEntry(type: string) {
 
 export async function getRewardSnapshot(): Promise<RewardSnapshot> {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return demoSnapshot;
+  if (!supabase) return disconnectedSnapshot;
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ...demoSnapshot, preview: false, availableCredits: 0, pendingCredits: 0, streakDays: 0, claimReady: false };
+  if (!user) return { ...disconnectedSnapshot, preview: false };
 
-  const [balanceResult, claimsResult, profileResult] = await Promise.all([
+  const admin = createSupabaseAdminClient();
+  const [balanceResult, claimsResult, profileResult, pulseConfigResult] = await Promise.all([
     supabase.from("user_balances").select("available_credits,pending_credits").eq("user_id", user.id).maybeSingle(),
     supabase.from("claims").select("claim_day,reward_credits").order("claim_day", { ascending: false }).limit(60),
     supabase.from("profiles").select("handle,trust_level").eq("id", user.id).maybeSingle(),
+    admin ? admin.from("app_config").select("value").eq("key", "daily_pulse").maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
   const claims = claimsResult.data ?? [];
   const claimDays = claims.map((claim) => String(claim.claim_day));
   const todayClaim = claims.find((claim) => String(claim.claim_day) === utcDay());
   const fallbackLabel = user.email?.split("@")[0] || "Member";
+  const pulseConfig = pulseConfigResult.data?.value as { credits?: number | string } | null | undefined;
+  const configuredReward = Number(pulseConfig?.credits ?? 0);
+  const latestClaimReward = Number(todayClaim?.reward_credits ?? claims[0]?.reward_credits ?? 0);
+  const claimRewardCredits = Number.isFinite(configuredReward) && configuredReward > 0 ? configuredReward : latestClaimReward;
 
   return {
     preview: false,
@@ -96,13 +96,13 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
     pendingCredits: Number(balanceResult.data?.pending_credits ?? 0),
     streakDays: streakFromClaims(claimDays),
     claimReady: !todayClaim,
-    claimRewardCredits: Number(todayClaim?.reward_credits ?? claims[0]?.reward_credits ?? 12),
+    claimRewardCredits,
   };
 }
 
 export async function getLedgerItems(): Promise<LedgerItem[]> {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return demoLedger;
+  if (!supabase) return [];
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];

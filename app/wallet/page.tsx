@@ -49,6 +49,7 @@ function maskDestination(value: string) {
 export default async function WalletPage({ searchParams }: Props) {
   const [state, rows, params, supabase] = await Promise.all([getRewardSnapshot(), getLedgerItems(), searchParams, createSupabaseServerClient()]);
   const payout = getFaucetPayPackConfig();
+  const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
   const turnstileReady = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
   const serviceReady = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -69,15 +70,21 @@ export default async function WalletPage({ searchParams }: Props) {
   }
 
   const canRetry = Boolean(activeWithdrawal && activeWithdrawal.status !== "held" && turnstileReady && serviceReady && process.env.FAUCETPAY_SCOPED_KEY);
-  const canWithdraw = !activeWithdrawal && state.signedIn && payout.ready && turnstileReady && serviceReady && Boolean(payout.amountCredits) && state.availableCredits >= Number(payout.amountCredits);
+  const canWithdraw = Boolean(!activeWithdrawal && state.signedIn && payout.ready && payoutCredits && turnstileReady && serviceReady && state.availableCredits >= payoutCredits);
+  const missingCredits = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
+  const payoutPackLabel = activeWithdrawal
+    ? `${Number(activeWithdrawal.amount_credits).toLocaleString("en-US")} credits · ${activeWithdrawal.asset}`
+    : payout.ready && payoutCredits
+      ? payout.display || `${payoutCredits.toLocaleString("en-US")} credits`
+      : "Not configured";
 
   return (
     <AppShell active="wallet">
       <div className="app-page-head"><div><span className="app-eyebrow">Transparent ledger</span><h1>Wallet</h1></div></div>
       {params.withdraw ? <div className={`claim-message ${params.withdraw === "paid" ? "success" : "neutral"}`}>{withdrawalCopy[params.withdraw] ?? "Withdrawal status updated."}</div> : null}
-      {state.preview ? <div className="preview-banner">Preview ledger — live entries appear automatically after Supabase is connected.</div> : null}
+      {state.preview ? <div className="preview-banner">Preview shell only — no balance, ledger history or payout threshold is simulated before the live reward service is connected.</div> : null}
 
-      <section className="wallet-balance-card"><div className="wallet-big-icon"><Wallet /></div><div><span>Available balance</span><strong>{formatUsdFromCredits(state.availableCredits)}</strong><small>{state.availableCredits.toLocaleString("en-US")} credits</small></div><div className="payout-pack-label"><small>{activeWithdrawal ? "Reserved payout" : "Next payout pack"}</small><strong>{activeWithdrawal ? `${Number(activeWithdrawal.amount_credits).toLocaleString("en-US")} credits · ${activeWithdrawal.asset}` : payout.display || `${Number(payout.amountCredits ?? 5000).toLocaleString("en-US")} credits`}</strong></div></section>
+      <section className="wallet-balance-card"><div className="wallet-big-icon"><Wallet /></div><div><span>Available balance</span><strong>{state.preview ? "Not connected" : formatUsdFromCredits(state.availableCredits)}</strong>{!state.preview ? <small>{state.availableCredits.toLocaleString("en-US")} credits</small> : null}</div><div className="payout-pack-label"><small>{activeWithdrawal ? "Reserved payout" : "Next payout pack"}</small><strong>{payoutPackLabel}</strong></div></section>
 
       <section className="withdrawal-panel">
         {activeWithdrawal ? (
@@ -96,11 +103,11 @@ export default async function WalletPage({ searchParams }: Props) {
           </>
         ) : (
           <>
-            <div><span className="app-eyebrow">Simple withdrawal</span><h2>Redeem one fixed payout pack.</h2><p>The MVP uses a fixed pack so no price oracle, hidden FX spread or browser-side amount calculation can change what is sent.</p></div>
+            <div><span className="app-eyebrow">Simple withdrawal</span><h2>Redeem one configured payout pack.</h2><p>The live pack is server-configured so no price oracle, hidden FX spread or browser-side amount calculation can change what is sent.</p></div>
             <form action="/api/withdrawals" method="post" className="withdrawal-form">
-              <label>FaucetPay destination<input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" disabled={!state.signedIn} /></label>
+              <label>FaucetPay destination<input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" disabled={!state.signedIn || !payout.ready} /></label>
               <TurnstileField action="withdrawal" />
-              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : state.availableCredits < Number(payout.amountCredits ?? 5000) ? `Need ${formatUsdFromCredits(Number(payout.amountCredits ?? 5000) - state.availableCredits)} more` : "Payout setup incomplete"}</button>
+              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : !payoutCredits || state.preview ? "Payout setup incomplete" : missingCredits && missingCredits > 0 ? `Need ${formatUsdFromCredits(missingCredits)} more` : "Withdrawal unavailable"}</button>
               <small>FaucetPay v2 idempotency prevents a safe retry from paying twice.</small>
             </form>
           </>
@@ -113,7 +120,7 @@ export default async function WalletPage({ searchParams }: Props) {
           {rows.length ? rows.map((row) => {
             const positive = row.credits > 0;
             return <div className="transaction-row" key={row.id}><span className={`transaction-status ${positive ? "positive" : "neutral"}`}><Check /></span><div><strong>{row.label}</strong><small>{compactDate(row.createdAt)} · {row.state}</small></div><b className={positive ? "positive" : "neutral"}>{formatUsdFromCredits(row.credits, true)}</b></div>;
-          }) : <div className="empty-ledger">No ledger activity yet. Your first verified reward will appear here.</div>}
+          }) : <div className="empty-ledger">{state.preview ? "Live ledger entries appear only after the reward service is connected." : "No ledger activity yet. Your first verified reward will appear here."}</div>}
         </section>
         <aside className="trust-card"><Shield /><span className="app-eyebrow">Payout protection</span><h3>Reserve first. Recover safely.</h3><p>Credits are reserved before the external payout. Unknown outcomes keep the reserve and retry the same provider identity; only a definitive first-attempt failure can restore credits automatically.</p><div className="state-list"><span className="done">Available</span><span className="done">Reserved</span><span className="active">Provider</span><span>Paid</span></div></aside>
       </div>
