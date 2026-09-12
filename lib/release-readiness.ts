@@ -2,7 +2,8 @@ import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
-export const RELEASE_SCHEMA_VERSION = 7;
+export const RELEASE_SCHEMA_VERSION = 8;
+export const RELEASE_SCHEMA_MIGRATION = "0008_supabase_security_hardening.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -50,6 +51,31 @@ function objectValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+function securityContractPasses(value: unknown) {
+  const contract = objectValue(value);
+  return contract.status === "ok"
+    && contract.profiles_rls === true
+    && contract.ledger_rls === true
+    && contract.claims_rls === true
+    && contract.referrals_rls === true
+    && contract.withdrawals_rls === true
+    && contract.app_config_rls === true
+    && contract.anon_app_config_select === false
+    && contract.anon_ledger_select === false
+    && contract.authenticated_profile_select === true
+    && contract.authenticated_ledger_select === true
+    && contract.authenticated_claims_select === true
+    && contract.authenticated_referrals_select === true
+    && contract.authenticated_balance_select === true
+    && contract.service_app_config_select === true
+    && contract.service_withdrawals_insert === true
+    && contract.service_withdrawals_update === true
+    && contract.authenticated_claim_rpc_execute === false
+    && contract.service_claim_rpc_execute === true
+    && contract.claim_security_definer === false
+    && contract.callback_security_definer === true;
+}
+
 function check(id: string, label: string, status: ReadinessCheckStatus, detail: string, blocking = true): ReadinessCheck {
   return { id, label, status, detail, blocking };
 }
@@ -86,8 +112,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   const admin = createSupabaseAdminClient();
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
-    checks.push(check("schema", "Schema version", "fail", `Migration ${String(RELEASE_SCHEMA_VERSION).padStart(4, "0")} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics and referral contracts cannot be verified without database access."));
+    checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals and the v8 security contract cannot be verified without database access."));
     checks.push(check("external-proof", "External smoke evidence", "pending", "Provider smoke evidence is still required after setup.", true));
   } else {
     const { error: connectivityError } = await admin.from("app_config").select("key").limit(1);
@@ -95,20 +121,35 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("database", "Database connectivity", databaseOk ? "pass" : "fail", databaseOk ? "Service-role database access is working." : "The service role could not read the public application schema."));
 
     if (databaseOk) {
-      const [{ data: marker, error: markerError }, economics, referral, { data: proofRow, error: proofError }] = await Promise.all([
+      const [
+        { data: marker, error: markerError },
+        economics,
+        referral,
+        securityContract,
+        { data: proofRow, error: proofError },
+      ] = await Promise.all([
         admin.from("app_config").select("value,version").eq("key", "release_schema").maybeSingle(),
         admin.rpc("admin_economics_snapshot", { p_from: "1970-01-01T00:00:00.000Z", p_to: "1970-01-02T00:00:00.000Z" }),
         admin.from("profiles").select("referral_code").limit(1),
+        admin.rpc("release_security_contract"),
         admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
       ]);
 
       const markerValue = objectValue(marker?.value);
       const schemaVersion = Number(markerValue.version ?? marker?.version ?? 0);
       const schemaOk = !markerError && schemaVersion >= RELEASE_SCHEMA_VERSION;
-      checks.push(check("schema", "Schema version", schemaOk ? "pass" : "fail", schemaOk ? `Database schema marker is v${schemaVersion}.` : `Apply migrations through ${String(RELEASE_SCHEMA_VERSION).padStart(4, "0")}_release_readiness.sql.`));
+      checks.push(check("schema", "Schema version", schemaOk ? "pass" : "fail", schemaOk ? `Database schema marker is v${schemaVersion}.` : `Apply migrations through ${RELEASE_SCHEMA_MIGRATION}.`));
 
-      const contractsOk = !economics.error && !referral.error;
-      checks.push(check("runtime-contracts", "Runtime contracts", contractsOk ? "pass" : "fail", contractsOk ? "Economics RPC and verified-referral schema are callable." : "One or more required post-migration contracts are missing."));
+      const securityOk = !securityContract.error && securityContractPasses(securityContract.data);
+      const contractsOk = !economics.error && !referral.error && securityOk;
+      checks.push(check(
+        "runtime-contracts",
+        "Runtime contracts",
+        contractsOk ? "pass" : "fail",
+        contractsOk
+          ? "Economics, verified referrals and the v8 least-privilege database contract are proven."
+          : "One or more required runtime or database-security contracts are missing or have drifted.",
+      ));
 
       const proofValue = proofRow?.value;
       const turnstileProof = !proofError && releaseEvidenceMatches(proofValue, "turnstile");
