@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 14;
-export const RELEASE_SCHEMA_MIGRATION = "0014_pulse_direct_crypto_fix.sql";
+export const RELEASE_SCHEMA_VERSION = 15;
+export const RELEASE_SCHEMA_MIGRATION = "0015_pulse_direct_hardening.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -160,7 +160,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, verified referrals, least-privilege security, Wallet recovery, Reward Exchange, Opportunity Intelligence and prefunded Pulse Direct contracts are proven."
+          ? "Economics, verified referrals, least-privilege security, Wallet recovery, Reward Exchange, Opportunity Intelligence and hardened prefunded Pulse Direct contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 
