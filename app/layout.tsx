@@ -1,8 +1,26 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+function getMetadataBase() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
+  const candidates = [configured, vercelHost ? `https://${vercelHost}` : null, "https://example.com"];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      if (url.protocol === "http:" || url.protocol === "https:") return url;
+    } catch {
+      // Try the next safe candidate instead of breaking the production build.
+    }
+  }
+
+  return new URL("https://example.com");
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com"),
+  metadataBase: getMetadataBase(),
   title: {
     default: "Reward Pulse — Your spare minutes have value",
     template: "%s · Reward Pulse",
