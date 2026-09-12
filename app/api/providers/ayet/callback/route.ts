@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { AyetProvider, isAyetRewardRateAligned } from "@/providers/ayet";
+import { AyetProvider, isAyetRewardAmountAligned, isAyetRewardRateAligned } from "@/providers/ayet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,16 +37,19 @@ export async function GET(request: NextRequest) {
     return response({ ok: false, ignored: error instanceof Error ? error.message : "invalid-callback" });
   }
 
-  // The offerwall must advertise the same exchange rate that the server uses to
-  // settle rewards. This prevents a valid provider callback from promising one
-  // amount in the ayeT UI while Pulse credits a smaller/different amount.
+  // The offerwall must advertise the same exchange rate and exact event reward
+  // that the server settles. This prevents a signed callback from promising one
+  // amount in the ayeT UI while Pulse credits another amount to the ledger.
   if (event.callbackType === "conversion" && !isAyetRewardRateAligned(event.raw.currency_conversion_rate)) {
     return response({ ok: false, ignored: "reward-rate-mismatch" });
   }
+  if (event.callbackType === "conversion" && !isAyetRewardAmountAligned(event.raw.currency_amount, event.rewardCredits)) {
+    return response({ ok: false, ignored: "reward-amount-mismatch" });
+  }
 
   // Sandbox is a non-financial provider preflight. Once HMAC, adslot binding,
-  // reward-rate alignment and callback parsing pass, persist a separate
-  // fingerprint without creating any ledger authority.
+  // reward alignment and callback parsing pass, persist a separate fingerprint
+  // without creating any ledger authority.
   if (request.nextUrl.searchParams.get("is_sandbox") === "1") {
     if (event.callbackType !== "conversion") return response({ ok: true, status: "sandbox-ignored" });
     const recorded = await recordReleaseEvidence("ayet_transport");
