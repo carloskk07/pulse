@@ -22,6 +22,8 @@ export type RankedOpportunity = {
   estimatedMinutes: number | null;
   freshnessMinutes: number;
   quickWin: boolean;
+  actionHref: string | null;
+  pulseProtected: boolean;
   score: number;
   expectedRewardCredits: number;
   expectedCreditsPerMinute: number | null;
@@ -81,8 +83,6 @@ function opportunityFreshness(row: OpportunityRow, nowMs: number) {
   const declaredHealth = asHealthState(row.health_state);
   if (declaredHealth === "hidden") return null;
 
-  // Inventory approaching its own provider-specific TTL is automatically
-  // downgraded even if the last explicit health flag still says good.
   const effectiveHealth: OpportunityHealthState = freshnessMinutes > ttlMinutes * 0.75
     ? "degraded"
     : declaredHealth;
@@ -111,6 +111,8 @@ export async function getRankedOpportunities(limit = 24): Promise<RankedOpportun
       if (!freshness) return [];
 
       const evidenceTier = asEvidenceTier(row.evidence_tier);
+      const sourceType = asSourceType(row.source_type);
+      const externalId = String(row.external_id);
       const result = calculateRewardScore({
         rewardCredits: finiteNumber(row.base_reward_credits),
         estimatedMinutes: row.estimated_minutes == null ? null : finiteNumber(row.estimated_minutes),
@@ -126,10 +128,10 @@ export async function getRankedOpportunities(limit = 24): Promise<RankedOpportun
       return [{
         id: String(row.id),
         provider: String(row.provider),
-        externalId: String(row.external_id),
+        externalId,
         title: String(row.title),
         category: String(row.category),
-        sourceType: asSourceType(row.source_type),
+        sourceType,
         evidenceTier,
         healthState: freshness.effectiveHealth,
         payoutUsdMicros: finiteNumber(row.payout_usd_micros),
@@ -137,6 +139,8 @@ export async function getRankedOpportunities(limit = 24): Promise<RankedOpportun
         estimatedMinutes,
         freshnessMinutes: Math.round(freshness.freshnessMinutes),
         quickWin: estimatedMinutes != null && estimatedMinutes > 0 && estimatedMinutes <= 10,
+        actionHref: sourceType === "direct" ? `/api/direct/start?campaign=${encodeURIComponent(externalId)}` : null,
+        pulseProtected: sourceType === "direct",
         ...result,
       } satisfies RankedOpportunity];
     })
