@@ -72,6 +72,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
 
   const proof = proofResult.data?.value;
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
+  const providerTransportProof = provider?.id === "ayet" && !proofResult.error && releaseEvidenceMatches(proof, "ayet_transport");
   const providerProof = Boolean(provider?.evidenceKey) && !proofResult.error && releaseEvidenceMatches(proof, provider!.evidenceKey!);
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
@@ -89,7 +90,9 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     pass: providerProof && confirmedMonetizationEvents > 0,
     detail: providerProof && confirmedMonetizationEvents > 0
       ? `${confirmedMonetizationEvents} confirmed monetization event(s) exist with current provider evidence.`
-      : "A real provider callback must credit at least one authoritative monetization event; sandbox transport alone is not enough.",
+      : providerTransportProof
+        ? "ayeT sandbox transport, HMAC and adslot binding are proven for the current configuration. A fresh production conversion must now credit the authoritative ledger."
+        : "A real provider callback must credit at least one authoritative monetization event. A sandbox callback can first prove transport/HMAC/adslot without satisfying PRODUCT_READY.",
   });
   checks.push({
     id: "payout-proof",
