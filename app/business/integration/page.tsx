@@ -46,7 +46,7 @@ export default function BusinessIntegrationPage() {
       <section className="section shell integration-section">
         <div className="section-heading narrow"><span className="section-kicker">01 · Protected start</span><h2>Preserve the session identifier.</h2><p>When a user starts an eligible direct Drop, Pulse reserves campaign capacity before redirecting them. The destination receives only the campaign and pseudonymous session identifiers.</p></div>
         <pre className="integration-code"><code>{redirectExample}</code></pre>
-        <div className="integration-note"><Shield /><div><strong>Privacy boundary</strong><span>The redirect does not append the user's Pulse account ID, email or balance identity.</span></div></div>
+        <div className="integration-note"><Shield /><div><strong>Privacy boundary</strong><span>The redirect does not append the user&apos;s Pulse account ID, email or balance identity.</span></div></div>
       </section>
 
       <section className="section shell integration-section">
@@ -75,7 +75,7 @@ export default function BusinessIntegrationPage() {
         <div className="integration-checks"><span><Check /> No public advertiser dashboard required</span><span><Check /> No client-side reward claim</span><span><Check /> No arbitrary JavaScript conversion pixel</span><span><Check /> No access to Pulse financial tables</span><span><Check /> No open-ended campaign spend</span><span><Check /> No integration before pilot economics are approved</span></div>
       </section>
 
-      <section className="final-cta shell business-final-cta"><div><span className="section-kicker">Technical fit first</span><h2>Tell us the event. We'll tell you if the pilot is practical.</h2><p>A campaign request does not create spend or funding authority. We review the verification path before asking for budget.</p></div><Link className="button button-lg button-dark" href="/business#pilot">Request pilot review <ArrowUpRight /></Link></section>
+      <section className="final-cta shell business-final-cta"><div><span className="section-kicker">Technical fit first</span><h2>Tell us the event. We&apos;ll tell you if the pilot is practical.</h2><p>A campaign request does not create spend or funding authority. We review the verification path before asking for budget.</p></div><Link className="button button-lg button-dark" href="/business#pilot">Request pilot review <ArrowUpRight /></Link></section>
 
       <footer className="footer shell"><div><strong>Reward Pulse</strong><span>© 2026. Verified-action infrastructure.</span></div><div><Link href="/business">Business</Link><Link href="/">For users</Link></div></footer>
     </main>
