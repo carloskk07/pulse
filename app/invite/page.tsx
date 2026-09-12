@@ -58,7 +58,6 @@ export default async function InvitePage() {
 
   const site = configuredSiteUrl();
   const referralLink = user && referralCode && site ? `${site}/r/${referralCode}` : null;
-  const rewardConfigReady = inviterBonus !== null && inviteeBonus !== null;
   const milestones = [[1, "First verified friend"], [3, "Small crew"], [5, "Momentum"], [10, "Pulse builder"]] as const;
 
   return (
@@ -75,7 +74,7 @@ export default async function InvitePage() {
         ) : (
           <Link className="button button-light" href="/auth?next=/invite">Sign in to continue</Link>
         )}
-        {rewardConfigReady ? (
+        {inviterBonus !== null && inviteeBonus !== null ? (
           <p>You receive {formatUsdFromCredits(inviterBonus)} and your friend receives {formatUsdFromCredits(inviteeBonus)} after the first confirmed earning conversion. A qualifying chargeback reverses both bonuses.</p>
         ) : (
           <p>Bonus values appear only after the live referral reward configuration is available.</p>
