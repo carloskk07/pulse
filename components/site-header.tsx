@@ -9,7 +9,6 @@ export function SiteHeader() {
         <Link href="/#how">How it works</Link>
         <Link href="/#rewards">Drops</Link>
         <Link href="/#trust">Trust</Link>
-        <Link href="/business">For Business</Link>
       </nav>
       <div className="header-actions">
         <Link className="text-link" href="/auth?next=/dashboard">Sign in</Link>
