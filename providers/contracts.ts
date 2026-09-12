@@ -25,6 +25,12 @@ export type NormalizedOpportunity = {
   reversalRate?: number | null;
   countryCodes: string[];
   devicePlatforms: string[];
+  sourceType?: "partner" | "direct" | "affiliate" | "research";
+  evidenceTier?: "proven" | "strong" | "limited" | "new" | "unknown";
+  healthState?: "excellent" | "good" | "degraded" | "unknown" | "hidden";
+  freshnessTtlMinutes?: number;
+  verifiedAt?: string | null;
+  expiresAt?: string | null;
   metadata?: Record<string, unknown>;
 };
 
