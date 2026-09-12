@@ -49,7 +49,7 @@ export default async function EarnPage() {
             <span className="app-eyebrow">Pulse selection</span>
             <h3>Best use of your time.</h3>
             <p>Pulse is designed to favor useful reward value instead of sorting everything by the largest headline number.</p>
-            <div className="time-options" aria-label="Opportunity selection dimensions"><span className="time-option active">Fast</span><span className="time-option">Value</span><span className="time-option">Trust</span><span className="time-option">Fit</span></div>
+            <div className="time-options" aria-label="Opportunity selection dimensions"><span className="time-option active">Fast</span><span className="time-option">Value</span><span className="time-option">Trust</span><span className="time-option">Risk</span></div>
           </div>
           {primaryChannel ? <a className="button button-light" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open live inventory <ArrowUpRight /></a> : <span className="status-pill"><Shield /> Waiting for live route</span>}
         </aside>
@@ -59,7 +59,7 @@ export default async function EarnPage() {
 
       {ranked.length ? (
         <section className="app-section">
-          <div className="app-section-head"><div><span className="app-eyebrow">Best value engine</span><h2>Live opportunities, ranked.</h2></div><span className="status-pill"><Trend /> Evidence weighted</span></div>
+          <div className="app-section-head"><div><span className="app-eyebrow">Best value engine</span><h2>Live opportunities, ranked.</h2></div><span className="status-pill"><Trend /> Risk adjusted</span></div>
           <div className="reward-list">
             {ranked.map((item, index) => (
               <article className="reward-row" key={item.id}>
