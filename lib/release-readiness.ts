@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 13;
-export const RELEASE_SCHEMA_MIGRATION = "0013_pulse_direct_v1.sql";
+export const RELEASE_SCHEMA_VERSION = 14;
+export const RELEASE_SCHEMA_MIGRATION = "0014_pulse_direct_crypto_fix.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
