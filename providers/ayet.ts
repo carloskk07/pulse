@@ -16,16 +16,16 @@ function safeHashEqual(left: string, right: string) {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function decimalToMicros(value: string | null) {
+function decimalToMicros(value: string | null | undefined) {
   if (!value) return 0;
   const normalized = value.trim();
   const match = normalized.match(/^(-?)(\d+)(?:\.(\d+))?$/);
-  if (!match) throw new Error("INVALID_PAYOUT");
+  if (!match) throw new Error("INVALID_DECIMAL");
   const sign = match[1] === "-" ? -1 : 1;
   const whole = Number(match[2]);
   const fraction = Number((match[3] ?? "").padEnd(6, "0").slice(0, 6));
   const micros = whole * 1_000_000 + fraction;
-  if (!Number.isSafeInteger(micros)) throw new Error("PAYOUT_OUT_OF_RANGE");
+  if (!Number.isSafeInteger(micros)) throw new Error("DECIMAL_OUT_OF_RANGE");
   return sign * micros;
 }
 
@@ -99,6 +99,15 @@ export function isAyetRewardRateAligned(value: string | undefined) {
   if (!value) return false;
   try {
     return decimalToMicros(value) === expectedCurrencyRateMicros();
+  } catch {
+    return false;
+  }
+}
+
+export function isAyetRewardAmountAligned(value: string | undefined, rewardCredits: number) {
+  if (!value || !Number.isSafeInteger(rewardCredits) || rewardCredits <= 0) return false;
+  try {
+    return decimalToMicros(value) === rewardCredits * 1_000_000;
   } catch {
     return false;
   }
