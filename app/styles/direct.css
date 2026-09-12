@@ -1,0 +1,34 @@
+/* Pulse Direct — protected advertiser-funded reward states */
+.drop-stage-protected .drop-card{border-color:rgba(105,232,255,.17);background:radial-gradient(circle at 82% 6%,rgba(105,232,255,.09),transparent 31%),radial-gradient(circle at 20% 100%,rgba(199,255,94,.065),transparent 35%),linear-gradient(145deg,#111a1a,#0c1117 58%)}
+.drop-stage-protected .drop-card:before{background:linear-gradient(90deg,transparent,var(--pulse-cyan),transparent);box-shadow:0 0 24px rgba(105,232,255,.27)}
+.direct-primary-action{align-self:flex-start;margin-top:24px;position:relative;z-index:2}
+.quick-win-protected{border-color:rgba(105,232,255,.14);background:radial-gradient(circle at 90% 0%,rgba(105,232,255,.07),transparent 34%),linear-gradient(155deg,rgba(255,255,255,.042),rgba(255,255,255,.012))}
+.quick-win-protected .quick-win-top>span{color:var(--pulse-cyan)}
+.direct-inline-action{margin-top:16px;color:var(--pulse-cyan)}
+.direct-opportunity-row{grid-template-columns:minmax(220px,1.4fr) repeat(4,minmax(76px,.55fr)) auto;border-color:rgba(105,232,255,.09)}
+.direct-opportunity-row:hover{border-color:rgba(105,232,255,.18)}
+.direct-row-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;align-self:center;min-height:34px;padding:8px 11px;border-radius:999px;border:1px solid rgba(105,232,255,.15);background:rgba(105,232,255,.06);color:var(--pulse-cyan);font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.08em;transition:transform .2s var(--pulse-ease),background .2s var(--pulse-ease)}
+.direct-row-action:hover{transform:translateY(-1px);background:rgba(105,232,255,.11)}
+.direct-row-action svg{width:12px;height:12px}
+
+.direct-campaign-table .admin-provider-row{grid-template-columns:minmax(180px,1.2fr) .7fr .7fr .7fr .7fr}
+.direct-campaign-title{display:flex;flex-direction:column;gap:3px}
+.direct-campaign-title small{color:var(--pulse-muted-2);font-size:9px;text-transform:uppercase;letter-spacing:.09em}
+.direct-status{font-size:9px;text-transform:uppercase;letter-spacing:.09em;font-weight:850}
+.direct-status.active{color:var(--pulse-accent)}
+.direct-status.paused,.direct-status.draft{color:var(--pulse-warm)}
+.direct-status.exhausted,.direct-status.completed,.direct-status.cancelled{color:var(--pulse-muted)}
+
+@media(max-width:900px){
+  .direct-opportunity-row{grid-template-columns:minmax(180px,1fr) repeat(2,minmax(70px,.45fr)) auto}
+  .direct-opportunity-row .reward-metric:nth-of-type(3),.direct-opportunity-row .reward-metric:nth-of-type(4){display:none}
+  .direct-campaign-table .admin-provider-row{grid-template-columns:1.25fr .65fr .65fr}
+  .direct-campaign-table .admin-provider-row>*:nth-child(4),.direct-campaign-table .admin-provider-row>*:nth-child(5){display:none}
+}
+@media(max-width:760px){
+  .direct-primary-action{width:100%;margin-top:18px}
+  .direct-opportunity-row{grid-template-columns:1fr auto;gap:10px 14px}
+  .direct-opportunity-row .reward-row-main{grid-column:1/-1}
+  .direct-opportunity-row .reward-metric{display:none!important}
+  .direct-row-action{justify-self:end}
+}
