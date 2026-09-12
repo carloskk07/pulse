@@ -2,7 +2,7 @@ import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Brand } from "./brand";
-import { Bolt, Home, Users, Wallet } from "./icons";
+import { Bolt, Home, Trend, Users, Wallet } from "./icons";
 
 const links = [
   { id: "home", href: "/dashboard", label: "Home", Icon: Home },
@@ -13,6 +13,12 @@ const links = [
 
 function initials(value: string) {
   return value.replace(/[^a-zA-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "RP";
+}
+
+function isAdminEmail(email: string | null | undefined) {
+  if (!email) return false;
+  const allowed = new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
+  return allowed.has(email.toLowerCase());
 }
 
 export async function AppShell({ children, active }: { children: React.ReactNode; active: string }) {
@@ -27,12 +33,17 @@ export async function AppShell({ children, active }: { children: React.ReactNode
     trustLevel = Number(profile?.trust_level ?? 0);
   }
 
+  const admin = isAdminEmail(user?.email);
+  const sidebarLinks = admin
+    ? [...links, { id: "admin", href: "/admin", label: "Ops", Icon: Trend }, { id: "leads", href: "/admin/leads", label: "Leads", Icon: Users }]
+    : links;
+
   return (
     <div className="app-frame">
       <aside className="app-sidebar">
         <Brand />
         <nav className="app-nav" aria-label="Application">
-          {links.map(({ id, href, label: navLabel, Icon }) => (
+          {sidebarLinks.map(({ id, href, label: navLabel, Icon }) => (
             <Link key={href} className={active === id ? "active" : ""} href={href}><Icon />{navLabel}</Link>
           ))}
         </nav>
