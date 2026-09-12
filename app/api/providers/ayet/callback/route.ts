@@ -24,8 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   // The publisher API key authenticates ayeT, but it can cover more than one
-  // placement/adslot. Bind financial authority to the exact live earning route
-  // configured by Pulse so a valid callback from another adslot cannot credit it.
+  // placement/adslot. Bind callback authority to the exact live earning route.
   const callbackAdslot = request.nextUrl.searchParams.get("adslot_id")?.trim();
   if (!callbackAdslot || callbackAdslot !== configuredAdslot) {
     return response({ ok: false, ignored: "invalid-adslot" });
@@ -38,15 +37,19 @@ export async function GET(request: NextRequest) {
     return response({ ok: false, ignored: error instanceof Error ? error.message : "invalid-callback" });
   }
 
-  if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) return response({ ok: false, ignored: "invalid-user-id" });
-  if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) return response({ ok: false, ignored: "non-positive-conversion" });
-
-  // ayeT sandbox conversions prove transport + HMAC + adslot binding only.
-  // They must never create financial authority or PRODUCT_READY evidence.
+  // Sandbox is a non-financial transport probe. Once HMAC, adslot binding and
+  // callback parsing pass, persist a separate fingerprint so operators can see
+  // that the provider can reach Pulse without confusing it with real earning.
   if (request.nextUrl.searchParams.get("is_sandbox") === "1") {
     if (event.callbackType !== "conversion") return response({ ok: true, status: "sandbox-ignored" });
-    return response({ ok: true, status: "sandbox-verified" });
+    const recorded = await recordReleaseEvidence("ayet_transport");
+    return response({ ok: true, status: recorded ? "sandbox-verified" : "sandbox-verified-evidence-unavailable" });
   }
+
+  // Financial validation applies only to production callbacks. Sandbox
+  // identifiers and fake payouts never need to look like authoritative users.
+  if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) return response({ ok: false, ignored: "invalid-user-id" });
+  if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) return response({ ok: false, ignored: "non-positive-conversion" });
 
   const admin = createSupabaseAdminClient();
   if (!admin) return response({ ok: false, error: "database-not-configured" }, 503);
