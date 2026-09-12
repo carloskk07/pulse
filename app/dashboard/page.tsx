@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ArrowUpRight, Bolt, Check, Spark, Users } from "@/components/icons";
+import { ArrowUpRight, Bolt, Check, Shield, Spark, Users } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -33,7 +33,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   return (
     <AppShell active="home">
       <div className="app-page-head">
-        <div><span className="app-eyebrow">Live reward state</span><h1>{state.preview ? "Reward service not connected." : "Good evening."}</h1></div>
+        <div><div className="pulse-line">Live reward state</div><h1>{state.preview ? "Pulse is waiting for its live service." : "Your Pulse."}</h1><p>{state.preview ? "Financial values stay hidden until the production reward service is authoritative." : "One clear view of today, your progress and the next useful action."}</p></div>
         <div className="balance-chip"><small>Available</small><strong>{state.preview ? "Not connected" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
 
@@ -45,7 +45,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <div className="daily-pulse-copy">
             <span className="status-pill status-lime"><Spark /> {state.preview ? "Setup required" : state.streakDays > 0 ? `Day ${state.streakDays}` : "Start today"}</span>
             <h2>{state.preview ? "Daily Pulse activates with the live ledger." : state.claimReady ? "Your Daily Pulse is ready." : "Today's Pulse is secured."}</h2>
-            <p>{state.preview ? "Connect the production reward service before claims or streaks become authoritative." : state.claimReady ? "Keep your streak alive and move one step closer to your next withdrawal." : "Come back tomorrow to continue your streak."}</p>
+            <p>{state.preview ? "Connect the production reward service before claims or streaks become authoritative." : state.claimReady ? "A small verified reward keeps the rhythm moving without pretending a provider conversion happened." : "Today's claim is already traceable in the ledger. Come back when the next Pulse opens."}</p>
             {state.preview ? (
               <button className="button button-light" disabled>Reward service not connected</button>
             ) : canClaim ? (
@@ -62,8 +62,8 @@ export default async function DashboardPage({ searchParams }: Props) {
       </section>
 
       <section className="app-section">
-        <div className="app-section-head"><div><span className="app-eyebrow">Verified opportunities</span><h2>{liveOfferwall ? "Live earning inventory is connected." : "No payable inventory is being simulated."}</h2></div><Link href="/earn">Open Earn <ArrowUpRight /></Link></div>
-        <article className="invite-card"><div className="invite-icon"><Bolt /></div><div><span className="app-eyebrow">{liveOfferwall ? "Provider live" : "Provider gate"}</span><h3>{liveOfferwall ? "Open provider-backed offers, surveys and quests." : "Earning opportunities appear only after the provider callback chain is configured."}</h3><p>{liveOfferwall ? "Credits are created after a signed server callback, not when a card is clicked." : "This dashboard deliberately avoids fabricated offer values while monetization is not authoritative."}</p></div><Link href="/earn" className="icon-button" aria-label="Open verified earning opportunities"><ArrowUpRight /></Link></article>
+        <div className="app-section-head"><div><span className="app-eyebrow">Reward route</span><h2>{liveOfferwall ? "A live earning channel is ready." : "No payable inventory is being simulated."}</h2></div><Link href="/earn">Open Earn <ArrowUpRight /></Link></div>
+        <article className="invite-card"><div className="invite-icon">{liveOfferwall ? <Bolt /> : <Shield />}</div><div><span className="app-eyebrow">{liveOfferwall ? "Provider live" : "Exchange gate"}</span><h3>{liveOfferwall ? "Open verified offers, surveys and quests through the Reward Exchange." : "Opportunities appear only when the settlement path can be trusted."}</h3><p>{liveOfferwall ? "The provider is implementation detail; Pulse keeps server verification and ledger authority in front of the financial state." : "This dashboard deliberately avoids fabricated values while monetization is not authoritative."}</p></div><Link href="/earn" className="icon-button" aria-label="Open verified earning opportunities"><ArrowUpRight /></Link></article>
       </section>
 
       <section className="dashboard-lower-grid">
@@ -73,14 +73,14 @@ export default async function DashboardPage({ searchParams }: Props) {
             <>
               <div className="progress-value"><strong>{formatUsdFromCredits(state.availableCredits)}</strong><span>/ {formatUsdFromCredits(payoutCredits)}</span></div>
               <div className="progress-track large"><span style={{width:`${progress}%`}} /></div>
-              <p>{away && away > 0 ? <>You&apos;re only <strong>{formatUsdFromCredits(away)} away.</strong></> : <strong>You reached the configured withdrawal threshold.</strong>}</p>
+              <p>{away && away > 0 ? <>Only <strong>{formatUsdFromCredits(away)} remains</strong> to the configured payout threshold.</> : <strong>The configured withdrawal threshold is reached.</strong>}</p>
             </>
           ) : (
             <><div className="progress-value"><strong>Not active</strong></div><div className="progress-track large"><span style={{width:"0%"}} /></div><p>The payout threshold appears only after the live payout pack is configured.</p></>
           )}
-          <Link href="/earn" className="inline-action"><Bolt /> Open earning opportunities</Link>
+          <Link href="/earn" className="inline-action"><Bolt /> Find the next opportunity</Link>
         </article>
-        <article className="invite-card"><div className="invite-icon"><Users /></div><div><span className="app-eyebrow">Grow together</span><h3>Referral rewards unlock only after verified activity.</h3><p>No referral value is promised until the live reward configuration is available.</p></div><Link href="/invite" className="icon-button" aria-label="Open referral page"><ArrowUpRight /></Link></article>
+        <article className="invite-card"><div className="invite-icon"><Users /></div><div><span className="app-eyebrow">Grow together</span><h3>Referral rewards unlock after verified activity.</h3><p>No referral value is promised until the live reward configuration is available.</p></div><Link href="/invite" className="icon-button" aria-label="Open referral page"><ArrowUpRight /></Link></article>
       </section>
     </AppShell>
   );
