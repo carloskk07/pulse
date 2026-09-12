@@ -93,9 +93,9 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     detail: providerProof && confirmedMonetizationEvents > 0
       ? `${confirmedMonetizationEvents} confirmed monetization event(s) exist with current provider evidence.`
       : providerTransportProof
-        ? `ayeT sandbox preflight is proven for the current configuration, including HMAC, adslot binding and ${expectedAyetRate} credits/US$1 reward-rate alignment. A fresh production conversion must now credit the authoritative ledger.`
+        ? `ayeT sandbox preflight is proven for the current configuration, including HMAC, adslot binding, ${expectedAyetRate} credits/US$1 rate and exact event-reward alignment. A fresh production conversion must now credit the authoritative ledger.`
         : provider?.id === "ayet"
-          ? `Run one ayeT sandbox callback after configuring currency_conversion_rate=${expectedAyetRate}. It must prove HMAC, adslot binding and reward-rate alignment before the first real conversion.`
+          ? `Run one ayeT sandbox callback after configuring currency_conversion_rate=${expectedAyetRate} and including currency_amount. It must prove HMAC, adslot, rate and exact event-reward alignment before the first real conversion.`
           : "A real provider callback must credit at least one authoritative monetization event. A non-financial provider preflight may be used first without satisfying PRODUCT_READY.",
   });
   checks.push({
