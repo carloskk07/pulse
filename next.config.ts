@@ -27,6 +27,16 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(), payment=(), usb=()" },
 ];
 
+const privateNoIndexRoutes = [
+  "/admin/:path*",
+  "/auth/:path*",
+  "/dashboard/:path*",
+  "/earn/:path*",
+  "/wallet/:path*",
+  "/invite/:path*",
+  "/r/:path*",
+];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
@@ -36,6 +46,10 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      ...privateNoIndexRoutes.map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      })),
     ];
   },
 };
