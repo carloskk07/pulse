@@ -10,18 +10,19 @@ function earnRedirect(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/earn?direct=${encodeURIComponent(state)}`, request.url), 303);
 }
 
-export async function GET(request: NextRequest) {
-  const campaignId = request.nextUrl.searchParams.get("campaign")?.trim() ?? "";
+export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== request.nextUrl.origin) return earnRedirect(request, "origin-rejected");
+
+  const formData = await request.formData();
+  const campaignId = String(formData.get("campaign") ?? "").trim();
   if (!UUID_RE.test(campaignId)) return earnRedirect(request, "invalid");
 
   const supabase = await createSupabaseServerClient();
   if (!supabase) return earnRedirect(request, "service-unavailable");
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    const next = `/api/direct/start?campaign=${encodeURIComponent(campaignId)}`;
-    return NextResponse.redirect(new URL(`/auth?next=${encodeURIComponent(next)}`, request.url), 303);
-  }
+  if (!user) return NextResponse.redirect(new URL("/auth?next=/earn", request.url), 303);
 
   const admin = createSupabaseAdminClient();
   if (!admin) return earnRedirect(request, "service-unavailable");
@@ -52,9 +53,10 @@ export async function GET(request: NextRequest) {
   if (target.protocol !== "https:") return earnRedirect(request, "destination-error");
 
   // Only a pseudonymous session identifier leaves Pulse. The advertiser does not receive
-  // the user's Pulse account id or balance identity.
+  // the user's Pulse account id, email or balance identity.
   target.searchParams.set("pulse_session_id", sessionId);
   target.searchParams.set("pulse_campaign_id", campaignId);
 
-  return NextResponse.redirect(target, 302);
+  // 303 intentionally converts the POST into a GET when the user leaves Pulse.
+  return NextResponse.redirect(target, 303);
 }
