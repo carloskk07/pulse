@@ -28,7 +28,7 @@ With the current default `AYET_REWARD_SHARE_BPS=7000`, configure the ayeT curren
 
 Do not configure `1 USD = 1000 credits` while Pulse settles only 70% to the user. That would make the offerwall promise a larger reward than the authoritative ledger credits.
 
-For the MVP, keep ayeT currency sales / temporary currency multipliers disabled unless Pulse explicitly adds support for that mode. Any provider-side rate that no longer matches the server contract is rejected before it can create financial state.
+For the MVP, keep ayeT currency sales / temporary currency multipliers disabled unless Pulse explicitly adds support for that mode. Any provider-side rate or event reward that no longer matches the server contract is rejected before it can create financial state.
 
 ## Callback URL
 
@@ -42,7 +42,12 @@ The endpoint validates `X-Ayetstudios-Security-Hash` with HMAC-SHA256 using the 
 
 `adslot_id` is mandatory for Pulse even though ayeT exposes many callback macros. A valid HMAC proves that ayeT sent the callback, while the adslot match proves that the callback belongs to the exact earning route configured by `AYET_ADSLOT_ID`.
 
-`currency_conversion_rate` is also mandatory. Pulse compares it with the rate derived from `AYET_REWARD_SHARE_BPS`. Missing or mismatched rates are rejected as `reward-rate-mismatch` before sandbox transport evidence or production ledger settlement can occur.
+`currency_conversion_rate` and `currency_amount` are also mandatory for conversions. Pulse verifies both:
+
+- the rate must equal the value derived from `AYET_REWARD_SHARE_BPS`;
+- the event's `currency_amount` must equal the exact whole-credit amount Pulse calculated from the signed `payout_usd`.
+
+A missing/mismatched rate is rejected as `reward-rate-mismatch`. A mismatched event amount is rejected as `reward-amount-mismatch`. Neither path may create sandbox transport evidence or production financial state.
 
 ## Authority rules
 
@@ -51,24 +56,26 @@ The endpoint validates `X-Ayetstudios-Security-Hash` with HMAC-SHA256 using the 
 - The signed provider callback is the conversion authority.
 - The callback `adslot_id` must exactly match `AYET_ADSLOT_ID`.
 - The callback `currency_conversion_rate` must match the current server reward contract.
+- The callback `currency_amount` must match the exact whole-credit reward calculated by Pulse for that conversion.
 - `transaction_id` is the idempotency identity.
 - Chargebacks reverse the exact original Reward Pulse credit rather than recalculating today's reward share. They are not blocked by a later reward-rate change.
-- Invalid signatures, wrong/missing adslots, or reward-rate mismatches never write financial state.
+- Invalid signatures, wrong/missing adslots, or reward mismatches never write financial state.
 - Orphan chargebacks return a retryable error so an out-of-order conversion can arrive first.
-- ayeT sandbox callbacks are non-financial. After valid HMAC, adslot binding, reward-rate alignment and parsing, Pulse records a separate `ayet_transport` fingerprint so `/admin/product` can show that callback transport is wired correctly.
+- ayeT sandbox callbacks are non-financial. After valid HMAC, adslot binding, reward-rate alignment, exact event-reward alignment and parsing, Pulse records a separate `ayet_transport` fingerprint so `/admin/product` can show that callback transport is wired correctly.
 - A sandbox identifier does not need to be a real Supabase user UUID because sandbox callbacks can never touch the ledger or satisfy `PRODUCT_READY`.
 - Duplicate production callbacks remain idempotent and do not refresh earning evidence. Current financial provider evidence is created only when a fresh production conversion is actually credited.
 
 ## Recommended proof sequence
 
 1. Configure the ayeT adslot currency conversion rate to the server-derived value. With the current default, use `700` credits per US$1.
-2. Add the callback URL above, including `{currency_conversion_rate}` and `{adslot_id}`.
-3. Enable reversal/chargeback callbacks for the same placement before treating the integration as launch-ready.
-4. Configure a sandbox identifier in ayeT and trigger one sandbox offer.
-5. Confirm `/admin/product` reports that ayeT HMAC, adslot and reward-rate preflight are proven while **Real earning proof** remains blocked.
-6. Open the live offerwall as a signed-in Pulse user so `externalIdentifier` is that user's Supabase UUID.
-7. Complete one real payable action.
-8. Confirm the callback created a confirmed monetization event, an available ledger entry and current `ayet_callback` evidence.
+2. Add the callback URL above, including `{currency_amount}`, `{currency_conversion_rate}` and `{adslot_id}`.
+3. Keep provider-side currency sales/multipliers disabled for this MVP contract.
+4. Enable reversal/chargeback callbacks for the same placement before treating the integration as launch-ready.
+5. Configure a sandbox identifier in ayeT and trigger one sandbox offer.
+6. Confirm `/admin/product` reports that ayeT HMAC, adslot, rate and exact reward preflight are proven while **Real earning proof** remains blocked.
+7. Open the live offerwall as a signed-in Pulse user so `externalIdentifier` is that user's Supabase UUID.
+8. Complete one real payable action.
+9. Confirm the callback created a confirmed monetization event, an available ledger entry and current `ayet_callback` evidence.
 
 ## Database
 
