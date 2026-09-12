@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { getReleaseReadiness } from "@/lib/release-readiness";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getTreasurySnapshot } from "@/lib/treasury";
 
 export const metadata = { title: "Operations" };
 export const dynamic = "force-dynamic";
@@ -55,7 +56,7 @@ export default async function AdminEconomicsPage() {
   if (!user) redirect("/auth?next=/admin");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const readiness = await getReleaseReadiness();
+  const [readiness, treasuries] = await Promise.all([getReleaseReadiness(), getTreasurySnapshot()]);
   const admin = createSupabaseAdminClient();
 
   let snapshot: Snapshot = {};
@@ -80,17 +81,18 @@ export default async function AdminEconomicsPage() {
   const margin = revenue > 0 ? (contribution / revenue) * 100 : 0;
   const arpDau = active > 0 ? revenue / 1_000_000 / active : 0;
   const contributionDau = active > 0 ? contribution / 1_000_000 / active : 0;
+  const launchTreasury = treasuries.find((item) => item.code === "launch") ?? treasuries[0] ?? null;
 
   return (
     <AppShell active="admin">
-      <div className="admin-head"><div><span className="app-eyebrow">Private operations</span><h1>Release + economics cockpit</h1><p>Production authority requires working contracts and external evidence, not only a green build.</p></div><span className={badgeClass(readiness.state)}>{readiness.state.replaceAll("_", " ")}</span></div>
+      <div className="admin-head"><div><span className="app-eyebrow">Private operations</span><h1>Release + economics cockpit</h1><p>Production authority requires working contracts, bounded treasury risk and external evidence, not only a green build.</p></div><span className={badgeClass(readiness.state)}>{readiness.state.replaceAll("_", " ")}</span></div>
 
       <section className="readiness-panel">
-        <div className="readiness-summary"><div><span className="app-eyebrow">Release authority</span><h2>{readiness.ready ? "Production gate closed cleanly." : readiness.state === "READY_FOR_EXTERNAL_PROOF" ? "Automated gates pass. External proof remains." : "Production promotion is blocked."}</h2><p>The checklist verifies the public URL, authentication authority, financial integrations, database schema and runtime contracts. External provider flows remain explicitly untrusted until controlled smoke evidence is recorded.</p></div><div className="readiness-counts"><span>{readiness.passed} pass</span><span>{readiness.failed} fail</span><span>{readiness.pending} pending</span></div></div>
+        <div className="readiness-summary"><div><span className="app-eyebrow">Release authority</span><h2>{readiness.ready ? "Production gate closed cleanly." : readiness.state === "READY_FOR_EXTERNAL_PROOF" ? "Automated gates pass. External proof remains." : "Production promotion is blocked."}</h2><p>The checklist verifies public URL, authentication authority, financial integrations, Reward Exchange contracts, database schema and controlled external evidence.</p></div><div className="readiness-counts"><span>{readiness.passed} pass</span><span>{readiness.failed} fail</span><span>{readiness.pending} pending</span></div></div>
         <div className="readiness-list">{readiness.checks.map((item) => <article className={`readiness-item ${item.status}`} key={item.id}><span className="readiness-dot" /><div><strong>{item.label}</strong><small>{item.detail}</small></div></article>)}</div>
       </section>
 
-      {economicsError ? <div className="preview-banner">Economics snapshot is not authoritative yet. Apply migrations through 0007 and complete the setup blockers shown above.</div> : null}
+      {economicsError ? <div className="preview-banner">Economics snapshot is not authoritative yet. Apply migrations through 0011 and complete the setup blockers shown above.</div> : null}
 
       <section className="admin-kpi-grid">
         <article className="admin-kpi primary"><span>Provider revenue</span><strong>{moneyFromMicros(revenue)}</strong><small>Confirmed provider economics</small></article>
@@ -111,11 +113,17 @@ export default async function AdminEconomicsPage() {
       </section>
 
       <section className="admin-panel">
+        <div className="app-section-head"><div><span className="app-eyebrow">Reward liquidity</span><h2>Launch Treasury</h2></div><span className={`admin-badge ${launchTreasury?.enabled && !launchTreasury.killSwitch ? "" : "setup"}`}>{launchTreasury?.enabled && !launchTreasury.killSwitch ? "OPEN" : "CLOSED"}</span></div>
+        {launchTreasury ? <div className="admin-secondary-grid"><article><span>Funded</span><strong>{moneyFromCredits(launchTreasury.fundedCredits)}</strong></article><article><span>Available</span><strong>{moneyFromCredits(launchTreasury.availableCredits)}</strong></article><article><span>Reserved</span><strong>{moneyFromCredits(launchTreasury.reservedCredits)}</strong></article><article><span>Spent</span><strong>{moneyFromCredits(launchTreasury.spentCredits)}</strong></article><article><span>Daily budget</span><strong>{moneyFromCredits(launchTreasury.dailyBudgetCredits)}</strong></article><article><span>User/day cap</span><strong>{moneyFromCredits(launchTreasury.maxUserDailyCredits)}</strong></article><article><span>Enabled</span><strong>{launchTreasury.enabled ? "Yes" : "No"}</strong></article><article><span>Kill switch</span><strong>{launchTreasury.killSwitch ? "ON" : "OFF"}</strong></article></div> : <div className="empty-ledger">Treasury contract is not available until migration 0011 is applied.</div>}
+        <p className="admin-panel-note">A boost must reserve real treasury budget before it can be advertised. The launch treasury starts closed with zero funding by design.</p>
+      </section>
+
+      <section className="admin-panel">
         <div className="app-section-head"><div><span className="app-eyebrow">Revenue sources</span><h2>Provider economics</h2></div></div>
         <div className="admin-provider-table"><div className="admin-provider-row header"><span>Provider</span><span>Revenue</span><span>Conversions</span><span>Chargebacks</span></div>{(snapshot.providers ?? []).length ? (snapshot.providers ?? []).map((provider) => <div className="admin-provider-row" key={provider.provider}><strong>{provider.provider}</strong><span>{moneyFromMicros(Number(provider.revenue_micros ?? 0))}</span><span>{Number(provider.conversions ?? 0)}</span><span>{Number(provider.chargebacks ?? 0)}</span></div>) : <div className="empty-ledger">No provider revenue recorded in this UTC day yet.</div>}</div>
       </section>
 
-      <section className="admin-decision-card"><span className="app-eyebrow">North star</span><h2>Contribution per verified active user</h2><strong>${contributionDau.toFixed(4)}</strong><p>Grow traffic only when this stays healthy after rewards and reversals. Infrastructure, taxes and paid acquisition are intentionally not claimed as included yet.</p></section>
+      <section className="admin-decision-card"><span className="app-eyebrow">North star</span><h2>Contribution per verified active user</h2><strong>${contributionDau.toFixed(4)}</strong><p>Grow traffic only when this stays healthy after rewards, reversals and treasury subsidy. Infrastructure, taxes and paid acquisition are intentionally not claimed as included yet.</p></section>
     </AppShell>
   );
 }
