@@ -8,6 +8,20 @@ import { getRewardEntryChannels } from "@/providers/registry";
 
 export const metadata = { title: "Earn" };
 
+type Props = { searchParams: Promise<{ direct?: string }> };
+
+const directCopy: Record<string, string> = {
+  "already-completed": "You already completed this protected campaign.",
+  "campaign-exhausted": "That Drop just reached its funded limit. No unpaid action was started.",
+  "campaign_not_active": "That Drop is not accepting new starts right now.",
+  "campaign_ended": "That Drop has ended.",
+  "not_started": "That Drop has not opened yet.",
+  unavailable: "The protected start could not be reserved. No reward was promised or deducted.",
+  invalid: "That campaign link is not valid.",
+  "session-error": "The protected session could not be created safely.",
+  "service-unavailable": "Pulse Direct is temporarily unavailable. No funded action was started.",
+};
+
 function evidenceLabel(item: RankedOpportunity) {
   if (item.evidenceTier === "proven") return "Proven";
   if (item.evidenceTier === "strong") return "Strong evidence";
@@ -23,12 +37,17 @@ function healthLabel(item: RankedOpportunity) {
   return "Monitoring";
 }
 
-export default async function EarnPage() {
-  const [state, supabase, ranked, treasuries] = await Promise.all([
+function opportunityTrust(item: RankedOpportunity) {
+  return item.pulseProtected ? "Pulse Protected" : evidenceLabel(item);
+}
+
+export default async function EarnPage({ searchParams }: Props) {
+  const [state, supabase, ranked, treasuries, params] = await Promise.all([
     getRewardSnapshot(),
     createSupabaseServerClient(),
     getRankedOpportunities(24),
     getTreasurySnapshot(),
+    searchParams,
   ]);
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
   const channels = user ? getRewardEntryChannels(user.id) : [];
@@ -37,39 +56,44 @@ export default async function EarnPage() {
   const quickWins = ranked.filter((item) => item.quickWin).slice(0, 4);
   const topRanked = ranked.slice(0, 8);
   const activeTreasury = treasuries.find((item) => item.enabled && !item.killSwitch && item.availableCredits > 0) ?? null;
+  const bestHref = best?.actionHref ?? primaryChannel?.href ?? null;
+  const bestExternal = Boolean(!best?.actionHref && primaryChannel?.href);
 
   return (
     <AppShell active="earn">
-      <div className="app-page-head"><div><span className="app-eyebrow">Reward Exchange</span><h1>Earn</h1><p>Less inventory noise. Better decisions.</p></div><div className="balance-chip"><small>Available</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div></div>
+      <div className="app-page-head"><div><span className="app-eyebrow">Reward Exchange</span><h1>Drops</h1><p>Less inventory noise. Better decisions.</p></div><div className="balance-chip"><small>Available</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div></div>
 
-      <section className="drop-stage">
+      {params.direct ? <div className="claim-message neutral">{directCopy[params.direct] ?? "The protected campaign state changed before the action started."}</div> : null}
+
+      <section className={`drop-stage ${best?.pulseProtected ? "drop-stage-protected" : ""}`}>
         <article className="drop-card">
           <div className="drop-card-head">
             <span className="status-pill status-lime"><Spark /> {best ? "Best value now" : primaryChannel ? "Live route" : "Exchange gated"}</span>
-            <div className="pulse-line protected">{best ? healthLabel(best) : "Verified flow"}</div>
+            <div className={`pulse-line ${best?.pulseProtected ? "protected" : ""}`}>{best?.pulseProtected ? "Pulse Protected" : best ? healthLabel(best) : "Verified flow"}</div>
           </div>
           <div className="drop-card-main">
             <h2>{best ? best.title : primaryChannel ? "Live reward inventory is connected." : "No payable route is exposed yet."}</h2>
-            <p>{best ? "Pulse ranks this opportunity only after freshness, health and evidence quality are considered." : primaryChannel ? "Open the connected earning route. The provider stays behind the experience while Pulse protects the resulting ledger event." : "The exchange stays empty rather than filling the screen with simulated opportunities."}</p>
+            <p>{best?.pulseProtected ? "This direct campaign is prefunded. Starting it reserves the advertiser budget for your protected session before you leave Pulse." : best ? "Pulse ranks this opportunity only after freshness, health and evidence quality are considered." : primaryChannel ? "Open the connected earning route. The provider stays behind the experience while Pulse protects the resulting ledger event." : "The exchange stays empty rather than filling the screen with simulated opportunities."}</p>
           </div>
           <div className="drop-card-foot">
             <div className="drop-stat">
               <div><small>Time</small><strong>{best?.estimatedMinutes ? `~${best.estimatedMinutes} min` : "Live"}</strong></div>
               <div><small>Confidence</small><strong>{best ? `${Math.round(best.confidence * 100)}%` : primaryChannel ? "Verified route" : "—"}</strong></div>
-              {best ? <div><small>Evidence</small><strong>{evidenceLabel(best)}</strong></div> : null}
+              {best ? <div><small>Authority</small><strong>{opportunityTrust(best)}</strong></div> : null}
             </div>
             <div className="drop-value"><small>{best ? "Reward" : "Inventory"}</small><strong>{best ? formatUsdFromCredits(best.baseRewardCredits) : primaryChannel ? "Live" : "Closed"}</strong></div>
           </div>
+          {bestHref ? <a className="button button-light direct-primary-action" href={bestHref} target={bestExternal ? "_blank" : undefined} rel={bestExternal ? "noopener sponsored" : undefined}>{best?.pulseProtected ? "Start protected Drop" : "Open live inventory"} <ArrowUpRight /></a> : null}
         </article>
 
         <aside className="drop-aside">
           <div>
             <span className="app-eyebrow">Pulse selection</span>
             <h3>Best use of your time.</h3>
-            <p>Stale inventory is hidden. New offers start conservatively. Proven opportunities earn their position with evidence.</p>
-            <div className="time-options" aria-label="Opportunity selection dimensions"><span className="time-option active">Fresh</span><span className="time-option">Value</span><span className="time-option">Evidence</span><span className="time-option">Risk</span></div>
+            <p>Stale inventory is hidden. New offers start conservatively. Direct campaigns reserve funded budget before the user is sent to the advertiser.</p>
+            <div className="time-options" aria-label="Opportunity selection dimensions"><span className="time-option active">Fresh</span><span className="time-option">Value</span><span className="time-option">Evidence</span><span className="time-option">Protected</span></div>
           </div>
-          {primaryChannel ? <a className="button button-light" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open live inventory <ArrowUpRight /></a> : <span className="status-pill"><Shield /> Waiting for live route</span>}
+          {best?.pulseProtected ? <span className="status-pill"><Shield /> Budget reserved on start</span> : primaryChannel ? <span className="status-pill"><Shield /> Partner route verified</span> : <span className="status-pill"><Shield /> Waiting for live route</span>}
         </aside>
       </section>
 
@@ -78,11 +102,12 @@ export default async function EarnPage() {
           <div className="app-section-head"><div><span className="app-eyebrow">Quick Wins</span><h2>Good options for the next 10 minutes.</h2></div><span className="status-pill"><Clock /> Time aware</span></div>
           <div className="quick-win-grid">
             {quickWins.map((item) => (
-              <article className="quick-win-card" key={item.id}>
-                <div className="quick-win-top"><span>{healthLabel(item)}</span><small>{evidenceLabel(item)}</small></div>
+              <article className={`quick-win-card ${item.pulseProtected ? "quick-win-protected" : ""}`} key={item.id}>
+                <div className="quick-win-top"><span>{item.pulseProtected ? "Pulse Protected" : healthLabel(item)}</span><small>{evidenceLabel(item)}</small></div>
                 <h3>{item.title}</h3>
                 <div className="quick-win-value"><strong>{formatUsdFromCredits(item.baseRewardCredits)}</strong><span>~{item.estimatedMinutes} min</span></div>
                 <div className="quick-win-foot"><span>{item.expectedCreditsPerMinute == null ? "Value learning" : `${formatUsdFromCredits(item.expectedCreditsPerMinute)} expected / min`}</span><b>{Math.round(item.confidence * 100)}%</b></div>
+                {item.actionHref ? <a className="inline-action direct-inline-action" href={item.actionHref}>Start protected <ArrowUpRight /></a> : null}
               </article>
             ))}
           </div>
@@ -96,12 +121,13 @@ export default async function EarnPage() {
           <div className="app-section-head"><div><span className="app-eyebrow">Opportunity Intelligence</span><h2>Fresh opportunities, evidence weighted.</h2></div><span className="status-pill"><Trend /> Quality adjusted</span></div>
           <div className="reward-list">
             {topRanked.map((item, index) => (
-              <article className="reward-row intelligence-row" key={item.id}>
-                <div className="reward-row-main"><span className="reward-rank">{String(index + 1).padStart(2, "0")}</span><div><strong>{item.title}</strong><small>{item.category} · {evidenceLabel(item)}</small></div></div>
+              <article className={`reward-row intelligence-row ${item.pulseProtected ? "direct-opportunity-row" : ""}`} key={item.id}>
+                <div className="reward-row-main"><span className="reward-rank">{String(index + 1).padStart(2, "0")}</span><div><strong>{item.title}</strong><small>{item.category} · {item.pulseProtected ? "Pulse Protected" : evidenceLabel(item)}</small></div></div>
                 <div className="reward-metric"><small>Reward</small><strong>{formatUsdFromCredits(item.baseRewardCredits)}</strong></div>
                 <div className="reward-metric"><small>Time</small><strong>{item.estimatedMinutes ? `${item.estimatedMinutes}m` : "—"}</strong></div>
                 <div className="reward-metric"><small>Health</small><strong className={`health-text ${item.healthState}`}>{healthLabel(item)}</strong></div>
                 <div className="reward-metric"><small>Confidence</small><strong className="reward-confidence">{Math.round(item.confidence * 100)}%</strong></div>
+                {item.actionHref ? <a className="direct-row-action" href={item.actionHref} aria-label={`Start ${item.title}`}>Start <ArrowUpRight /></a> : null}
               </article>
             ))}
           </div>
@@ -110,7 +136,7 @@ export default async function EarnPage() {
         <section className="earn-feature"><div><span className="section-kicker">Truthful inventory</span><h2>No normalized opportunity is being fabricated to make the exchange look busy.</h2><p>{primaryChannel ? "The connected provider route is live above; normalized ranking appears as fresh catalog evidence becomes available." : "The product remains useful without pretending inventory exists."}</p></div><div className="earn-feature-metric"><strong>0</strong><span>simulated offers</span></div></section>
       )}
 
-      <section className="earning-principles"><article><span>01</span><h3>Fresh before ranked.</h3><p>An opportunity must still be alive inside its own freshness window before Pulse can recommend it.</p></article><article><span>02</span><h3>Unknown is not excellent.</h3><p>Missing evidence reduces confidence instead of receiving optimistic defaults.</p></article><article><span>03</span><h3>Fast value becomes visible.</h3><p>Quick Wins surface strong opportunities that fit naturally inside short spare-time windows.</p></article></section>
+      <section className="earning-principles"><article><span>01</span><h3>Direct means funded first.</h3><p>Pulse Direct campaigns cannot go live until operator-verified advertiser funding can cover at least one complete action.</p></article><article><span>02</span><h3>Protected means reserved.</h3><p>Starting a direct Drop reserves its full advertiser spend for that session before redirecting the user.</p></article><article><span>03</span><h3>Settlement stays atomic.</h3><p>A verified callback spends campaign budget and creates the user ledger reward inside one database transaction.</p></article></section>
     </AppShell>
   );
 }
