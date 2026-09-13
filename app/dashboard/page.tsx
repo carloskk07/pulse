@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Bolt, Check, Shield, Spark, Users } from "@/components/icons";
+import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { formatUsdFromCredits, getRewardSnapshot, trustLabel } from "@/lib/reward-state";
@@ -35,36 +36,51 @@ export default async function DashboardPage({ searchParams }: Props) {
   const progress = payoutCredits ? Math.min(100, (state.availableCredits / payoutCredits) * 100) : 0;
   const away = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
   const showFirstPulseGuide = state.signedIn && !state.preview && state.hourlyClaimCount === 0;
+  const visualState = state.preview ? "preview" : !state.pulseFundingReady ? "paused" : state.claimReady ? "ready" : "charging";
+  const pulseEyebrow = state.preview ? "Pulse status" : !state.pulseFundingReady ? "Reward pool" : state.claimReady ? "Your Pulse" : "Next Pulse";
+  const pulseCaption = state.preview ? "Live service required" : !state.pulseFundingReady ? "Funding required" : state.claimReady ? `+${state.claimRewardCredits} P available` : "Rolling interval active";
 
   return (
     <AppShell active="home">
-      <div className="app-page-head">
-        <div><div className="pulse-line">Live reward state</div><h1>{state.preview ? "Pulse is waiting for its live service." : "Your Pulse."}</h1><p>{state.preview ? "Financial values stay hidden until the production reward service is authoritative." : "Claim. Return. Build trust. Turbo only when you want more."}</p></div>
-        <div className="balance-chip"><small>Available</small><strong>{state.preview ? "Not connected" : formatUsdFromCredits(state.availableCredits)}</strong></div>
+      <div className="app-page-head pulse-page-head">
+        <div>
+          <div className="pulse-line">Live reward state</div>
+          <h1>{state.preview ? "Pulse is waiting for its live service." : "Your Pulse."}</h1>
+          <p>{state.preview ? "Financial values stay hidden until the production reward service is authoritative." : "Claim. Return. Build trust. Turbo only when you want more."}</p>
+        </div>
+        <Link href="/wallet" className="balance-chip balance-chip-v2" aria-label="Open Wallet">
+          <small>Available</small>
+          <strong>{state.preview ? "Not connected" : `${state.availableCredits.toLocaleString("en-US")} P`}</strong>
+          {!state.preview ? <span>{formatUsdFromCredits(state.availableCredits)}</span> : null}
+        </Link>
       </div>
 
-      {params.claim ? <div className={`claim-message ${params.claim === "success" ? "success" : "neutral"}`}>{claimCopy[params.claim] ?? "Pulse state updated."}</div> : null}
+      {params.claim ? <div className={`claim-message ${params.claim === "success" ? "success" : "neutral"}`}>{claimCopy[params.claim] ?? "Pulse state updated."}{params.claim === "success" ? <Link href="/invite">Share your rhythm <ArrowUpRight /></Link> : null}</div> : null}
       {state.preview ? <div className="preview-banner">Preview shell only — no balance, claim, trust or payout value is simulated before the live reward service is connected.</div> : null}
 
-      {showFirstPulseGuide ? <section className="first-reward-guide"><div className="first-reward-copy"><span className="app-eyebrow">Your first rhythm</span><h2>The reward comes first.</h2><p>Claim the base Pulse when it opens. Return after the rolling interval. Turbo is optional and never required to receive an eligible base reward.</p></div><div className="first-reward-steps"><div><span>1</span><strong>Claim</strong><small>Collect an eligible Pulse</small></div><div><span>2</span><strong>Return</strong><small>Come back when the timer opens</small></div><div><span>3</span><strong>Turbo</strong><small>Optional extra earning</small></div></div></section> : null}
-
       <section className="dashboard-hero hourly-pulse-stage">
-        <div className="daily-pulse-card hourly-pulse-card">
+        <div className={`daily-pulse-card hourly-pulse-card state-${visualState}`}>
           <div className="daily-pulse-copy">
             <span className="status-pill status-lime"><Spark /> {state.preview ? "Setup required" : `Pulse Trust · ${trustLabel(state.trustLevel)}`}</span>
             <h2>{state.preview ? "Hourly Pulse activates with the live ledger." : !state.pulseFundingReady ? "The reward pool is safely paused." : state.claimReady ? "Your Pulse is ready." : "Your next Pulse is charging."}</h2>
-            <p>{state.preview ? "Connect the production reward service before claims become authoritative." : !state.pulseFundingReady ? "Pulse never promises an unfunded reward. Claims reopen only when the treasury has real budget and its safety controls are enabled." : state.claimReady ? `Claim +${state.claimRewardCredits} credit${state.claimRewardCredits === 1 ? "" : "s"}. The next window opens ${state.claimIntervalMinutes} minutes after a successful claim.` : "Your reward is secured by a rolling interval rather than a calendar reset, preventing boundary double-claims."}</p>
-            {state.preview ? <button className="button button-light" disabled>Reward service not connected</button> : canClaim ? <form action="/api/pulse/claim" method="post" className="claim-form"><TurnstileField action="hourly_pulse" /><button className="button button-light" type="submit">Claim +{state.claimRewardCredits} P <ArrowUpRight /></button></form> : state.claimReady ? state.signedIn ? <button className="button button-light" disabled>{state.pulseFundingReady ? "Claim verification unavailable" : "Reward pool paused"}</button> : <Link href="/auth?next=/dashboard" className="button button-light">Sign in to claim <ArrowUpRight /></Link> : <button className="button button-light" disabled>Pulse charging <Check /></button>}
+            <p>{state.preview ? "Connect the production reward service before claims become authoritative." : !state.pulseFundingReady ? "No unfunded promises. Pulse reopens only when the treasury has real budget and every safety control is enabled." : state.claimReady ? `Claim +${state.claimRewardCredits} credit${state.claimRewardCredits === 1 ? "" : "s"}. Your next window opens ${state.claimIntervalMinutes} minutes after a successful claim.` : "Your reward follows a rolling interval rather than a calendar reset, preventing boundary double-claims."}</p>
+            {state.preview ? <button className="button button-light pulse-claim-button" disabled>Reward service not connected</button> : canClaim ? <form action="/api/pulse/claim" method="post" className="claim-form"><TurnstileField action="hourly_pulse" /><button className="button button-light pulse-claim-button" type="submit">Claim +{state.claimRewardCredits} P <ArrowUpRight /></button></form> : state.claimReady ? state.signedIn ? <button className="button button-light pulse-claim-button" disabled>{state.pulseFundingReady ? "Claim verification unavailable" : "Reward pool paused"}</button> : <Link href="/auth?next=/dashboard" className="button button-light pulse-claim-button">Sign in to claim <ArrowUpRight /></Link> : <button className="button button-light pulse-claim-button" disabled>Pulse charging <Check /></button>}
           </div>
-          <div className="pulse-timer-panel" aria-label="Next Pulse timer">
-            <small>{state.pulseFundingReady ? "Next Pulse" : "Reward pool"}</small>
-            {state.pulseFundingReady ? <PulseCountdown target={state.nextClaimAt} /> : <span className="pulse-countdown" aria-live="polite">PAUSED</span>}
-            <div className="pulse-trust-mini"><Shield /><span>Trust {state.trustLevel}/5</span></div>
-            <div className="streak-days">{[1,2,3,4,5,6,7].map((day) => <span key={day} className={!state.preview && day <= Math.min(state.streakDays, 7) ? "done" : ""}>{!state.preview && day <= Math.min(state.streakDays, 7) ? <Check /> : day}</span>)}</div>
-            <small>{!state.pulseFundingReady ? "Funding required" : state.streakDays > 0 ? `${state.streakDays}-day rhythm` : "Start your rhythm"}</small>
+
+          <div className="pulse-core-panel" aria-label="Pulse state">
+            <PulseCoreVisual state={visualState} eyebrow={pulseEyebrow} caption={pulseCaption}>
+              {state.pulseFundingReady ? <PulseCountdown target={state.nextClaimAt} /> : <span className="pulse-core-word">PAUSED</span>}
+            </PulseCoreVisual>
+            <div className="pulse-core-meta">
+              <div className="pulse-trust-mini"><Shield /><span>{trustLabel(state.trustLevel)}</span><b>{state.trustLevel}/5</b></div>
+              <div className="streak-days" aria-label="Hourly Pulse rhythm">{[1,2,3,4,5,6,7].map((day) => <span key={day} className={!state.preview && day <= Math.min(state.streakDays, 7) ? "done" : ""}>{!state.preview && day <= Math.min(state.streakDays, 7) ? <Check /> : day}</span>)}</div>
+              <small className="pulse-rhythm-label">{!state.pulseFundingReady ? "Rhythm starts with the first funded Pulse" : state.streakDays > 0 ? `${state.streakDays}-day rhythm` : "Start your rhythm"}</small>
+            </div>
           </div>
         </div>
       </section>
+
+      {showFirstPulseGuide ? <section className="first-reward-guide pulse-onboarding"><div className="first-reward-copy"><span className="app-eyebrow">Your first rhythm</span><h2>The reward comes first.</h2><p>Claim the base Pulse when it opens. Return after the rolling interval. Turbo is optional and never required to receive an eligible base reward.</p></div><div className="first-reward-steps"><div><span>1</span><strong>Claim</strong><small>Collect an eligible Pulse</small></div><div><span>2</span><strong>Return</strong><small>Come back when the timer opens</small></div><div><span>3</span><strong>Turbo</strong><small>Optional extra earning</small></div></div></section> : null}
 
       <section className="app-section"><div className="app-section-head"><div><span className="app-eyebrow">Optional Turbo</span><h2>{liveTurboRoute ? "Want more than the base Pulse?" : "The base Pulse does not depend on offer inventory."}</h2></div><Link href="/earn">Open Turbo <ArrowUpRight /></Link></div><article className="invite-card"><div className="invite-icon">{liveTurboRoute ? <Bolt /> : <Shield />}</div><div><span className="app-eyebrow">{liveTurboRoute ? "Extra earning" : "Independent core"}</span><h3>{liveTurboRoute ? "Turbo is available when you choose it." : "No CPA provider controls whether Pulse exists."}</h3><p>{liveTurboRoute ? "A connected monetization route can add extra rewards. Pulse credits only authoritative server-confirmed events." : "External CPA supply stays optional. The hourly reward, ledger, trust and Wallet remain Pulse-owned."}</p></div><Link href="/earn" className="icon-button" aria-label="Open Turbo"><ArrowUpRight /></Link></article></section>
 
