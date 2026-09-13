@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { AyetProvider, isAyetRewardAmountAligned, isAyetRewardRateAligned } from "@/providers/ayet";
+import { AyetProvider, isAyetRewardEconomicallyAligned, isAyetRewardRateAligned } from "@/providers/ayet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,8 +23,6 @@ export async function GET(request: NextRequest) {
     return response({ ok: false, ignored: "invalid-signature" });
   }
 
-  // The publisher API key authenticates ayeT, but it can cover more than one
-  // placement/adslot. Bind callback authority to the exact live earning route.
   const callbackAdslot = request.nextUrl.searchParams.get("adslot_id")?.trim();
   if (!callbackAdslot || callbackAdslot !== configuredAdslot) {
     return response({ ok: false, ignored: "invalid-adslot" });
@@ -37,27 +35,25 @@ export async function GET(request: NextRequest) {
     return response({ ok: false, ignored: error instanceof Error ? error.message : "invalid-callback" });
   }
 
-  // The offerwall must advertise the same exchange rate and exact event reward
-  // that the server settles. This prevents a signed callback from promising one
-  // amount in the ayeT UI while Pulse credits another amount to the ledger.
+  // The signed ayeT amount is the user-facing reward authority. Pulse requires
+  // a 0-decimal adslot so currency_amount is a whole credit, then verifies that
+  // the configured rate and payout economics differ by less than one credit.
   if (event.callbackType === "conversion" && !isAyetRewardRateAligned(event.raw.currency_conversion_rate)) {
     return response({ ok: false, ignored: "reward-rate-mismatch" });
   }
-  if (event.callbackType === "conversion" && !isAyetRewardAmountAligned(event.raw.currency_amount, event.rewardCredits)) {
+  if (event.callbackType === "conversion" && !isAyetRewardEconomicallyAligned(event.payoutUsdMicros, event.rewardCredits)) {
     return response({ ok: false, ignored: "reward-amount-mismatch" });
   }
 
   // Sandbox is a non-financial provider preflight. Once HMAC, adslot binding,
-  // reward alignment and callback parsing pass, persist a separate fingerprint
-  // without creating any ledger authority.
+  // whole-credit reward authority and economic alignment pass, persist a
+  // separate fingerprint without creating any ledger authority.
   if (request.nextUrl.searchParams.get("is_sandbox") === "1") {
     if (event.callbackType !== "conversion") return response({ ok: true, status: "sandbox-ignored" });
     const recorded = await recordReleaseEvidence("ayet_transport");
     return response({ ok: true, status: recorded ? "sandbox-verified" : "sandbox-verified-evidence-unavailable" });
   }
 
-  // Financial validation applies only to production callbacks. Sandbox
-  // identifiers and fake payouts never need to look like authoritative users.
   if (event.callbackType === "conversion" && (!event.userId || !uuidPattern.test(event.userId))) return response({ ok: false, ignored: "invalid-user-id" });
   if (event.callbackType === "conversion" && (event.payoutUsdMicros <= 0 || event.rewardCredits <= 0)) return response({ ok: false, ignored: "non-positive-conversion" });
 
@@ -80,9 +76,6 @@ export async function GET(request: NextRequest) {
   const result = data as { status?: string } | null;
   if (result?.status === "orphan_chargeback") return response({ ok: false, error: "orphan-chargeback" }, 503);
 
-  // Only a fresh production conversion that actually created authoritative
-  // financial state may certify the current provider configuration. A duplicate
-  // or sandbox callback is deliberately insufficient evidence.
   if (event.callbackType === "conversion" && result?.status === "credited") {
     await recordReleaseEvidence("ayet_callback");
   }
