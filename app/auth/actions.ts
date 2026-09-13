@@ -19,7 +19,6 @@ function authError(code: string, next: string, ref?: string | null) {
 
 function turnstileAuthError(verification: Awaited<ReturnType<typeof verifyTurnstile>>) {
   if (verification.missingConfig) return "verification-not-configured";
-
   const codes = new Set(verification.errorCodes ?? []);
   if (codes.has("missing-token") || codes.has("missing-input-response")) return "verification-token-missing";
   if (codes.has("timeout-or-duplicate")) return "verification-expired";
@@ -43,7 +42,6 @@ export async function signIn(formData: FormData) {
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) redirect(authError("invalid-credentials", next, ref));
-
   if (data.user && ref) await bindReferralForUser(data.user.id, ref);
   redirect(next);
 }
@@ -61,25 +59,14 @@ export async function signUp(formData: FormData) {
   const requestHeaders = await headers();
   const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "signup" });
-  if (!verification.success) {
-    console.warn("Turnstile signup verification failed", {
-      missingConfig: Boolean(verification.missingConfig),
-      errorCodes: verification.errorCodes ?? [],
-    });
-    redirect(authError(turnstileAuthError(verification), next, ref));
-  }
+  if (!verification.success) redirect(authError(turnstileAuthError(verification), next, ref));
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const callback = new URL("/auth/callback", siteUrl);
   callback.searchParams.set("next", next);
   if (ref) callback.searchParams.set("ref", ref);
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: callback.toString() },
-  });
-
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callback.toString() } });
   if (error) redirect(authError("signup-failed", next, ref));
   if (data.session && data.user) {
     if (ref) await bindReferralForUser(data.user.id, ref);
@@ -89,6 +76,24 @@ export async function signUp(formData: FormData) {
   const params = new URLSearchParams({ message: "check-email", next });
   if (ref) params.set("ref", ref);
   redirect(`/auth?${params.toString()}`);
+}
+
+export async function requestPasswordReset(formData: FormData) {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) redirect("/auth?error=service-not-configured");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email || !email.includes("@")) redirect("/auth?error=invalid-recovery-email");
+
+  const requestHeaders = await headers();
+  const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "password_reset" });
+  if (!verification.success) redirect("/auth?error=verification-failed");
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const callback = new URL("/auth/callback", siteUrl);
+  callback.searchParams.set("next", "/account?reset=1");
+  await supabase.auth.resetPasswordForEmail(email, { redirectTo: callback.toString() });
+  redirect("/auth?message=recovery-sent");
 }
 
 export async function signOut() {
