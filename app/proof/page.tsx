@@ -9,8 +9,16 @@ export const metadata = {
   description: "Live, aggregate proof of Hourly Pulse claims, credited rewards, Turbo conversions and completed payouts.",
 };
 
+function formatGeneratedAt(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return `${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }).format(date)} UTC`;
+}
+
 export default async function ProofPage() {
   const proof = await getPulseProof();
+  const generatedAt = formatGeneratedAt(proof.generatedAt);
 
   return (
     <main className="proof-page">
@@ -19,7 +27,11 @@ export default async function ProofPage() {
         <span className="section-kicker">Pulse Proof</span>
         <h1>Only what actually happened.</h1>
         <p>These numbers come from the authoritative production database. Pulse does not create sample users, simulated payouts or synthetic activity to make this page look busy.</p>
-        <div className={`proof-status ${proof.available ? "live" : "offline"}`}><Shield /> {proof.available ? "Production proof online" : "Production proof unavailable"}</div>
+        <div className={`proof-status ${proof.available ? "live" : "offline"}`}>
+          <Shield />
+          <span>{proof.available ? "Production proof online" : "Production proof unavailable"}</span>
+          {proof.available && generatedAt ? <small>Updated {generatedAt}</small> : null}
+        </div>
       </section>
 
       <section className="proof-grid shell" aria-label="Pulse proof metrics">
