@@ -37,6 +37,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
   const sidebarLinks = admin
     ? [...links,
         { id: "product", href: "/admin/product", label: "Product", Icon: Shield },
+        { id: "support-admin", href: "/admin/support", label: "Support", Icon: Users },
         { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
       ]
     : links;
