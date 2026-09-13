@@ -37,6 +37,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
   const sidebarLinks = admin
     ? [...links,
         { id: "product", href: "/admin/product", label: "Product", Icon: Shield },
+        { id: "support-admin", href: "/admin/support", label: "Support", Icon: Users },
         { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
       ]
     : links;
@@ -53,6 +54,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
         <div className="sidebar-user">
           <span className="avatar">{initials(label)}</span>
           <div><strong>{label}</strong><small>{user ? `Trust level ${trustLevel}` : "Preview mode"}</small></div>
+          <div className="sidebar-tools"><Link href={user ? "/account" : "/auth?next=/account"}>Account</Link><Link href="/support">Help</Link></div>
           {user ? <form action={signOut}><button className="sidebar-signout" type="submit">Sign out</button></form> : null}
         </div>
       </aside>
