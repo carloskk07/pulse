@@ -39,14 +39,15 @@ export default async function DashboardPage({ searchParams }: Props) {
   const visualState = state.preview ? "preview" : !state.pulseFundingReady ? "paused" : state.claimReady ? "ready" : "charging";
   const pulseEyebrow = state.preview ? "Pulse status" : !state.pulseFundingReady ? "Reward pool" : state.claimReady ? "Your Pulse" : "Next Pulse";
   const pulseCaption = state.preview ? "Live service required" : !state.pulseFundingReady ? "Funding required" : state.claimReady ? `+${state.claimRewardCredits} P available` : "Rolling interval active";
+  const claimSucceeded = params.claim === "success";
 
   return (
     <AppShell active="home">
       <div className="app-page-head pulse-page-head">
         <div>
-          <div className="pulse-line">Live reward state</div>
+          <div className="pulse-line">Live reward network</div>
           <h1>{state.preview ? "Pulse is waiting for its live service." : "Your Pulse."}</h1>
-          <p>{state.preview ? "Financial values stay hidden until the production reward service is authoritative." : "Claim. Return. Build trust. Turbo only when you want more."}</p>
+          <p>{state.preview ? "Financial values stay hidden until the production reward service is authoritative." : "One recurring reward. Clear financial truth. Turbo only when you choose."}</p>
         </div>
         <Link href="/wallet" className="balance-chip balance-chip-v2" aria-label="Open Wallet">
           <small>Available</small>
@@ -55,15 +56,16 @@ export default async function DashboardPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      {params.claim ? <div className={`claim-message ${params.claim === "success" ? "success" : "neutral"}`}>{claimCopy[params.claim] ?? "Pulse state updated."}{params.claim === "success" ? <Link href="/invite">Share your rhythm <ArrowUpRight /></Link> : null}</div> : null}
+      {params.claim ? <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>{claimCopy[params.claim] ?? "Pulse state updated."}{claimSucceeded ? <Link href="/invite">Share your rhythm <ArrowUpRight /></Link> : null}</div> : null}
       {state.preview ? <div className="preview-banner">Preview shell only — no balance, claim, trust or payout value is simulated before the live reward service is connected.</div> : null}
 
       <section className="dashboard-hero hourly-pulse-stage">
-        <div className={`daily-pulse-card hourly-pulse-card state-${visualState}`}>
+        <div className={`daily-pulse-card hourly-pulse-card state-${visualState} ${claimSucceeded ? "is-claimed" : ""}`}>
+          <div className="pulse-stage-watermark" aria-hidden="true"><span>PULSE</span><b>01</b></div>
           <div className="daily-pulse-copy">
             <span className="status-pill status-lime"><Spark /> {state.preview ? "Setup required" : `Pulse Trust · ${trustLabel(state.trustLevel)}`}</span>
-            <h2>{state.preview ? "Hourly Pulse activates with the live ledger." : !state.pulseFundingReady ? "The reward pool is safely paused." : state.claimReady ? "Your Pulse is ready." : "Your next Pulse is charging."}</h2>
-            <p>{state.preview ? "Connect the production reward service before claims become authoritative." : !state.pulseFundingReady ? "No unfunded promises. Pulse reopens only when the treasury has real budget and every safety control is enabled." : state.claimReady ? `Claim +${state.claimRewardCredits} credit${state.claimRewardCredits === 1 ? "" : "s"}. Your next window opens ${state.claimIntervalMinutes} minutes after a successful claim.` : "Your reward follows a rolling interval rather than a calendar reset, preventing boundary double-claims."}</p>
+            <h2>{state.preview ? "Hourly Pulse activates with the live ledger." : !state.pulseFundingReady ? "Your Pulse is in safe standby." : state.claimReady ? "Your Pulse is live." : "Your next Pulse is forming."}</h2>
+            <p>{state.preview ? "Connect the production reward service before claims become authoritative." : !state.pulseFundingReady ? "No unfunded promises. The reward rail opens only when the treasury has real budget and every safety control is enabled." : state.claimReady ? `A funded +${state.claimRewardCredits} P reward is available now. Your next window opens ${state.claimIntervalMinutes} minutes after a successful claim.` : "The next reward is protected by a rolling interval rather than a calendar reset, preventing boundary double-claims."}</p>
             {state.preview ? <button className="button button-light pulse-claim-button" disabled>Reward service not connected</button> : canClaim ? <form action="/api/pulse/claim" method="post" className="claim-form"><TurnstileField action="hourly_pulse" /><button className="button button-light pulse-claim-button" type="submit">Claim +{state.claimRewardCredits} P <ArrowUpRight /></button></form> : state.claimReady ? state.signedIn ? <button className="button button-light pulse-claim-button" disabled>{state.pulseFundingReady ? "Claim verification unavailable" : "Reward pool paused"}</button> : <Link href="/auth?next=/dashboard" className="button button-light pulse-claim-button">Sign in to claim <ArrowUpRight /></Link> : <button className="button button-light pulse-claim-button" disabled>Pulse charging <Check /></button>}
           </div>
 
@@ -76,6 +78,13 @@ export default async function DashboardPage({ searchParams }: Props) {
               <div className="streak-days" aria-label="Hourly Pulse rhythm">{[1,2,3,4,5,6,7].map((day) => <span key={day} className={!state.preview && day <= Math.min(state.streakDays, 7) ? "done" : ""}>{!state.preview && day <= Math.min(state.streakDays, 7) ? <Check /> : day}</span>)}</div>
               <small className="pulse-rhythm-label">{!state.pulseFundingReady ? "Rhythm starts with the first funded Pulse" : state.streakDays > 0 ? `${state.streakDays}-day rhythm` : "Start your rhythm"}</small>
             </div>
+          </div>
+
+          <div className="pulse-integrity-rail" aria-label="Pulse integrity principles">
+            <span><i className="integrity-dot" />Server authoritative</span>
+            <span><i className="integrity-dot" />Treasury backed</span>
+            <span><i className="integrity-dot" />Turbo optional</span>
+            <strong className={state.pulseFundingReady ? "online" : "standby"}>{state.pulseFundingReady ? "Reward rail online" : "Safe standby"}</strong>
           </div>
         </div>
       </section>
