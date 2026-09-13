@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ArrowUpRight, Bolt, Clock, Shield, Spark, Trend } from "@/components/icons";
+import { ArrowUpRight, Clock, Shield, Spark, Trend } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
