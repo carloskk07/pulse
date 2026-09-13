@@ -25,13 +25,13 @@ export default async function ProductReadinessPage() {
         <div>
           <span className="app-eyebrow">Consumer product gate</span>
           <h1>Product readiness</h1>
-          <p>No advertiser outreach or growth push should resume until the real account → earn → ledger → withdrawal → payout loop is proven.</p>
+          <p>No advertiser outreach or growth push should resume until the real account → Hourly Pulse → ledger → withdrawal → payout loop is proven.</p>
         </div>
         <span className={`admin-badge ${readiness.ready ? "" : "setup"}`}>{readiness.ready ? "PRODUCT READY" : "PRODUCT INCOMPLETE"}</span>
       </div>
 
       <section className="admin-secondary-grid">
-        <article><span>Confirmed monetization events</span><strong>{readiness.confirmedMonetizationEvents}</strong></article>
+        <article><span>Confirmed optional Turbos</span><strong>{readiness.confirmedMonetizationEvents}</strong></article>
         <article><span>Paid withdrawals</span><strong>{readiness.paidWithdrawals}</strong></article>
         <article><span>Blocking gates</span><strong>{readiness.blockers.length}</strong></article>
       </section>
@@ -40,8 +40,8 @@ export default async function ProductReadinessPage() {
         <div className="readiness-summary">
           <div>
             <span className="app-eyebrow">Required core loop</span>
-            <h2>{readiness.ready ? "The consumer loop has real external evidence." : "Finish the product before go-to-market."}</h2>
-            <p>Configuration alone is insufficient. Product readiness requires a real earning event and a real controlled payout, in addition to the production security and provider configuration.</p>
+            <h2>{readiness.ready ? "The base Pulse loop has real external payout evidence." : "Finish the product before go-to-market."}</h2>
+            <p>Configuration alone is insufficient. Product readiness requires a real treasury-backed Hourly Pulse claim and a real controlled payout. A specific CPA provider is not a base-product dependency.</p>
           </div>
           <div className="readiness-counts"><span>{readiness.checks.filter((item) => item.pass).length} pass</span><span>{readiness.blockers.length} block</span></div>
         </div>
@@ -58,7 +58,7 @@ export default async function ProductReadinessPage() {
       <section className="admin-decision-card">
         <span className="app-eyebrow">Current rule</span>
         <h2>Product first.</h2>
-        <p>Business intake, prospecting and future direct-campaign acquisition remain dormant capabilities. The next engineering work must attack the first failing check above.</p>
+        <p>Business intake, advertiser prospecting, Sponsored Pulse and network distribution remain dormant capabilities. The next engineering work must attack the first failing base-product gate above.</p>
       </section>
     </AppShell>
   );
