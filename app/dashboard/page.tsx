@@ -57,11 +57,11 @@ export default async function DashboardPage({ searchParams }: Props) {
             {state.preview ? <button className="button button-light" disabled>Reward service not connected</button> : canClaim ? <form action="/api/pulse/claim" method="post" className="claim-form"><TurnstileField action="hourly_pulse" /><button className="button button-light" type="submit">Claim +{state.claimRewardCredits} P <ArrowUpRight /></button></form> : state.claimReady ? state.signedIn ? <button className="button button-light" disabled>{state.pulseFundingReady ? "Claim verification unavailable" : "Reward pool paused"}</button> : <Link href="/auth?next=/dashboard" className="button button-light">Sign in to claim <ArrowUpRight /></Link> : <button className="button button-light" disabled>Pulse charging <Check /></button>}
           </div>
           <div className="pulse-timer-panel" aria-label="Next Pulse timer">
-            <small>Next Pulse</small>
-            <PulseCountdown target={state.nextClaimAt} />
+            <small>{state.pulseFundingReady ? "Next Pulse" : "Reward pool"}</small>
+            {state.pulseFundingReady ? <PulseCountdown target={state.nextClaimAt} /> : <span className="pulse-countdown" aria-live="polite">PAUSED</span>}
             <div className="pulse-trust-mini"><Shield /><span>Trust {state.trustLevel}/5</span></div>
             <div className="streak-days">{[1,2,3,4,5,6,7].map((day) => <span key={day} className={!state.preview && day <= Math.min(state.streakDays, 7) ? "done" : ""}>{!state.preview && day <= Math.min(state.streakDays, 7) ? <Check /> : day}</span>)}</div>
-            <small>{state.streakDays > 0 ? `${state.streakDays}-day rhythm` : "Start your rhythm"}</small>
+            <small>{!state.pulseFundingReady ? "Funding required" : state.streakDays > 0 ? `${state.streakDays}-day rhythm` : "Start your rhythm"}</small>
           </div>
         </div>
       </section>
