@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
+import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -56,6 +57,7 @@ export async function signUp(formData: FormData) {
   const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "signup" });
   if (!verification.success) redirect(authError(turnstileAuthError(verification), next, ref));
+  await recordReleaseEvidence("turnstile");
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const callback = new URL("/auth/callback", siteUrl);
   callback.searchParams.set("next", next);
