@@ -5,8 +5,8 @@ import { Brand } from "./brand";
 import { Bolt, Home, Shield, Trend, Users, Wallet } from "./icons";
 
 const links = [
-  { id: "home", href: "/dashboard", label: "Home", Icon: Home },
-  { id: "earn", href: "/earn", label: "Drops", Icon: Bolt },
+  { id: "home", href: "/dashboard", label: "Pulse", Icon: Home },
+  { id: "earn", href: "/earn", label: "Turbo", Icon: Bolt },
   { id: "wallet", href: "/wallet", label: "Wallet", Icon: Wallet },
   { id: "invite", href: "/invite", label: "Invite", Icon: Users },
 ];
@@ -25,7 +25,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
   let label = "Demo member";
-  let trustLevel = 1;
+  let trustLevel = 0;
 
   if (user && supabase) {
     const { data: profile } = await supabase.from("profiles").select("handle,trust_level").eq("id", user.id).maybeSingle();
@@ -53,8 +53,8 @@ export async function AppShell({ children, active }: { children: React.ReactNode
         </nav>
         <div className="sidebar-user">
           <span className="avatar">{initials(label)}</span>
-          <div><strong>{label}</strong><small>{user ? `Trust level ${trustLevel}` : "Preview mode"}</small></div>
-          <div className="sidebar-tools"><Link href={user ? "/account" : "/auth?next=/account"}>Account</Link><Link href="/support">Help</Link></div>
+          <div><strong>{label}</strong><small>{user ? `Pulse Trust ${trustLevel}/5` : "Preview mode"}</small></div>
+          <div className="sidebar-tools"><Link href={user ? "/account" : "/auth?next=/account"}>Account</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link></div>
           {user ? <form action={signOut}><button className="sidebar-signout" type="submit">Sign out</button></form> : null}
         </div>
       </aside>
