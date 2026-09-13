@@ -9,7 +9,7 @@ export function ProductPreview() {
           <article className="preview-drop">
             <div className="preview-drop-top">
               <span className="status-pill status-lime"><Spark /> Hourly Pulse</span>
-              <div className="preview-value"><small>Reward</small><strong>Funded live</strong></div>
+              <div className="preview-value"><small>Reward</small><strong>Treasury gated</strong></div>
             </div>
             <div>
               <div className="pulse-line protected">Treasury protected</div>
@@ -17,7 +17,7 @@ export function ProductPreview() {
               <p>Claim when eligible, return on the rolling timer and use Turbo only when extra earning is worth it.</p>
             </div>
             <div className="preview-drop-bottom">
-              <span className="preview-protect"><Shield /> Budget backed</span>
+              <span className="preview-protect"><Shield /> Budget required</span>
               <span className="preview-time">No simulated amount</span>
             </div>
           </article>
