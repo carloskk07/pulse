@@ -1,28 +1,28 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Clock, Shield, Spark, Trend } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
-import { getTreasurySnapshot } from "@/lib/treasury";
 import { getRewardEntryChannels } from "@/providers/registry";
 
-export const metadata = { title: "Earn" };
+export const metadata = { title: "Turbo" };
 
 type Props = { searchParams: Promise<{ direct?: string }> };
 
 const directCopy: Record<string, string> = {
-  "already-completed": "You already completed this protected campaign.",
-  capacity_reserved: "All currently funded slots are temporarily reserved. Try this Drop again shortly.",
-  completion_cap_reached: "This Drop reached its verified completion limit.",
-  campaign_not_active: "That Drop is not accepting new starts right now.",
-  campaign_ended: "That Drop has ended.",
-  not_started: "That Drop has not opened yet.",
+  "already-completed": "You already completed this protected Turbo.",
+  capacity_reserved: "All funded slots are temporarily reserved. Try again shortly.",
+  completion_cap_reached: "This Turbo reached its verified completion limit.",
+  campaign_not_active: "That Turbo is not accepting new starts right now.",
+  campaign_ended: "That Turbo has ended.",
+  not_started: "That Turbo has not opened yet.",
   "origin-rejected": "The protected start was rejected by the request security check.",
   unavailable: "The protected start could not be reserved. No reward was promised or deducted.",
   invalid: "That campaign link is not valid.",
   "session-error": "The protected session could not be created safely.",
-  "destination-error": "The advertiser destination did not pass the secure redirect check.",
-  "service-unavailable": "Pulse Direct is temporarily unavailable. No funded action was started.",
+  "destination-error": "The destination did not pass the secure redirect check.",
+  "service-unavailable": "Turbo is temporarily unavailable. Your base Pulse is unaffected.",
 };
 
 function evidenceLabel(item: RankedOpportunity) {
@@ -34,22 +34,17 @@ function evidenceLabel(item: RankedOpportunity) {
 }
 
 function healthLabel(item: RankedOpportunity) {
-  if (item.healthState === "excellent") return "Excellent health";
+  if (item.healthState === "excellent") return "Excellent";
   if (item.healthState === "good") return "Healthy";
   if (item.healthState === "degraded") return "Watch";
   return "Monitoring";
 }
 
-function opportunityTrust(item: RankedOpportunity) {
-  return item.pulseProtected ? "Pulse Protected" : evidenceLabel(item);
-}
-
 export default async function EarnPage({ searchParams }: Props) {
-  const [state, supabase, ranked, treasuries, params] = await Promise.all([
+  const [state, supabase, ranked, params] = await Promise.all([
     getRewardSnapshot(),
     createSupabaseServerClient(),
     getRankedOpportunities(24),
-    getTreasurySnapshot(),
     searchParams,
   ]);
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
@@ -58,54 +53,53 @@ export default async function EarnPage({ searchParams }: Props) {
   const best = ranked[0] ?? null;
   const quickWins = ranked.filter((item) => item.quickWin).slice(0, 4);
   const topRanked = ranked.slice(0, 8);
-  const activeTreasury = treasuries.find((item) => item.enabled && !item.killSwitch && item.availableCredits > 0) ?? null;
 
   return (
     <AppShell active="earn">
-      <div className="app-page-head"><div><span className="app-eyebrow">Reward Exchange</span><h1>Drops</h1><p>Less inventory noise. Better decisions.</p></div><div className="balance-chip"><small>Available</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div></div>
+      <div className="app-page-head"><div><span className="app-eyebrow">Optional earning</span><h1>Turbo</h1><p>Your Hourly Pulse comes first. Turbo exists only when you want to earn more.</p></div><div className="balance-chip"><small>Available</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div></div>
 
-      {params.direct ? <div className="claim-message neutral">{directCopy[params.direct] ?? "The protected campaign state changed before the action started."}</div> : null}
+      {params.direct ? <div className="claim-message neutral">{directCopy[params.direct] ?? "The protected Turbo state changed before the action started."}</div> : null}
 
-      <section className={`drop-stage ${best?.pulseProtected ? "drop-stage-protected" : ""}`}>
+      <section className={`drop-stage turbo-stage ${best?.pulseProtected ? "drop-stage-protected" : ""}`}>
         <article className="drop-card">
           <div className="drop-card-head">
-            <span className="status-pill status-lime"><Spark /> {best ? "Best value now" : primaryChannel ? "Live route" : "Exchange gated"}</span>
-            <div className={`pulse-line ${best?.pulseProtected ? "protected" : ""}`}>{best?.pulseProtected ? "Pulse Protected" : best ? healthLabel(best) : "Verified flow"}</div>
+            <span className="status-pill status-lime"><Spark /> {best ? "Best Turbo now" : primaryChannel ? "Turbo route live" : "No Turbo needed"}</span>
+            <div className={`pulse-line ${best?.pulseProtected ? "protected" : ""}`}>{best?.pulseProtected ? "Pulse Protected" : best ? healthLabel(best) : "Optional by design"}</div>
           </div>
           <div className="drop-card-main">
-            <h2>{best ? best.title : primaryChannel ? "Live reward inventory is connected." : "No payable route is exposed yet."}</h2>
-            <p>{best?.pulseProtected ? "This direct campaign is prefunded. Starting it reserves the advertiser budget for your protected session before you leave Pulse." : best ? "Pulse ranks this opportunity only after freshness, health and evidence quality are considered." : primaryChannel ? "Open the connected earning route. The provider stays behind the experience while Pulse protects the resulting ledger event." : "The exchange stays empty rather than filling the screen with simulated opportunities."}</p>
+            <h2>{best ? best.title : primaryChannel ? "Extra earning is available." : "Nothing to complete right now."}</h2>
+            <p>{best?.pulseProtected ? "This direct Turbo is prefunded. Pulse reserves the advertiser budget before you leave the app." : best ? "Pulse ranks opportunities by value, freshness and evidence instead of dumping an offerwall on you." : primaryChannel ? "Open the connected route only if you want extra rewards. The provider is infrastructure, not the Pulse product." : "That is okay. Your base Hourly Pulse remains independent of CPA inventory."}</p>
           </div>
           <div className="drop-card-foot">
             <div className="drop-stat">
-              <div><small>Time</small><strong>{best?.estimatedMinutes ? `~${best.estimatedMinutes} min` : "Live"}</strong></div>
+              <div><small>Time</small><strong>{best?.estimatedMinutes ? `~${best.estimatedMinutes} min` : primaryChannel ? "Live" : "—"}</strong></div>
               <div><small>Confidence</small><strong>{best ? `${Math.round(best.confidence * 100)}%` : primaryChannel ? "Verified route" : "—"}</strong></div>
-              {best ? <div><small>Authority</small><strong>{opportunityTrust(best)}</strong></div> : null}
+              {best ? <div><small>Evidence</small><strong>{best.pulseProtected ? "Prefunded" : evidenceLabel(best)}</strong></div> : null}
             </div>
-            <div className="drop-value"><small>{best ? "Reward" : "Inventory"}</small><strong>{best ? formatUsdFromCredits(best.baseRewardCredits) : primaryChannel ? "Live" : "Closed"}</strong></div>
+            <div className="drop-value"><small>{best ? "Extra reward" : "Turbo"}</small><strong>{best ? formatUsdFromCredits(best.baseRewardCredits) : primaryChannel ? "Live" : "Idle"}</strong></div>
           </div>
           {best?.pulseProtected ? (
             <form action="/api/direct/start" method="post" className="direct-start-form">
               <input type="hidden" name="campaign" value={best.externalId} />
-              <button className="button button-light direct-primary-action" type="submit">Start protected Drop <ArrowUpRight /></button>
+              <button className="button button-light direct-primary-action" type="submit">Start Turbo <ArrowUpRight /></button>
             </form>
-          ) : primaryChannel ? <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open live inventory <ArrowUpRight /></a> : null}
+          ) : primaryChannel ? <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open Turbo <ArrowUpRight /></a> : <Link className="button button-light direct-primary-action" href="/dashboard">Back to your Pulse <ArrowUpRight /></Link>}
         </article>
 
         <aside className="drop-aside">
           <div>
-            <span className="app-eyebrow">Pulse selection</span>
-            <h3>Best use of your time.</h3>
-            <p>Stale inventory is hidden. New offers start conservatively. Direct campaigns reserve funded budget before the user is sent to the advertiser.</p>
-            <div className="time-options" aria-label="Opportunity selection dimensions"><span className="time-option active">Fresh</span><span className="time-option">Value</span><span className="time-option">Evidence</span><span className="time-option">Protected</span></div>
+            <span className="app-eyebrow">Pulse router</span>
+            <h3>Less inventory. Better opportunities.</h3>
+            <p>External providers stay replaceable. Pulse can rank partner CPA, direct campaigns and future supply behind one consistent experience.</p>
+            <div className="time-options" aria-label="Turbo selection dimensions"><span className="time-option active">Value</span><span className="time-option">Fresh</span><span className="time-option">Reliable</span><span className="time-option">Fast</span></div>
           </div>
-          {best?.pulseProtected ? <span className="status-pill"><Shield /> Budget reserved on start</span> : primaryChannel ? <span className="status-pill"><Shield /> Partner route verified</span> : <span className="status-pill"><Shield /> Waiting for live route</span>}
+          <span className="status-pill"><Shield /> Base Pulse never requires Turbo</span>
         </aside>
       </section>
 
       {quickWins.length ? (
         <section className="app-section intelligence-section">
-          <div className="app-section-head"><div><span className="app-eyebrow">Quick Wins</span><h2>Good options for the next 10 minutes.</h2></div><span className="status-pill"><Clock /> Time aware</span></div>
+          <div className="app-section-head"><div><span className="app-eyebrow">Fast Turbos</span><h2>Good use of a few spare minutes.</h2></div><span className="status-pill"><Clock /> Time aware</span></div>
           <div className="quick-win-grid">
             {quickWins.map((item) => (
               <article className={`quick-win-card ${item.pulseProtected ? "quick-win-protected" : ""}`} key={item.id}>
@@ -113,18 +107,16 @@ export default async function EarnPage({ searchParams }: Props) {
                 <h3>{item.title}</h3>
                 <div className="quick-win-value"><strong>{formatUsdFromCredits(item.baseRewardCredits)}</strong><span>~{item.estimatedMinutes} min</span></div>
                 <div className="quick-win-foot"><span>{item.expectedCreditsPerMinute == null ? "Value learning" : `${formatUsdFromCredits(item.expectedCreditsPerMinute)} expected / min`}</span><b>{Math.round(item.confidence * 100)}%</b></div>
-                {item.pulseProtected ? <form action="/api/direct/start" method="post" className="direct-start-form compact"><input type="hidden" name="campaign" value={item.externalId} /><button className="inline-action direct-inline-action" type="submit">Start protected <ArrowUpRight /></button></form> : null}
+                {item.pulseProtected ? <form action="/api/direct/start" method="post" className="direct-start-form compact"><input type="hidden" name="campaign" value={item.externalId} /><button className="inline-action direct-inline-action" type="submit">Start Turbo <ArrowUpRight /></button></form> : null}
               </article>
             ))}
           </div>
         </section>
       ) : null}
 
-      {activeTreasury ? <section className="earn-feature"><div><span className="section-kicker">Pulse Boost Pool</span><h2>{formatUsdFromCredits(activeTreasury.availableCredits)} is currently available for controlled reward boosts.</h2><p>Boosts remain budget-backed and can stop automatically when the configured limit is reached.</p></div><div className="earn-feature-metric"><strong>{formatUsdFromCredits(activeTreasury.availableCredits)}</strong><span>available</span></div></section> : null}
-
       {topRanked.length ? (
         <section className="app-section intelligence-section">
-          <div className="app-section-head"><div><span className="app-eyebrow">Opportunity Intelligence</span><h2>Fresh opportunities, evidence weighted.</h2></div><span className="status-pill"><Trend /> Quality adjusted</span></div>
+          <div className="app-section-head"><div><span className="app-eyebrow">Turbo intelligence</span><h2>Only evidence-weighted inventory.</h2></div><span className="status-pill"><Trend /> Quality adjusted</span></div>
           <div className="reward-list">
             {topRanked.map((item, index) => (
               <article className={`reward-row intelligence-row ${item.pulseProtected ? "direct-opportunity-row" : ""}`} key={item.id}>
@@ -138,11 +130,9 @@ export default async function EarnPage({ searchParams }: Props) {
             ))}
           </div>
         </section>
-      ) : (
-        <section className="earn-feature"><div><span className="section-kicker">Truthful inventory</span><h2>No normalized opportunity is being fabricated to make the exchange look busy.</h2><p>{primaryChannel ? "The connected provider route is live above; normalized ranking appears as fresh catalog evidence becomes available." : "The product remains useful without pretending inventory exists."}</p></div><div className="earn-feature-metric"><strong>0</strong><span>simulated offers</span></div></section>
-      )}
+      ) : null}
 
-      <section className="earning-principles"><article><span>01</span><h3>Direct means funded first.</h3><p>Pulse Direct campaigns cannot go live until operator-verified advertiser funding can cover at least one complete action.</p></article><article><span>02</span><h3>Protected means reserved.</h3><p>Starting a direct Drop reserves its full advertiser spend for that session before redirecting the user.</p></article><article><span>03</span><h3>Settlement stays atomic.</h3><p>A verified callback spends campaign budget and creates the user ledger reward inside one database transaction.</p></article></section>
+      <section className="earning-principles"><article><span>01</span><h3>Pulse first.</h3><p>The base reward is a Pulse product and does not require an offer completion.</p></article><article><span>02</span><h3>Turbo is optional.</h3><p>Use it only when the expected extra reward is worth your time.</p></article><article><span>03</span><h3>Providers stay invisible.</h3><p>Pulse owns the experience and ledger while external supply remains replaceable infrastructure.</p></article></section>
     </AppShell>
   );
 }

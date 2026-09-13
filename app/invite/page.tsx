@@ -62,11 +62,11 @@ export default async function InvitePage() {
 
   return (
     <AppShell active="invite">
-      <div className="app-page-head"><div><span className="app-eyebrow">Quality referrals</span><h1>Grow your crew.</h1><p>Referral rewards are created only after a provider-confirmed first earning conversion—not just a signup.</p></div></div>
+      <div className="app-page-head"><div><span className="app-eyebrow">Quality growth</span><h1>Share your rhythm.</h1><p>A signup alone is worth nothing. Referral rewards unlock only after a friend creates real, verified monetized activity.</p></div></div>
 
       <section className="invite-hero-card">
         <div className="invite-hero-icon"><Users /></div>
-        <h2>{referralLink ? "Your verified invite link" : user ? "Invite link setup is not complete" : "Sign in to get your invite link"}</h2>
+        <h2>{referralLink ? "Your Pulse invite" : user ? "Invite link setup is not complete" : "Sign in to get your invite link"}</h2>
         {referralLink ? (
           <div className="referral-box"><code>{referralLink}</code><CopyReferralLink value={referralLink} /></div>
         ) : user ? (
@@ -75,15 +75,15 @@ export default async function InvitePage() {
           <Link className="button button-light" href="/auth?next=/invite">Sign in to continue</Link>
         )}
         {inviterBonus !== null && inviteeBonus !== null ? (
-          <p>You receive {formatUsdFromCredits(inviterBonus)} and your friend receives {formatUsdFromCredits(inviteeBonus)} after the first confirmed earning conversion. A qualifying chargeback reverses both bonuses.</p>
+          <p>You receive {formatUsdFromCredits(inviterBonus)} and your friend receives {formatUsdFromCredits(inviteeBonus)} after the first confirmed Turbo conversion. If that qualifying conversion is reversed, both bonuses are reversed too.</p>
         ) : (
           <p>Bonus values appear only after the live referral reward configuration is available.</p>
         )}
       </section>
 
-      <section className="referral-stats"><article><span>Verified friends</span><strong>{user ? rewarded : "—"}</strong><small>{user ? "bonus earned" : "sign in required"}</small></article><article><span>Pending</span><strong>{user ? pending : "—"}</strong><small>{user ? "waiting for first conversion" : "sign in required"}</small></article><article><span>Referral rewards</span><strong>{user ? formatUsdFromCredits(referralCredits) : "—"}</strong><small>{user ? "net of reversals" : "live ledger required"}</small></article><article><span>Reversed</span><strong>{user ? reversed : "—"}</strong><small>{user ? "qualifying conversion reversed" : "sign in required"}</small></article></section>
+      <section className="referral-stats"><article><span>Verified friends</span><strong>{user ? rewarded : "—"}</strong><small>{user ? "real activity qualified" : "sign in required"}</small></article><article><span>Pending</span><strong>{user ? pending : "—"}</strong><small>{user ? "waiting for verified Turbo" : "sign in required"}</small></article><article><span>Referral rewards</span><strong>{user ? formatUsdFromCredits(referralCredits) : "—"}</strong><small>{user ? "net of reversals" : "live ledger required"}</small></article><article><span>Reversed</span><strong>{user ? reversed : "—"}</strong><small>{user ? "qualifying event reversed" : "sign in required"}</small></article></section>
 
-      <section className="milestones"><div className="app-section-head"><div><span className="app-eyebrow">Crew milestones</span><h2>Visible progress, no fake promises</h2></div></div>{milestones.map(([n,title]) => { const done = Boolean(user) && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified active {n === 1 ? "referral" : "referrals"}</small></div><b>{!user ? "Sign in" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</section>
+      <section className="milestones"><div className="app-section-head"><div><span className="app-eyebrow">Crew milestones</span><h2>Progress built on real people</h2></div></div>{milestones.map(([n,title]) => { const done = Boolean(user) && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified active {n === 1 ? "referral" : "referrals"}</small></div><b>{!user ? "Sign in" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</section>
     </AppShell>
   );
 }
