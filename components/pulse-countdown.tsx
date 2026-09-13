@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 function remainingMs(target: string | null) {
   if (!target) return 0;
@@ -18,11 +18,9 @@ function formatRemaining(ms: number) {
 }
 
 export function PulseCountdown({ target }: { target: string | null }) {
-  const initial = useMemo(() => remainingMs(target), [target]);
-  const [remaining, setRemaining] = useState(initial);
+  const [remaining, setRemaining] = useState(() => remainingMs(target));
 
   useEffect(() => {
-    setRemaining(remainingMs(target));
     const timer = window.setInterval(() => setRemaining(remainingMs(target)), 1000);
     return () => window.clearInterval(timer);
   }, [target]);
