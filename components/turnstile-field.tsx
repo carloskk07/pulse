@@ -82,6 +82,7 @@ export function TurnstileField({ action }: { action: string }) {
 
   useEffect(() => {
     if (!siteKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus("error");
       return;
     }
