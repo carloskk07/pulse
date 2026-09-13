@@ -49,6 +49,20 @@ The endpoint validates `X-Ayetstudios-Security-Hash` with HMAC-SHA256 using the 
 
 A missing/mismatched rate is rejected as `reward-rate-mismatch`. A mismatched event amount is rejected as `reward-amount-mismatch`. Neither path may create sandbox transport evidence or production financial state.
 
+## Which ayeT test proves what
+
+Use **Sandbox Identifier** for the Pulse provider preflight. ayeT documents that this mode opens predefined sandbox offers, generates regular callbacks with fake payout/user currency, and appends `is_sandbox=1`. That exercises the actual Offerwall user → offer → callback route while Pulse safely discards the financial result.
+
+Do **not** use the standalone **Callback Tester** as proof of `ayet_transport`. It is useful for checking that a URL can receive a postback, but ayeT's tester may populate synthetic fields independently (for example `payout_usd=0` with a non-zero `currency_amount`). That does not prove the live Offerwall reward contract that Pulse intentionally validates.
+
+Therefore:
+
+```text
+Callback Tester   = diagnostic only
+Sandbox Identifier = ayet_transport authority
+Real conversion    = ayet_callback authority
+```
+
 ## Authority rules
 
 - For production conversions, `external_identifier` must be the authenticated Supabase user UUID.
@@ -71,11 +85,12 @@ A missing/mismatched rate is rejected as `reward-rate-mismatch`. A mismatched ev
 2. Add the callback URL above, including `{currency_amount}`, `{currency_conversion_rate}` and `{adslot_id}`.
 3. Keep provider-side currency sales/multipliers disabled for this MVP contract.
 4. Enable reversal/chargeback callbacks for the same placement before treating the integration as launch-ready.
-5. Configure a sandbox identifier in ayeT and trigger one sandbox offer.
-6. Confirm `/admin/product` reports that ayeT HMAC, adslot, rate and exact reward preflight are proven while **Real earning proof** remains blocked.
-7. Open the live offerwall as a signed-in Pulse user so `externalIdentifier` is that user's Supabase UUID.
-8. Complete one real payable action.
-9. Confirm the callback created a confirmed monetization event, an available ledger entry and current `ayet_callback` evidence.
+5. Configure a **Sandbox Identifier** in ayeT and open the Web Offerwall using that identifier.
+6. Trigger one of ayeT's predefined sandbox offers. Do not substitute the standalone Callback Tester for this gate.
+7. Confirm `/admin/product` reports that ayeT HMAC, adslot, rate and exact reward preflight are proven while **Real earning proof** remains blocked.
+8. Open the live offerwall as a signed-in Pulse user so `externalIdentifier` is that user's Supabase UUID.
+9. Complete one real payable action.
+10. Confirm the callback created a confirmed monetization event, an available ledger entry and current `ayet_callback` evidence.
 
 ## Database
 
