@@ -21,3 +21,11 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - name: Package source for Netlify bootstrap
+        run: git archive --format=zip --output=pulse-source.zip HEAD
+      - name: Upload bootstrap source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-source
+          path: pulse-source.zip
+          retention-days: 1
