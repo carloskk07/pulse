@@ -3,6 +3,7 @@ import type { MonetizationProvider, NormalizedConversion } from "./contracts";
 
 const PROVIDER = "ayet";
 const CREDITS_PER_USD = 1000;
+const MICROS_PER_UNIT = 1_000_000;
 
 function sortedQueryString(url: URL) {
   const entries = [...url.searchParams.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -24,9 +25,19 @@ function decimalToMicros(value: string | null | undefined) {
   const sign = match[1] === "-" ? -1 : 1;
   const whole = Number(match[2]);
   const fraction = Number((match[3] ?? "").padEnd(6, "0").slice(0, 6));
-  const micros = whole * 1_000_000 + fraction;
+  const micros = whole * MICROS_PER_UNIT + fraction;
   if (!Number.isSafeInteger(micros)) throw new Error("DECIMAL_OUT_OF_RANGE");
   return sign * micros;
+}
+
+function wholeCreditsFromCurrencyAmount(value: string | null) {
+  if (!value) throw new Error("MISSING_CURRENCY_AMOUNT");
+  const micros = decimalToMicros(value);
+  if (micros <= 0) throw new Error("NON_POSITIVE_CURRENCY_AMOUNT");
+  if (micros % MICROS_PER_UNIT !== 0) throw new Error("FRACTIONAL_CURRENCY_AMOUNT");
+  const credits = micros / MICROS_PER_UNIT;
+  if (!Number.isSafeInteger(credits) || credits <= 0) throw new Error("CURRENCY_AMOUNT_OUT_OF_RANGE");
+  return credits;
 }
 
 function rewardShareBps() {
@@ -36,11 +47,7 @@ function rewardShareBps() {
 }
 
 function expectedCurrencyRateMicros() {
-  return Math.round((CREDITS_PER_USD * rewardShareBps() * 1_000_000) / 10_000);
-}
-
-function rewardCreditsForPayout(payoutUsdMicros: number) {
-  return Math.floor((Math.abs(payoutUsdMicros) * CREDITS_PER_USD * rewardShareBps()) / 10_000 / 1_000_000);
+  return Math.round((CREDITS_PER_USD * rewardShareBps() * MICROS_PER_UNIT) / 10_000);
 }
 
 function callbackType(url: URL): "conversion" | "chargeback" {
@@ -78,6 +85,7 @@ export class AyetProvider implements MonetizationProvider {
     if (type === "conversion" && !userId) throw new Error("MISSING_USER_ID");
 
     const payoutUsdMicros = decimalToMicros(url.searchParams.get("payout_usd"));
+    const rewardCredits = type === "conversion" ? wholeCreditsFromCurrencyAmount(url.searchParams.get("currency_amount")) : 0;
     const originalExternalId = type === "chargeback" ? transactionId.replace(/^r-/, "") : undefined;
 
     return {
@@ -87,7 +95,7 @@ export class AyetProvider implements MonetizationProvider {
       callbackType: type,
       userId,
       payoutUsdMicros,
-      rewardCredits: type === "conversion" ? rewardCreditsForPayout(payoutUsdMicros) : 0,
+      rewardCredits,
       status: type === "chargeback" ? "reversed" : "confirmed",
       occurredAt: callbackTime(url),
       raw: Object.fromEntries(url.searchParams.entries()),
@@ -104,17 +112,22 @@ export function isAyetRewardRateAligned(value: string | undefined) {
   }
 }
 
-export function isAyetRewardAmountAligned(value: string | undefined, rewardCredits: number) {
-  if (!value || !Number.isSafeInteger(rewardCredits) || rewardCredits <= 0) return false;
-  try {
-    return decimalToMicros(value) === rewardCredits * 1_000_000;
-  } catch {
-    return false;
-  }
+export function isAyetRewardEconomicallyAligned(payoutUsdMicros: number, rewardCredits: number) {
+  if (!Number.isSafeInteger(payoutUsdMicros) || payoutUsdMicros <= 0 || !Number.isSafeInteger(rewardCredits) || rewardCredits <= 0) return false;
+
+  const expectedCurrencyMicros = (BigInt(payoutUsdMicros) * BigInt(expectedCurrencyRateMicros())) / BigInt(MICROS_PER_UNIT);
+  const actualCurrencyMicros = BigInt(rewardCredits) * BigInt(MICROS_PER_UNIT);
+  const difference = actualCurrencyMicros >= expectedCurrencyMicros
+    ? actualCurrencyMicros - expectedCurrencyMicros
+    : expectedCurrencyMicros - actualCurrencyMicros;
+
+  // ayeT can round a 0-decimal virtual currency to a whole unit. Accept only a
+  // sub-credit rounding difference; anything larger indicates contract drift.
+  return difference < BigInt(MICROS_PER_UNIT);
 }
 
 export function getAyetExpectedCurrencyRate() {
-  return expectedCurrencyRateMicros() / 1_000_000;
+  return expectedCurrencyRateMicros() / MICROS_PER_UNIT;
 }
 
 export function buildAyetOfferwallUrl(userId: string) {
