@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./styles/pulse-v3-marketing.css";
 
 function getMetadataBase() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -22,18 +23,22 @@ function getMetadataBase() {
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
   title: {
-    default: "Reward Pulse — Your spare minutes have value",
+    default: "Reward Pulse — Come back. Claim your Pulse.",
     template: "%s · Reward Pulse",
   },
   description:
-    "Complete simple quests, build your streak and turn spare minutes into real rewards.",
+    "A treasury-backed recurring reward network with optional Turbo earning and transparent payout proof.",
   applicationName: "Reward Pulse",
   manifest: "/manifest.webmanifest",
-  keywords: ["rewards", "crypto rewards", "quests", "surveys", "earn online"],
-  twitter: { card: "summary_large_image", title: "Reward Pulse", description: "Your spare minutes have value." },
+  keywords: ["recurring rewards", "crypto rewards", "reward network", "hourly rewards", "transparent payouts"],
+  twitter: {
+    card: "summary_large_image",
+    title: "Reward Pulse",
+    description: "Come back. Claim your Pulse. Turbo only when you choose.",
+  },
   openGraph: {
     title: "Reward Pulse",
-    description: "Your spare minutes have value.",
+    description: "Treasury-backed recurring rewards with public proof and optional Turbo earning.",
     type: "website",
   },
   robots: { index: true, follow: true },
@@ -42,7 +47,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#080a0f",
+  themeColor: "#05070a",
   colorScheme: "dark",
 };
 
