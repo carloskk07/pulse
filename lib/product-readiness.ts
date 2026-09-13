@@ -1,8 +1,6 @@
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getAyetExpectedCurrencyRate } from "@/providers/ayet";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
-import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
 export type ProductReadinessCheck = {
   id: string;
@@ -25,9 +23,7 @@ function configured(...keys: string[]) {
 
 export async function getProductReadiness(): Promise<ProductReadiness> {
   const checks: ProductReadinessCheck[] = [];
-  const provider = getPrimaryConfiguredRewardProvider();
   const payout = getFaucetPayPackConfig();
-  const expectedAyetRate = provider?.id === "ayet" ? getAyetExpectedCurrencyRate() : null;
 
   checks.push({
     id: "auth",
@@ -40,12 +36,6 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     label: "Human verification configuration",
     pass: configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
     detail: "Turnstile must be configured for production claims and sensitive actions.",
-  });
-  checks.push({
-    id: "earning-route",
-    label: "Real earning route",
-    pass: Boolean(provider),
-    detail: provider ? `Configured provider: ${provider.id}.` : "At least one real earning provider must be configured.",
   });
   checks.push({
     id: "payout-pack",
@@ -66,20 +56,50 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     };
   }
 
-  const [proofResult, monetizationResult, withdrawalResult] = await Promise.all([
+  const [proofResult, pulseConfigResult, treasuryResult, pulseClaimResult, monetizationResult, withdrawalResult] = await Promise.all([
     admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
+    admin.from("app_config").select("value").eq("key", "hourly_pulse").maybeSingle(),
+    admin.from("reward_treasuries").select("funded_credits,reserved_credits,spent_credits,daily_budget_credits,max_user_daily_credits,enabled,kill_switch").eq("code", "launch").maybeSingle(),
+    admin.from("pulse_claims").select("id", { count: "exact", head: true }),
     admin.from("monetization_events").select("id", { count: "exact", head: true }).eq("status", "confirmed"),
     admin.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "paid"),
   ]);
 
+  const config = pulseConfigResult.data?.value as { credits?: number | string; interval_minutes?: number | string; treasury_code?: string } | null | undefined;
+  const rewardCredits = Number(config?.credits ?? 0);
+  const intervalMinutes = Number(config?.interval_minutes ?? 0);
+  const pulseConfigured = !pulseConfigResult.error && rewardCredits > 0 && intervalMinutes >= 15 && Boolean(config?.treasury_code);
+
+  const treasury = treasuryResult.data;
+  const availableTreasury = Number(treasury?.funded_credits ?? 0) - Number(treasury?.reserved_credits ?? 0) - Number(treasury?.spent_credits ?? 0);
+  const treasuryReady = !treasuryResult.error && Boolean(
+    treasury?.enabled === true &&
+    treasury?.kill_switch === false &&
+    Number(treasury?.daily_budget_credits ?? 0) > 0 &&
+    Number(treasury?.max_user_daily_credits ?? 0) > 0 &&
+    availableTreasury >= rewardCredits &&
+    rewardCredits > 0
+  );
+
   const proof = proofResult.data?.value;
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
-  const providerTransportProof = provider?.id === "ayet" && !proofResult.error && releaseEvidenceMatches(proof, "ayet_transport");
-  const providerProof = Boolean(provider?.evidenceKey) && !proofResult.error && releaseEvidenceMatches(proof, provider!.evidenceKey!);
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
+  const pulseClaims = pulseClaimResult.error ? 0 : Number(pulseClaimResult.count ?? 0);
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
   const paidWithdrawals = withdrawalResult.error ? 0 : Number(withdrawalResult.count ?? 0);
 
+  checks.push({
+    id: "hourly-pulse-config",
+    label: "Hourly Pulse contract",
+    pass: pulseConfigured,
+    detail: pulseConfigured ? `${rewardCredits} credit(s) every ${intervalMinutes} rolling minutes.` : "Hourly Pulse needs a positive deterministic reward, rolling interval and treasury binding.",
+  });
+  checks.push({
+    id: "treasury",
+    label: "Funded reward treasury",
+    pass: treasuryReady,
+    detail: treasuryReady ? `${availableTreasury} funded credit(s) remain behind the launch treasury.` : "The launch treasury must contain real funded credits, positive safety limits and an open kill switch before claims are promised.",
+  });
   checks.push({
     id: "turnstile-proof",
     label: "Turnstile production proof",
@@ -87,16 +107,10 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     detail: turnstileProof ? "Current Turnstile configuration has controlled evidence." : "Current Turnstile configuration still needs controlled proof.",
   });
   checks.push({
-    id: "earning-proof",
-    label: "Real earning proof",
-    pass: providerProof && confirmedMonetizationEvents > 0,
-    detail: providerProof && confirmedMonetizationEvents > 0
-      ? `${confirmedMonetizationEvents} confirmed monetization event(s) exist with current provider evidence.`
-      : providerTransportProof
-        ? `ayeT sandbox preflight is proven for the current configuration, including HMAC, adslot binding, ${expectedAyetRate} credits/US$1 rate and exact event-reward alignment. A fresh production conversion must now credit the authoritative ledger.`
-        : provider?.id === "ayet"
-          ? `Run one ayeT sandbox callback after configuring currency_conversion_rate=${expectedAyetRate} and including currency_amount. It must prove HMAC, adslot, rate and exact event-reward alignment before the first real conversion.`
-          : "A real provider callback must credit at least one authoritative monetization event. A non-financial provider preflight may be used first without satisfying PRODUCT_READY.",
+    id: "pulse-proof",
+    label: "Real Hourly Pulse proof",
+    pass: pulseClaims > 0,
+    detail: pulseClaims > 0 ? `${pulseClaims} treasury-backed Hourly Pulse claim(s) exist in production.` : "At least one real treasury-backed Hourly Pulse claim must complete through the authoritative ledger.",
   });
   checks.push({
     id: "payout-proof",
