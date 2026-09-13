@@ -16,16 +16,16 @@ function safeHashEqual(left: string, right: string) {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function decimalToMicros(value: string | null) {
+function decimalToMicros(value: string | null | undefined) {
   if (!value) return 0;
   const normalized = value.trim();
   const match = normalized.match(/^(-?)(\d+)(?:\.(\d+))?$/);
-  if (!match) throw new Error("INVALID_PAYOUT");
+  if (!match) throw new Error("INVALID_DECIMAL");
   const sign = match[1] === "-" ? -1 : 1;
   const whole = Number(match[2]);
   const fraction = Number((match[3] ?? "").padEnd(6, "0").slice(0, 6));
   const micros = whole * 1_000_000 + fraction;
-  if (!Number.isSafeInteger(micros)) throw new Error("PAYOUT_OUT_OF_RANGE");
+  if (!Number.isSafeInteger(micros)) throw new Error("DECIMAL_OUT_OF_RANGE");
   return sign * micros;
 }
 
@@ -33,6 +33,10 @@ function rewardShareBps() {
   const configured = Number(process.env.AYET_REWARD_SHARE_BPS ?? "7000");
   if (!Number.isFinite(configured)) return 7000;
   return Math.max(0, Math.min(10_000, Math.round(configured)));
+}
+
+function expectedCurrencyRateMicros() {
+  return Math.round((CREDITS_PER_USD * rewardShareBps() * 1_000_000) / 10_000);
 }
 
 function rewardCreditsForPayout(payoutUsdMicros: number) {
@@ -89,6 +93,28 @@ export class AyetProvider implements MonetizationProvider {
       raw: Object.fromEntries(url.searchParams.entries()),
     };
   }
+}
+
+export function isAyetRewardRateAligned(value: string | undefined) {
+  if (!value) return false;
+  try {
+    return decimalToMicros(value) === expectedCurrencyRateMicros();
+  } catch {
+    return false;
+  }
+}
+
+export function isAyetRewardAmountAligned(value: string | undefined, rewardCredits: number) {
+  if (!value || !Number.isSafeInteger(rewardCredits) || rewardCredits <= 0) return false;
+  try {
+    return decimalToMicros(value) === rewardCredits * 1_000_000;
+  } catch {
+    return false;
+  }
+}
+
+export function getAyetExpectedCurrencyRate() {
+  return expectedCurrencyRateMicros() / 1_000_000;
 }
 
 export function buildAyetOfferwallUrl(userId: string) {
