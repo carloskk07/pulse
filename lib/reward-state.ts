@@ -91,10 +91,9 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
   if (!user) return { ...disconnectedSnapshot, preview: false };
 
   const admin = createSupabaseAdminClient();
-  const [balanceResult, pulseClaimsResult, legacyClaimsResult, profileResult, pulseConfigResult] = await Promise.all([
+  const [balanceResult, pulseClaimsResult, profileResult, pulseConfigResult] = await Promise.all([
     supabase.from("user_balances").select("available_credits,pending_credits").eq("user_id", user.id).maybeSingle(),
     supabase.from("pulse_claims").select("created_at,reward_credits").eq("user_id", user.id).order("created_at", { ascending: false }).limit(200),
-    supabase.from("claims").select("claim_day,reward_credits").eq("user_id", user.id).order("claim_day", { ascending: false }).limit(60),
     supabase.from("profiles").select("handle,trust_level,risk_score").eq("id", user.id).maybeSingle(),
     admin ? admin.from("app_config").select("value").eq("key", "hourly_pulse").maybeSingle() : Promise.resolve({ data: null }),
   ]);
@@ -111,16 +110,11 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
     : { data: null };
 
   const pulseClaims = pulseClaimsResult.data ?? [];
-  const legacyClaims = legacyClaimsResult.data ?? [];
   const lastClaimAt = pulseClaims[0]?.created_at ? new Date(String(pulseClaims[0].created_at)) : null;
   const nextClaimDate = lastClaimAt ? new Date(lastClaimAt.getTime() + claimIntervalMinutes * 60_000) : null;
   const claimReady = !nextClaimDate || nextClaimDate.getTime() <= Date.now();
   const nextClaimAt = claimReady ? null : nextClaimDate?.toISOString() ?? null;
-
-  const claimDays = [
-    ...pulseClaims.map((claim) => utcDay(new Date(String(claim.created_at)))),
-    ...legacyClaims.map((claim) => String(claim.claim_day)),
-  ];
+  const claimDays = pulseClaims.map((claim) => utcDay(new Date(String(claim.created_at))));
 
   const treasury = treasuryResult.data;
   const availableTreasury = Number(treasury?.funded_credits ?? 0) - Number(treasury?.reserved_credits ?? 0) - Number(treasury?.spent_credits ?? 0);
