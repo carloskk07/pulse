@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateHandle } from "./actions";
 
@@ -22,7 +23,11 @@ export default async function AccountPage({ searchParams }: Props) {
   if (!supabase) redirect("/auth?next=/account");
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth?next=/account");
-  const { data: profile } = await supabase.from("profiles").select("handle,trust_level,created_at").eq("id", user.id).maybeSingle();
+
+  const admin = createSupabaseAdminClient();
+  const { data: profile } = admin
+    ? await admin.from("profiles").select("handle,trust_level,created_at").eq("id", user.id).maybeSingle()
+    : { data: null };
 
   return <AppShell active="account">
     <div className="app-page-head"><div><span className="app-eyebrow">Account</span><h1>Your account.</h1><p>Identity, support and privacy controls in one place.</p></div></div>
