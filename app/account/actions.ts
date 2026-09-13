@@ -17,16 +17,3 @@ export async function updateHandle(formData: FormData) {
   const { error } = await admin.from("profiles").update({ handle, updated_at: new Date().toISOString() }).eq("id", user.id);
   redirect(error ? "/account?state=handle-unavailable" : "/account?state=profile-updated");
 }
-
-export async function updatePassword(formData: FormData) {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) redirect("/account?state=unavailable");
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/account");
-
-  const password = String(formData.get("password") ?? "");
-  const confirm = String(formData.get("confirm") ?? "");
-  if (password.length < 10 || password !== confirm) redirect("/account?reset=1&state=invalid-password");
-  const { error } = await supabase.auth.updateUser({ password });
-  redirect(error ? "/account?reset=1&state=password-failed" : "/account?state=password-updated");
-}
