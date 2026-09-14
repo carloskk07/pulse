@@ -81,7 +81,7 @@ npm run build
 
 Production is intentionally moving away from Vercel's automatic Git build path. `vercel.json` disables automatic Git deployments so that a validated external CI pipeline can build the Vercel output on GitHub Actions and upload the prebuilt artifact to production. This avoids consuming Vercel build capacity for every repository push while preserving the Vercel runtime and `pulsercuit.pro` domain.
 
-The checked-in `vercel-prebuilt.yml` is a non-destructive validation scaffold until the repository deployment credential is configured. Production must not be switched to the prebuilt path until that credential is present and one controlled deployment has completed successfully.
+The repository deployment credential is configured in GitHub Actions. The checked-in `vercel-prebuilt.yml` now remains gated on one successful controlled production deployment and canonical health check before this path is considered proven.
 
 ## Environment variables
 
