@@ -4,6 +4,7 @@ import "./styles/pulse-v3-marketing.css";
 import "./styles/pulsercuit-v4.css";
 import "./styles/pulsercuit-v4-1.css";
 import "./styles/pulsercuit-v4-2.css";
+import "./styles/pulsercuit-v5.css";
 
 function getMetadataBase() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -26,22 +27,22 @@ function getMetadataBase() {
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
   title: {
-    default: "Pulsercuit — Return. Pulse. Repeat.",
+    default: "Pulsercuit — Turn consistency into momentum",
     template: "%s · Pulsercuit",
   },
   description:
-    "Pulsercuit is a treasury-backed recurring reward network built around a simple return rhythm, optional Turbo earning and public proof.",
+    "Pulsercuit is a premium reward platform built around a clear return loop: claim funded Pulses, build visible progress and move toward transparent payouts.",
   applicationName: "Pulsercuit",
   manifest: "/manifest.webmanifest",
-  keywords: ["recurring rewards", "reward network", "hourly rewards", "transparent payouts", "Pulsercuit", "Pulse"],
+  keywords: ["reward platform", "recurring rewards", "hourly rewards", "transparent payouts", "Pulsercuit", "Pulse rewards"],
   twitter: {
     card: "summary_large_image",
-    title: "Pulsercuit",
-    description: "Return. Pulse. Repeat. Turbo only when you choose.",
+    title: "Pulsercuit — Turn consistency into momentum",
+    description: "Return when your Pulse opens. Claim what is funded. Build visible progress. Withdraw with clarity.",
   },
   openGraph: {
-    title: "Pulsercuit",
-    description: "A transparent recurring reward circuit with treasury-backed Pulse rewards and optional Turbo earning.",
+    title: "Pulsercuit — Turn consistency into momentum",
+    description: "A premium reward loop built around funded Pulses, visible progress and transparent payout proof.",
     type: "website",
     siteName: "Pulsercuit",
   },
@@ -51,7 +52,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#040609",
+  themeColor: "#060708",
   colorScheme: "dark",
 };
 
