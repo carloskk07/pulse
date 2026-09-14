@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import {
   MIN_PASSWORD_LENGTH,
   PASSWORD_RECOVERY_COOKIE,
-  PASSWORD_RECOVERY_MAX_AGE_SECONDS,
   safeAuthNext,
   validNewPassword,
 } from "@/lib/auth-security";
@@ -139,14 +138,4 @@ export async function signOut() {
   const supabase = await createSupabaseServerClient();
   if (supabase) await supabase.auth.signOut();
   redirect("/");
-}
-
-export function recoveryCookieOptions() {
-  return {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: PASSWORD_RECOVERY_MAX_AGE_SECONDS,
-  };
 }
