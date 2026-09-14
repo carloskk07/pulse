@@ -10,3 +10,13 @@ export function safeAuthNext(value: string | null | undefined, fallback = "/dash
 export function validNewPassword(password: string) {
   return password.length >= MIN_PASSWORD_LENGTH;
 }
+
+export function recoveryCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: PASSWORD_RECOVERY_MAX_AGE_SECONDS,
+  };
+}
