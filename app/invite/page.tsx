@@ -6,7 +6,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
-export const metadata = { title: "Invite" };
+export const metadata = { title: "Share" };
 
 function configuredSiteUrl() {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -58,37 +58,44 @@ export default async function InvitePage() {
 
   const site = configuredSiteUrl();
   const referralLink = user && referralCode && site ? `${site}/r/${referralCode}` : null;
-  const milestones = [[1, "First verified friend"], [3, "Small crew"], [5, "Momentum"], [10, "Circuit builder"]] as const;
+  const milestones = [[1, "First connection"], [3, "Inner circle"], [5, "Momentum crew"], [10, "Circuit builder"]] as const;
 
   return (
     <AppShell active="invite">
-      <div className="app-page-head"><div><span className="app-eyebrow">Quality growth</span><h1>Grow your circuit.</h1><p>Share a real product rhythm, not a signup bounty. Referral rewards unlock only after verified monetized activity.</p></div></div>
+      <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Share</span><h1>Make your momentum contagious.</h1><p>One link. Real people. Verified milestones.</p></div></div>
 
-      <section className="invite-hero-card">
+      <section className="invite-hero-card pc-luxe-invite-hero">
         <div className="invite-hero-icon"><Users /></div>
-        <h2>{referralLink ? "Your Pulsercuit invite" : user ? "Invite link setup is not complete" : "Sign in to get your invite link"}</h2>
+        <span className="app-eyebrow">Your circuit link</span>
+        <h2>{referralLink ? "Invite someone into the climb." : user ? "Your share link is almost ready." : "Enter the circuit to start sharing."}</h2>
         {referralLink ? (
-          <div className="referral-box"><code>{referralLink}</code><CopyReferralLink value={referralLink} /></div>
+          <div className="referral-box pc-luxe-referral-box"><code>{referralLink}</code><CopyReferralLink value={referralLink} /></div>
         ) : user ? (
-          <div className="preview-banner">A referral link appears only when your live profile and production site URL are both available.</div>
+          <div className="preview-banner">The link appears when your live profile and production site URL are both available.</div>
         ) : (
           <Link className="button button-light" href="/auth?next=/invite">Sign in to continue</Link>
         )}
         {inviterBonus !== null && inviteeBonus !== null ? (
-          <p>You receive {formatUsdFromCredits(inviterBonus)} and your friend receives {formatUsdFromCredits(inviteeBonus)} after the first confirmed Turbo conversion. If that qualifying conversion is reversed, both bonuses are reversed too.</p>
+          <p>After the first confirmed Turbo conversion: you receive {formatUsdFromCredits(inviterBonus)} and your friend receives {formatUsdFromCredits(inviteeBonus)}. Reversed qualification reverses both bonuses.</p>
         ) : (
-          <p>Bonus values appear only after the live referral reward configuration is available.</p>
+          <p>Bonus values appear only when the live referral configuration is active.</p>
         )}
       </section>
 
-      <section className="pc-share-preview" aria-label="Pulsercuit share experience">
-        <article className="pc-share-card"><small>Share moment</small><h3>Bring someone into your <em>rhythm.</em></h3><p>The invite itself never promises a reward. Qualification remains tied to real, verified activity.</p></article>
-        <article className="pc-share-card"><small>Quality signal</small><h3>{user ? `${rewarded} verified` : "Sign in"}</h3><p>{user ? "Only qualified referrals count toward milestones." : "Your real referral progress appears after sign-in."}</p></article>
+      <section className="pc-luxe-share-stats">
+        <article><small>Verified</small><strong>{user ? rewarded : "—"}</strong><span>real active referrals</span></article>
+        <article><small>Pending</small><strong>{user ? pending : "—"}</strong><span>awaiting qualification</span></article>
+        <article><small>Referral value</small><strong>{user ? formatUsdFromCredits(referralCredits) : "—"}</strong><span>net ledger value</span></article>
       </section>
 
-      <section className="referral-stats"><article><span>Verified friends</span><strong>{user ? rewarded : "—"}</strong><small>{user ? "real activity qualified" : "sign in required"}</small></article><article><span>Pending</span><strong>{user ? pending : "—"}</strong><small>{user ? "waiting for verified Turbo" : "sign in required"}</small></article><article><span>Referral rewards</span><strong>{user ? formatUsdFromCredits(referralCredits) : "—"}</strong><small>{user ? "net of reversals" : "live ledger required"}</small></article><article><span>Reversed</span><strong>{user ? reversed : "—"}</strong><small>{user ? "qualifying event reversed" : "sign in required"}</small></article></section>
+      <section className="pc-share-preview pc-luxe-referral-preview" aria-label="Pulsercuit share experience">
+        <article className="pc-share-card pc-luxe-share-poster"><small>Share preview</small><h3>Bring someone into your <em>rhythm.</em></h3><p>Progress begins after real activity — not after an empty signup.</p></article>
+        <article className="pc-share-card pc-luxe-share-score"><small>Quality signal</small><h3>{user ? `${rewarded} verified` : "—"}</h3><p>{user ? "Only qualified referrals move the milestones." : "Sign in to reveal your progress."}</p></article>
+      </section>
 
-      <section className="milestones"><div className="app-section-head"><div><span className="app-eyebrow">Circuit milestones</span><h2>Progress built on real people</h2></div></div>{milestones.map(([n,title]) => { const done = Boolean(user) && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified active {n === 1 ? "referral" : "referrals"}</small></div><b>{!user ? "Sign in" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</section>
+      <section className="milestones pc-luxe-referral-milestones"><div className="app-section-head"><div><span className="app-eyebrow">Share milestones</span><h2>Build a real circle.</h2></div></div>{milestones.map(([n,title]) => { const done = Boolean(user) && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified {n === 1 ? "referral" : "referrals"}</small></div><b>{!user ? "Locked" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</section>
+
+      {user && reversed > 0 ? <div className="pc-luxe-reversal-note">{reversed} referral qualification{reversed === 1 ? " was" : "s were"} reversed and excluded from progress.</div> : null}
     </AppShell>
   );
 }
