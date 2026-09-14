@@ -45,3 +45,15 @@ jobs:
 
       - name: Deploy prebuilt output
         run: npx --yes vercel@latest deploy --prebuilt --prod --yes --archive=tgz --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+
+      - name: Verify canonical production health
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl --fail --silent --show-error https://pulsercuit.pro/api/health | grep --quiet '"service":"pulsercuit"'; then
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "Production health check did not converge to the Pulsercuit release."
+          exit 1
