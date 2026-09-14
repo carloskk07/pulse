@@ -6,6 +6,7 @@ import { Bolt, Home, Shield, Trend, Users, Wallet } from "./icons";
 
 const links = [
   { id: "home", href: "/dashboard", label: "Pulse", Icon: Home },
+  { id: "progress", href: "/progress", label: "Progress", Icon: Trend },
   { id: "earn", href: "/earn", label: "Turbo", Icon: Bolt },
   { id: "wallet", href: "/wallet", label: "Wallet", Icon: Wallet },
   { id: "invite", href: "/invite", label: "Invite", Icon: Users },
