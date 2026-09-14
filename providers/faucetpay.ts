@@ -21,17 +21,17 @@ export class FaucetPayApiError extends Error {
   }
 }
 
-function positiveInteger(value: string | undefined, fallback?: number) {
-  const parsed = Number(value ?? fallback);
+function positiveInteger(value: string | undefined) {
+  const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 export function getFaucetPayPackConfig() {
   const asset = (process.env.FAUCETPAY_PAYOUT_CURRENCY ?? "USDT").trim().toUpperCase();
-  const amountCredits = positiveInteger(process.env.FAUCETPAY_PAYOUT_CREDITS, 5000);
+  const amountCredits = positiveInteger(process.env.FAUCETPAY_PAYOUT_CREDITS);
   const amountSmallestUnits = positiveInteger(process.env.FAUCETPAY_PAYOUT_UNITS);
   const display = process.env.FAUCETPAY_PAYOUT_LABEL?.trim() ?? "";
-  const keyPresent = Boolean(process.env.FAUCETPAY_SCOPED_KEY);
+  const keyPresent = Boolean(process.env.FAUCETPAY_SCOPED_KEY?.trim());
 
   return {
     asset,
@@ -46,8 +46,8 @@ export class FaucetPayProvider implements PayoutProvider {
   readonly name = "faucetpay";
 
   private async request<T>(path: string, body: Record<string, unknown>): Promise<FaucetPayEnvelope<T>> {
-    const key = process.env.FAUCETPAY_SCOPED_KEY;
-    if (!key) throw new FaucetPayApiError("FaucetPay is not configured.", false);
+    const key = process.env.FAUCETPAY_SCOPED_KEY?.trim();
+    if (!key) throw new FaucetPayApiError("FaucetPay send authority is not configured.", false);
 
     let response: Response;
     try {
