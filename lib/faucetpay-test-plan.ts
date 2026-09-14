@@ -15,12 +15,20 @@ export type FaucetPayTestPlan = {
   payoutUsd: number | null;
   pulseRewardCredits: number | null;
   pulseIntervalMinutes: number | null;
+  treasuryCode: string | null;
   claimsFromZero: number | null;
   minimumElapsedMinutes: number | null;
   treasuryCreditsRequired: number | null;
   treasuryOvershootCredits: number | null;
+  fastestDayClaimCount: number | null;
+  minimumDailyBudgetCredits: number | null;
+  minimumUserDailyCapCredits: number | null;
   currentTreasuryAvailableCredits: number | null;
+  currentDailyBudgetCredits: number | null;
+  currentUserDailyCapCredits: number | null;
   treasuryDeficitCredits: number | null;
+  dailyBudgetDeficitCredits: number | null;
+  userDailyCapDeficitCredits: number | null;
   treasuryEnabled: boolean | null;
   treasuryKillSwitch: boolean | null;
   detail: string;
@@ -29,6 +37,11 @@ export type FaucetPayTestPlan = {
 function positiveInteger(value: unknown) {
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function nonNegativeInteger(value: unknown) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function classifyElapsed(minutes: number): FaucetPayTestFeasibility {
@@ -43,79 +56,117 @@ export async function getFaucetPayTestPlan(): Promise<FaucetPayTestPlan> {
   const payoutUsd = payoutCredits ? payoutCredits / CREDITS_PER_USD : null;
   const admin = createSupabaseAdminClient();
 
-  if (!payoutCredits) {
-    return {
-      feasibility: "AWAITING_PACK",
-      payoutCredits: null,
-      payoutUsd: null,
-      pulseRewardCredits: null,
-      pulseIntervalMinutes: null,
-      claimsFromZero: null,
-      minimumElapsedMinutes: null,
-      treasuryCreditsRequired: null,
-      treasuryOvershootCredits: null,
-      currentTreasuryAvailableCredits: null,
-      treasuryDeficitCredits: null,
-      treasuryEnabled: null,
-      treasuryKillSwitch: null,
-      detail: "No explicit payout-credit pack is configured. The planner will not invent one.",
-    };
-  }
+  const emptyOperational = {
+    treasuryCode: null,
+    claimsFromZero: null,
+    minimumElapsedMinutes: null,
+    treasuryCreditsRequired: null,
+    treasuryOvershootCredits: null,
+    fastestDayClaimCount: null,
+    minimumDailyBudgetCredits: null,
+    minimumUserDailyCapCredits: null,
+    currentTreasuryAvailableCredits: null,
+    currentDailyBudgetCredits: null,
+    currentUserDailyCapCredits: null,
+    treasuryDeficitCredits: null,
+    dailyBudgetDeficitCredits: null,
+    userDailyCapDeficitCredits: null,
+    treasuryEnabled: null,
+    treasuryKillSwitch: null,
+  };
 
   if (!admin) {
     return {
-      feasibility: "AWAITING_PULSE_CONTRACT",
+      feasibility: payoutCredits ? "AWAITING_PULSE_CONTRACT" : "AWAITING_PACK",
       payoutCredits,
       payoutUsd,
       pulseRewardCredits: null,
       pulseIntervalMinutes: null,
+      ...emptyOperational,
+      detail: payoutCredits
+        ? "Trusted database authority is unavailable, so the live Hourly Pulse contract cannot be used for planning."
+        : "No explicit payout-credit pack is configured and trusted database authority is unavailable. The planner will not invent either side of the test.",
+    };
+  }
+
+  const { data: pulseRow, error: pulseError } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", "hourly_pulse")
+    .maybeSingle();
+
+  const pulse = pulseRow?.value as {
+    credits?: number | string;
+    interval_minutes?: number | string;
+    treasury_code?: string;
+  } | null | undefined;
+  const pulseRewardCredits = positiveInteger(pulse?.credits);
+  const pulseIntervalMinutes = positiveInteger(pulse?.interval_minutes);
+  const treasuryCode = pulse?.treasury_code?.trim() || "launch";
+
+  const { data: treasury, error: treasuryError } = await admin
+    .from("reward_treasuries")
+    .select("funded_credits,reserved_credits,spent_credits,daily_budget_credits,max_user_daily_credits,enabled,kill_switch")
+    .eq("code", treasuryCode)
+    .maybeSingle();
+
+  const funded = nonNegativeInteger(treasury?.funded_credits);
+  const reserved = nonNegativeInteger(treasury?.reserved_credits);
+  const spent = nonNegativeInteger(treasury?.spent_credits);
+  const available = !treasuryError && funded !== null && reserved !== null && spent !== null
+    ? Math.max(0, funded - reserved - spent)
+    : null;
+  const currentDailyBudgetCredits = treasuryError ? null : nonNegativeInteger(treasury?.daily_budget_credits);
+  const currentUserDailyCapCredits = treasuryError ? null : nonNegativeInteger(treasury?.max_user_daily_credits);
+  const treasuryEnabled = treasuryError ? null : treasury?.enabled === true;
+  const treasuryKillSwitch = treasuryError ? null : treasury?.kill_switch === true;
+
+  const liveBase = {
+    payoutCredits,
+    payoutUsd,
+    pulseRewardCredits,
+    pulseIntervalMinutes,
+    treasuryCode,
+    currentTreasuryAvailableCredits: available,
+    currentDailyBudgetCredits,
+    currentUserDailyCapCredits,
+    treasuryEnabled,
+    treasuryKillSwitch,
+  };
+
+  if (!payoutCredits) {
+    return {
+      feasibility: "AWAITING_PACK",
+      ...liveBase,
       claimsFromZero: null,
       minimumElapsedMinutes: null,
       treasuryCreditsRequired: null,
       treasuryOvershootCredits: null,
-      currentTreasuryAvailableCredits: null,
+      fastestDayClaimCount: null,
+      minimumDailyBudgetCredits: null,
+      minimumUserDailyCapCredits: null,
       treasuryDeficitCredits: null,
-      treasuryEnabled: null,
-      treasuryKillSwitch: null,
-      detail: "Trusted database authority is unavailable, so the live Hourly Pulse contract cannot be used for planning.",
+      dailyBudgetDeficitCredits: null,
+      userDailyCapDeficitCredits: null,
+      detail: "No explicit payout-credit pack is configured. Live Pulse/Treasury state is shown for context, but the planner will not invent a target payout.",
     };
   }
-
-  const [{ data: pulseRow, error: pulseError }, { data: treasury, error: treasuryError }] = await Promise.all([
-    admin.from("app_config").select("value").eq("key", "hourly_pulse").maybeSingle(),
-    admin.from("reward_treasuries")
-      .select("funded_credits,reserved_credits,spent_credits,enabled,kill_switch")
-      .eq("code", "launch")
-      .maybeSingle(),
-  ]);
-
-  const pulse = pulseRow?.value as { credits?: number | string; interval_minutes?: number | string } | null | undefined;
-  const pulseRewardCredits = positiveInteger(pulse?.credits);
-  const pulseIntervalMinutes = positiveInteger(pulse?.interval_minutes);
-
-  const funded = Number(treasury?.funded_credits ?? 0);
-  const reserved = Number(treasury?.reserved_credits ?? 0);
-  const spent = Number(treasury?.spent_credits ?? 0);
-  const available = !treasuryError && Number.isFinite(funded) && Number.isFinite(reserved) && Number.isFinite(spent)
-    ? Math.max(0, funded - reserved - spent)
-    : null;
 
   if (pulseError || !pulseRewardCredits || !pulseIntervalMinutes) {
     return {
       feasibility: "AWAITING_PULSE_CONTRACT",
-      payoutCredits,
-      payoutUsd,
-      pulseRewardCredits,
-      pulseIntervalMinutes,
+      ...liveBase,
       claimsFromZero: null,
       minimumElapsedMinutes: null,
       treasuryCreditsRequired: null,
       treasuryOvershootCredits: null,
-      currentTreasuryAvailableCredits: available,
+      fastestDayClaimCount: null,
+      minimumDailyBudgetCredits: null,
+      minimumUserDailyCapCredits: null,
       treasuryDeficitCredits: null,
-      treasuryEnabled: treasuryError ? null : treasury?.enabled === true,
-      treasuryKillSwitch: treasuryError ? null : treasury?.kill_switch === true,
-      detail: "The live Hourly Pulse reward or rolling interval is not available as a positive integer, so no test duration was guessed.",
+      dailyBudgetDeficitCredits: null,
+      userDailyCapDeficitCredits: null,
+      detail: "The live Hourly Pulse reward or rolling interval is not available as a positive integer, so no test duration or budget was guessed.",
     };
   }
 
@@ -123,7 +174,17 @@ export async function getFaucetPayTestPlan(): Promise<FaucetPayTestPlan> {
   const minimumElapsedMinutes = Math.max(0, claimsFromZero - 1) * pulseIntervalMinutes;
   const treasuryCreditsRequired = claimsFromZero * pulseRewardCredits;
   const treasuryOvershootCredits = treasuryCreditsRequired - payoutCredits;
+  const theoreticalClaimsPerUtcDay = Math.ceil((24 * 60) / pulseIntervalMinutes);
+  const fastestDayClaimCount = Math.min(claimsFromZero, theoreticalClaimsPerUtcDay);
+  const minimumDailyBudgetCredits = fastestDayClaimCount * pulseRewardCredits;
+  const minimumUserDailyCapCredits = minimumDailyBudgetCredits;
   const treasuryDeficitCredits = available === null ? null : Math.max(0, treasuryCreditsRequired - available);
+  const dailyBudgetDeficitCredits = currentDailyBudgetCredits === null
+    ? null
+    : Math.max(0, minimumDailyBudgetCredits - currentDailyBudgetCredits);
+  const userDailyCapDeficitCredits = currentUserDailyCapCredits === null
+    ? null
+    : Math.max(0, minimumUserDailyCapCredits - currentUserDailyCapCredits);
   const feasibility = classifyElapsed(minimumElapsedMinutes);
 
   const durationText = feasibility === "SAME_DAY"
@@ -134,18 +195,17 @@ export async function getFaucetPayTestPlan(): Promise<FaucetPayTestPlan> {
 
   return {
     feasibility,
-    payoutCredits,
-    payoutUsd,
-    pulseRewardCredits,
-    pulseIntervalMinutes,
+    ...liveBase,
     claimsFromZero,
     minimumElapsedMinutes,
     treasuryCreditsRequired,
     treasuryOvershootCredits,
-    currentTreasuryAvailableCredits: available,
+    fastestDayClaimCount,
+    minimumDailyBudgetCredits,
+    minimumUserDailyCapCredits,
     treasuryDeficitCredits,
-    treasuryEnabled: treasuryError ? null : treasury?.enabled === true,
-    treasuryKillSwitch: treasuryError ? null : treasury?.kill_switch === true,
-    detail: `From a zero balance, the configured pack would require ${claimsFromZero.toLocaleString("en-US")} real Hourly Pulse claim(s) and is reachable ${durationText}. This is arithmetic planning only; it does not approve Treasury funding or assert a FaucetPay minimum payout.`,
+    dailyBudgetDeficitCredits,
+    userDailyCapDeficitCredits,
+    detail: `From a zero balance, the configured pack would require ${claimsFromZero.toLocaleString("en-US")} real Hourly Pulse claim(s) and is reachable ${durationText}. The daily budget and user-cap figures are the arithmetic minimums for one isolated test user on the fastest valid schedule; existing claims or reservations would require additional headroom. This planner does not approve any funding or assert a FaucetPay minimum payout.`,
   };
 }
