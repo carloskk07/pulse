@@ -1,12 +1,14 @@
+import { createReminderAttribution } from "@/lib/retention-attribution";
 import { buildReturnReminderCalendar } from "@/lib/return-reminder";
 import { getRewardSnapshot } from "@/lib/reward-state";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const state = await getRewardSnapshot();
+  const [state, supabase] = await Promise.all([getRewardSnapshot(), createSupabaseServerClient()]);
 
-  if (!state.signedIn || state.preview) {
+  if (!state.signedIn || state.preview || !supabase) {
     return new Response("Sign in is required to create a return reminder.", {
       status: 401,
       headers: { "Cache-Control": "private, no-store" },
@@ -27,7 +29,20 @@ export async function GET() {
     });
   }
 
-  const calendar = buildReturnReminderCalendar(state.nextClaimAt);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return new Response("Sign in is required to create a return reminder.", {
+      status: 401,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
+  const reminderId = await createReminderAttribution(user.id, state.nextClaimAt);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pulsercuit.pro";
+  const returnUrl = new URL(reminderId ? "/return" : "/dashboard", siteUrl);
+  if (reminderId) returnUrl.searchParams.set("rid", reminderId);
+
+  const calendar = buildReturnReminderCalendar(state.nextClaimAt, returnUrl.toString(), reminderId);
 
   return new Response(calendar, {
     status: 200,
