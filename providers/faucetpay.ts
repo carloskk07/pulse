@@ -1,4 +1,5 @@
 import type { PayoutProvider, PayoutRequest } from "./contracts";
+import { validateFaucetPayDestinationReadOnly } from "./faucetpay-read";
 
 const BASE_URL = "https://faucetpay.io/api/v2";
 
@@ -83,7 +84,8 @@ export class FaucetPayProvider implements PayoutProvider {
 
   async validateDestination(destination: string, asset: string) {
     void asset;
-    await this.request("/check-address", { address: destination });
+    const result = await validateFaucetPayDestinationReadOnly(destination);
+    if (!result.ok) throw new FaucetPayApiError(result.message, result.retryable);
     return true;
   }
 
