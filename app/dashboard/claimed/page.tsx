@@ -39,6 +39,7 @@ export default async function ClaimedPage() {
   const nextAchievement = getNextCircuitAchievement(achievements);
   const trust = trustLabel(state.trustLevel);
   const fundingLabel = state.pulseFundingReady ? "Reward rail currently funded" : "Reward rail currently in safe standby";
+  const canScheduleReturn = state.pulseFundingReady && Boolean(state.nextClaimAt);
 
   return (
     <AppShell active="home">
@@ -114,6 +115,13 @@ export default async function ClaimedPage() {
               )}
             </article>
           </div>
+
+          {canScheduleReturn ? (
+            <div className="pc-return-intelligence">
+              <div><Spark /><span><strong>Return Intelligence</strong><small>Add one reminder for the next real rolling eligibility window. No recurring spam, no synthetic schedule and no reward guarantee.</small></span></div>
+              <a href="/api/return-reminder">Add to calendar <ArrowUpRight /></a>
+            </div>
+          ) : null}
 
           <div className="pc-after-pulse-share">
             <div><Spark /><span><strong>Turn progress into a shareable moment.</strong><small>Your share exposes Rhythm and Signal, never your balance or payout destination.</small></span></div>
