@@ -1,5 +1,8 @@
 [build]
   command = "npm run build"
+  # Pulsercuit production is hosted on Vercel. Keep Netlify available for
+  # deliberate fallback/manual deploys without consuming Git-triggered builds.
+  ignore = "exit 0"
 
 [build.environment]
   NODE_VERSION = "22"
