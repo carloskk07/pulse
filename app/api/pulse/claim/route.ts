@@ -8,6 +8,10 @@ function dashboardRedirect(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/dashboard?claim=${encodeURIComponent(state)}`, request.url), 303);
 }
 
+function claimReceiptRedirect(request: NextRequest) {
+  return NextResponse.redirect(new URL("/dashboard/claimed", request.url), 303);
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return dashboardRedirect(request, "service-not-configured");
@@ -30,7 +34,7 @@ export async function POST(request: NextRequest) {
   if (error) return dashboardRedirect(request, "failed");
 
   const result = (data ?? {}) as { status?: string };
-  if (result.status === "claimed") return dashboardRedirect(request, "success");
+  if (result.status === "claimed") return claimReceiptRedirect(request);
   if (result.status === "not_ready") return dashboardRedirect(request, "not-ready");
   if (result.status === "risk_hold") return dashboardRedirect(request, "trust-review");
   if (["treasury_closed", "treasury_missing", "budget_disabled", "insufficient_treasury", "daily_budget_exhausted", "user_daily_limit"].includes(result.status ?? "")) {
