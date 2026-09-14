@@ -2,9 +2,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { ProductPreview } from "@/components/product-preview";
 import { PulsercuitNetwork } from "@/components/pulsercuit-network";
-import { PulsercuitSceneStrip } from "@/components/pulsercuit-scene-strip";
-import { SocialProofPanel } from "@/components/social-proof-panel";
-import { ArrowUpRight, Check, Shield, Spark, Trend, Wallet } from "@/components/icons";
+import { ArrowUpRight, Check, Shield, Spark, Trend, Users, Wallet } from "@/components/icons";
 
 export const revalidate = 60;
 
@@ -14,111 +12,98 @@ const structuredData = {
   name: "Pulsercuit",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
-  description: "A premium reward platform built around funded recurring Pulses, visible progress and transparent payouts.",
+  description: "A premium reward circuit built around funded Pulses, visible status, factual milestones and verified payout proof.",
 };
 
 export default function HomePage() {
   return (
-    <main className="marketing-page pc-v5-marketing">
+    <main className="marketing-page pc-v5-marketing pc-luxe-marketing">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
-      <div className="hero-glow hero-glow-one" />
-      <div className="hero-glow hero-glow-two" />
-      <div className="pc-v5-grid-glow" aria-hidden="true" />
+      <div className="pc-luxe-vignette" aria-hidden="true" />
+      <div className="pc-luxe-aurora pc-luxe-aurora-a" aria-hidden="true" />
+      <div className="pc-luxe-aurora pc-luxe-aurora-b" aria-hidden="true" />
       <SiteHeader />
 
-      <section className="hero shell pc-v5-hero">
+      <section className="hero shell pc-v5-hero pc-luxe-hero">
         <div className="hero-copy pc-v5-hero-copy">
-          <div className="eyebrow pc-v5-eyebrow"><span className="live-dot" /> A reward loop designed for momentum</div>
-          <h1>Turn consistency into <em>momentum.</em></h1>
-          <p className="pc-v5-hero-lead">One clear loop: return when your Pulse opens, claim what is actually funded, watch your progress build and move toward a transparent payout.</p>
+          <div className="eyebrow pc-v5-eyebrow pc-luxe-eyebrow"><span className="live-dot" /> Pulsercuit · premium reward circuit</div>
+          <h1>Return. Rise. <em>Repeat.</em></h1>
+          <p className="pc-v5-hero-lead">Claim funded Pulses. Build status. Unlock milestones. Share the climb. Move toward a verified payout.</p>
           <div className="hero-actions pc-v5-actions">
-            <Link className="button button-lg pc-v5-primary" href="/auth?next=/dashboard">Start your circuit <ArrowUpRight /></Link>
+            <Link className="button button-lg pc-v5-primary pc-luxe-primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
             <Link className="button button-ghost button-lg" href="/proof">See live proof</Link>
           </div>
-          <div className="trust-strip pc-v5-trust-strip">
+          <div className="trust-strip pc-v5-trust-strip pc-luxe-trust-strip">
             <span><Check /> Free to join</span>
             <span><Shield /> Funded rewards only</span>
-            <span><Check /> Turbo stays optional</span>
+            <span><Check /> No fake activity</span>
           </div>
-          <div className="pc-v5-hero-proof"><i /><span>Real state only. No synthetic balances, member counts or payout history.</span></div>
         </div>
-        <div className="hero-product pc-v5-product-stage"><ProductPreview /></div>
+        <div className="hero-product pc-v5-product-stage pc-luxe-product-stage"><ProductPreview /></div>
       </section>
 
-      <section className="shell pc-v5-value-rail" aria-label="Pulsercuit value proposition">
-        <article><span>01</span><div><strong>Know what happens next.</strong><p>Your live state shows whether to claim, wait, build progress or withdraw.</p></div></article>
-        <article><span>02</span><div><strong>See momentum compound.</strong><p>Rhythm, Signal and milestones turn real activity into visible progress.</p></div></article>
-        <article><span>03</span><div><strong>Keep money state honest.</strong><p>Rewards, balance and payouts remain separate, authoritative facts.</p></div></article>
+      <section className="shell pc-luxe-value-rail" aria-label="Pulsercuit experience">
+        <article><Spark /><div><small>Pulse</small><strong>Claim the moment.</strong><p>One clear funded action.</p></div></article>
+        <article><Trend /><div><small>Momentum</small><strong>Raise your status.</strong><p>Rhythm, Signal and unlocks.</p></div></article>
+        <article><Wallet /><div><small>Vault</small><strong>See the real path.</strong><p>Available, reserved, paid.</p></div></article>
       </section>
 
-      <SocialProofPanel />
-
-      <section className="section shell pc-v5-story" id="how">
-        <div className="section-heading pc-v5-section-head">
-          <div><span className="section-kicker">The Pulsercuit loop</span><h2>Simple enough to understand in seconds. Strong enough to bring you back.</h2></div>
-          <p>Pulsercuit removes the usual reward-site clutter and centers the experience on one repeatable action, one visible progression layer and one accountable payout path.</p>
+      <section className="section shell pc-luxe-loop-section" id="how">
+        <div className="section-heading pc-luxe-section-head">
+          <span className="section-kicker">One loop. Four reasons to return.</span>
+          <h2>Every action should move something you can see.</h2>
         </div>
-        <div className="pc-v5-loop">
-          <article className="pc-v5-loop-card featured"><small>Return</small><Spark /><h3>Your next action is obvious.</h3><p>Come back when the rolling window opens. No calendar-reset tricks and no maze of offers before the core product becomes useful.</p></article>
-          <article className="pc-v5-loop-card"><small>Pulse</small><Trend /><h3>Claim real funded value.</h3><p>The Pulse opens only when the reward rail has authority and budget. If funding is closed, the product says so.</p></article>
-          <article className="pc-v5-loop-card"><small>Progress</small><Shield /><h3>Build a stronger circuit.</h3><p>Real claim history powers rhythm, Trust and Circuit Signal so progress feels tangible without pretending progress is money.</p></article>
-          <article className="pc-v5-loop-card"><small>Wallet</small><Wallet /><h3>Move toward a clear payout.</h3><p>Your Wallet shows authoritative balance and a proven withdrawal path instead of vague “estimated earnings.”</p></article>
+        <div className="pc-luxe-loop-grid">
+          <article className="pc-luxe-loop-card hero-card"><span>01</span><Spark /><h3>Claim</h3><p>Return when your funded Pulse opens.</p></article>
+          <article className="pc-luxe-loop-card"><span>02</span><Trend /><h3>Rise</h3><p>Build Signal, rhythm and rank.</p></article>
+          <article className="pc-luxe-loop-card"><span>03</span><Shield /><h3>Unlock</h3><p>Earn factual milestone seals.</p></article>
+          <article className="pc-luxe-loop-card"><span>04</span><Users /><h3>Share</h3><p>Turn progress into a moment worth showing.</p></article>
         </div>
       </section>
 
-      <section className="section shell pc-v5-network-section">
-        <div className="pc-v5-network-copy">
-          <span className="section-kicker">One connected system</span>
-          <h2>Pulse creates the rhythm. Progress gives it meaning. Proof earns trust.</h2>
-          <p>Turbo can add extra opportunities, but it never owns the product. The core loop stays useful even when external offer inventory changes.</p>
-          <div className="pc-v5-checklist">
-            <span><Check /> Pulse remains the recurring core.</span>
-            <span><Check /> Progress is derived from real product history.</span>
-            <span><Check /> Wallet stays ledger-authoritative.</span>
-            <span><Check /> Proof keeps claims separate from completed payouts.</span>
-          </div>
+      <section className="section shell pc-luxe-status-section">
+        <div className="pc-luxe-status-copy">
+          <span className="section-kicker">Status that comes from history</span>
+          <h2>Your circuit should feel more valuable every time it becomes more real.</h2>
+          <p>Pulse creates the rhythm. Momentum turns it into identity. Proof keeps the financial side honest.</p>
+          <div className="pc-luxe-status-pills"><span>Signal</span><span>Rhythm</span><span>Trust</span><span>Milestones</span></div>
         </div>
         <PulsercuitNetwork />
       </section>
 
-      <section className="section shell" id="experience">
-        <div className="section-heading split-heading pc-v5-section-head">
-          <div><span className="section-kicker">Designed to feel alive</span><h2>A reward product should feel like progress, not paperwork.</h2></div>
-          <p>The visual system gives Pulse, rhythm and proof distinct identities so the experience can be understood at a glance rather than explained in paragraphs.</p>
+      <section className="section shell pc-luxe-share-showcase" id="share">
+        <div className="section-heading pc-luxe-section-head">
+          <span className="section-kicker">Made to be shared</span>
+          <h2>Progress should look like an achievement.</h2>
+          <p>Share cards use factual history only. No private balance and no invented payout claims.</p>
         </div>
-        <PulsercuitSceneStrip />
-      </section>
-
-      <section className="section shell pc-v5-principles">
-        <div className="section-heading narrow pc-v5-section-head"><span className="section-kicker">Why it feels different</span><h2>Less noise. More signal.</h2><p>Every layer has one job: create clarity, reinforce momentum or protect value.</p></div>
-        <div className="pc-v5-principle-grid">
-          <article><span>01</span><h3>Core before extras.</h3><p>You should understand the product before seeing an offerwall. Pulse comes first; Turbo is optional upside.</p></article>
-          <article><span>02</span><h3>Progress you can recognize.</h3><p>Rhythm, Signal and achievements make consistency visible without manufacturing financial value.</p></article>
-          <article><span>03</span><h3>Truth without friction.</h3><p>Funding, balance and payout states are authoritative, while the interface keeps the technical machinery in the background.</p></article>
+        <div className="pc-luxe-card-wall">
+          <article className="pc-luxe-share-card tone-gold"><small>Pulsercuit · share preview</small><strong>7-day<br />rhythm.</strong><span>Consistency unlocked</span></article>
+          <article className="pc-luxe-share-card tone-lime featured"><small>Circuit rank</small><strong>Resonance</strong><span>Signal 82 / 100</span></article>
+          <article className="pc-luxe-share-card tone-violet"><small>Milestone</small><strong>Ten<br />Pulses.</strong><span>Real history only</span></article>
         </div>
       </section>
 
-      <section className="section shell pc-v5-proof-section">
-        <div className="pc-v5-proof-copy">
-          <span className="section-kicker">Proof, not performance theater</span>
-          <h2>Trust should be inspectable.</h2>
-          <p>Pulsercuit does not need inflated counters or vague payout language to look active. Public Proof separates reward events from completed withdrawals and leaves zeroes visible when zero is the truth.</p>
-          <Link className="button button-ghost" href="/proof">Inspect Pulsercuit Proof <ArrowUpRight /></Link>
+      <section className="section shell pc-luxe-proof-section">
+        <div>
+          <span className="section-kicker">Proof before hype</span>
+          <h2>Luxury means nothing if the numbers are fake.</h2>
+          <p>Rewards, balance and completed payouts stay separate facts. Zero stays visible when zero is the truth.</p>
         </div>
-        <div className="pc-v5-proof-ledger">
-          <div><small>Eligibility</small><strong>Server-authoritative</strong><span className="positive"><i /> controlled</span></div>
-          <div><small>Reward funding</small><strong>Treasury-gated</strong><span className="positive"><i /> explicit</span></div>
-          <div><small>Balance</small><strong>Ledger-derived</strong><span className="positive"><i /> factual</span></div>
-          <div><small>Payout</small><strong>Provider-confirmed</strong><span className="positive"><i /> separate proof</span></div>
+        <div className="pc-luxe-proof-actions">
+          <div><Check /><span>Server-authoritative eligibility</span></div>
+          <div><Check /><span>Treasury-gated rewards</span></div>
+          <div><Check /><span>Provider-confirmed payouts</span></div>
+          <Link className="button button-ghost" href="/proof">Inspect live proof <ArrowUpRight /></Link>
         </div>
       </section>
 
-      <section className="final-cta shell pc-v5-final-cta">
-        <div><span className="section-kicker">Start your circuit</span><h2>Come back for progress that feels worth seeing.</h2><p>Create your account, see your live Pulse state and build momentum one real action at a time.</p></div>
+      <section className="final-cta shell pc-v5-final-cta pc-luxe-final-cta">
+        <div><span className="section-kicker">Your circuit starts here</span><h2>Make the next return count.</h2><p>Enter free. Build real momentum. Share only what you actually earned.</p></div>
         <Link className="button button-lg button-dark" href="/auth?next=/dashboard">Enter Pulsercuit <ArrowUpRight /></Link>
       </section>
 
-      <footer className="footer shell"><div><strong>Pulsercuit</strong><span>© 2026. Momentum built on authoritative reward state.</span></div><div><Link href="#how">How it works</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/rewards-policy">Rewards</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div></footer>
+      <footer className="footer shell"><div><strong>Pulsercuit</strong><span>© 2026 · Return. Rise. Repeat.</span></div><div><Link href="#how">How it works</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div></footer>
     </main>
   );
 }
