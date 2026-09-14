@@ -8,7 +8,7 @@ const links = [
   { id: "home", href: "/dashboard", label: "Pulse", Icon: Home },
   { id: "progress", href: "/progress", label: "Momentum", Icon: Trend },
   { id: "earn", href: "/earn", label: "Turbo", Icon: Bolt },
-  { id: "wallet", href: "/wallet", label: "Wallet", Icon: Wallet },
+  { id: "wallet", href: "/wallet", label: "Vault", Icon: Wallet },
   { id: "invite", href: "/invite", label: "Share", Icon: Users },
 ];
 
