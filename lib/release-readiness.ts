@@ -102,9 +102,12 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   const rewardProvider = getPrimaryConfiguredRewardProvider();
   checks.push(check(
     "reward-provider",
-    "Reward provider",
-    rewardProvider ? "pass" : "fail",
-    rewardProvider ? `At least one verified earning route is configured (${rewardProvider.id}).` : "Configure at least one reward provider adapter before exposing payable inventory.",
+    "Optional Turbo provider",
+    "pass",
+    rewardProvider
+      ? `Optional monetization inventory is configured (${rewardProvider.id}). Its callback proof is tracked separately and does not gate the provider-independent base loop.`
+      : "No optional CPA provider is configured. The base Hourly Pulse → ledger → Wallet → FaucetPay loop remains independently releasable.",
+    false,
   ));
 
   const faucetPay = getFaucetPayPackConfig();
@@ -116,7 +119,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
     checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
     checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence cannot be verified until database authority is available.", true));
-    checks.push(check("external-proof", "External smoke evidence", "pending", "Provider smoke evidence is still required after setup.", true));
+    checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification and payout evidence is still required after setup.", true));
   } else {
     const { error: connectivityError } = await admin.from("app_config").select("key").limit(1);
     const databaseOk = !connectivityError;
@@ -191,28 +194,39 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         true,
       ));
 
-      const turnstileProof = !proofError && releaseEvidenceMatches(proofValue, "turnstile");
       const providerEvidenceKey = rewardProvider?.evidenceKey;
-      const providerProof = Boolean(providerEvidenceKey) && !proofError && releaseEvidenceMatches(proofValue, providerEvidenceKey!);
+      if (providerEvidenceKey) {
+        const providerProof = !proofError && releaseEvidenceMatches(proofValue, providerEvidenceKey);
+        checks.push(check(
+          "optional-provider-proof",
+          "Optional Turbo provider proof",
+          providerProof ? "pass" : "pending",
+          providerProof
+            ? `Current ${rewardProvider?.id ?? "optional provider"} callback configuration has matching controlled evidence.`
+            : `Optional ${rewardProvider?.id ?? "provider"} inventory is configured but its authoritative callback proof is not current. This does not block the base product loop.`,
+          false,
+        ));
+      }
+
+      const turnstileProof = !proofError && releaseEvidenceMatches(proofValue, "turnstile");
       const faucetPayProof = !proofError && releaseEvidenceMatches(proofValue, "faucetpay_payout");
-      const proofComplete = turnstileProof && providerProof && faucetPayProof;
+      const proofComplete = turnstileProof && faucetPayProof;
       const missing = [
         !turnstileProof ? "Turnstile" : null,
-        !providerProof ? "reward provider callback" : null,
         !faucetPayProof ? "FaucetPay payout" : null,
       ].filter(Boolean).join(", ");
       checks.push(check(
         "external-proof",
-        "External smoke evidence",
+        "Core external smoke evidence",
         proofComplete ? "pass" : "pending",
-        proofComplete ? "Current human-verification, earning-provider and payout configurations all have matching controlled smoke evidence." : `Awaiting current-configuration evidence: ${missing || "external flows"}.`,
+        proofComplete ? "Current human-verification and payout configurations have matching controlled smoke evidence." : `Awaiting current-configuration core evidence: ${missing || "external flows"}.`,
         true,
       ));
     } else {
       checks.push(check("schema", "Schema version", "fail", "Schema version cannot be verified while database access is failing."));
       checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Runtime contracts cannot be verified while database access is failing."));
       checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence is still required after database recovery.", true));
-      checks.push(check("external-proof", "External smoke evidence", "pending", "Provider smoke evidence is still required after database recovery.", true));
+      checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification and payout evidence is still required after database recovery.", true));
     }
   }
 
