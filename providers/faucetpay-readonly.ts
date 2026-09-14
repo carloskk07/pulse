@@ -160,9 +160,9 @@ function configuredDisplayAmount(label: string, asset: string) {
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
-function expectedCreditsForNominalUsd(displayAmount: number | null) {
-  if (displayAmount === null) return null;
-  const raw = displayAmount * CREDITS_PER_USD;
+function exactPositiveIntegerProduct(left: number | null, right: number) {
+  if (left === null) return null;
+  const raw = left * right;
   const rounded = Math.round(raw);
   if (!Number.isSafeInteger(rounded) || rounded <= 0 || Math.abs(raw - rounded) > 1e-8) return null;
   return rounded;
@@ -295,7 +295,7 @@ export async function getFaucetPayReadOnlyPreflight(): Promise<FaucetPayReadOnly
   }
 
   const displayAmount = configuredDisplayAmount(configuredPackLabel, asset);
-  const expectedPackCredits = expectedCreditsForNominalUsd(displayAmount);
+  const expectedPackCredits = exactPositiveIntegerProduct(displayAmount, CREDITS_PER_USD);
   const packMatchesCredits = expectedPackCredits !== null && configuredPackCredits !== null
     ? expectedPackCredits === configuredPackCredits
     : null;
@@ -319,9 +319,10 @@ export async function getFaucetPayReadOnlyPreflight(): Promise<FaucetPayReadOnly
     };
   }
 
-  const expectedPackUnits = displayAmount === null ? null : Math.round(displayAmount * scaleInfo.scale);
-  const expectedSafe = expectedPackUnits !== null && Number.isSafeInteger(expectedPackUnits) && expectedPackUnits > 0;
-  const packMatchesScale = expectedSafe && configuredPackUnits !== null ? expectedPackUnits === configuredPackUnits : null;
+  const expectedPackUnits = exactPositiveIntegerProduct(displayAmount, scaleInfo.scale);
+  const packMatchesScale = expectedPackUnits !== null && configuredPackUnits !== null
+    ? expectedPackUnits === configuredPackUnits
+    : null;
 
   if (packMatchesScale !== true) {
     return {
@@ -333,12 +334,12 @@ export async function getFaucetPayReadOnlyPreflight(): Promise<FaucetPayReadOnly
       inferredUnitScale: scaleInfo.scale,
       inferredDecimals: scaleInfo.decimals,
       expectedPackCredits,
-      expectedPackUnits: expectedSafe ? expectedPackUnits : null,
+      expectedPackUnits,
       packMatchesCredits: true,
       packMatchesScale,
-      detail: expectedSafe
-        ? `Live read-only evidence implies ${scaleInfo.scale.toLocaleString("en-US")} smallest units per ${asset}; configure the payout pack to exactly ${expectedPackUnits?.toLocaleString("en-US")} units for ${configuredPackLabel || "the display amount"}.`
-        : "The live unit scale was inferred, but the configured payout label cannot be converted deterministically into provider units.",
+      detail: expectedPackUnits !== null
+        ? `Live read-only evidence implies ${scaleInfo.scale.toLocaleString("en-US")} smallest units per ${asset}; configure the payout pack to exactly ${expectedPackUnits.toLocaleString("en-US")} units for ${configuredPackLabel || "the display amount"}.`
+        : "The configured payout label would require a fractional or otherwise invalid provider smallest-unit amount, so the pack is not representable exactly.",
     };
   }
 
