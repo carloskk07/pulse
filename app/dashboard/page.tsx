@@ -3,7 +3,9 @@ import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Bolt, Check, Shield, Spark, Users } from "@/components/icons";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { PulseCountdown } from "@/components/pulse-countdown";
+import { ShareRhythmButton } from "@/components/share-rhythm-button";
 import { TurnstileField } from "@/components/turnstile-field";
+import { getCircuitProgress } from "@/lib/circuit-progress";
 import { formatUsdFromCredits, getRewardSnapshot, trustLabel } from "@/lib/reward-state";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
@@ -42,6 +44,12 @@ export default async function DashboardPage({ searchParams }: Props) {
   const claimSucceeded = params.claim === "success";
   const trust = trustLabel(state.trustLevel);
   const rhythmMilestones = [1, 3, 7, 14] as const;
+  const signal = getCircuitProgress({ hourlyClaimCount: state.hourlyClaimCount, streakDays: state.streakDays, trustLevel: state.trustLevel });
+  const missions = [
+    { title: "First funded Pulse", note: "Complete one authoritative Hourly Pulse claim.", done: state.hourlyClaimCount >= 1 },
+    { title: "Three-day rhythm", note: "Return across three claim days.", done: state.streakDays >= 3 },
+    { title: "Ten real Pulses", note: "Build history through ten funded claims.", done: state.hourlyClaimCount >= 10 },
+  ];
 
   return (
     <AppShell active="home">
@@ -64,8 +72,8 @@ export default async function DashboardPage({ searchParams }: Props) {
       <section className="pc-dashboard-ribbon" aria-label="Pulsercuit status">
         <article className={visualState === "ready" ? "live" : ""}><small>Circuit state</small><strong>{state.preview ? "Preview" : !state.pulseFundingReady ? "Safe standby" : state.claimReady ? "Pulse ready" : "Charging"}</strong><span>authoritative reward rail</span></article>
         <article className="cyan"><small>Rhythm</small><strong>{state.preview ? "—" : `${state.streakDays} day${state.streakDays === 1 ? "" : "s"}`}</strong><span>real claim history only</span></article>
-        <article className="violet"><small>Trust</small><strong>{state.preview ? "Building" : trust}</strong><span>{state.preview ? "live profile required" : `level ${state.trustLevel}/5`}</span></article>
-        <article className="warm"><small>Proof</small><strong>Public</strong><span>credited and paid stay separate</span></article>
+        <article className="violet"><small>Circuit Signal</small><strong>{state.preview ? "—" : `${signal.signal}/100`}</strong><span>{state.preview ? "live history required" : `${signal.stage} · non-financial`}</span></article>
+        <article className="warm"><small>Trust</small><strong>{state.preview ? "Building" : trust}</strong><span>{state.preview ? "live profile required" : `level ${state.trustLevel}/5`}</span></article>
       </section>
 
       <section className="dashboard-hero hourly-pulse-stage">
@@ -101,7 +109,20 @@ export default async function DashboardPage({ searchParams }: Props) {
       {showFirstPulseGuide ? <section className="first-reward-guide pulse-onboarding"><div className="first-reward-copy"><span className="app-eyebrow">Your first rhythm</span><h2>The reward comes first.</h2><p>Claim the base Pulse when it opens. Return after the rolling interval. Turbo is optional and never required to receive an eligible base reward.</p></div><div className="first-reward-steps"><div><span>1</span><strong>Claim</strong><small>Collect an eligible Pulse</small></div><div><span>2</span><strong>Return</strong><small>Come back when the timer opens</small></div><div><span>3</span><strong>Build</strong><small>Grow real product history</small></div></div></section> : null}
 
       <section className="app-section">
-        <div className="app-section-head"><div><span className="app-eyebrow">Circuit momentum</span><h2>Visible progress without fake value.</h2></div><Link href="/invite">Share your rhythm <ArrowUpRight /></Link></div>
+        <div className="app-section-head"><div><span className="app-eyebrow">Circuit momentum</span><h2>Visible progress without fake value.</h2></div>{!state.preview && state.signedIn ? <ShareRhythmButton days={state.streakDays} signal={signal.signal} /> : <Link href="/invite">Open Invite <ArrowUpRight /></Link>}</div>
+        <div className="pc-signal-grid">
+          <article className="pc-signal-card">
+            <span className="app-eyebrow">Circuit Signal</span>
+            <div className="pc-signal-value"><strong>{state.preview ? "—" : signal.signal}</strong><span>/ 100</span></div>
+            <div className="pc-signal-stage">{state.preview ? "Live history required" : signal.stage}</div>
+            <div className="pc-signal-track" aria-label="Circuit Signal progress"><span style={{ width: `${state.preview ? 0 : signal.progressToNext}%` }} /></div>
+            <p className="pc-signal-note"><strong>Non-financial progress.</strong> Signal is derived from real Pulse claims, rhythm and Trust history. It never changes your balance or promises a payout.</p>
+          </article>
+          <article className="pc-missions-card">
+            <span className="app-eyebrow">Next circuit missions</span><h3>Small factual wins that make progress visible.</h3>
+            <div className="pc-mission-list">{missions.map((mission, index) => { const done = !state.preview && mission.done; return <div className={`pc-mission ${done ? "done" : ""}`} key={mission.title}><i>{done ? "✓" : index + 1}</i><div><strong>{mission.title}</strong><small>{mission.note}</small></div><b>{state.preview ? "Locked" : done ? "Done" : "Next"}</b></div>; })}</div>
+          </article>
+        </div>
         <article className="pc-momentum-card">
           <div className="pc-momentum-top"><div><span>Current rhythm</span><strong>{state.preview ? "Live history required" : `${state.streakDays} day${state.streakDays === 1 ? "" : "s"}`}</strong></div><div><span>Trust</span><strong>{state.preview ? "Building" : trust}</strong></div></div>
           <div className="pc-milestone-track" aria-label="Rhythm milestones">{rhythmMilestones.map((milestone) => <span key={milestone} className={!state.preview && state.streakDays >= milestone ? "done" : ""}>{milestone}d</span>)}</div>
