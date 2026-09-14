@@ -75,7 +75,7 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
   ];
 
   return (
-    <section className="pc-share-studio" aria-labelledby="share-studio-title">
+    <section className="pc-share-studio" id="circuit-moments" aria-labelledby="share-studio-title">
       <div className="pc-share-studio-copy">
         <span className="app-eyebrow">V4.3 · Circuit moments</span>
         <h2 id="share-studio-title">Share proof of progress, not private money.</h2>
