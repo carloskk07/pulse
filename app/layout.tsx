@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./styles/pulse-v3-marketing.css";
 import "./styles/pulsercuit-v4.css";
+import "./styles/pulsercuit-v4-1.css";
 
 function getMetadataBase() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();

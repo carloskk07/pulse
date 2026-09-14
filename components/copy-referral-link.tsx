@@ -19,8 +19,8 @@ export function CopyReferralLink({ value }: { value: string }) {
     if (!navigator.share) return copy();
     try {
       await navigator.share({
-        title: "Join my Pulse",
-        text: "I use Pulse for a recurring reward rhythm. The base Pulse is independent of optional Turbo offers.",
+        title: "Join my Pulsercuit",
+        text: "I’m building a real reward rhythm on Pulsercuit. Pulse is treasury-gated, Turbo is optional and progress is tied to verified activity.",
         url: value,
       });
     } catch {
@@ -28,5 +28,5 @@ export function CopyReferralLink({ value }: { value: string }) {
     }
   }
 
-  return <div className="referral-actions"><button type="button" onClick={share}>Share</button><button type="button" onClick={copy} aria-live="polite">{copied ? "Copied" : "Copy"}</button></div>;
+  return <div className="referral-actions"><button type="button" onClick={share}>Share Pulsercuit</button><button type="button" onClick={copy} aria-live="polite">{copied ? "Copied" : "Copy link"}</button></div>;
 }

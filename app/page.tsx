@@ -2,8 +2,9 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { ProductPreview } from "@/components/product-preview";
 import { PulsercuitNetwork } from "@/components/pulsercuit-network";
+import { PulsercuitSceneStrip } from "@/components/pulsercuit-scene-strip";
 import { SocialProofPanel } from "@/components/social-proof-panel";
-import { ArrowUpRight, Check, Clock, Shield, Trend } from "@/components/icons";
+import { ArrowUpRight, Check, Shield } from "@/components/icons";
 import { getPublicSocialProof } from "@/lib/social-proof";
 
 export const revalidate = 60;
@@ -45,8 +46,8 @@ export default async function HomePage() {
       <section className="signal-bar shell" aria-label="How Pulsercuit works">
         <div><strong>1. Return</strong><span>Come back when your rolling window opens</span></div>
         <div><strong>2. Pulse</strong><span>Claim only when the reward rail is funded</span></div>
-        <div><strong>3. Build</strong><span>Grow streak, trust and real product history</span></div>
-        <div><strong>4. Turbo</strong><span>Choose extra earning only when you want it</span></div>
+        <div><strong>3. Build</strong><span>Grow rhythm, Signal and real product history</span></div>
+        <div><strong>4. Share</strong><span>Show milestones without exposing private balances</span></div>
       </section>
 
       <SocialProofPanel proof={socialProof} />
@@ -66,12 +67,17 @@ export default async function HomePage() {
         <PulsercuitNetwork />
       </section>
 
+      <section className="section shell">
+        <div className="section-heading split-heading"><div><span className="section-kicker">A visual language of its own</span><h2>More than cards. The product should feel alive before it asks for attention.</h2></div><p>These authored scenes turn Pulse, progress and Proof into recognizable Pulsercuit imagery without fabricating activity or financial outcomes.</p></div>
+        <PulsercuitSceneStrip />
+      </section>
+
       <section className="section shell" id="rhythm">
         <div className="section-heading narrow"><span className="section-kicker">The return loop</span><h2>A habit that gets clearer each time you come back.</h2><p>Gamification is tied to factual activity and visible progress. It never turns uncertain money into a fake prize.</p></div>
         <div className="pc-loop-grid">
           <article className="pc-loop-card"><small>Return</small><h3>See the next window.</h3><p>A rolling timer makes the next action clear without calendar-boundary tricks.</p></article>
           <article className="pc-loop-card"><small>Pulse</small><h3>Claim what is actually funded.</h3><p>The base reward rail opens only when the server-authoritative treasury allows it.</p></article>
-          <article className="pc-loop-card"><small>Build</small><h3>Turn consistency into status.</h3><p>Streak, trust and milestones make progress visible without creating new financial liabilities.</p></article>
+          <article className="pc-loop-card"><small>Build</small><h3>Turn consistency into status.</h3><p>Rhythm, Circuit Signal and milestones make progress visible without creating new financial liabilities.</p></article>
           <article className="pc-loop-card"><small>Share</small><h3>Share a moment, not spam.</h3><p>Invites and milestones are designed around qualified activity instead of raw account creation.</p></article>
         </div>
       </section>
@@ -88,9 +94,9 @@ export default async function HomePage() {
       <section className="section shell">
         <div className="section-heading split-heading"><div><span className="section-kicker">Built to be shared</span><h2>Progress should create moments worth showing.</h2></div><p>These are visual examples of the share system, not claims about live member activity.</p></div>
         <div className="pc-moment-stage">
-          <article className="pc-moment-card"><span className="pc-moment-brand">Pulsercuit · share preview</span><strong>7-day <em>rhythm.</em></strong><p>A milestone card can be generated from a real member streak and shared without exposing account balances or private data.</p></article>
+          <article className="pc-moment-card"><span className="pc-moment-brand">Pulsercuit · share preview</span><strong>7-day <em>rhythm.</em></strong><p>A milestone card can be generated from a real member rhythm and shared without exposing account balances or private data.</p></article>
           <div className="pc-moment-side">
-            <article className="pc-mini-moment"><span>Trust moment</span><h3>Consistency unlocked.</h3><p>Share a new public-facing level while keeping anti-fraud thresholds private.</p></article>
+            <article className="pc-mini-moment"><span>Signal moment</span><h3>Your circuit is getting stronger.</h3><p>Circuit Signal is display-only progress derived from real claim, rhythm and Trust history. It is never presented as money.</p></article>
             <article className="pc-mini-moment"><span>Circuit moment</span><h3>Invite quality, not volume.</h3><p>Referral progress is tied to verified activity so sharing has a reason beyond raw signups.</p></article>
           </div>
         </div>
