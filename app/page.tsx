@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { ProductPreview } from "@/components/product-preview";
+import { PulsercuitNetwork } from "@/components/pulsercuit-network";
 import { SocialProofPanel } from "@/components/social-proof-panel";
 import { ArrowUpRight, Check, Clock, Shield, Trend } from "@/components/icons";
 import { getPublicSocialProof } from "@/lib/social-proof";
@@ -10,10 +11,10 @@ export const revalidate = 60;
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "Reward Pulse",
+  name: "Pulsercuit",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
-  description: "A treasury-backed recurring reward network with optional Turbo earning and transparent payout proof.",
+  description: "A treasury-backed recurring reward network built around a simple return rhythm, optional Turbo earning and transparent payout proof.",
 };
 
 export default async function HomePage() {
@@ -28,55 +29,83 @@ export default async function HomePage() {
 
       <section className="hero shell">
         <div className="hero-copy">
-          <div className="eyebrow"><span className="live-dot" /> Rewards built around your return, not an offerwall</div>
-          <h1>Come back. Claim your <em>Pulse.</em></h1>
-          <p>Pulse is built around a small recurring reward backed by a real treasury. When the pool is open, eligible members claim it and return after the rolling interval. Want more? Turbo is optional.</p>
+          <div className="eyebrow"><span className="live-dot" /> A recurring reward circuit built around your return</div>
+          <h1>Return. Claim your <em>Pulse.</em> Build the circuit.</h1>
+          <p>Pulsercuit turns a simple return rhythm into a transparent reward experience. When the treasury-backed Pulse is open, eligible members claim it, build consistency and come back when the next rolling window forms. Turbo stays optional.</p>
           <div className="hero-actions">
-            <Link className="button button-lg" href="/auth?next=/dashboard">Open Pulse <ArrowUpRight /></Link>
-            <Link className="button button-ghost button-lg" href="/proof">See real proof</Link>
+            <Link className="button button-lg" href="/auth?next=/dashboard">Open your Pulse <ArrowUpRight /></Link>
+            <Link className="button button-ghost button-lg" href="/proof">Inspect real proof</Link>
           </div>
           <div className="trust-strip"><span><Check /> No deposit required</span><span><Shield /> Unfunded rewards stay closed</span><span><Check /> Turbo is optional</span></div>
+          <div className="pc-hero-note"><i /> Pulsercuit never invents users, payout history or reward availability.</div>
         </div>
         <div className="hero-product"><ProductPreview /></div>
       </section>
 
-      <section className="signal-bar shell" aria-label="How Reward Pulse works">
-        <div><strong>1. Claim</strong><span>Collect an eligible Hourly Pulse</span></div>
-        <div><strong>2. Return</strong><span>Your next window opens on a rolling timer</span></div>
-        <div><strong>3. Turbo</strong><span>Choose extra earning only if you want it</span></div>
-        <div><strong>4. Withdraw</strong><span>Redeem through the configured payout route</span></div>
+      <section className="signal-bar shell" aria-label="How Pulsercuit works">
+        <div><strong>1. Return</strong><span>Come back when your rolling window opens</span></div>
+        <div><strong>2. Pulse</strong><span>Claim only when the reward rail is funded</span></div>
+        <div><strong>3. Build</strong><span>Grow streak, trust and real product history</span></div>
+        <div><strong>4. Turbo</strong><span>Choose extra earning only when you want it</span></div>
       </section>
 
       <SocialProofPanel proof={socialProof} />
 
-      <section className="section shell" id="how">
-        <div className="section-heading narrow"><span className="section-kicker">A different reward loop</span><h2>The reward is the reason to arrive. Providers are only optional fuel.</h2><p>Pulse owns the account, rhythm, trust, ledger and payout experience. External CPA supply can increase earnings, but it does not decide whether the product exists.</p></div>
-        <div className="steps-grid">
-          <article className="step-card"><span className="step-number">01</span><div className="step-icon"><Clock /></div><h3>Your Pulse opens on a rolling interval</h3><p>No calendar-boundary double claims. A new window starts only after the previous successful claim and the configured interval.</p></article>
-          <article className="step-card"><span className="step-number">02</span><div className="step-icon"><Shield /></div><h3>The treasury decides what can be promised</h3><p>Every base claim is budget-backed. Daily limits, per-user limits and a kill switch stop rewards before the system creates unfunded liabilities.</p></article>
-          <article className="step-card"><span className="step-number">03</span><div className="step-icon"><Trend /></div><h3>Turbo adds upside without taking over</h3><p>CPA, direct campaigns and future supply can compete behind one Pulse interface. The user sees value, not provider clutter.</p></article>
+      <section className="section shell pc-story" id="how">
+        <div className="pc-story-copy">
+          <span className="section-kicker">Why Pulsercuit</span>
+          <h2>Value should move in a circuit, not disappear into an offerwall.</h2>
+          <p>The Pulse is the recurring reason to return. Trust reduces friction for legitimate members. Proof exposes what actually happened. Turbo is optional fuel, not the product itself.</p>
+          <div className="pc-story-points">
+            <span><i /> Pulse owns the rhythm and ledger.</span>
+            <span><i /> Trust is earned from real product history.</span>
+            <span><i /> Proof keeps credited rewards separate from completed payouts.</span>
+            <span><i /> Turbo can change providers without changing the product.</span>
+          </div>
+        </div>
+        <PulsercuitNetwork />
+      </section>
+
+      <section className="section shell" id="rhythm">
+        <div className="section-heading narrow"><span className="section-kicker">The return loop</span><h2>A habit that gets clearer each time you come back.</h2><p>Gamification is tied to factual activity and visible progress. It never turns uncertain money into a fake prize.</p></div>
+        <div className="pc-loop-grid">
+          <article className="pc-loop-card"><small>Return</small><h3>See the next window.</h3><p>A rolling timer makes the next action clear without calendar-boundary tricks.</p></article>
+          <article className="pc-loop-card"><small>Pulse</small><h3>Claim what is actually funded.</h3><p>The base reward rail opens only when the server-authoritative treasury allows it.</p></article>
+          <article className="pc-loop-card"><small>Build</small><h3>Turn consistency into status.</h3><p>Streak, trust and milestones make progress visible without creating new financial liabilities.</p></article>
+          <article className="pc-loop-card"><small>Share</small><h3>Share a moment, not spam.</h3><p>Invites and milestones are designed around qualified activity instead of raw account creation.</p></article>
         </div>
       </section>
 
       <section className="section shell" id="rewards">
-        <div className="section-heading split-heading"><div><span className="section-kicker">Three layers</span><h2>One simple habit. Multiple ways to make it sustainable.</h2></div><p>The public site never fabricates earning values, availability, users or payout history. Live financial numbers belong to the authoritative product state and Pulse Proof.</p></div>
+        <div className="section-heading split-heading"><div><span className="section-kicker">Three product rails</span><h2>One recurring core. Optional upside. Public evidence.</h2></div><p>The public site never fabricates earning values, availability, users or payout history. Live financial numbers belong to authoritative product state and Pulsercuit Proof.</p></div>
         <div className="offers-showcase">
-          <article className="offer-card offer-card-featured"><div className="offer-topline"><span className="offer-type">Base Pulse</span><span className="offer-match">Pulse-funded</span></div><div className="offer-copy"><h3>A recurring reward that can exist without completing an offer.</h3><div className="offer-meta"><span>Rolling eligibility</span><span>Treasury protected</span></div></div><div className="offer-footer"><div><small>Promise</small><strong>Funded first</strong></div><span className="status-pill">Deterministic</span></div></article>
+          <article className="offer-card offer-card-featured"><div className="offer-topline"><span className="offer-type">Pulse</span><span className="offer-match">Pulsercuit-funded</span></div><div className="offer-copy"><h3>A recurring reward that can exist without completing an offer.</h3><div className="offer-meta"><span>Rolling eligibility</span><span>Treasury protected</span></div></div><div className="offer-footer"><div><small>Promise</small><strong>Funded first</strong></div><span className="status-pill">Deterministic</span></div></article>
           <article className="offer-card"><div className="offer-topline"><span className="offer-type">Turbo</span><span className="offer-match">Optional</span></div><div className="offer-copy"><h3>Extra opportunities are ranked instead of dumped into an offerwall.</h3><div className="offer-meta"><span>Value</span><span>Reliability</span></div></div><div className="offer-footer"><div><small>Supply</small><strong>Replaceable</strong></div><span className="status-pill">User choice</span></div></article>
-          <article className="offer-card"><div className="offer-topline"><span className="offer-type">Pulse Proof</span><span className="offer-match">Public</span></div><div className="offer-copy"><h3>Credited rewards and completed withdrawals are reported as different facts.</h3><div className="offer-meta"><span>No fake payouts</span><span>No synthetic users</span></div></div><div className="offer-footer"><div><small>Evidence</small><strong>Inspectable</strong></div><span className="status-pill">Truth first</span></div></article>
+          <article className="offer-card"><div className="offer-topline"><span className="offer-type">Proof</span><span className="offer-match">Public</span></div><div className="offer-copy"><h3>Credited rewards and completed withdrawals stay separate facts.</h3><div className="offer-meta"><span>No fake payouts</span><span>No synthetic users</span></div></div><div className="offer-footer"><div><small>Evidence</small><strong>Inspectable</strong></div><span className="status-pill">Truth first</span></div></article>
+        </div>
+      </section>
+
+      <section className="section shell">
+        <div className="section-heading split-heading"><div><span className="section-kicker">Built to be shared</span><h2>Progress should create moments worth showing.</h2></div><p>These are visual examples of the share system, not claims about live member activity.</p></div>
+        <div className="pc-moment-stage">
+          <article className="pc-moment-card"><span className="pc-moment-brand">Pulsercuit · share preview</span><strong>7-day <em>rhythm.</em></strong><p>A milestone card can be generated from a real member streak and shared without exposing account balances or private data.</p></article>
+          <div className="pc-moment-side">
+            <article className="pc-mini-moment"><span>Trust moment</span><h3>Consistency unlocked.</h3><p>Share a new public-facing level while keeping anti-fraud thresholds private.</p></article>
+            <article className="pc-mini-moment"><span>Circuit moment</span><h3>Invite quality, not volume.</h3><p>Referral progress is tied to verified activity so sharing has a reason beyond raw signups.</p></article>
+          </div>
         </div>
       </section>
 
       <section className="section shell trust-section" id="trust">
         <div className="trust-panel">
-          <div className="trust-copy"><span className="section-kicker">Pulse Trust</span><h2>Good users should feel less friction over time.</h2><p>Pulse builds trust from real claim history, verified monetized activity, completed payouts and risk signals. The goal is to reward legitimate behavior without exposing the rules needed to game the system.</p><div className="trust-points"><span><Shield /> Financial writes stay server-authoritative</span><span><Check /> Duplicate claim windows are transaction-locked</span><span><Check /> Referral rewards require verified activity</span></div></div>
-          <div className="trust-visual"><div className="ledger-card"><div className="ledger-head"><span>Pulse lifecycle</span><span className="status-pill">Authoritative</span></div><div className="ledger-row"><span><i className="dot positive" /> Eligibility</span><strong>Ready</strong></div><div className="ledger-row"><span><i className="dot positive" /> Treasury</span><strong>Funded</strong></div><div className="ledger-row"><span><i className="dot neutral" /> Ledger</span><strong>Available</strong></div><div className="ledger-total"><span>Next window</span><strong>Rolling</strong></div></div></div>
+          <div className="trust-copy"><span className="section-kicker">Pulsercuit Trust</span><h2>Good users should feel less friction over time.</h2><p>Trust grows from real claim history, verified monetized activity, completed payouts and risk signals. The product shows progress without exposing the thresholds needed to game the system.</p><div className="trust-points"><span><Shield /> Financial writes stay server-authoritative</span><span><Check /> Duplicate claim windows are transaction-locked</span><span><Check /> Referral rewards require verified activity</span></div></div>
+          <div className="trust-visual"><div className="ledger-card"><div className="ledger-head"><span>Circuit integrity</span><span className="status-pill">Authoritative</span></div><div className="ledger-row"><span><i className="dot positive" /> Eligibility</span><strong>Server</strong></div><div className="ledger-row"><span><i className="dot positive" /> Treasury</span><strong>Gated</strong></div><div className="ledger-row"><span><i className="dot neutral" /> Ledger</span><strong>Append-only</strong></div><div className="ledger-total"><span>Next window</span><strong>Rolling</strong></div></div></div>
         </div>
       </section>
 
-      <section className="final-cta shell"><div><span className="section-kicker">Build the rhythm</span><h2>Your Pulse should be useful before you ever open a Turbo.</h2><p>Create an account, see the live reward state and inspect the same public proof everyone else sees.</p></div><Link className="button button-lg button-dark" href="/auth?next=/dashboard">Open Pulse <ArrowUpRight /></Link></section>
+      <section className="final-cta shell"><div><span className="section-kicker">Complete the circuit</span><h2>Your Pulse should be useful before you ever open a Turbo.</h2><p>Create an account, see the live reward state and inspect the same public proof everyone else sees.</p></div><Link className="button button-lg button-dark" href="/auth?next=/dashboard">Open your Pulse <ArrowUpRight /></Link></section>
 
-      <footer className="footer shell"><div><strong>Reward Pulse</strong><span>© 2026. Treasury-backed rewards, transparent settlement.</span></div><div><Link href="#how">How it works</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/rewards-policy">Rewards</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div></footer>
+      <footer className="footer shell"><div><strong>Pulsercuit</strong><span>© 2026. Treasury-backed rewards, transparent settlement.</span></div><div><Link href="#how">How it works</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/rewards-policy">Rewards</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div></footer>
     </main>
   );
 }

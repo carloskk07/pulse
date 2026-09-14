@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { Brand } from "./brand";
+import { PulsercuitBrand } from "./pulsercuit-brand";
 import { Bolt, Home, Shield, Trend, Users, Wallet } from "./icons";
 
 const links = [
@@ -12,7 +12,7 @@ const links = [
 ];
 
 function initials(value: string) {
-  return value.replace(/[^a-zA-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "RP";
+  return value.replace(/[^a-zA-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "PC";
 }
 
 function trustName(level: number) {
@@ -54,7 +54,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
   return (
     <div className="app-frame">
       <aside className="app-sidebar">
-        <Brand />
+        <PulsercuitBrand />
         <nav className="app-nav" aria-label="Application">
           {sidebarLinks.map(({ id, href, label: navLabel, Icon }) => (
             <Link key={href} className={active === id ? "active" : ""} href={href}><Icon />{navLabel}</Link>
