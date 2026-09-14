@@ -1,9 +1,9 @@
 {
-  "name": "Reward Pulse",
-  "short_name": "Reward Pulse",
+  "name": "Pulsercuit",
+  "short_name": "Pulsercuit",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#080a0f",
-  "theme_color": "#080a0f",
-  "description": "Your spare minutes have value."
+  "background_color": "#040609",
+  "theme_color": "#040609",
+  "description": "Return. Pulse. Repeat."
 }
