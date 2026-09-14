@@ -1,41 +1,60 @@
 # FaucetPay v2 payout setup
 
-Reward Pulse uses the modern FaucetPay v2 scoped-key API. The first payout model is intentionally a fixed pack: internal credits are USD-denominated, so a fixed pack avoids introducing a price oracle, hidden FX spread, or volatile conversion logic into the MVP.
+Pulsercuit uses a fixed payout pack, but no payout amount is implied by the application. The pack is enabled only after its asset, internal-credit amount, provider smallest-unit amount and display label are explicitly configured and proven against the live FaucetPay read rail.
 
-## Scoped key
+## Least-privilege keys
 
-Create a scoped API key in FaucetPay with only the permissions needed for this integration:
+Use two separate FaucetPay v2 scoped keys:
 
-- `read` — used to verify a FaucetPay destination.
-- `send` — used to execute payouts.
+- `FAUCETPAY_READ_KEY` — **read only**. It is used for the live `/currencies`, `/balance` and `/check-address` calls.
+- `FAUCETPAY_SCOPED_KEY` — **send only**. It is used only for `/send` after the read-only unit contract has already been proven.
 
-Set a conservative daily USD cap on the key. Store the key only in server-side environment variables.
+Do not combine read and send permissions merely for convenience. Put a conservative daily USD limit on the send-scoped key and keep both keys server-side only.
 
 ## Environment
 
 ```text
-FAUCETPAY_SCOPED_KEY=<scoped read+send key>
+FAUCETPAY_READ_KEY=<read-only scoped key>
+FAUCETPAY_SCOPED_KEY=<send-only scoped key; leave unset until read proof is closed>
 FAUCETPAY_PAYOUT_CURRENCY=USDT
-FAUCETPAY_PAYOUT_CREDITS=5000
-FAUCETPAY_PAYOUT_UNITS=<exact FaucetPay smallest-unit integer for the pack>
-FAUCETPAY_PAYOUT_LABEL=5.00 USDT
+FAUCETPAY_PAYOUT_CREDITS=<explicit internal-credit amount>
+FAUCETPAY_PAYOUT_UNITS=<exact FaucetPay smallest-unit integer for the same pack>
+FAUCETPAY_PAYOUT_LABEL=<explicit human-readable amount and asset>
 ```
 
-The payout integration remains disabled until every required value is present. `FAUCETPAY_PAYOUT_UNITS` is intentionally not guessed by the code: confirm the exact smallest-unit semantics for the selected FaucetPay currency before enabling live withdrawals. The label is presentation only and must describe the same configured payout.
+`FAUCETPAY_PAYOUT_CREDITS`, `FAUCETPAY_PAYOUT_UNITS` and `FAUCETPAY_PAYOUT_LABEL` have no production default. A missing value keeps the payout pack disabled and prevents a matching release-evidence fingerprint from existing.
 
-## Safety model
+## Read-only proof first
 
-1. User is authenticated and Turnstile is verified server-side.
-2. Before creating anything new, the server checks for an existing `requested`, `submitted` or `held` withdrawal.
-3. If a recoverable withdrawal exists, the browser cannot change its destination, asset, credits or provider amount; the server reloads those values from PostgreSQL.
-4. Recovery calls FaucetPay `/send` with the exact original idempotency key. A retry with that key must not create a second payout.
-5. If no withdrawal is active, FaucetPay verifies the new destination and PostgreSQL atomically checks the ledger balance and reserves one fixed pack.
-6. A single active withdrawal per user prevents double-submit races.
-7. Success changes the reserve entry to `withdrawn` but it still counts against the balance.
-8. A definitive failure on the initial provider attempt changes the reserve entry to `reversed`, restoring credits.
-9. A transient or unknown initial failure keeps the reserve in `submitted` for recovery.
-10. HTTP `409 Conflict`, rate limits, timeouts, unreadable responses and server errors are treated as uncertain/retryable rather than proof that a payout did not happen.
-11. Once a withdrawal is already in an unknown/submitted recovery state, later retry failures never auto-refund it. Only a provider success using the original idempotency key closes it automatically; otherwise the reserve remains for safe operator investigation.
-12. Users over the configured risk threshold are held before any external send.
+1. Create only the read-scoped key and configure the intended asset and candidate fixed pack.
+2. Open `/admin/faucetpay` as an allowlisted operator.
+3. The server calls only FaucetPay read-scope endpoints and must reach `READ_ONLY_VERIFIED`.
+4. Explicitly record the current `faucetpay_read` evidence from the private cockpit.
+5. The evidence fingerprint is bound to the read key, payout currency, credits, smallest-unit amount and label. Changing any of them makes the proof stale automatically.
+6. Only after that proof is current should a separately scoped send key be configured for the controlled payout test.
 
-The database, not the browser, is the financial authority. This recovery rule intentionally favors preventing double payment over prematurely returning an amount whose provider outcome is still unknown.
+No unit multiplier is guessed. If the live read response cannot authoritatively establish the asset scale, the preflight remains blocked.
+
+## Withdrawal authority firewall
+
+For a **new** withdrawal, the server requires all of the following before any balance reserve or `/send` attempt:
+
+- authenticated user and successful Turnstile verification;
+- explicit complete payout pack;
+- current fingerprint-bound `faucetpay_read` evidence;
+- destination validated through `/check-address` using the read-only key;
+- sufficient authoritative ledger balance;
+- withdrawal risk gate not placing the request on hold;
+- send-scoped key available for the final provider call.
+
+A `requested` withdrawal that has not yet reached an uncertain provider state must still match the current asset, credits and smallest-unit pack and still have current read evidence before it can be sent.
+
+A `submitted` withdrawal is different: it may already have reached FaucetPay. Recovery must therefore preserve the original database values and original provider idempotency key even if the current pack or read-proof configuration later changes. Blocking reconciliation in that state could create a double-payment risk.
+
+## Financial launch sequence
+
+The read proof does not fund rewards, mint credits or authorize PRODUCT_READY. Keep the launch Treasury closed until an explicit bounded test budget is approved. The controlled sequence is:
+
+`read proof → explicit micro-Treasury budget → real Hourly Pulse claim → authoritative Wallet balance → send-scoped key → one controlled withdrawal → provider payout proof → actual receipt`
+
+The database remains the financial authority. Configuration alone is never evidence that money moved.
