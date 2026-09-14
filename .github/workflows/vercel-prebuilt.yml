@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Require deployment credential
+        run: test -n "$VERCEL_TOKEN"
+
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
 
