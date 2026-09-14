@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
+import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
 import { formatUsdFromCredits, getLedgerItems, getRewardSnapshot } from "@/lib/reward-state";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -14,6 +15,7 @@ type ActiveWithdrawal = {
   destination: string;
   asset: string;
   amount_credits: number;
+  payout_amount_units: number | null;
   created_at: string;
 };
 
@@ -27,7 +29,7 @@ const withdrawalCopy: Record<string, string> = {
   "provider-temporary": "FaucetPay is temporarily unavailable. Your balance was not changed.",
   "verification-failed": "Human verification failed. Please try again.",
   "verification-not-configured": "Withdrawal verification is not configured yet.",
-  "payout-not-configured": "Payouts are not configured yet.",
+  "payout-not-configured": "Payout authority is not fully proven for the current pack yet.",
   "service-not-configured": "The live payout service is not configured yet.",
   "reserve-failed": "The payout could not be recovered safely. No new payout was created.",
   failed: "The payout failed definitively and the reserved credits were restored.",
@@ -47,7 +49,13 @@ function maskDestination(value: string) {
 }
 
 export default async function WalletPage({ searchParams }: Props) {
-  const [state, rows, params, supabase] = await Promise.all([getRewardSnapshot(), getLedgerItems(), searchParams, createSupabaseServerClient()]);
+  const [state, rows, params, supabase, readProofReady] = await Promise.all([
+    getRewardSnapshot(),
+    getLedgerItems(),
+    searchParams,
+    createSupabaseServerClient(),
+    hasCurrentFaucetPayReadProof(),
+  ]);
   const payout = getFaucetPayPackConfig();
   const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
   const turnstileReady = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
@@ -59,7 +67,7 @@ export default async function WalletPage({ searchParams }: Props) {
     if (user) {
       const { data } = await supabase
         .from("withdrawals")
-        .select("id,status,destination,asset,amount_credits,created_at")
+        .select("id,status,destination,asset,amount_credits,payout_amount_units,created_at")
         .eq("user_id", user.id)
         .in("status", ["requested", "held", "submitted"])
         .order("created_at", { ascending: false })
@@ -69,8 +77,31 @@ export default async function WalletPage({ searchParams }: Props) {
     }
   }
 
-  const canRetry = Boolean(activeWithdrawal && activeWithdrawal.status !== "held" && turnstileReady && serviceReady && process.env.FAUCETPAY_SCOPED_KEY);
-  const canWithdraw = Boolean(!activeWithdrawal && state.signedIn && payout.ready && payoutCredits && turnstileReady && serviceReady && state.availableCredits >= payoutCredits);
+  const activePackMatches = Boolean(
+    activeWithdrawal
+    && payout.ready
+    && payout.amountCredits === activeWithdrawal.amount_credits
+    && payout.amountSmallestUnits === activeWithdrawal.payout_amount_units
+    && payout.asset === activeWithdrawal.asset,
+  );
+  const recoveryAuthorityReady = Boolean(
+    activeWithdrawal
+    && activeWithdrawal.status !== "held"
+    && turnstileReady
+    && serviceReady
+    && process.env.FAUCETPAY_SCOPED_KEY?.trim()
+    && (activeWithdrawal.status === "submitted" || (readProofReady && activePackMatches)),
+  );
+  const canWithdraw = Boolean(
+    !activeWithdrawal
+    && state.signedIn
+    && payout.ready
+    && payoutCredits
+    && readProofReady
+    && turnstileReady
+    && serviceReady
+    && state.availableCredits >= payoutCredits,
+  );
   const missingCredits = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
   const payoutPackLabel = activeWithdrawal
     ? `${Number(activeWithdrawal.amount_credits).toLocaleString("en-US")} credits · ${activeWithdrawal.asset}`
@@ -96,19 +127,19 @@ export default async function WalletPage({ searchParams }: Props) {
               <form action="/api/withdrawals" method="post" className="withdrawal-form">
                 <label>Reserved destination<input type="text" value={maskDestination(activeWithdrawal.destination)} disabled readOnly /></label>
                 <TurnstileField action="withdrawal-retry" />
-                <button className="button button-light button-lg" type="submit" disabled={!canRetry}>{canRetry ? "Retry reserved payout" : "Recovery setup incomplete"}</button>
-                <small>No destination or amount can be changed during recovery. The server reloads the original withdrawal from the database.</small>
+                <button className="button button-light button-lg" type="submit" disabled={!recoveryAuthorityReady}>{recoveryAuthorityReady ? "Retry reserved payout" : "Recovery setup incomplete"}</button>
+                <small>{activeWithdrawal.status === "submitted" ? "The provider outcome may already be uncertain, so recovery preserves the original payout identity and amount." : "The reserved pack must still match the current read-proven pack before its first send."}</small>
               </form>
             )}
           </>
         ) : (
           <>
-            <div><span className="app-eyebrow">Simple withdrawal</span><h2>Redeem one configured payout pack.</h2><p>The live pack is server-configured so no price oracle, hidden FX spread or browser-side amount calculation can change what is sent.</p></div>
+            <div><span className="app-eyebrow">Simple withdrawal</span><h2>Redeem one verified payout pack.</h2><p>The pack must be explicit and fingerprint-bound to current FaucetPay read-only evidence before a new withdrawal can reserve balance or reach the send rail.</p></div>
             <form action="/api/withdrawals" method="post" className="withdrawal-form">
-              <label>FaucetPay destination<input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" disabled={!state.signedIn || !payout.ready} /></label>
+              <label>FaucetPay destination<input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" disabled={!state.signedIn || !payout.ready || !readProofReady} /></label>
               <TurnstileField action="withdrawal" />
-              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : !payoutCredits || state.preview ? "Payout setup incomplete" : missingCredits && missingCredits > 0 ? `Need ${formatUsdFromCredits(missingCredits)} more` : "Withdrawal unavailable"}</button>
-              <small>FaucetPay v2 idempotency prevents a safe retry from paying twice.</small>
+              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : !payoutCredits || state.preview ? "Payout setup incomplete" : !readProofReady ? "Payout proof incomplete" : missingCredits && missingCredits > 0 ? `Need ${formatUsdFromCredits(missingCredits)} more` : "Withdrawal unavailable"}</button>
+              <small>Destination validation uses read-only authority; the separately scoped send key is reserved for the final idempotent payout call.</small>
             </form>
           </>
         )}
@@ -122,7 +153,7 @@ export default async function WalletPage({ searchParams }: Props) {
             return <div className="transaction-row" key={row.id}><span className={`transaction-status ${positive ? "positive" : "neutral"}`}><Check /></span><div><strong>{row.label}</strong><small>{compactDate(row.createdAt)} · {row.state}</small></div><b className={positive ? "positive" : "neutral"}>{formatUsdFromCredits(row.credits, true)}</b></div>;
           }) : <div className="empty-ledger">{state.preview ? "Live ledger entries appear only after the reward service is connected." : "No ledger activity yet. Your first verified reward will appear here."}</div>}
         </section>
-        <aside className="trust-card"><Shield /><span className="app-eyebrow">Payout protection</span><h3>Reserve first. Recover safely.</h3><p>Credits are reserved before the external payout. Unknown outcomes keep the reserve and retry the same provider identity; only a definitive first-attempt failure can restore credits automatically.</p><div className="state-list"><span className="done">Available</span><span className="done">Reserved</span><span className="active">Provider</span><span>Paid</span></div></aside>
+        <aside className="trust-card"><Shield /><span className="app-eyebrow">Payout protection</span><h3>Prove. Reserve. Recover safely.</h3><p>New payouts require current read-only unit proof before credits are reserved. Unknown provider outcomes keep the reserve and retry the same provider identity; only a definitive first-attempt failure can restore credits automatically.</p><div className="state-list"><span className="done">Read proof</span><span className="done">Available</span><span className="active">Reserved</span><span>Paid</span></div></aside>
       </div>
     </AppShell>
   );

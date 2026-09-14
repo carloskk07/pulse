@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -116,7 +117,19 @@ export async function POST(request: NextRequest) {
 
   if (active) {
     if (active.status === "held") return walletRedirect(request, "held");
-    if (!process.env.FAUCETPAY_SCOPED_KEY) return walletRedirect(request, "payout-not-configured");
+    if (!process.env.FAUCETPAY_SCOPED_KEY?.trim()) return walletRedirect(request, "payout-not-configured");
+
+    if (active.status === "requested") {
+      const config = getFaucetPayPackConfig();
+      const packStillMatches = Boolean(
+        config.ready
+        && config.amountCredits === active.amount_credits
+        && config.amountSmallestUnits === active.payout_amount_units
+        && config.asset === active.asset,
+      );
+      if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
+      if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
+    }
 
     const reserved: ReservedWithdrawal = {
       status: active.status,
@@ -128,11 +141,14 @@ export async function POST(request: NextRequest) {
       payout_amount_units: active.payout_amount_units ?? undefined,
     };
 
+    // A submitted payout may already have reached FaucetPay. Reconciliation must
+    // keep using the original idempotency key even if current configuration later drifts.
     return executeReservedPayout(request, admin, new FaucetPayProvider(), user.id, reserved, ip, true);
   }
 
   const config = getFaucetPayPackConfig();
   if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
+  if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
 
   const destination = String(formData.get("destination") ?? "").trim();
   if (!destination || destination.length > 200) return walletRedirect(request, "invalid-destination");

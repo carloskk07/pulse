@@ -19,7 +19,7 @@ function configuredValues(kind: ReleaseEvidenceKind) {
     return [
       process.env.FAUCETPAY_READ_KEY,
       process.env.FAUCETPAY_PAYOUT_CURRENCY ?? "USDT",
-      process.env.FAUCETPAY_PAYOUT_CREDITS ?? "5000",
+      process.env.FAUCETPAY_PAYOUT_CREDITS,
       process.env.FAUCETPAY_PAYOUT_UNITS,
       process.env.FAUCETPAY_PAYOUT_LABEL,
     ];
@@ -27,7 +27,7 @@ function configuredValues(kind: ReleaseEvidenceKind) {
   return [
     process.env.FAUCETPAY_SCOPED_KEY,
     process.env.FAUCETPAY_PAYOUT_CURRENCY ?? "USDT",
-    process.env.FAUCETPAY_PAYOUT_CREDITS ?? "5000",
+    process.env.FAUCETPAY_PAYOUT_CREDITS,
     process.env.FAUCETPAY_PAYOUT_UNITS,
     process.env.FAUCETPAY_PAYOUT_LABEL,
   ];
