@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const FAUCETPAY_READ_PROOF_SCHEMA = "faucetpay-read-proof-v2";
+
 export type ReleaseEvidenceKind = "turnstile" | "ayet_transport" | "ayet_callback" | "faucetpay_read" | "faucetpay_payout";
 
 function configuredValues(kind: ReleaseEvidenceKind) {
@@ -17,6 +19,7 @@ function configuredValues(kind: ReleaseEvidenceKind) {
   }
   if (kind === "faucetpay_read") {
     return [
+      FAUCETPAY_READ_PROOF_SCHEMA,
       process.env.FAUCETPAY_READ_KEY,
       process.env.FAUCETPAY_PAYOUT_CURRENCY ?? "USDT",
       process.env.FAUCETPAY_PAYOUT_CREDITS,
