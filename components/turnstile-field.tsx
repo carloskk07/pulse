@@ -19,7 +19,7 @@ declare global {
 
 const statusCopy: Record<TurnstileStatus, string> = {
   loading: "Preparing human verification…",
-  waiting: "Complete the verification before creating your account.",
+  waiting: "Complete the verification before continuing.",
   verified: "Human verification ready.",
   expired: "Verification expired. Complete it again to continue.",
   error: "Verification needs another try.",

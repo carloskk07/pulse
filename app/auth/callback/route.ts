@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PASSWORD_RECOVERY_COOKIE, recoveryCookieOptions, safeAuthNext } from "@/lib/auth-security";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const ref = cleanReferralCode(url.searchParams.get("ref"));
-  const rawNext = url.searchParams.get("next") ?? "/dashboard";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+  const next = safeAuthNext(url.searchParams.get("next"));
+  const flow = url.searchParams.get("flow");
   const supabase = await createSupabaseServerClient();
 
   if (code && supabase) {
@@ -15,7 +18,13 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && ref) await bindReferralForUser(user.id, ref);
-      return NextResponse.redirect(new URL(next, url.origin));
+
+      const response = NextResponse.redirect(new URL(next, url.origin), 303);
+      response.headers.set("Cache-Control", "private, no-store");
+      if (flow === "recovery" && next === "/auth/update-password") {
+        response.cookies.set(PASSWORD_RECOVERY_COOKIE, "1", recoveryCookieOptions());
+      }
+      return response;
     }
   }
 
@@ -23,5 +32,7 @@ export async function GET(request: NextRequest) {
   fallback.searchParams.set("error", "callback-failed");
   fallback.searchParams.set("next", next);
   if (ref) fallback.searchParams.set("ref", ref);
-  return NextResponse.redirect(fallback);
+  const response = NextResponse.redirect(fallback, 303);
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }
