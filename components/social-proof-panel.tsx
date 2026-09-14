@@ -1,5 +1,17 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Check, Shield, Spark, Trend } from "@/components/icons";
 import type { PublicSocialProof } from "@/lib/social-proof";
+
+const EMPTY_PROOF: PublicSocialProof = {
+  stage: "early",
+  memberCount: 0,
+  rewardEventCount: 0,
+  paidWithdrawalCount: 0,
+  recentActivity: [],
+  available: false,
+};
 
 function compact(value: number) {
   return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
@@ -40,7 +52,33 @@ function metricsFor(proof: PublicSocialProof) {
   ];
 }
 
-export function SocialProofPanel({ proof }: { proof: PublicSocialProof }) {
+export function SocialProofPanel() {
+  const [proof, setProof] = useState<PublicSocialProof>(EMPTY_PROOF);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function refreshProof() {
+      try {
+        const response = await fetch("/api/public/social-proof", {
+          method: "GET",
+          signal: controller.signal,
+          headers: { accept: "application/json" },
+        });
+        if (!response.ok) return;
+
+        const nextProof = (await response.json()) as PublicSocialProof;
+        if (!controller.signal.aborted) setProof(nextProof);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("[social-proof] public refresh failed");
+      }
+    }
+
+    void refreshProof();
+    return () => controller.abort();
+  }, []);
+
   const metrics = metricsFor(proof);
   const hasActivity = proof.recentActivity.length > 0;
 
