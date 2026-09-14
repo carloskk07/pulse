@@ -48,6 +48,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
     ? [...links,
         { id: "product", href: "/admin/product", label: "Product", Icon: Shield },
         { id: "support-admin", href: "/admin/support", label: "Support", Icon: Users },
+        { id: "faucetpay-admin", href: "/admin/faucetpay", label: "FaucetPay", Icon: Wallet },
         { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
       ]
     : links;
