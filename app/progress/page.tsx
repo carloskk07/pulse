@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Check, Shield, Spark, Trend, Users } from "@/components/icons";
-import { ShareRhythmButton } from "@/components/share-rhythm-button";
+import { CircuitShareStudio } from "@/components/circuit-share-studio";
 import { getCircuitAchievements } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getRewardSnapshot, trustLabel } from "@/lib/reward-state";
@@ -37,7 +37,9 @@ export default async function ProgressPage() {
     trustLevel: state.trustLevel,
     signal: signal.signal,
   });
-  const unlocked = achievements.filter((achievement) => achievement.unlocked).length;
+  const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
+  const unlocked = unlockedAchievements.length;
+  const strongestAchievement = unlockedAchievements.at(-1)?.title ?? null;
 
   return (
     <AppShell active="progress">
@@ -47,7 +49,7 @@ export default async function ProgressPage() {
           <h1>Your circuit, over time.</h1>
           <p>Rhythm, Signal, achievements and community context come only from real product history. None of them changes your balance or payout eligibility.</p>
         </div>
-        {!state.preview && state.signedIn ? <ShareRhythmButton days={state.streakDays} signal={signal.signal} /> : <Link className="button" href="/auth?next=/progress">Sign in</Link>}
+        {!state.preview && state.signedIn ? <Link className="button" href="#circuit-moments">Share your circuit</Link> : <Link className="button" href="/auth?next=/progress">Sign in</Link>}
       </div>
 
       <section className="pc-progress-hero">
@@ -68,6 +70,16 @@ export default async function ProgressPage() {
           <article className="pc-retention-callout"><Shield /><div><strong>Built for return, not pressure.</strong><p>Pulsercuit shows progress and a next action without fake urgency, randomized prizes or hidden financial multipliers.</p></div></article>
         </div>
       </section>
+
+      {!state.preview && state.signedIn ? (
+        <CircuitShareStudio
+          achievement={strongestAchievement}
+          days={state.streakDays}
+          pulseCount={state.hourlyClaimCount}
+          signal={signal.signal}
+          stage={signal.stage}
+        />
+      ) : null}
 
       <section className="app-section">
         <div className="app-section-head"><div><span className="app-eyebrow">Circuit achievements</span><h2>{state.preview ? "Real history unlocks the grid." : `${unlocked} of ${achievements.length} unlocked`}</h2></div><span className="pc-subtle-status">factual milestones only</span></div>
