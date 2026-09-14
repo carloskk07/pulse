@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { recordReleaseEvidence } from "@/lib/release-evidence";
+import { recordReleaseEvidence, releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -31,6 +31,15 @@ type ActiveWithdrawalRow = {
   payout_amount_units: number | null;
   status: "requested" | "held" | "submitted";
 };
+
+async function currentFaucetPayReadProof(admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>) {
+  const { data, error } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", "release_external_proof")
+    .maybeSingle();
+  return !error && releaseEvidenceMatches(data?.value, "faucetpay_read");
+}
 
 async function finalize(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
@@ -118,6 +127,18 @@ export async function POST(request: NextRequest) {
     if (active.status === "held") return walletRedirect(request, "held");
     if (!process.env.FAUCETPAY_SCOPED_KEY) return walletRedirect(request, "payout-not-configured");
 
+    if (active.status === "requested") {
+      const config = getFaucetPayPackConfig();
+      const packStillMatches = Boolean(
+        config.ready
+        && config.amountCredits === active.amount_credits
+        && config.amountSmallestUnits === active.payout_amount_units
+        && config.asset === active.asset,
+      );
+      if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
+      if (!(await currentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
+    }
+
     const reserved: ReservedWithdrawal = {
       status: active.status,
       withdrawal_id: active.id,
@@ -128,11 +149,14 @@ export async function POST(request: NextRequest) {
       payout_amount_units: active.payout_amount_units ?? undefined,
     };
 
+    // A submitted payout may already have reached FaucetPay. Reconciliation must
+    // keep using the original idempotency key even if current configuration later drifts.
     return executeReservedPayout(request, admin, new FaucetPayProvider(), user.id, reserved, ip, true);
   }
 
   const config = getFaucetPayPackConfig();
   if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
+  if (!(await currentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
 
   const destination = String(formData.get("destination") ?? "").trim();
   if (!destination || destination.length > 200) return walletRedirect(request, "invalid-destination");
