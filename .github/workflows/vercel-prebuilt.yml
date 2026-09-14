@@ -1,0 +1,59 @@
+name: Vercel Prebuilt Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulsercuit-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Require deployment credential
+        run: test -n "$VERCEL_TOKEN"
+
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate application
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Pull Vercel production configuration
+        run: npx --yes vercel@latest pull --yes --environment=production --project=pulse --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+
+      - name: Build prebuilt Vercel output
+        run: npx --yes vercel@latest build --prod --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt output
+        run: npx --yes vercel@latest deploy --prebuilt --prod --yes --archive=tgz --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+
+      - name: Verify canonical production health
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl --fail --silent --show-error https://pulsercuit.pro/api/health | grep --quiet '"service":"pulsercuit"'; then
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "Production health check did not converge to the Pulsercuit release."
+          exit 1

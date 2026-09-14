@@ -1,34 +1,54 @@
-# Reward Pulse
+# Pulsercuit
 
-A premium, mobile-first rewards platform designed around transparent value, a ledger-first financial core, and incremental evolution.
+Pulsercuit is a mobile-first recurring reward network built around a transparent financial core, factual progress and incremental evolution.
 
 ## Product thesis
 
-Reward Pulse is not a banner-funded faucet. The daily reward is a retention mechanism. Revenue comes from explicitly incentivizable rewarded actions such as surveys, offers and direct sponsor quests. The product ranks opportunities by expected contribution rather than headline payout.
+Pulsercuit is not a banner-funded faucet and it is not an offerwall with a new skin. The recurring Pulse is the product rhythm. It opens only when the server-authoritative treasury can support it. Turbo is optional monetization, Trust reflects legitimate product history, and Proof separates credited activity from completed payouts.
+
+The core promise is simple:
+
+> Return. Pulse. Build your rhythm. Turbo only when you choose.
+
+## Product rails
+
+- **Pulse** — recurring treasury-backed reward rail.
+- **Turbo** — optional external monetization opportunities.
+- **Trust** — progressive legitimate-user reputation.
+- **Proof** — public factual product evidence.
+- **Wallet** — balance, settlement and withdrawal surface.
+- **Invite** — quality-based referral growth.
+- **Circuit Signal** — non-financial progress derived from real product history.
+- **Progress** — factual recap, achievements and community context.
 
 ## Current build
 
-- Premium marketing landing page
-- Responsive product preview
-- App shell with Home / Earn / Wallet / Invite
-- Daily Pulse + streak concept
-- Offer quality/match surfaces
-- Transparent wallet/ledger UX
-- Referral milestones based on active referrals
-- Economy helpers for contribution and payout ceilings
-- Risk-band helper
-- Provider adapter contracts
-- Supabase core schema with RLS and idempotency constraints
-- Health endpoint
-- Evolution contract
+- Pulsercuit V4 visual and brand system.
+- Responsive marketing, authentication and app surfaces.
+- Hourly Pulse with rolling eligibility and treasury gating.
+- Circuit Signal, rhythm milestones and deterministic achievements.
+- Optional Turbo provider integration.
+- Public Proof with real reward and withdrawal aggregates.
+- Transparent wallet and append-only ledger UX.
+- Quality-gated referrals tied to verified activity.
+- Supabase Auth/Postgres/RLS with idempotent financial writes.
+- Cloudflare Turnstile verification.
+- Vercel production hosting with Cloudflare DNS/security in front.
+- Netlify retained as a temporary fallback/preview path.
 
 ## Architecture
 
 ```text
 Next.js App Router
-  ├─ marketing + PWA-ready UI
+  ├─ Pulsercuit product UI
+  │   ├─ Pulse
+  │   ├─ Circuit Signal / Progress
+  │   ├─ Turbo
+  │   ├─ Trust / Proof
+  │   └─ Wallet / Invite
   ├─ Reward Core
   │   ├─ ledger
+  │   ├─ treasury + eligibility
   │   ├─ economy rules
   │   └─ risk rules
   ├─ provider adapters
@@ -37,7 +57,7 @@ Next.js App Router
   └─ PostgreSQL / Supabase
 ```
 
-One app, one database, one deployment. No microservices in V1.
+One application, one authoritative database and a deliberately small operational surface. No microservice split is required for the current product stage.
 
 ## Local setup
 
@@ -57,25 +77,27 @@ npm run lint
 npm run build
 ```
 
+## Deployment strategy
+
+Production is intentionally moving away from Vercel's automatic Git build path. `vercel.json` disables automatic Git deployments so that a validated external CI pipeline can build the Vercel output on GitHub Actions and upload the prebuilt artifact to production. This avoids consuming Vercel build capacity for every repository push while preserving the Vercel runtime and `pulsercuit.pro` domain.
+
+The checked-in `vercel-prebuilt.yml` is a non-destructive validation scaffold until the repository deployment credential is configured. Production must not be switched to the prebuilt path until that credential is present and one controlled deployment has completed successfully.
+
 ## Environment variables
 
-See `.env.example`. Never expose service-role, payout, callback, or anti-bot secrets to the browser.
+See `.env.example`. Never expose service-role, payout, callback, anti-bot or deployment credentials to the browser or repository.
 
 ## Financial invariants
 
-- Ledger entries are the source of truth.
+- Ledger entries remain the source of truth.
 - Provider events are idempotent.
 - Callback writes run server-side only.
-- User balances are derived.
+- Browser/profile balances are non-authoritative.
 - Withdrawals use idempotency keys.
 - Pending / confirmed / available / withdrawn / reversed states remain explicit.
+- Unfunded Pulse rewards stay closed.
+- Circuit Signal, achievements and sharing never create monetary value.
 
-## Next implementation slice
+## Launch discipline
 
-1. Supabase auth + profile bootstrap.
-2. Server-side Turnstile verification.
-3. First monetization adapter and signed callback verification.
-4. Ledger posting transaction for confirmed conversions.
-5. Daily Pulse transaction with one-claim-per-day guarantee.
-6. Payout adapter + withdrawal state machine.
-7. Admin economics dashboard fed by real events.
+Pulsercuit is not `PRODUCT_READY` until real external earning and payout evidence exists. Treasury funding/opening, FaucetPay activation and real payout tests are separate controlled gates and are not implied by visual or retention work.
