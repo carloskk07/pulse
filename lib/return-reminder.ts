@@ -24,13 +24,21 @@ function foldIcsLine(line: string) {
   return parts.join("\r\n");
 }
 
-export function buildReturnReminderCalendar(targetIso: string) {
+export function buildReturnReminderCalendar(
+  targetIso: string,
+  returnUrl = "https://pulsercuit.pro/dashboard",
+  reminderId?: string | null,
+) {
   const start = new Date(targetIso);
   if (!Number.isFinite(start.getTime())) throw new Error("Invalid return reminder target");
+
+  const parsedReturnUrl = new URL(returnUrl);
+  if (parsedReturnUrl.protocol !== "https:") throw new Error("Invalid return reminder URL");
 
   const end = new Date(start.getTime() + 10 * 60_000);
   const stamp = new Date();
   const targetKey = formatUtc(start);
+  const uidKey = reminderId?.replace(/[^0-9a-z-]/gi, "") || targetKey;
   const summary = "Pulsercuit: next Pulse eligibility window";
   const description = "Your rolling Pulse eligibility window is opening. This reminder does not guarantee a reward; funding, safety and claim checks run again when you return.";
 
@@ -41,13 +49,13 @@ export function buildReturnReminderCalendar(targetIso: string) {
     "PRODID:-//Pulsercuit//Return Intelligence//EN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:pulsercuit-return-${targetKey}@pulsercuit.pro`,
+    `UID:pulsercuit-return-${uidKey}@pulsercuit.pro`,
     `DTSTAMP:${formatUtc(stamp)}`,
     `DTSTART:${targetKey}`,
     `DTEND:${formatUtc(end)}`,
     `SUMMARY:${escapeIcsText(summary)}`,
     `DESCRIPTION:${escapeIcsText(description)}`,
-    "URL:https://pulsercuit.pro/dashboard",
+    `URL:${parsedReturnUrl.toString()}`,
     "TRANSP:TRANSPARENT",
     "BEGIN:VALARM",
     "ACTION:DISPLAY",
