@@ -137,15 +137,18 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
         </div>
         <div className="admin-secondary-grid">
           <article><span>Candidate payout pack</span><strong>{integer(plan.payoutCredits)} credits</strong><small>{usd(plan.payoutUsd)}</small></article>
-          <article><span>Hourly Pulse reward</span><strong>{integer(plan.pulseRewardCredits)} credits</strong><small>{plan.pulseIntervalMinutes === null ? "Interval unavailable" : `Every ${plan.pulseIntervalMinutes} rolling minutes`}</small></article>
+          <article><span>Hourly Pulse reward</span><strong>{integer(plan.pulseRewardCredits)} credits</strong><small>{plan.pulseIntervalMinutes === null ? "Interval unavailable" : `Every ${plan.pulseIntervalMinutes} rolling minutes · Treasury ${plan.treasuryCode ?? "—"}`}</small></article>
           <article><span>Claims from zero</span><strong>{integer(plan.claimsFromZero)}</strong></article>
-          <article><span>Theoretical minimum elapsed</span><strong>{duration(plan.minimumElapsedMinutes)}</strong><small>Assumes the first claim is immediately eligible and every later claim occurs at the earliest valid instant.</small></article>
+          <article><span>Theoretical minimum elapsed</span><strong>{duration(plan.minimumElapsedMinutes)}</strong><small>First claim immediately eligible; all later claims at the earliest valid rolling interval.</small></article>
           <article><span>Total Treasury credits needed</span><strong>{integer(plan.treasuryCreditsRequired)}</strong><small>{plan.treasuryOvershootCredits && plan.treasuryOvershootCredits > 0 ? `${plan.treasuryOvershootCredits} credit(s) above the exact pack because claims are indivisible` : "No claim-size overshoot"}</small></article>
+          <article><span>Fastest UTC-day claims</span><strong>{integer(plan.fastestDayClaimCount)}</strong><small>Arithmetic maximum for this isolated test path under the configured interval.</small></article>
+          <article><span>Minimum daily budget</span><strong>{integer(plan.minimumDailyBudgetCredits)}</strong><small>Current: {integer(plan.currentDailyBudgetCredits)} · deficit {integer(plan.dailyBudgetDeficitCredits)}</small></article>
+          <article><span>Minimum user/day cap</span><strong>{integer(plan.minimumUserDailyCapCredits)}</strong><small>Current: {integer(plan.currentUserDailyCapCredits)} · deficit {integer(plan.userDailyCapDeficitCredits)}</small></article>
           <article><span>Current Treasury available</span><strong>{integer(plan.currentTreasuryAvailableCredits)}</strong><small>{plan.treasuryEnabled === null ? "State unavailable" : `${plan.treasuryEnabled ? "enabled" : "disabled"} · kill switch ${plan.treasuryKillSwitch ? "ON" : "OFF"}`}</small></article>
-          <article><span>Funding deficit for one path</span><strong>{integer(plan.treasuryDeficitCredits)}</strong></article>
+          <article><span>Total funding deficit</span><strong>{integer(plan.treasuryDeficitCredits)}</strong></article>
         </div>
         <p className="admin-panel-note">{plan.detail}</p>
-        <p className="admin-panel-note"><strong>Advisory only.</strong> This planner does not modify the payout pack, fund Treasury, change budgets, mint credits, open the kill switch or call FaucetPay. A provider minimum is not inferred from this arithmetic.</p>
+        <p className="admin-panel-note"><strong>Advisory only.</strong> This planner does not modify the payout pack, fund Treasury, change budgets or caps, mint credits, open the kill switch or call FaucetPay. A provider minimum is not inferred from this arithmetic.</p>
       </section>
 
       <section className="admin-decision-card">
