@@ -32,7 +32,7 @@ export default async function FaucetPayPreflightPage() {
   const verified = probe.state === "READ_ONLY_VERIFIED";
 
   return (
-    <AppShell active="admin">
+    <AppShell active="faucetpay-admin">
       <div className="admin-head">
         <div>
           <span className="app-eyebrow">Private operations · financial preflight</span>
