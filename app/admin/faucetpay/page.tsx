@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { getFaucetPayTestPlan } from "@/lib/faucetpay-test-plan";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -26,6 +27,29 @@ function integer(value: number | null) {
   return value === null ? "—" : value.toLocaleString("en-US");
 }
 
+function usd(value: number | null) {
+  return value === null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(value);
+}
+
+function duration(minutes: number | null) {
+  if (minutes === null) return "—";
+  if (minutes === 0) return "Immediate after first eligible claim";
+  const totalHours = Math.floor(minutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const remainingMinutes = minutes % 60;
+  const parts = [days ? `${days}d` : "", hours ? `${hours}h` : "", remainingMinutes ? `${remainingMinutes}m` : ""].filter(Boolean);
+  return parts.join(" ") || "<1m";
+}
+
+function feasibilityLabel(value: string) {
+  if (value === "SAME_DAY") return "SAME-DAY CANDIDATE";
+  if (value === "MULTI_DAY") return "MULTI-DAY TEST";
+  if (value === "LONG_TEST") return "TOO SLOW FOR CONTROLLED TEST";
+  if (value === "AWAITING_PACK") return "AWAITING EXPLICIT PACK";
+  return "AWAITING PULSE CONTRACT";
+}
+
 const proofCopy: Record<string, string> = {
   recorded: "Live read-only evidence was verified again and recorded against the current FaucetPay configuration fingerprint.",
   "record-failed": "The live preflight passed, but the fingerprint could not be recorded. Payout authority remains blocked.",
@@ -47,7 +71,10 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
   if (!user) redirect("/auth?next=/admin/faucetpay");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const probe = await getFaucetPayReadOnlyPreflight();
+  const [probe, plan] = await Promise.all([
+    getFaucetPayReadOnlyPreflight(),
+    getFaucetPayTestPlan(),
+  ]);
   const verified = probe.state === "READ_ONLY_VERIFIED";
   const admin = createSupabaseAdminClient();
   const proofResult = admin
@@ -101,6 +128,24 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
             <button className="button" type="submit">{readEvidenceCurrent ? "Re-verify & refresh proof" : "Verify live rail & record proof"}</button>
           </form>
         ) : <p className="admin-panel-note"><strong>Proof recording is disabled.</strong> The server must first prove the asset, credit economics and provider-unit scale from current configuration and live FaucetPay data.</p>}
+      </section>
+
+      <section className="admin-panel">
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">Read-only planning</span><h2>Controlled payout test feasibility</h2></div>
+          <span className={`admin-badge ${plan.feasibility === "SAME_DAY" ? "" : plan.feasibility === "MULTI_DAY" ? "proof" : "setup"}`}>{feasibilityLabel(plan.feasibility)}</span>
+        </div>
+        <div className="admin-secondary-grid">
+          <article><span>Candidate payout pack</span><strong>{integer(plan.payoutCredits)} credits</strong><small>{usd(plan.payoutUsd)}</small></article>
+          <article><span>Hourly Pulse reward</span><strong>{integer(plan.pulseRewardCredits)} credits</strong><small>{plan.pulseIntervalMinutes === null ? "Interval unavailable" : `Every ${plan.pulseIntervalMinutes} rolling minutes`}</small></article>
+          <article><span>Claims from zero</span><strong>{integer(plan.claimsFromZero)}</strong></article>
+          <article><span>Theoretical minimum elapsed</span><strong>{duration(plan.minimumElapsedMinutes)}</strong><small>Assumes the first claim is immediately eligible and every later claim occurs at the earliest valid instant.</small></article>
+          <article><span>Total Treasury credits needed</span><strong>{integer(plan.treasuryCreditsRequired)}</strong><small>{plan.treasuryOvershootCredits && plan.treasuryOvershootCredits > 0 ? `${plan.treasuryOvershootCredits} credit(s) above the exact pack because claims are indivisible` : "No claim-size overshoot"}</small></article>
+          <article><span>Current Treasury available</span><strong>{integer(plan.currentTreasuryAvailableCredits)}</strong><small>{plan.treasuryEnabled === null ? "State unavailable" : `${plan.treasuryEnabled ? "enabled" : "disabled"} · kill switch ${plan.treasuryKillSwitch ? "ON" : "OFF"}`}</small></article>
+          <article><span>Funding deficit for one path</span><strong>{integer(plan.treasuryDeficitCredits)}</strong></article>
+        </div>
+        <p className="admin-panel-note">{plan.detail}</p>
+        <p className="admin-panel-note"><strong>Advisory only.</strong> This planner does not modify the payout pack, fund Treasury, change budgets, mint credits, open the kill switch or call FaucetPay. A provider minimum is not inferred from this arithmetic.</p>
       </section>
 
       <section className="admin-decision-card">
