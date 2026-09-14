@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { recordReleaseEvidence, releaseEvidenceMatches } from "@/lib/release-evidence";
+import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
+import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -31,15 +32,6 @@ type ActiveWithdrawalRow = {
   payout_amount_units: number | null;
   status: "requested" | "held" | "submitted";
 };
-
-async function currentFaucetPayReadProof(admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>) {
-  const { data, error } = await admin
-    .from("app_config")
-    .select("value")
-    .eq("key", "release_external_proof")
-    .maybeSingle();
-  return !error && releaseEvidenceMatches(data?.value, "faucetpay_read");
-}
 
 async function finalize(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
@@ -125,7 +117,7 @@ export async function POST(request: NextRequest) {
 
   if (active) {
     if (active.status === "held") return walletRedirect(request, "held");
-    if (!process.env.FAUCETPAY_SCOPED_KEY) return walletRedirect(request, "payout-not-configured");
+    if (!process.env.FAUCETPAY_SCOPED_KEY?.trim()) return walletRedirect(request, "payout-not-configured");
 
     if (active.status === "requested") {
       const config = getFaucetPayPackConfig();
@@ -136,7 +128,7 @@ export async function POST(request: NextRequest) {
         && config.asset === active.asset,
       );
       if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
-      if (!(await currentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
+      if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
     }
 
     const reserved: ReservedWithdrawal = {
@@ -156,7 +148,7 @@ export async function POST(request: NextRequest) {
 
   const config = getFaucetPayPackConfig();
   if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
-  if (!(await currentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
+  if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
 
   const destination = String(formData.get("destination") ?? "").trim();
   if (!destination || destination.length > 200) return walletRedirect(request, "invalid-destination");
