@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
-export const metadata = { title: "Home" };
+export const metadata = { title: "Pulse" };
 
 type Props = { searchParams: Promise<{ claim?: string }> };
 
@@ -40,14 +40,16 @@ export default async function DashboardPage({ searchParams }: Props) {
   const pulseEyebrow = state.preview ? "Pulse status" : !state.pulseFundingReady ? "Reward pool" : state.claimReady ? "Your Pulse" : "Next Pulse";
   const pulseCaption = state.preview ? "Live service required" : !state.pulseFundingReady ? "Funding required" : state.claimReady ? `+${state.claimRewardCredits} P available` : "Rolling interval active";
   const claimSucceeded = params.claim === "success";
+  const trust = trustLabel(state.trustLevel);
+  const rhythmMilestones = [1, 3, 7, 14] as const;
 
   return (
     <AppShell active="home">
       <div className="app-page-head pulse-page-head">
         <div>
-          <div className="pulse-line">Live reward network</div>
-          <h1>{state.preview ? "Pulse is waiting for its live service." : "Your Pulse."}</h1>
-          <p>{state.preview ? "Financial values stay hidden until the production reward service is authoritative." : "One recurring reward. Clear financial truth. Turbo only when you choose."}</p>
+          <div className="pulse-line">Pulsercuit live network</div>
+          <h1>{state.preview ? "Your circuit is waiting for its live service." : "Your Pulse."}</h1>
+          <p>{state.preview ? "Financial values stay hidden until the production reward service is authoritative." : "Return. Pulse. Build your rhythm. Turbo only when you choose."}</p>
         </div>
         <Link href="/wallet" className="balance-chip balance-chip-v2" aria-label="Open Wallet">
           <small>Available</small>
@@ -56,15 +58,22 @@ export default async function DashboardPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      {params.claim ? <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>{claimCopy[params.claim] ?? "Pulse state updated."}{claimSucceeded ? <Link href="/invite">Share your rhythm <ArrowUpRight /></Link> : null}</div> : null}
+      {params.claim ? <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>{claimCopy[params.claim] ?? "Pulsercuit state updated."}{claimSucceeded ? <Link href="/invite">Share your rhythm <ArrowUpRight /></Link> : null}</div> : null}
       {state.preview ? <div className="preview-banner">Preview shell only — no balance, claim, trust or payout value is simulated before the live reward service is connected.</div> : null}
+
+      <section className="pc-dashboard-ribbon" aria-label="Pulsercuit status">
+        <article className={visualState === "ready" ? "live" : ""}><small>Circuit state</small><strong>{state.preview ? "Preview" : !state.pulseFundingReady ? "Safe standby" : state.claimReady ? "Pulse ready" : "Charging"}</strong><span>authoritative reward rail</span></article>
+        <article className="cyan"><small>Rhythm</small><strong>{state.preview ? "—" : `${state.streakDays} day${state.streakDays === 1 ? "" : "s"}`}</strong><span>real claim history only</span></article>
+        <article className="violet"><small>Trust</small><strong>{state.preview ? "Building" : trust}</strong><span>{state.preview ? "live profile required" : `level ${state.trustLevel}/5`}</span></article>
+        <article className="warm"><small>Proof</small><strong>Public</strong><span>credited and paid stay separate</span></article>
+      </section>
 
       <section className="dashboard-hero hourly-pulse-stage">
         <div className={`daily-pulse-card hourly-pulse-card state-${visualState} ${claimSucceeded ? "is-claimed" : ""}`}>
-          <div className="pulse-stage-watermark" aria-hidden="true"><span>PULSE</span><b>01</b></div>
+          <div className="pulse-stage-watermark" aria-hidden="true"><span>PULSERCUIT</span><b>01</b></div>
           <div className="daily-pulse-copy">
-            <span className="status-pill status-lime"><Spark /> {state.preview ? "Setup required" : `Pulse Trust · ${trustLabel(state.trustLevel)}`}</span>
-            <h2>{state.preview ? "Hourly Pulse activates with the live ledger." : !state.pulseFundingReady ? "Your Pulse is in safe standby." : state.claimReady ? "Your Pulse is live." : "Your next Pulse is forming."}</h2>
+            <span className="status-pill status-lime"><Spark /> {state.preview ? "Setup required" : `Trust · ${trust}`}</span>
+            <h2>{state.preview ? "Your Pulse activates with the live ledger." : !state.pulseFundingReady ? "Your Pulse is in safe standby." : state.claimReady ? "Your Pulse is live." : "Your next Pulse is forming."}</h2>
             <p>{state.preview ? "Connect the production reward service before claims become authoritative." : !state.pulseFundingReady ? "No unfunded promises. The reward rail opens only when the treasury has real budget and every safety control is enabled." : state.claimReady ? `A funded +${state.claimRewardCredits} P reward is available now. Your next window opens ${state.claimIntervalMinutes} minutes after a successful claim.` : "The next reward is protected by a rolling interval rather than a calendar reset, preventing boundary double-claims."}</p>
             {state.preview ? <button className="button button-light pulse-claim-button" disabled>Reward service not connected</button> : canClaim ? <form action="/api/pulse/claim" method="post" className="claim-form"><TurnstileField action="hourly_pulse" /><button className="button button-light pulse-claim-button" type="submit">Claim +{state.claimRewardCredits} P <ArrowUpRight /></button></form> : state.claimReady ? state.signedIn ? <button className="button button-light pulse-claim-button" disabled>{state.pulseFundingReady ? "Claim verification unavailable" : "Reward pool paused"}</button> : <Link href="/auth?next=/dashboard" className="button button-light pulse-claim-button">Sign in to claim <ArrowUpRight /></Link> : <button className="button button-light pulse-claim-button" disabled>Pulse charging <Check /></button>}
           </div>
@@ -74,8 +83,8 @@ export default async function DashboardPage({ searchParams }: Props) {
               {state.pulseFundingReady ? <PulseCountdown target={state.nextClaimAt} /> : <span className="pulse-core-word">PAUSED</span>}
             </PulseCoreVisual>
             <div className="pulse-core-meta">
-              <div className="pulse-trust-mini"><Shield /><span>{trustLabel(state.trustLevel)}</span><b>{state.trustLevel}/5</b></div>
-              <div className="streak-days" aria-label="Hourly Pulse rhythm">{[1,2,3,4,5,6,7].map((day) => <span key={day} className={!state.preview && day <= Math.min(state.streakDays, 7) ? "done" : ""}>{!state.preview && day <= Math.min(state.streakDays, 7) ? <Check /> : day}</span>)}</div>
+              <div className="pulse-trust-mini"><Shield /><span>{trust}</span><b>{state.trustLevel}/5</b></div>
+              <div className="streak-days" aria-label="Pulse rhythm">{[1,2,3,4,5,6,7].map((day) => <span key={day} className={!state.preview && day <= Math.min(state.streakDays, 7) ? "done" : ""}>{!state.preview && day <= Math.min(state.streakDays, 7) ? <Check /> : day}</span>)}</div>
               <small className="pulse-rhythm-label">{!state.pulseFundingReady ? "Rhythm starts with the first funded Pulse" : state.streakDays > 0 ? `${state.streakDays}-day rhythm` : "Start your rhythm"}</small>
             </div>
           </div>
@@ -89,16 +98,24 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
       </section>
 
-      {showFirstPulseGuide ? <section className="first-reward-guide pulse-onboarding"><div className="first-reward-copy"><span className="app-eyebrow">Your first rhythm</span><h2>The reward comes first.</h2><p>Claim the base Pulse when it opens. Return after the rolling interval. Turbo is optional and never required to receive an eligible base reward.</p></div><div className="first-reward-steps"><div><span>1</span><strong>Claim</strong><small>Collect an eligible Pulse</small></div><div><span>2</span><strong>Return</strong><small>Come back when the timer opens</small></div><div><span>3</span><strong>Turbo</strong><small>Optional extra earning</small></div></div></section> : null}
+      {showFirstPulseGuide ? <section className="first-reward-guide pulse-onboarding"><div className="first-reward-copy"><span className="app-eyebrow">Your first rhythm</span><h2>The reward comes first.</h2><p>Claim the base Pulse when it opens. Return after the rolling interval. Turbo is optional and never required to receive an eligible base reward.</p></div><div className="first-reward-steps"><div><span>1</span><strong>Claim</strong><small>Collect an eligible Pulse</small></div><div><span>2</span><strong>Return</strong><small>Come back when the timer opens</small></div><div><span>3</span><strong>Build</strong><small>Grow real product history</small></div></div></section> : null}
 
-      <section className="app-section"><div className="app-section-head"><div><span className="app-eyebrow">Optional Turbo</span><h2>{liveTurboRoute ? "Want more than the base Pulse?" : "The base Pulse does not depend on offer inventory."}</h2></div><Link href="/earn">Open Turbo <ArrowUpRight /></Link></div><article className="invite-card"><div className="invite-icon">{liveTurboRoute ? <Bolt /> : <Shield />}</div><div><span className="app-eyebrow">{liveTurboRoute ? "Extra earning" : "Independent core"}</span><h3>{liveTurboRoute ? "Turbo is available when you choose it." : "No CPA provider controls whether Pulse exists."}</h3><p>{liveTurboRoute ? "A connected monetization route can add extra rewards. Pulse credits only authoritative server-confirmed events." : "External CPA supply stays optional. The hourly reward, ledger, trust and Wallet remain Pulse-owned."}</p></div><Link href="/earn" className="icon-button" aria-label="Open Turbo"><ArrowUpRight /></Link></article></section>
+      <section className="app-section">
+        <div className="app-section-head"><div><span className="app-eyebrow">Circuit momentum</span><h2>Visible progress without fake value.</h2></div><Link href="/invite">Share your rhythm <ArrowUpRight /></Link></div>
+        <article className="pc-momentum-card">
+          <div className="pc-momentum-top"><div><span>Current rhythm</span><strong>{state.preview ? "Live history required" : `${state.streakDays} day${state.streakDays === 1 ? "" : "s"}`}</strong></div><div><span>Trust</span><strong>{state.preview ? "Building" : trust}</strong></div></div>
+          <div className="pc-milestone-track" aria-label="Rhythm milestones">{rhythmMilestones.map((milestone) => <span key={milestone} className={!state.preview && state.streakDays >= milestone ? "done" : ""}>{milestone}d</span>)}</div>
+        </article>
+      </section>
+
+      <section className="app-section"><div className="app-section-head"><div><span className="app-eyebrow">Optional Turbo</span><h2>{liveTurboRoute ? "Want more than the base Pulse?" : "The base Pulse does not depend on offer inventory."}</h2></div><Link href="/earn">Open Turbo <ArrowUpRight /></Link></div><article className="invite-card"><div className="invite-icon">{liveTurboRoute ? <Bolt /> : <Shield />}</div><div><span className="app-eyebrow">{liveTurboRoute ? "Extra earning" : "Independent core"}</span><h3>{liveTurboRoute ? "Turbo is available when you choose it." : "No CPA provider controls whether Pulsercuit exists."}</h3><p>{liveTurboRoute ? "A connected monetization route can add extra rewards. Pulsercuit credits only authoritative server-confirmed events." : "External CPA supply stays optional. The Pulse, ledger, trust and Wallet remain Pulsercuit-owned."}</p></div><Link href="/earn" className="icon-button" aria-label="Open Turbo"><ArrowUpRight /></Link></article></section>
 
       <section className="dashboard-lower-grid">
         <article className="progress-card"><div className="app-eyebrow">Next withdrawal</div>{payoutCredits && !state.preview ? <><div className="progress-value"><strong>{formatUsdFromCredits(state.availableCredits)}</strong><span>/ {formatUsdFromCredits(payoutCredits)}</span></div><div className="progress-track large"><span style={{width:`${progress}%`}} /></div><p>{away && away > 0 ? <>Only <strong>{formatUsdFromCredits(away)} remains</strong> to the configured payout threshold.</> : <strong>The configured withdrawal threshold is reached.</strong>}</p></> : <><div className="progress-value"><strong>Not active</strong></div><div className="progress-track large"><span style={{width:"0%"}} /></div><p>The payout threshold appears only after the live payout pack is configured.</p></>}<Link href="/wallet" className="inline-action"><Bolt /> Open Wallet</Link></article>
-        <article className="invite-card"><div className="invite-icon"><Users /></div><div><span className="app-eyebrow">Quality growth</span><h3>Share a rhythm, not a signup bounty.</h3><p>Referral rewards unlock only after verified monetized activity, so growth is tied to real users rather than account farms.</p></div><Link href="/invite" className="icon-button" aria-label="Open referral page"><ArrowUpRight /></Link></article>
+        <article className="invite-card"><div className="invite-icon"><Users /></div><div><span className="app-eyebrow">Quality growth</span><h3>Share a rhythm, not a signup bounty.</h3><p>Referral rewards unlock only after verified monetized activity, so growth is tied to real users rather than account farms.</p></div><Link href="/invite" className="icon-button" aria-label="Open invite page"><ArrowUpRight /></Link></article>
       </section>
 
-      <section className="pulse-proof-link"><div><span className="app-eyebrow">Public proof</span><h2>See what Pulse has actually credited and paid.</h2><p>No simulated users, payouts or activity.</p></div><Link className="button" href="/proof">Open Pulse Proof <ArrowUpRight /></Link></section>
+      <section className="pulse-proof-link"><div><span className="app-eyebrow">Public proof</span><h2>See what Pulsercuit has actually credited and paid.</h2><p>No simulated users, payouts or activity.</p></div><Link className="button" href="/proof">Open Pulsercuit Proof <ArrowUpRight /></Link></section>
     </AppShell>
   );
 }
