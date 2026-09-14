@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./styles/pulse-v3-marketing.css";
+import "./styles/pulsercuit-v4.css";
 
 function getMetadataBase() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
-  const candidates = [configured, vercelHost ? `https://${vercelHost}` : null, "https://example.com"];
+  const candidates = [configured, vercelHost ? `https://${vercelHost}` : null, "https://pulsercuit.pro"];
 
   for (const candidate of candidates) {
     if (!candidate) continue;
@@ -17,29 +18,30 @@ function getMetadataBase() {
     }
   }
 
-  return new URL("https://example.com");
+  return new URL("https://pulsercuit.pro");
 }
 
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
   title: {
-    default: "Reward Pulse — Come back. Claim your Pulse.",
-    template: "%s · Reward Pulse",
+    default: "Pulsercuit — Return. Pulse. Repeat.",
+    template: "%s · Pulsercuit",
   },
   description:
-    "A treasury-backed recurring reward network with optional Turbo earning and transparent payout proof.",
-  applicationName: "Reward Pulse",
+    "Pulsercuit is a treasury-backed recurring reward network built around a simple return rhythm, optional Turbo earning and public proof.",
+  applicationName: "Pulsercuit",
   manifest: "/manifest.webmanifest",
-  keywords: ["recurring rewards", "crypto rewards", "reward network", "hourly rewards", "transparent payouts"],
+  keywords: ["recurring rewards", "reward network", "hourly rewards", "transparent payouts", "Pulsercuit", "Pulse"],
   twitter: {
     card: "summary_large_image",
-    title: "Reward Pulse",
-    description: "Come back. Claim your Pulse. Turbo only when you choose.",
+    title: "Pulsercuit",
+    description: "Return. Pulse. Repeat. Turbo only when you choose.",
   },
   openGraph: {
-    title: "Reward Pulse",
-    description: "Treasury-backed recurring rewards with public proof and optional Turbo earning.",
+    title: "Pulsercuit",
+    description: "A transparent recurring reward circuit with treasury-backed Pulse rewards and optional Turbo earning.",
     type: "website",
+    siteName: "Pulsercuit",
   },
   robots: { index: true, follow: true },
 };
@@ -47,7 +49,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#05070a",
+  themeColor: "#040609",
   colorScheme: "dark",
 };
 
