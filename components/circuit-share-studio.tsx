@@ -26,29 +26,29 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
   const moment = useMemo(() => {
     if (mode === "achievement" && achievement) {
       return {
-        eyebrow: "Verified milestone",
+        eyebrow: "Milestone unlocked",
         headline: achievement,
-        detail: `${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"} in my real product history.`,
-        text: `I unlocked “${achievement}” on Pulsercuit from real product history. ${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}; no balance or payout data is exposed.`,
+        detail: `${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"} behind this mark.`,
+        text: `Unlocked: ${achievement} on Pulsercuit. ${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}. Built from real history.`,
       };
     }
 
     if (mode === "signal") {
       return {
-        eyebrow: "Circuit Signal",
-        headline: `${normalizedSignal}/100 · ${stage}`,
-        detail: "A display-only progress score built from real Pulse rhythm and Trust history.",
-        text: `My Pulsercuit Circuit Signal is ${normalizedSignal}/100 (${stage}). It is display-only progress derived from real product history, not money.`,
+        eyebrow: "Circuit rank",
+        headline: stage,
+        detail: `Signal ${normalizedSignal}/100 · real Pulse and Trust history.`,
+        text: `My Pulsercuit rank is ${stage} — Signal ${normalizedSignal}/100. Built from real Pulse history.`,
       };
     }
 
     return {
       eyebrow: "Return rhythm",
-      headline: normalizedDays > 0 ? `${normalizedDays}-day circuit` : "Circuit started",
-      detail: `${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"} recorded without exposing balances.`,
+      headline: normalizedDays > 0 ? `${normalizedDays}-day rhythm` : "Circuit started",
+      detail: `${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}. Still climbing.`,
       text: normalizedDays > 0
-        ? `I’m building a ${normalizedDays}-day rhythm on Pulsercuit with ${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}. Progress is factual; Turbo stays optional.`
-        : `I’m building my Pulsercuit rhythm. Progress comes from real product history; Turbo stays optional.`,
+        ? `${normalizedDays}-day Pulsercuit rhythm. ${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}. Still climbing.`
+        : "My Pulsercuit circuit is live. Building momentum from real activity.",
     };
   }, [achievement, mode, normalizedDays, normalizedPulses, normalizedSignal, stage]);
 
@@ -56,7 +56,7 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
     const url = typeof window === "undefined" ? "https://pulsercuit.pro" : window.location.origin;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "My Pulsercuit moment", text: moment.text, url });
+        await navigator.share({ title: "Pulsercuit moment", text: moment.text, url });
         setStatus("shared");
       } else {
         await navigator.clipboard.writeText(`${moment.text} ${url}`);
@@ -70,16 +70,16 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
 
   const options: { id: ShareMode; label: string; disabled?: boolean }[] = [
     { id: "rhythm", label: "Rhythm" },
-    { id: "signal", label: "Signal" },
-    { id: "achievement", label: "Milestone", disabled: !achievement },
+    { id: "signal", label: "Rank" },
+    { id: "achievement", label: "Seal", disabled: !achievement },
   ];
 
   return (
-    <section className="pc-share-studio" id="circuit-moments" aria-labelledby="share-studio-title">
+    <section className="pc-share-studio pc-luxe-share-studio" id="circuit-moments" aria-labelledby="share-studio-title">
       <div className="pc-share-studio-copy">
-        <span className="app-eyebrow">V4.3 · Circuit moments</span>
-        <h2 id="share-studio-title">Share proof of progress, not private money.</h2>
-        <p>Choose a factual moment generated from your own history. Pulsercuit never adds a balance, payout claim or invented activity to the card.</p>
+        <span className="app-eyebrow">Share studio</span>
+        <h2 id="share-studio-title">Turn progress into a statement.</h2>
+        <p>Pick one real moment. No balance. No fake flex.</p>
         <div className="pc-share-mode-row" role="group" aria-label="Choose a share moment">
           {options.map((option) => (
             <button
@@ -95,18 +95,18 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
         </div>
       </div>
 
-      <article className={`pc-share-moment-card mode-${mode}`}>
+      <article className={`pc-share-moment-card pc-luxe-moment-card mode-${mode}`}>
         <div className="pc-share-moment-orbit" aria-hidden="true"><i /><i /><i /></div>
-        <div className="pc-share-moment-brand"><span>Pulsercuit</span><small>verified personal moment</small></div>
+        <div className="pc-share-moment-brand"><span>Pulsercuit</span><small>moment / verified history</small></div>
         <div className="pc-share-moment-body">
           <small>{moment.eyebrow}</small>
           <strong>{moment.headline}</strong>
           <p>{moment.detail}</p>
         </div>
         <div className="pc-share-moment-foot">
-          <span>No balance shown · factual history only</span>
+          <span>Real history · private balance hidden</span>
           <button type="button" onClick={share} aria-live="polite">
-            {status === "copied" ? "Copied" : status === "shared" ? "Shared" : "Share moment"}
+            {status === "copied" ? "Copied" : status === "shared" ? "Shared" : "Share this moment"}
           </button>
         </div>
       </article>

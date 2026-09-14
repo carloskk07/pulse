@@ -5,6 +5,8 @@ import "./styles/pulsercuit-v4.css";
 import "./styles/pulsercuit-v4-1.css";
 import "./styles/pulsercuit-v4-2.css";
 import "./styles/pulsercuit-v5.css";
+import "./styles/pulsercuit-v5-1.css";
+import "./styles/pulsercuit-v5-1-surfaces.css";
 
 function getMetadataBase() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -27,22 +29,22 @@ function getMetadataBase() {
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
   title: {
-    default: "Pulsercuit — Turn consistency into momentum",
+    default: "Pulsercuit — Return. Rise. Repeat.",
     template: "%s · Pulsercuit",
   },
   description:
-    "Pulsercuit is a premium reward platform built around a clear return loop: claim funded Pulses, build visible progress and move toward transparent payouts.",
+    "Claim funded Pulses, build visible status, unlock factual milestones, share your momentum and move toward verified payouts.",
   applicationName: "Pulsercuit",
   manifest: "/manifest.webmanifest",
-  keywords: ["reward platform", "recurring rewards", "hourly rewards", "transparent payouts", "Pulsercuit", "Pulse rewards"],
+  keywords: ["reward platform", "gamified rewards", "recurring rewards", "reward streaks", "transparent payouts", "Pulsercuit", "Pulse rewards"],
   twitter: {
     card: "summary_large_image",
-    title: "Pulsercuit — Turn consistency into momentum",
-    description: "Return when your Pulse opens. Claim what is funded. Build visible progress. Withdraw with clarity.",
+    title: "Pulsercuit — Return. Rise. Repeat.",
+    description: "Claim funded Pulses. Build status. Unlock milestones. Share the climb.",
   },
   openGraph: {
-    title: "Pulsercuit — Turn consistency into momentum",
-    description: "A premium reward loop built around funded Pulses, visible progress and transparent payout proof.",
+    title: "Pulsercuit — Return. Rise. Repeat.",
+    description: "A premium reward circuit built around funded Pulses, visible status and verified payout proof.",
     type: "website",
     siteName: "Pulsercuit",
   },
@@ -52,7 +54,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#060708",
+  themeColor: "#050607",
   colorScheme: "dark",
 };
 

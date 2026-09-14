@@ -38,37 +38,36 @@ export function NextCircuitPanel({
   const canScheduleReturn = pulseFundingReady && !claimReady && Boolean(nextClaimAt);
   const primary = !pulseFundingReady
     ? {
-        eyebrow: "Safe standby",
-        title: "Your history stays ready even while rewards are paused.",
-        detail: "No fake countdown appears when the reward rail is unfunded. Your existing momentum stays intact until funding returns.",
-        action: "Check Pulse status",
+        eyebrow: "Standby",
+        title: "Your circuit is holding position.",
+        detail: "History stays intact until funded rewards return.",
+        action: "Check Pulse",
         icon: Shield,
       }
     : claimReady
       ? {
           eyebrow: "Ready now",
-          title: "Your funded Pulse is the next move.",
-          detail: `Your rolling ${claimIntervalMinutes}-minute window is open. Final eligibility is still confirmed by the live server before value is written.`,
-          action: "Claim your Pulse",
+          title: "Your funded Pulse is waiting.",
+          detail: `The ${claimIntervalMinutes}-minute rolling window is open.`,
+          action: "Claim Pulse",
           icon: Spark,
         }
       : {
           eyebrow: "Next return",
           title: "Your next Pulse is forming.",
-          detail: "The countdown follows your last real claim and the live rolling interval, so the timing belongs to your actual history.",
+          detail: "The timer follows your last real claim.",
           action: "Open Pulse",
           icon: Trend,
         };
   const PrimaryIcon = primary.icon;
 
   return (
-    <section className="pc-next-circuit pc-v5-next-circuit" aria-labelledby="next-circuit-title">
+    <section className="pc-next-circuit pc-luxe-next-move" aria-labelledby="next-circuit-title">
       <div className="pc-next-circuit-head">
         <div>
-          <span className="app-eyebrow">Your next move</span>
-          <h2 id="next-circuit-title">Keep momentum obvious.</h2>
+          <span className="app-eyebrow">Next move</span>
+          <h2 id="next-circuit-title">Keep the climb obvious.</h2>
         </div>
-        <p>See the next funded action first, then the closest milestone already supported by your real history.</p>
       </div>
 
       <div className="pc-next-circuit-grid">
@@ -79,34 +78,30 @@ export function NextCircuitPanel({
           <p>{primary.detail}</p>
           <div className="pc-next-action-row">
             <Link className="pc-next-action" href="/dashboard">{primary.action} <ArrowUpRight /></Link>
-            {canScheduleReturn ? <a className="pc-next-reminder" href="/api/return-reminder">Remind me <ArrowUpRight /></a> : null}
+            {canScheduleReturn ? <a className="pc-next-reminder" href="/api/return-reminder">Set reminder <ArrowUpRight /></a> : null}
           </div>
-          {canScheduleReturn ? <small className="pc-next-reminder-note">Calendar reminder only. It marks the eligibility window, not a guaranteed reward.</small> : null}
         </article>
 
         <div className="pc-next-secondary-stack">
           <article className="pc-next-secondary">
-            <div className="pc-next-secondary-label"><Check /> Closest milestone</div>
+            <div className="pc-next-secondary-label"><Check /> Next seal</div>
             {nextAchievement ? (
               <>
                 <div className="pc-next-secondary-title"><strong>{nextAchievement.title}</strong><span>{remainingLabel(nextAchievement)} left</span></div>
                 <div className="pc-next-progress"><span style={{ width: `${nextAchievement.progress}%` }} /></div>
-                <p>{nextAchievement.description}</p>
               </>
             ) : (
               <>
-                <div className="pc-next-secondary-title"><strong>Current set complete</strong><span>6 / 6</span></div>
+                <div className="pc-next-secondary-title"><strong>Collection complete</strong><span>6 / 6</span></div>
                 <div className="pc-next-progress"><span style={{ width: "100%" }} /></div>
-                <p>You reached every current milestone. Pulsercuit does not invent a target just to keep a meter moving.</p>
               </>
             )}
           </article>
 
           <article className="pc-next-secondary">
-            <div className="pc-next-secondary-label"><Spark /> Circuit Signal</div>
-            <div className="pc-next-secondary-title"><strong>{signal}/100 · {signalStage}</strong><span>{nextStageAt === null ? "top stage" : `${signalRemaining} points to next stage`}</span></div>
+            <div className="pc-next-secondary-label"><Spark /> Rank</div>
+            <div className="pc-next-secondary-title"><strong>{signalStage}</strong><span>{nextStageAt === null ? "top rank" : `${signalRemaining} Signal to rise`}</span></div>
             <div className="pc-next-progress"><span style={{ width: `${Math.max(0, Math.min(100, signal))}%` }} /></div>
-            <p>Signal turns real Pulse, rhythm and Trust history into visible momentum. It never changes your balance.</p>
           </article>
         </div>
       </div>

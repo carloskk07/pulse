@@ -19,14 +19,14 @@ export function CopyReferralLink({ value }: { value: string }) {
     if (!navigator.share) return copy();
     try {
       await navigator.share({
-        title: "Join my Pulsercuit",
-        text: "I’m building a real reward rhythm on Pulsercuit. Pulse is treasury-gated, Turbo is optional and progress is tied to verified activity.",
+        title: "Enter my Pulsercuit",
+        text: "I’m building momentum on Pulsercuit. Join my circuit and make your returns count.",
         url: value,
       });
     } catch {
-      // The user may dismiss the native share sheet. No fallback is needed.
+      // Native share can be dismissed without changing referral state.
     }
   }
 
-  return <div className="referral-actions"><button type="button" onClick={share}>Share Pulsercuit</button><button type="button" onClick={copy} aria-live="polite">{copied ? "Copied" : "Copy link"}</button></div>;
+  return <div className="referral-actions"><button type="button" onClick={share}>Share invite</button><button type="button" onClick={copy} aria-live="polite">{copied ? "Copied" : "Copy link"}</button></div>;
 }
