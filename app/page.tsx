@@ -5,7 +5,6 @@ import { PulsercuitNetwork } from "@/components/pulsercuit-network";
 import { PulsercuitSceneStrip } from "@/components/pulsercuit-scene-strip";
 import { SocialProofPanel } from "@/components/social-proof-panel";
 import { ArrowUpRight, Check, Shield } from "@/components/icons";
-import { getPublicSocialProof } from "@/lib/social-proof";
 
 export const revalidate = 60;
 
@@ -18,9 +17,7 @@ const structuredData = {
   description: "A treasury-backed recurring reward network built around a simple return rhythm, optional Turbo earning and transparent payout proof.",
 };
 
-export default async function HomePage() {
-  const socialProof = await getPublicSocialProof();
-
+export default function HomePage() {
   return (
     <main className="marketing-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
@@ -50,7 +47,7 @@ export default async function HomePage() {
         <div><strong>4. Share</strong><span>Show milestones without exposing private balances</span></div>
       </section>
 
-      <SocialProofPanel proof={socialProof} />
+      <SocialProofPanel />
 
       <section className="section shell pc-story" id="how">
         <div className="pc-story-copy">
