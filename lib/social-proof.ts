@@ -1,6 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const REWARD_TYPES = ["daily_reward", "offer", "survey", "referral"] as const;
+const REWARD_TYPES = ["daily_reward", "pulse_reward", "offer", "survey", "referral"] as const;
 const REWARD_STATES = ["available", "withdrawn"] as const;
 
 type RewardType = (typeof REWARD_TYPES)[number];
@@ -40,9 +40,11 @@ const EMPTY_PROOF: PublicSocialProof = {
 function activityLabel(type: RewardType) {
   switch (type) {
     case "daily_reward":
-      return "Daily Pulse verified";
+      return "Legacy Daily Pulse verified";
+    case "pulse_reward":
+      return "Hourly Pulse verified";
     case "offer":
-      return "Offer reward verified";
+      return "Turbo reward verified";
     case "survey":
       return "Survey reward verified";
     case "referral":
