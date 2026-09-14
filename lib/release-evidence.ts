@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export type ReleaseEvidenceKind = "turnstile" | "ayet_transport" | "ayet_callback" | "faucetpay_payout";
+export type ReleaseEvidenceKind = "turnstile" | "ayet_transport" | "ayet_callback" | "faucetpay_read" | "faucetpay_payout";
 
 function configuredValues(kind: ReleaseEvidenceKind) {
   if (kind === "turnstile") {
@@ -14,6 +14,15 @@ function configuredValues(kind: ReleaseEvidenceKind) {
   }
   if (kind === "ayet_transport" || kind === "ayet_callback") {
     return [process.env.AYET_API_KEY, process.env.AYET_ADSLOT_ID, process.env.AYET_REWARD_SHARE_BPS ?? "7000"];
+  }
+  if (kind === "faucetpay_read") {
+    return [
+      process.env.FAUCETPAY_READ_KEY,
+      process.env.FAUCETPAY_PAYOUT_CURRENCY ?? "USDT",
+      process.env.FAUCETPAY_PAYOUT_CREDITS ?? "5000",
+      process.env.FAUCETPAY_PAYOUT_UNITS,
+      process.env.FAUCETPAY_PAYOUT_LABEL,
+    ];
   }
   return [
     process.env.FAUCETPAY_SCOPED_KEY,
