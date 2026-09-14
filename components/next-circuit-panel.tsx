@@ -35,6 +35,7 @@ export function NextCircuitPanel({
   if (preview || !signedIn) return null;
 
   const signalRemaining = nextStageAt === null ? 0 : Math.max(0, nextStageAt - signal);
+  const canScheduleReturn = pulseFundingReady && !claimReady && Boolean(nextClaimAt);
   const primary = !pulseFundingReady
     ? {
         eyebrow: "Safe standby",
@@ -76,7 +77,11 @@ export function NextCircuitPanel({
           <h3>{primary.title}</h3>
           {!pulseFundingReady ? <div className="pc-next-state-word">STANDBY</div> : claimReady ? <div className="pc-next-state-word ready">READY</div> : <div className="pc-next-countdown"><PulseCountdown target={nextClaimAt} /></div>}
           <p>{primary.detail}</p>
-          <Link className="pc-next-action" href="/dashboard">{primary.action} <ArrowUpRight /></Link>
+          <div className="pc-next-action-row">
+            <Link className="pc-next-action" href="/dashboard">{primary.action} <ArrowUpRight /></Link>
+            {canScheduleReturn ? <a className="pc-next-reminder" href="/api/return-reminder">Add factual reminder <ArrowUpRight /></a> : null}
+          </div>
+          {canScheduleReturn ? <small className="pc-next-reminder-note">Opt-in calendar reminder only. It marks eligibility timing, not a guaranteed reward.</small> : null}
         </article>
 
         <div className="pc-next-secondary-stack">
