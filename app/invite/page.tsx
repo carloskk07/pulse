@@ -58,15 +58,15 @@ export default async function InvitePage() {
 
   const site = configuredSiteUrl();
   const referralLink = user && referralCode && site ? `${site}/r/${referralCode}` : null;
-  const milestones = [[1, "First verified friend"], [3, "Small crew"], [5, "Momentum"], [10, "Pulse builder"]] as const;
+  const milestones = [[1, "First verified friend"], [3, "Small crew"], [5, "Momentum"], [10, "Circuit builder"]] as const;
 
   return (
     <AppShell active="invite">
-      <div className="app-page-head"><div><span className="app-eyebrow">Quality growth</span><h1>Share your rhythm.</h1><p>A signup alone is worth nothing. Referral rewards unlock only after a friend creates real, verified monetized activity.</p></div></div>
+      <div className="app-page-head"><div><span className="app-eyebrow">Quality growth</span><h1>Grow your circuit.</h1><p>Share a real product rhythm, not a signup bounty. Referral rewards unlock only after verified monetized activity.</p></div></div>
 
       <section className="invite-hero-card">
         <div className="invite-hero-icon"><Users /></div>
-        <h2>{referralLink ? "Your Pulse invite" : user ? "Invite link setup is not complete" : "Sign in to get your invite link"}</h2>
+        <h2>{referralLink ? "Your Pulsercuit invite" : user ? "Invite link setup is not complete" : "Sign in to get your invite link"}</h2>
         {referralLink ? (
           <div className="referral-box"><code>{referralLink}</code><CopyReferralLink value={referralLink} /></div>
         ) : user ? (
@@ -81,9 +81,14 @@ export default async function InvitePage() {
         )}
       </section>
 
+      <section className="pc-share-preview" aria-label="Pulsercuit share experience">
+        <article className="pc-share-card"><small>Share moment</small><h3>Bring someone into your <em>rhythm.</em></h3><p>The invite itself never promises a reward. Qualification remains tied to real, verified activity.</p></article>
+        <article className="pc-share-card"><small>Quality signal</small><h3>{user ? `${rewarded} verified` : "Sign in"}</h3><p>{user ? "Only qualified referrals count toward milestones." : "Your real referral progress appears after sign-in."}</p></article>
+      </section>
+
       <section className="referral-stats"><article><span>Verified friends</span><strong>{user ? rewarded : "—"}</strong><small>{user ? "real activity qualified" : "sign in required"}</small></article><article><span>Pending</span><strong>{user ? pending : "—"}</strong><small>{user ? "waiting for verified Turbo" : "sign in required"}</small></article><article><span>Referral rewards</span><strong>{user ? formatUsdFromCredits(referralCredits) : "—"}</strong><small>{user ? "net of reversals" : "live ledger required"}</small></article><article><span>Reversed</span><strong>{user ? reversed : "—"}</strong><small>{user ? "qualifying event reversed" : "sign in required"}</small></article></section>
 
-      <section className="milestones"><div className="app-section-head"><div><span className="app-eyebrow">Crew milestones</span><h2>Progress built on real people</h2></div></div>{milestones.map(([n,title]) => { const done = Boolean(user) && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified active {n === 1 ? "referral" : "referrals"}</small></div><b>{!user ? "Sign in" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</section>
+      <section className="milestones"><div className="app-section-head"><div><span className="app-eyebrow">Circuit milestones</span><h2>Progress built on real people</h2></div></div>{milestones.map(([n,title]) => { const done = Boolean(user) && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified active {n === 1 ? "referral" : "referrals"}</small></div><b>{!user ? "Sign in" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</section>
     </AppShell>
   );
 }
