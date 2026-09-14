@@ -49,6 +49,9 @@ export function getCircuitAchievements(input: {
 }
 
 export function getNextCircuitAchievement(achievements: CircuitAchievement[]) {
+  const firstPulse = achievements.find((item) => item.id === "first-pulse");
+  if (firstPulse && !firstPulse.unlocked) return firstPulse;
+
   return achievements
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => !item.unlocked)
