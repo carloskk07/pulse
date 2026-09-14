@@ -83,6 +83,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
 
   const proof = proofResult.data?.value;
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
+  const faucetPayReadProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_read");
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
   const pulseClaims = pulseClaimResult.error ? 0 : Number(pulseClaimResult.count ?? 0);
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
@@ -105,6 +106,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     label: "Turnstile production proof",
     pass: turnstileProof,
     detail: turnstileProof ? "Current Turnstile configuration has controlled evidence." : "Current Turnstile configuration still needs controlled proof.",
+  });
+  checks.push({
+    id: "faucetpay-read-proof",
+    label: "FaucetPay read-only unit proof",
+    pass: faucetPayReadProof,
+    detail: faucetPayReadProof
+      ? "Current FaucetPay asset and payout pack have fingerprint-bound live read-only unit evidence."
+      : "The live FaucetPay read-only preflight must prove and record the exact unit scale before payout authority can be considered ready.",
   });
   checks.push({
     id: "pulse-proof",
