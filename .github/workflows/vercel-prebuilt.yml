@@ -2,19 +2,43 @@ name: Vercel Prebuilt Deploy
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: pulsercuit-production
+  cancel-in-progress: false
+
 jobs:
-  validate:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run build
+
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate application
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Pull Vercel production configuration
+        run: npx --yes vercel@latest pull --yes --environment=production --project=pulse --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+
+      - name: Build prebuilt Vercel output
+        run: npx --yes vercel@latest build --prod --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt output
+        run: npx --yes vercel@latest deploy --prebuilt --prod --yes --archive=tgz --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
