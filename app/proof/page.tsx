@@ -9,6 +9,8 @@ export const metadata = {
   description: "Live, aggregate proof of Pulse claims, credited rewards, Turbo conversions and completed payouts.",
 };
 
+export const dynamic = "force-dynamic";
+
 function formatGeneratedAt(value: string | null) {
   if (!value) return null;
   const date = new Date(value);
