@@ -5,7 +5,7 @@ import { MIN_PASSWORD_LENGTH } from "@/lib/auth-security";
 import { cleanReferralCode } from "@/lib/referrals";
 import { signIn, signUp } from "./actions";
 
-export const metadata = { title: "Sign in" };
+export const metadata = { title: "Enter Pulsercuit" };
 
 type Props = { searchParams: Promise<{ error?: string; message?: string; next?: string; ref?: string }> };
 
@@ -34,15 +34,16 @@ export default async function AuthPage({ searchParams }: Props) {
   const ref = cleanReferralCode(params.ref);
 
   return (
-    <main className="auth-page">
+    <main className="auth-page pc-v5-auth-page">
       <div className="auth-glow" />
+      <div className="pc-v5-auth-grid" aria-hidden="true" />
       <header className="auth-header shell"><Link href="/" aria-label="Pulsercuit home"><Brand /></Link></header>
-      <section className="auth-shell shell">
-        <div className="auth-copy">
-          <span className="section-kicker">Pulsercuit account</span>
-          <h1>One account.<br /><em>Your circuit.</em></h1>
-          <p>Sign in to keep your Pulse history, Trust progress, verified rewards and Wallet attached to you across devices.</p>
-          <div className="auth-trust"><span>Ledger-first balances</span><span>Verified actions only</span><span>No deposit required</span></div>
+      <section className="auth-shell shell pc-v5-auth-shell">
+        <div className="auth-copy pc-v5-auth-copy">
+          <span className="section-kicker">Your circuit starts here</span>
+          <h1>One account.<br /><em>Momentum that follows you.</em></h1>
+          <p>Keep your Pulse history, rhythm, Trust, Wallet and payout progress connected across devices — all from one authoritative account.</p>
+          <div className="auth-trust pc-v5-auth-trust"><span>Funded rewards only</span><span>Ledger-derived balance</span><span>Free to join</span></div>
           <div className="auth-circuit-visual" aria-label="Pulsercuit product rails">
             <div className="auth-circuit-core"><i /></div>
             <span className="auth-circuit-node node-pulse">Pulse</span>
@@ -51,15 +52,15 @@ export default async function AuthPage({ searchParams }: Props) {
             <span className="auth-circuit-node node-turbo">Turbo</span>
           </div>
         </div>
-        <div className="auth-card">
-          <div><span className="app-eyebrow">Welcome</span><h2>Continue your Pulse</h2><p>Use the same credentials on every device.</p></div>
-          {ref ? <div className="auth-alert success">Verified invite attached. Referral bonuses unlock only after the first confirmed earning conversion.</div> : null}
+        <div className="auth-card pc-v5-auth-card">
+          <div><span className="app-eyebrow">Welcome back</span><h2>Continue your circuit</h2><p>Pick up exactly where your live product history left off.</p></div>
+          {ref ? <div className="auth-alert success">Invite attached. Referral rewards unlock only after verified activity.</div> : null}
           {params.error ? <div className="auth-alert error">{errorCopy[params.error] ?? "Something went wrong."}</div> : null}
           {params.message === "check-email" ? <div className="auth-alert success">Check your email to confirm your Pulsercuit account. Your invite will stay attached.</div> : null}
-          <form action={signIn} className="auth-form"><input type="hidden" name="next" value={next} />{ref ? <input type="hidden" name="ref" value={ref} /> : null}<label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label><label>Password<input required name="password" type="password" autoComplete="current-password" placeholder="••••••••" /></label><button className="button button-lg" type="submit">Sign in</button></form>
+          <form action={signIn} className="auth-form"><input type="hidden" name="next" value={next} />{ref ? <input type="hidden" name="ref" value={ref} /> : null}<label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label><label>Password<input required name="password" type="password" autoComplete="current-password" placeholder="••••••••" /></label><button className="button button-lg pc-v5-primary" type="submit">Enter Pulsercuit</button></form>
           <div className="auth-help-line">Forgot your password? <Link href="/auth/recover">Recover your account</Link></div>
-          <div className="auth-divider"><span>or join the circuit</span></div>
-          <form action={signUp} className="auth-form"><input type="hidden" name="next" value={next} />{ref ? <input type="hidden" name="ref" value={ref} /> : null}<label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label><label>Password<input required minLength={MIN_PASSWORD_LENGTH} name="password" type="password" autoComplete="new-password" placeholder={`${MIN_PASSWORD_LENGTH}+ characters`} /></label><TurnstileField action="signup" /><button className="button button-secondary button-lg" type="submit">Create free account</button></form>
+          <div className="auth-divider"><span>new to Pulsercuit?</span></div>
+          <form action={signUp} className="auth-form"><input type="hidden" name="next" value={next} />{ref ? <input type="hidden" name="ref" value={ref} /> : null}<label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label><label>Password<input required minLength={MIN_PASSWORD_LENGTH} name="password" type="password" autoComplete="new-password" placeholder={`${MIN_PASSWORD_LENGTH}+ characters`} /></label><TurnstileField action="signup" /><button className="button button-secondary button-lg" type="submit">Create your circuit</button></form>
           <small>By continuing you agree to the <Link href="/terms">Terms</Link> and acknowledge the <Link href="/privacy">Privacy notice</Link> and <Link href="/rewards-policy">Rewards policy</Link>.</small>
         </div>
       </section>

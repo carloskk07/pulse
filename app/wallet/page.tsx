@@ -20,16 +20,16 @@ type ActiveWithdrawal = {
 };
 
 const withdrawalCopy: Record<string, string> = {
-  paid: "Withdrawal paid through FaucetPay.",
-  processing: "Payout is reserved and processing safely. Retrying uses the same payout identity.",
-  held: "Withdrawal is safely reserved for review.",
-  insufficient: "You have not reached the withdrawal threshold yet.",
-  "already-processing": "A withdrawal is already processing for this account.",
-  "invalid-destination": "That destination could not be verified by FaucetPay.",
+  paid: "Payout completed through FaucetPay.",
+  processing: "Your payout is reserved and being recovered safely with the same payout identity.",
+  held: "Your payout is reserved safely while it is reviewed.",
+  insufficient: "Your balance has not reached the current withdrawal target yet.",
+  "already-processing": "A payout is already in progress for this account.",
+  "invalid-destination": "FaucetPay could not verify that destination.",
   "provider-temporary": "FaucetPay is temporarily unavailable. Your balance was not changed.",
   "verification-failed": "Human verification failed. Please try again.",
   "verification-not-configured": "Withdrawal verification is not configured yet.",
-  "payout-not-configured": "Payout authority is not fully proven for the current pack yet.",
+  "payout-not-configured": "The current payout pack has not finished its live proof yet.",
   "service-not-configured": "The live payout service is not configured yet.",
   "reserve-failed": "The payout could not be recovered safely. No new payout was created.",
   failed: "The payout failed definitively and the reserved credits were restored.",
@@ -111,49 +111,49 @@ export default async function WalletPage({ searchParams }: Props) {
 
   return (
     <AppShell active="wallet">
-      <div className="app-page-head"><div><span className="app-eyebrow">Transparent ledger</span><h1>Wallet</h1></div></div>
+      <div className="app-page-head pc-v5-wallet-head"><div><span className="app-eyebrow">Your value, clearly separated</span><h1>Wallet</h1><p>See what is available, what is reserved and what has actually been paid — without mixing those states together.</p></div></div>
       {params.withdraw ? <div className={`claim-message ${params.withdraw === "paid" ? "success" : "neutral"}`}>{withdrawalCopy[params.withdraw] ?? "Withdrawal status updated."}</div> : null}
-      {state.preview ? <div className="preview-banner">Preview shell only — no balance, ledger history or payout threshold is simulated before the live reward service is connected.</div> : null}
+      {state.preview ? <div className="preview-banner">Live balance, ledger history and payout targets appear only when the authoritative reward service is connected.</div> : null}
 
-      <section className="wallet-balance-card"><div className="wallet-big-icon"><Wallet /></div><div><span>Available balance</span><strong>{state.preview ? "Not connected" : formatUsdFromCredits(state.availableCredits)}</strong>{!state.preview ? <small>{state.availableCredits.toLocaleString("en-US")} credits</small> : null}</div><div className="payout-pack-label"><small>{activeWithdrawal ? "Reserved payout" : "Next payout pack"}</small><strong>{payoutPackLabel}</strong></div></section>
+      <section className="wallet-balance-card pc-v5-wallet-balance"><div className="wallet-big-icon"><Wallet /></div><div><span>Available now</span><strong>{state.preview ? "Not connected" : formatUsdFromCredits(state.availableCredits)}</strong>{!state.preview ? <small>{state.availableCredits.toLocaleString("en-US")} authoritative credits</small> : null}</div><div className="payout-pack-label"><small>{activeWithdrawal ? "Reserved payout" : "Current payout target"}</small><strong>{payoutPackLabel}</strong></div></section>
 
-      <section className="withdrawal-panel">
+      <section className="withdrawal-panel pc-v5-withdrawal-panel">
         {activeWithdrawal ? (
           <>
-            <div><span className="app-eyebrow">Payout recovery</span><h2>{activeWithdrawal.status === "held" ? "Reserved safely for review." : "A reserved payout needs confirmation."}</h2><p>{activeWithdrawal.status === "held" ? "The credits remain reserved and no provider retry is allowed while this withdrawal is held." : "The original withdrawal identity is preserved. A retry reuses the same provider idempotency key instead of creating a second withdrawal."}</p></div>
+            <div><span className="app-eyebrow">Payout protection</span><h2>{activeWithdrawal.status === "held" ? "Your value is reserved while review finishes." : "Your payout keeps one identity from start to finish."}</h2><p>{activeWithdrawal.status === "held" ? "Those credits remain reserved and no provider retry can run while this payout is held." : "Recovery reuses the original provider identity and amount, protecting you from a second accidental payout attempt."}</p></div>
             {activeWithdrawal.status === "held" ? (
               <div className="claim-message neutral">Held since {compactDate(activeWithdrawal.created_at)} · {maskDestination(activeWithdrawal.destination)}</div>
             ) : (
               <form action="/api/withdrawals" method="post" className="withdrawal-form">
                 <label>Reserved destination<input type="text" value={maskDestination(activeWithdrawal.destination)} disabled readOnly /></label>
                 <TurnstileField action="withdrawal-retry" />
-                <button className="button button-light button-lg" type="submit" disabled={!recoveryAuthorityReady}>{recoveryAuthorityReady ? "Retry reserved payout" : "Recovery setup incomplete"}</button>
-                <small>{activeWithdrawal.status === "submitted" ? "The provider outcome may already be uncertain, so recovery preserves the original payout identity and amount." : "The reserved pack must still match the current read-proven pack before its first send."}</small>
+                <button className="button button-light button-lg" type="submit" disabled={!recoveryAuthorityReady}>{recoveryAuthorityReady ? "Continue protected payout" : "Recovery setup incomplete"}</button>
+                <small>{activeWithdrawal.status === "submitted" ? "The provider outcome may already be uncertain, so Pulsercuit preserves the original payout identity." : "The reserved pack must still match the current proven pack before its first send."}</small>
               </form>
             )}
           </>
         ) : (
           <>
-            <div><span className="app-eyebrow">Simple withdrawal</span><h2>Redeem one verified payout pack.</h2><p>The pack must be explicit and fingerprint-bound to current FaucetPay read-only evidence before a new withdrawal can reserve balance or reach the send rail.</p></div>
+            <div><span className="app-eyebrow">From progress to payout</span><h2>Withdraw only when the path is proven.</h2><p>Your balance is never enough by itself. The payout pack, provider units and read-only proof must all agree before a new withdrawal can reserve credits.</p></div>
             <form action="/api/withdrawals" method="post" className="withdrawal-form">
               <label>FaucetPay destination<input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" disabled={!state.signedIn || !payout.ready || !readProofReady} /></label>
               <TurnstileField action="withdrawal" />
-              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : !payoutCredits || state.preview ? "Payout setup incomplete" : !readProofReady ? "Payout proof incomplete" : missingCredits && missingCredits > 0 ? `Need ${formatUsdFromCredits(missingCredits)} more` : "Withdrawal unavailable"}</button>
-              <small>Destination validation uses read-only authority; the separately scoped send key is reserved for the final idempotent payout call.</small>
+              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : !payoutCredits || state.preview ? "Payout target not active yet" : !readProofReady ? "Payout proof still in progress" : missingCredits && missingCredits > 0 ? `${formatUsdFromCredits(missingCredits)} to go` : "Withdrawal unavailable"}</button>
+              <small>Your destination is checked with read-only authority. The separate send key is used only for the final idempotent payout call.</small>
             </form>
           </>
         )}
       </section>
 
-      <div className="wallet-grid">
+      <div className="wallet-grid pc-v5-wallet-grid">
         <section className="transaction-card">
-          <div className="app-section-head"><div><span className="app-eyebrow">Recent activity</span><h2>Ledger</h2></div></div>
+          <div className="app-section-head"><div><span className="app-eyebrow">Your money trail</span><h2>Ledger</h2></div></div>
           {rows.length ? rows.map((row) => {
             const positive = row.credits > 0;
             return <div className="transaction-row" key={row.id}><span className={`transaction-status ${positive ? "positive" : "neutral"}`}><Check /></span><div><strong>{row.label}</strong><small>{compactDate(row.createdAt)} · {row.state}</small></div><b className={positive ? "positive" : "neutral"}>{formatUsdFromCredits(row.credits, true)}</b></div>;
-          }) : <div className="empty-ledger">{state.preview ? "Live ledger entries appear only after the reward service is connected." : "No ledger activity yet. Your first verified reward will appear here."}</div>}
+          }) : <div className="empty-ledger">{state.preview ? "Live activity appears once the reward service is connected." : "Your first verified reward will begin the ledger here."}</div>}
         </section>
-        <aside className="trust-card"><Shield /><span className="app-eyebrow">Payout protection</span><h3>Prove. Reserve. Recover safely.</h3><p>New payouts require current read-only unit proof before credits are reserved. Unknown provider outcomes keep the reserve and retry the same provider identity; only a definitive first-attempt failure can restore credits automatically.</p><div className="state-list"><span className="done">Read proof</span><span className="done">Available</span><span className="active">Reserved</span><span>Paid</span></div></aside>
+        <aside className="trust-card pc-v5-wallet-trust"><Shield /><span className="app-eyebrow">Protected payout path</span><h3>Prove. Reserve. Pay. Recover safely.</h3><p>New payouts require current read-only proof. Uncertain provider outcomes stay reserved and retry the same identity instead of risking duplicate payment.</p><div className="state-list"><span className="done">Proof</span><span className="done">Available</span><span className="active">Reserved</span><span>Paid</span></div></aside>
       </div>
     </AppShell>
   );
