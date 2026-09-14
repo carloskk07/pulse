@@ -2,7 +2,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Check, Shield, Spark, Trend, Users } from "@/components/icons";
 import { CircuitShareStudio } from "@/components/circuit-share-studio";
-import { getCircuitAchievements } from "@/lib/circuit-achievements";
+import { NextCircuitPanel } from "@/components/next-circuit-panel";
+import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getRewardSnapshot, trustLabel } from "@/lib/reward-state";
 import { getWeeklyPulseSummary } from "@/lib/retention-summary";
@@ -40,6 +41,7 @@ export default async function ProgressPage() {
   const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
   const unlocked = unlockedAchievements.length;
   const strongestAchievement = unlockedAchievements.at(-1)?.title ?? null;
+  const nextAchievement = getNextCircuitAchievement(achievements);
 
   return (
     <AppShell active="progress">
@@ -70,6 +72,19 @@ export default async function ProgressPage() {
           <article className="pc-retention-callout"><Shield /><div><strong>Built for return, not pressure.</strong><p>Pulsercuit shows progress and a next action without fake urgency, randomized prizes or hidden financial multipliers.</p></div></article>
         </div>
       </section>
+
+      <NextCircuitPanel
+        claimIntervalMinutes={state.claimIntervalMinutes}
+        claimReady={state.claimReady}
+        nextAchievement={nextAchievement}
+        nextClaimAt={state.nextClaimAt}
+        nextStageAt={signal.nextStageAt}
+        preview={state.preview}
+        pulseFundingReady={state.pulseFundingReady}
+        signal={signal.signal}
+        signalStage={signal.stage}
+        signedIn={state.signedIn}
+      />
 
       {!state.preview && state.signedIn ? (
         <CircuitShareStudio
