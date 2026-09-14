@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Brand } from "./brand";
+import { PulsercuitBrand } from "./pulsercuit-brand";
 
 export function SiteHeader() {
   return (
     <header className="site-header shell">
-      <Brand />
+      <PulsercuitBrand />
       <nav className="marketing-nav" aria-label="Primary navigation">
         <Link href="/#how">How it works</Link>
         <Link href="/#rewards">Rewards</Link>
