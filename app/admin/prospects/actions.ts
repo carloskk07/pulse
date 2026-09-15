@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LOCAL_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const SEGMENTS = new Set<ProspectSegment>(["mobile_game", "consumer_app", "saas", "research", "other"]);
 const STATUSES = new Set<ProspectStatus>(["new", "researching", "ready", "contacted", "replied", "pilot", "rejected", "closed"]);
@@ -105,7 +106,7 @@ export async function updateProspectStatus(formData: FormData) {
   const status = parseStatus(String(formData.get("status") ?? ""));
   const nextActionRaw = String(formData.get("nextActionAt") ?? "").trim();
   const nextActionAt = parseOptionalDate(nextActionRaw);
-  if (!/^[0-9a-f-]{36}$/i.test(id) || !status || nextActionAt === undefined) redirect(prospectUrl("invalid"));
+  if (!UUID_RE.test(id) || !status || nextActionAt === undefined) redirect(prospectUrl("invalid"));
 
   const { error } = await admin.from("advertiser_prospects").update({
     status,
