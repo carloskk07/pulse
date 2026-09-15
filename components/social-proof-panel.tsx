@@ -33,22 +33,10 @@ function relativeTime(value: string) {
 }
 
 function metricsFor(proof: PublicSocialProof) {
-  if (proof.stage === "early") {
-    return [
-      { value: "Early access", label: "Founding cohort is live", icon: Spark },
-      { value: proof.rewardEventCount > 0 ? "Verified" : "Ready", label: "Ledger-backed rewards", icon: Check },
-      proof.paidWithdrawalCount > 0
-        ? { value: compact(proof.paidWithdrawalCount), label: "Paid withdrawals", icon: Trend }
-        : { value: "Protected", label: "Payout state machine", icon: Shield },
-    ];
-  }
-
   return [
-    { value: compact(proof.memberCount), label: "Verified members", icon: Spark },
-    { value: compact(proof.rewardEventCount), label: "Verified reward events", icon: Check },
-    proof.paidWithdrawalCount > 0
-      ? { value: compact(proof.paidWithdrawalCount), label: "Paid withdrawals", icon: Trend }
-      : { value: "Protected", label: "Payout state machine", icon: Shield },
+    { value: proof.available ? compact(proof.memberCount) : "—", label: "Members", icon: Spark },
+    { value: proof.available ? compact(proof.rewardEventCount) : "—", label: "Reward events", icon: Check },
+    { value: proof.available ? compact(proof.paidWithdrawalCount) : "—", label: "Paid withdrawals", icon: Trend },
   ];
 }
 
@@ -80,7 +68,7 @@ export function SocialProofPanel() {
   }, []);
 
   const metrics = metricsFor(proof);
-  const hasActivity = proof.recentActivity.length > 0;
+  const hasActivity = proof.available && proof.recentActivity.length > 0;
 
   return (
     <section className="social-proof-section shell" aria-labelledby="social-proof-title">
@@ -90,7 +78,7 @@ export function SocialProofPanel() {
           <h2 id="social-proof-title">Real activity, shown only when it is real.</h2>
         </div>
         <p>
-          We never inflate online users, earnings or payout counts. The proof layer upgrades itself automatically as verified activity grows.
+          We never inflate online users, earnings or payout counts. The proof layer shows only aggregate production evidence that is currently available.
         </p>
       </div>
 
@@ -123,8 +111,11 @@ export function SocialProofPanel() {
             </div>
           ) : (
             <div className="proof-feed-empty">
-              <Spark />
-              <div><strong>Founding activity is opening now.</strong><span>The public feed appears automatically after the first verified reward.</span></div>
+              {proof.available ? <Spark /> : <Shield />}
+              <div>
+                <strong>{proof.available ? "No verified reward activity yet." : "Public proof is temporarily unavailable."}</strong>
+                <span>{proof.available ? "Verified reward events will appear here automatically." : "No activity is inferred while the authoritative source is unavailable."}</span>
+              </div>
             </div>
           )}
 
