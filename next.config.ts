@@ -49,6 +49,10 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      {
+        source: "/release.json",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
       ...privateNoIndexRoutes.map((source) => ({
         source,
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
