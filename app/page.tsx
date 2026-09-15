@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
-import { ArrowUpRight, Check, Shield, Spark, Trend, Users, Wallet } from "@/components/icons";
-import { getPublicSocialProof } from "@/lib/social-proof";
-
-export const revalidate = 60;
+import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
+import { ArrowUpRight, Shield, Spark, Trend, Users } from "@/components/icons";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -14,10 +12,6 @@ const structuredData = {
   description: "Pulsercuit is a premium reward circuit built around funded Pulses, visible momentum, shareable progress and verified payout proof.",
 };
 
-function count(value: number, available: boolean) {
-  return available ? value.toLocaleString("en-US") : "—";
-}
-
 const ranks = [
   { id: "spark", name: "Spark", note: "Begin the journey" },
   { id: "flow", name: "Flow", note: "Build consistency" },
@@ -26,9 +20,7 @@ const ranks = [
   { id: "resonance", name: "Resonance", note: "Leave a legacy" },
 ] as const;
 
-export default async function HomePage() {
-  const proof = await getPublicSocialProof();
-
+export default function HomePage() {
   return (
     <main className="pc-v6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
@@ -50,11 +42,7 @@ export default async function HomePage() {
           <div className="pc-v6-hero-mantra" aria-hidden="true"><span>More</span><span>than</span><span>rewards</span><span>a brighter</span><span>you</span></div>
         </div>
 
-        <div className="pc-v6-shell pc-v6-hero-stats">
-          <div><strong>{count(proof.memberCount, proof.available)}</strong><span>Active members</span></div>
-          <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Rewards unlocked</span></div>
-          <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
-        </div>
+        <V6HeroProof />
       </section>
 
       <section className="pc-v6-section pc-v6-pillars" id="about">
@@ -169,11 +157,7 @@ export default async function HomePage() {
         <div className="pc-v6-shell pc-v6-final-grid">
           <div className="pc-v6-final-mantra">Discipline<br />creates<br />freedom</div>
           <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>A Brighter You<br />Starts Now.</h2><p>Return. Rise. Repeat.</p><Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link></div>
-          <div className="pc-v6-final-stats">
-            <div><Users /><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
-            <div><Spark /><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Rewards</span></div>
-            <div><Check /><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid</span></div>
-          </div>
+          <V6FinalProof />
         </div>
       </section>
 
