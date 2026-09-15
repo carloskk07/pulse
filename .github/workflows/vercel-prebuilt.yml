@@ -61,3 +61,35 @@ jobs:
           done
           echo "Production health check did not converge to the Pulsercuit release."
           exit 1
+
+      - name: Verify canonical release-readiness contract
+        shell: bash
+        run: |
+          body_file="$(mktemp)"
+          status="$(curl --silent --show-error --output "$body_file" --write-out '%{http_code}' https://pulsercuit.pro/api/readiness)"
+          node - "$status" "$body_file" <<'NODE'
+          const fs = require("node:fs");
+          const status = Number(process.argv[2]);
+          const body = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          const allowedStates = new Set(["SETUP_REQUIRED", "READY_FOR_EXTERNAL_PROOF", "READY"]);
+
+          if (body.service !== "pulsercuit") {
+            throw new Error(`Unexpected readiness service identity: ${body.service}`);
+          }
+          if (!allowedStates.has(body.readiness)) {
+            throw new Error(`Unexpected readiness state: ${body.readiness}`);
+          }
+          if (typeof body.ready !== "boolean") {
+            throw new Error("Readiness response must contain a boolean ready field.");
+          }
+
+          const expectedStatus = body.ready ? 200 : 503;
+          if (status !== expectedStatus) {
+            throw new Error(`HTTP ${status} disagrees with ready=${body.ready}; expected ${expectedStatus}.`);
+          }
+          if (body.ready !== (body.readiness === "READY")) {
+            throw new Error(`ready=${body.ready} disagrees with readiness=${body.readiness}.`);
+          }
+
+          console.log(`Readiness contract PASS: HTTP ${status}, state=${body.readiness}, ready=${body.ready}`);
+          NODE
