@@ -22,6 +22,10 @@ function configured(...keys: string[]) {
   return keys.every((key) => Boolean(process.env[key]?.trim()));
 }
 
+function objectValue(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 export async function getProductReadiness(): Promise<ProductReadiness> {
   const checks: ProductReadinessCheck[] = [];
   const payout = getFaucetPayPackConfig();
@@ -60,11 +64,10 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     };
   }
 
-  const [proofResult, pulseConfigResult, treasuryResult, pulseClaimResult, monetizationResult, withdrawalResult] = await Promise.all([
+  const [proofResult, pulseConfigResult, latestPulseClaimResult, monetizationResult, withdrawalResult] = await Promise.all([
     admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
     admin.from("app_config").select("value").eq("key", "hourly_pulse").maybeSingle(),
-    admin.from("reward_treasuries").select("funded_credits,reserved_credits,spent_credits,daily_budget_credits,max_user_daily_credits,enabled,kill_switch").eq("code", "launch").maybeSingle(),
-    admin.from("pulse_claims").select("id", { count: "exact", head: true }),
+    admin.from("pulse_claims").select("id,treasury_id,reward_credits,metadata,created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
     admin.from("monetization_events").select("id", { count: "exact", head: true }).eq("status", "confirmed"),
     admin.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "paid"),
   ]);
@@ -72,17 +75,32 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const config = pulseConfigResult.data?.value as { credits?: number | string; interval_minutes?: number | string; treasury_code?: string } | null | undefined;
   const rewardCredits = Number(config?.credits ?? 0);
   const intervalMinutes = Number(config?.interval_minutes ?? 0);
-  const pulseConfigured = !pulseConfigResult.error && rewardCredits > 0 && intervalMinutes >= 15 && Boolean(config?.treasury_code);
+  const treasuryCode = String(config?.treasury_code ?? "").trim();
+  const pulseConfigured = !pulseConfigResult.error && rewardCredits > 0 && intervalMinutes >= 15 && Boolean(treasuryCode);
 
+  const treasuryResult = treasuryCode
+    ? await admin.from("reward_treasuries").select("id,code,funded_credits,reserved_credits,spent_credits,daily_budget_credits,max_user_daily_credits,enabled,kill_switch").eq("code", treasuryCode).maybeSingle()
+    : { data: null, error: null };
   const treasury = treasuryResult.data;
   const availableTreasury = Number(treasury?.funded_credits ?? 0) - Number(treasury?.reserved_credits ?? 0) - Number(treasury?.spent_credits ?? 0);
   const treasuryReady = !treasuryResult.error && Boolean(
-    treasury?.enabled === true &&
-    treasury?.kill_switch === false &&
-    Number(treasury?.daily_budget_credits ?? 0) > 0 &&
-    Number(treasury?.max_user_daily_credits ?? 0) > 0 &&
+    treasury &&
+    treasury.enabled === true &&
+    treasury.kill_switch === false &&
+    Number(treasury.daily_budget_credits ?? 0) > 0 &&
+    Number(treasury.max_user_daily_credits ?? 0) > 0 &&
     availableTreasury >= rewardCredits &&
     rewardCredits > 0
+  );
+
+  const latestClaim = latestPulseClaimResult.data;
+  const claimMetadata = objectValue(latestClaim?.metadata);
+  const currentPulseProof = !latestPulseClaimResult.error && Boolean(
+    latestClaim &&
+    treasury &&
+    latestClaim.treasury_id === treasury.id &&
+    Number(latestClaim.reward_credits) === rewardCredits &&
+    Number(claimMetadata.interval_minutes) === intervalMinutes
   );
 
   const proof = proofResult.data?.value;
@@ -92,7 +110,6 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const faucetPayReadProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_read");
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
   const receiptState = await getFaucetPayReceiptProofState(admin, proof);
-  const pulseClaims = pulseClaimResult.error ? 0 : Number(pulseClaimResult.count ?? 0);
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
   const paidWithdrawals = withdrawalResult.error ? 0 : Number(withdrawalResult.count ?? 0);
 
@@ -116,13 +133,13 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     id: "hourly-pulse-config",
     label: "Hourly Pulse contract",
     pass: pulseConfigured,
-    detail: pulseConfigured ? `${rewardCredits} credit(s) every ${intervalMinutes} rolling minutes.` : "Hourly Pulse needs a positive deterministic reward, rolling interval and treasury binding.",
+    detail: pulseConfigured ? `${rewardCredits} credit(s) every ${intervalMinutes} rolling minutes from Treasury ${treasuryCode}.` : "Hourly Pulse needs a positive deterministic reward, rolling interval and treasury binding.",
   });
   checks.push({
     id: "treasury",
     label: "Funded reward treasury",
     pass: treasuryReady,
-    detail: treasuryReady ? `${availableTreasury} funded credit(s) remain behind the launch treasury.` : "The launch treasury must contain real funded credits, positive safety limits and an open kill switch before claims are promised.",
+    detail: treasuryReady ? `${availableTreasury} funded credit(s) remain behind Treasury ${treasuryCode}.` : `Treasury ${treasuryCode || "(unconfigured)"} must contain real funded credits, positive safety limits and an open kill switch before claims are promised.`,
   });
   checks.push({
     id: "turnstile-proof",
@@ -140,9 +157,13 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   });
   checks.push({
     id: "pulse-proof",
-    label: "Real Hourly Pulse proof",
-    pass: pulseClaims > 0,
-    detail: pulseClaims > 0 ? `${pulseClaims} treasury-backed Hourly Pulse claim(s) exist in production.` : "At least one real treasury-backed Hourly Pulse claim must complete through the authoritative ledger.",
+    label: "Current Hourly Pulse proof",
+    pass: currentPulseProof,
+    detail: currentPulseProof
+      ? `The latest production claim matches the current contract: ${rewardCredits} credit(s), ${intervalMinutes} minutes and Treasury ${treasuryCode}.`
+      : latestClaim
+        ? "A historical Pulse claim exists, but it does not match the current reward, interval or Treasury contract. Complete one real claim under the current configuration."
+        : "At least one real Treasury-backed Hourly Pulse claim must complete under the current reward, interval and Treasury contract.",
   });
   checks.push({
     id: "payout-proof",
