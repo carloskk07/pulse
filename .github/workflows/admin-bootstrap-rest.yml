@@ -1,0 +1,52 @@
+name: Configure production admin through Vercel API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/admin-bootstrap-rest.yml
+
+permissions:
+  contents: read
+
+jobs:
+  configure-admin:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 2
+      - name: Upsert production admin allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN"
+          ADMIN_EMAIL="$(git log -2 --format='%ae' | sed -n '2p' | tr '[:upper:]' '[:lower:]' | tr -d '\r\n')"
+          test -n "$ADMIN_EMAIL"
+          export ADMIN_EMAIL
+          node <<'NODE' > /tmp/admin-env.json
+          const value = process.env.ADMIN_EMAIL;
+          if (!value || !value.includes('@')) throw new Error('Invalid admin identity');
+          process.stdout.write(JSON.stringify({
+            key: 'ADMIN_EMAILS',
+            value,
+            type: 'plain',
+            target: ['production'],
+            comment: 'Pulsercuit production administrator allowlist'
+          }));
+          NODE
+          status="$(curl --silent --show-error --output /tmp/vercel-env-response.json --write-out '%{http_code}' \
+            --request POST \
+            --url 'https://api.vercel.com/v10/projects/pulse/env?upsert=true&slug=carloskk07s-projects' \
+            --header "Authorization: Bearer $VERCEL_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data-binary @/tmp/admin-env.json)"
+          case "$status" in 2??) ;; *) echo "Vercel env upsert failed with HTTP $status" >&2; cat /tmp/vercel-env-response.json >&2; exit 1 ;; esac
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/vercel-env-response.json','utf8'));
+          if (Array.isArray(body.failed) && body.failed.length) throw new Error('Vercel reported a failed environment-variable upsert');
+          console.log('ADMIN_EMAILS upsert confirmed without exposing its value.');
+          NODE
