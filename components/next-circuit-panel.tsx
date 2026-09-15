@@ -78,7 +78,11 @@ export function NextCircuitPanel({
           <p>{primary.detail}</p>
           <div className="pc-next-action-row">
             <Link className="pc-next-action" href="/dashboard">{primary.action} <ArrowUpRight /></Link>
-            {canScheduleReturn ? <a className="pc-next-reminder" href="/api/return-reminder">Set reminder <ArrowUpRight /></a> : null}
+            {canScheduleReturn ? (
+              <form action="/api/return-reminder" method="post">
+                <button className="pc-next-reminder" type="submit">Set reminder <ArrowUpRight /></button>
+              </form>
+            ) : null}
           </div>
         </article>
 
