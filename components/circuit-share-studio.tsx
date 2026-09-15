@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 type ShareMode = "rhythm" | "signal" | "achievement";
+type ShareStatus = "idle" | "copied" | "shared" | "failed";
 
 type Props = {
   days: number;
@@ -16,12 +17,41 @@ function safeInt(value: number, max = 9999) {
   return Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
 }
 
+async function copyShareText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Some browsers expose Clipboard API but reject it outside a permitted context.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
+}
+
 export function CircuitShareStudio({ days, signal, stage, pulseCount, achievement }: Props) {
   const normalizedDays = safeInt(days, 366);
   const normalizedSignal = safeInt(signal, 100);
   const normalizedPulses = safeInt(pulseCount, 999999);
   const [mode, setMode] = useState<ShareMode>(achievement ? "achievement" : normalizedDays > 0 ? "rhythm" : "signal");
-  const [status, setStatus] = useState<"idle" | "copied" | "shared">("idle");
+  const [status, setStatus] = useState<ShareStatus>("idle");
 
   const moment = useMemo(() => {
     if (mode === "achievement" && achievement) {
@@ -52,20 +82,28 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
     };
   }, [achievement, mode, normalizedDays, normalizedPulses, normalizedSignal, stage]);
 
+  function resetStatusSoon() {
+    window.setTimeout(() => setStatus("idle"), 1800);
+  }
+
   async function share() {
-    const url = typeof window === "undefined" ? "https://pulsercuit.pro" : window.location.origin;
-    try {
-      if (navigator.share) {
+    const url = typeof window === "undefined" ? "https://pulsercuit.pro/progress" : new URL("/progress", window.location.origin).toString();
+    const shareText = `${moment.text} ${url}`;
+
+    if (navigator.share) {
+      try {
         await navigator.share({ title: "Pulsercuit moment", text: moment.text, url });
         setStatus("shared");
-      } else {
-        await navigator.clipboard.writeText(`${moment.text} ${url}`);
-        setStatus("copied");
+        resetStatusSoon();
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
       }
-      window.setTimeout(() => setStatus("idle"), 1800);
-    } catch {
-      setStatus("idle");
     }
+
+    const copied = await copyShareText(shareText);
+    setStatus(copied ? "copied" : "failed");
+    resetStatusSoon();
   }
 
   const options: { id: ShareMode; label: string; disabled?: boolean }[] = [
@@ -106,7 +144,7 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
         <div className="pc-share-moment-foot">
           <span>Real history · private balance hidden</span>
           <button type="button" onClick={share} aria-live="polite">
-            {status === "copied" ? "Copied" : status === "shared" ? "Shared" : "Share this moment"}
+            {status === "copied" ? "Copied" : status === "shared" ? "Shared" : status === "failed" ? "Copy unavailable" : "Share this moment"}
           </button>
         </div>
       </article>

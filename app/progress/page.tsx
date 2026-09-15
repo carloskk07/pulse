@@ -42,6 +42,8 @@ export default async function ProgressPage() {
   const unlocked = unlockedAchievements.length;
   const strongestAchievement = unlockedAchievements.at(-1)?.title ?? null;
   const nextAchievement = getNextCircuitAchievement(achievements);
+  const shareReady = state.signedIn && !state.preview;
+  const shareEntryHref = state.signedIn ? "#circuit-moments" : "/auth?next=/progress%23circuit-moments";
 
   return (
     <AppShell active="progress">
@@ -51,7 +53,7 @@ export default async function ProgressPage() {
           <h1>Your history is becoming status.</h1>
           <p>Raise your Signal. Hold your rhythm. Unlock marks worth sharing.</p>
         </div>
-        {!state.preview && state.signedIn ? <Link className="button pc-v5-primary" href="#circuit-moments">Create share card</Link> : <Link className="button pc-v5-primary" href="/auth?next=/progress">Enter the circuit</Link>}
+        <Link className="button pc-v5-primary" href={shareEntryHref}>{shareReady ? "Create share card" : state.signedIn ? "View share status" : "Enter the circuit"}</Link>
       </div>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
@@ -98,7 +100,7 @@ export default async function ProgressPage() {
         signedIn={state.signedIn}
       />
 
-      {!state.preview && state.signedIn ? (
+      {shareReady ? (
         <CircuitShareStudio
           achievement={strongestAchievement}
           days={state.streakDays}
@@ -106,7 +108,16 @@ export default async function ProgressPage() {
           signal={signal.signal}
           stage={signal.stage}
         />
-      ) : null}
+      ) : (
+        <section className="pc-progress-cta pc-luxe-momentum-cta pc-share-studio-placeholder" id="circuit-moments" aria-labelledby="share-studio-placeholder-title">
+          <div>
+            <span className="app-eyebrow">Share studio</span>
+            <h2 id="share-studio-placeholder-title">{state.signedIn ? "Live history is required before a verified card can be created." : "Sign in to create a card from verified history."}</h2>
+            <p>{state.signedIn ? "The studio stays locked while this session is in preview, so it cannot turn unavailable data into a public claim." : "Your public card can use rank, rhythm and milestone history after the account is authenticated."}</p>
+          </div>
+          <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"}>{state.signedIn ? "Return to Pulse" : "Enter the circuit"} <ArrowUpRight /></Link>
+        </section>
+      )}
 
       <section className="app-section pc-luxe-seals-section">
         <div className="app-section-head"><div><span className="app-eyebrow">Milestone seals</span><h2>{state.preview ? "Real history unlocks the collection." : `${unlocked} / ${achievements.length} unlocked`}</h2></div></div>
