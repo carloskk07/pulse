@@ -56,7 +56,7 @@ export default async function BusinessLeadsPage() {
           <div className="business-lead-row header"><span>Company</span><span>Objective</span><span>Budget</span><span>Target</span><span>Status</span></div>
           {leads.recent.length ? leads.recent.map((lead) => (
             <article className="business-lead-row" key={lead.id}>
-              <div className="business-lead-company"><strong>{lead.company}</strong><small>{lead.contactName} · {lead.workEmail}</small>{lead.website ? <a href={lead.website} target="_blank" rel="noopener">{lead.website}</a> : null}</div>
+              <div className="business-lead-company"><strong>{lead.company}</strong><small>{lead.contactName} · {lead.workEmail}</small>{lead.website ? <a href={lead.website} target="_blank" rel="noopener noreferrer">{lead.website}</a> : null}</div>
               <span>{objectiveLabel(lead.objective)}</span>
               <span>{budgetLabel(lead.budgetRange)}</span>
               <span>{lead.targetCountries || "Not specified"}{lead.estimatedActions ? ` · ${lead.estimatedActions.toLocaleString("en-US")} actions` : ""}</span>

@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 const OBJECTIVES = new Set(["app_install", "registration", "trial", "purchase", "survey", "custom"]);
 const BUDGETS = new Set(["pilot_100_500", "growth_500_2500", "scale_2500_10000", "enterprise_10000_plus", "not_sure"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const POSITIVE_INTEGER_RE = /^\d+$/;
 
 function businessRedirect(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/business?lead=${encodeURIComponent(state)}#pilot`, request.url), 303);
@@ -23,6 +24,7 @@ function normalizeWebsite(raw: string) {
     const value = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     const url = new URL(value);
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.username || url.password) return null;
     return url.toString().slice(0, 500);
   } catch {
     return null;
@@ -49,12 +51,15 @@ export async function POST(request: NextRequest) {
   const targetCountries = text(form, "target_countries", 300);
   const message = text(form, "message", 3000);
   const estimatedActionsRaw = text(form, "estimated_actions", 12);
-  const estimatedActions = estimatedActionsRaw ? Number.parseInt(estimatedActionsRaw, 10) : null;
+  const estimatedActions = estimatedActionsRaw && POSITIVE_INTEGER_RE.test(estimatedActionsRaw)
+    ? Number(estimatedActionsRaw)
+    : null;
 
   if (company.length < 2 || contactName.length < 2 || !EMAIL_RE.test(email)) return businessRedirect(request, "invalid");
   if (!OBJECTIVES.has(objective) || !BUDGETS.has(budgetRange)) return businessRedirect(request, "invalid");
   if (websiteRaw && !website) return businessRedirect(request, "invalid");
-  if (estimatedActions != null && (!Number.isFinite(estimatedActions) || estimatedActions <= 0 || estimatedActions > 10_000_000)) return businessRedirect(request, "invalid");
+  if (estimatedActionsRaw && estimatedActions == null) return businessRedirect(request, "invalid");
+  if (estimatedActions != null && (!Number.isSafeInteger(estimatedActions) || estimatedActions <= 0 || estimatedActions > 10_000_000)) return businessRedirect(request, "invalid");
 
   const admin = createSupabaseAdminClient();
   if (!admin) return businessRedirect(request, "service-unavailable");

@@ -23,7 +23,7 @@ The core promise is simple:
 
 ## Current architecture
 
-- Next.js App Router with the Pulsercuit V6 product/visual system.
+- Next.js App Router with the Pulsercuit V7 visual system.
 - Hourly Pulse with rolling eligibility and Treasury gating.
 - Append-only authoritative ledger and Wallet recovery contracts.
 - Optional Turbo provider and Pulse Direct settlement rails.
@@ -54,6 +54,7 @@ Then visit `http://localhost:3000`.
 
 ```bash
 npm run verify:legal
+npm run verify:safety
 npm run typecheck
 npm run lint
 npm run build
@@ -63,7 +64,7 @@ CI additionally audits the production dependency surface.
 
 ## Deployment strategy
 
-`vercel.json` disables the automatic Vercel Git build path. GitHub Actions validates the repository, pulls the production Vercel configuration, builds a prebuilt artifact, deploys it, aliases `pulsercuit.pro`, then verifies canonical `/api/health` and `/api/readiness` behavior.
+`vercel.json` disables the automatic Vercel Git build path. GitHub Actions validates the repository, stamps the exact GitHub commit identity into the prebuilt artifact, pulls the production Vercel configuration, builds and deploys the artifact, aliases `pulsercuit.pro`, then requires the canonical domain to serve that exact commit before validating `/api/readiness`.
 
 A successful build or deploy is not financial authorization. The release gate separately verifies live schema/runtime contracts and current external evidence.
 

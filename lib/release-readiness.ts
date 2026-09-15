@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 30;
-export const RELEASE_SCHEMA_MIGRATION = "0030_wallet_withdrawal_read_contract.sql";
+export const RELEASE_SCHEMA_VERSION = 32;
+export const RELEASE_SCHEMA_MIGRATION = "0032_authenticated_read_scope_contract.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -119,7 +119,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
     checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Legal-review evidence cannot be verified until database authority is available.", true));
     checks.push(check("international-transfer-review", "International data-transfer review", "pending", "International-transfer evidence cannot be verified until database authority is available.", true));
     checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
@@ -138,6 +138,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         economics,
         referral,
         securityContract,
+        authenticatedReadScopeContract,
         withdrawalReadContract,
         rewardExchangeContract,
         opportunityIntelligenceContract,
@@ -150,6 +151,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         admin.rpc("admin_economics_snapshot", { p_from: "1970-01-01T00:00:00.000Z", p_to: "1970-01-02T00:00:00.000Z" }),
         admin.from("profiles").select("referral_code").limit(1),
         admin.rpc("release_security_contract"),
+        admin.rpc("release_authenticated_read_scope_contract"),
         admin.rpc("release_withdrawal_read_contract"),
         admin.rpc("release_reward_exchange_contract"),
         admin.rpc("release_opportunity_intelligence_contract"),
@@ -165,6 +167,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       checks.push(check("schema", "Schema version", schemaOk ? "pass" : "fail", schemaOk ? `Database schema marker is v${schemaVersion}.` : `Apply migrations through ${RELEASE_SCHEMA_MIGRATION}.`));
 
       const securityOk = !securityContract.error && securityContractPasses(securityContract.data);
+      const authenticatedReadScopeOk = !authenticatedReadScopeContract.error && authenticatedReadScopeContract.data === true;
       const withdrawalReadOk = !withdrawalReadContract.error && withdrawalReadContract.data === true;
       const rewardExchangeOk = !rewardExchangeContract.error && rewardExchangeContract.data === true;
       const opportunityIntelligenceOk = !opportunityIntelligenceContract.error && opportunityIntelligenceContract.data === true;
@@ -174,6 +177,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       const contractsOk = !economics.error
         && !referral.error
         && securityOk
+        && authenticatedReadScopeOk
         && withdrawalReadOk
         && rewardExchangeOk
         && opportunityIntelligenceOk
@@ -185,7 +189,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, referrals, security, Wallet recovery, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake and private advertiser outbound contracts are proven."
+          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake and private advertiser outbound contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 
