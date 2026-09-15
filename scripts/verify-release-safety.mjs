@@ -17,7 +17,8 @@ if (existsSync("lib/mock-data.ts")) {
   throw new Error("Dead fabricated offer fixtures must not ship in lib/mock-data.ts.");
 }
 
-requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy"]);
+requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
+requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha"]);
 requireText("app/api/withdrawals/route.ts", ["hasCurrentFaucetPayReadProof", "idempotency_key", "matchesCurrentPayoutAuthority"]);
 requireText("app/api/return-reminder/route.ts", ["getCanonicalSiteUrl", "new URL(reminderId ? \"/return\" : \"/dashboard\", getCanonicalSiteUrl())"]);
 requireText("app/auth/page.tsx", ["safeAuthNext(params.next)"]);
