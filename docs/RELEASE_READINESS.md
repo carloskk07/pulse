@@ -1,41 +1,71 @@
 # Release readiness gate
 
-Reward Pulse must not be promoted to a real-money production state merely because the application builds. The release gate separates configuration, database contracts and external provider evidence.
+Pulsercuit must not be promoted to a real-money production state merely because the application builds. The release gate separates static configuration, database/runtime contracts and external evidence bound to the current configuration.
 
 ## States
 
-- `SETUP_REQUIRED`: at least one blocking configuration or database contract is missing.
-- `READY_FOR_EXTERNAL_PROOF`: all automated checks pass, but controlled external smoke evidence is incomplete.
-- `READY`: automated checks pass and all required external smoke evidence matches the current configuration.
+- `SETUP_REQUIRED`: at least one blocking configuration, schema or runtime contract is missing.
+- `READY_FOR_EXTERNAL_PROOF`: automated setup/contracts pass, but one or more required external proofs are incomplete.
+- `READY`: every blocking automated check and every required external proof passes for the current configuration.
 
-The public endpoint `/api/readiness` exposes only the aggregate state and returns HTTP 200 only for `READY`. It never exposes secret names, secret values, database errors or provider details. The detailed checklist is available only in the authenticated `/admin` cockpit.
+The public endpoint `/api/readiness` exposes only the aggregate state and returns HTTP 200 only for `READY`. It never exposes secret names, secret values, database errors or provider details. Detailed release checks remain in the authenticated admin surfaces.
 
-## Required migration
+## Required schema
 
-Apply migrations in order through `0007_release_readiness.sql`. Migration 0007 writes an explicit schema marker and creates the server-only evidence recorder.
+Apply migrations in order through `0030_wallet_withdrawal_read_contract.sql` and require the live `release_schema` marker to be at least v30.
 
-## Automatic external proof
+Schema version alone is not sufficient. The runtime also verifies the security, Wallet recovery, Reward Exchange, Opportunity Intelligence, Pulse Direct, business-intake and advertiser-outbound contracts against the live database.
 
-Evidence is created by the real server flows, not by a manual checkbox:
+## Required external evidence
 
-1. A successful Turnstile verification in a protected Daily Pulse or withdrawal flow records `turnstile` evidence.
-2. A valid signed ayeT conversion callback that is credited or safely deduplicated records `ayet_callback` evidence.
-3. A FaucetPay payout that reaches the local `paid` finalization records `faucetpay_payout` evidence.
+Evidence is fingerprint-bound to the configuration it proves. Changing an evidence-bound key, asset, payout pack, legal/operator identity or other governed setting invalidates the old proof automatically.
 
-Each evidence row stores only a SHA-256 fingerprint of the configuration that was proven. Secret values are never written to the database. If a key, adslot, payout amount, currency or other evidence-bound setting changes, the runtime fingerprint changes and the old proof becomes invalid automatically. The gate then returns to `READY_FOR_EXTERNAL_PROOF` until that flow is proven again.
+Blocking external evidence currently includes:
+
+1. **Turnstile** — a successful protected production verification records current `turnstile` evidence.
+2. **Supabase Auth hardening** — leaked-password protection must be enabled and the managed security warning cleared before `supabase_auth_hardening` evidence is recorded.
+3. **Hosted password recovery** — a real recovery email, password change and later sign-in with the new password must complete for current `password_recovery` evidence.
+4. **Legal policy review** — qualified review must match the current governed policy bundle and configured operator identity.
+5. **International-transfer review** — evidence must match the current operator, governed policy bundle and configured external-provider set.
+6. **FaucetPay read proof** — the read-only rail must prove the live asset, exact economic pack and provider unit scale before `faucetpay_read` is recorded.
+7. **FaucetPay payout proof** — one controlled withdrawal must reach authoritative provider-side paid status under the current proven payout authority.
+8. **Actual receipt proof** — destination receipt is a separate authority and must be explicitly bound to the exact paid FaucetPay withdrawal.
+
+Optional Turbo-provider evidence is tracked separately when a provider is configured. It does not gate the provider-independent base Pulse product.
+
+## Financial authority separation
+
+A green external provider response is never enough by itself to create `PRODUCT_READY`.
+
+The relevant authorities are intentionally separate:
+
+```text
+configuration
+→ database/runtime contracts
+→ read-only FaucetPay unit proof
+→ real funded/open Treasury
+→ current Hourly Pulse claim
+→ authoritative Wallet ledger
+→ provider-side FaucetPay payout
+→ exact destination receipt
+→ same-account causal continuity
+```
+
+Provider payout evidence and actual destination-receipt evidence are distinct. A recovered historical payout may be reconciled with its original idempotency key, but it cannot mint proof for a different current payout pack.
 
 ## Promotion rule
 
-Production promotion requires all of the following:
+Production promotion requires, at minimum:
 
 ```text
 CI = PASS
+canonical production health = PASS
 /api/readiness = READY / HTTP 200
-admin economics RPC = callable
-latest schema marker >= 7
-current Turnstile fingerprint = proven
-current ayeT callback fingerprint = proven
-current FaucetPay payout fingerprint = proven
+live schema marker >= 30
+all required runtime contracts = PASS
+all blocking configuration checks = PASS
+all required current-configuration external proofs = PASS
+PRODUCT_READY = true
 ```
 
-A green build without these release checks is not a production authorization.
+A successful build, deployment or provider call without those authorities is not production authorization.
