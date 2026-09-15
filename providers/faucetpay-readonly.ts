@@ -121,16 +121,34 @@ function scaleFromCurrencyMetadata(value: unknown, asset: string) {
   return null;
 }
 
+function zeroDisplayScale(value: unknown) {
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^0\.(\d+)$/);
+  if (!match) return null;
+  const decimals = match[1].length;
+  if (decimals <= 0 || decimals > 15) return null;
+  const scale = 10 ** decimals;
+  return Number.isSafeInteger(scale) ? { scale, decimals } : null;
+}
+
 function balancePair(value: unknown, depth = 0): { smallest: number; display: number; scale: number; decimals: number } | null {
   if (depth > 8) return null;
   const obj = record(value);
   if (obj) {
     const smallest = finiteNumber(obj.balance);
-    if (smallest !== null && Number.isSafeInteger(smallest) && smallest > 0) {
+    if (smallest !== null && Number.isSafeInteger(smallest) && smallest >= 0) {
       for (const [key, raw] of Object.entries(obj)) {
         if (key === "balance" || !key.toLowerCase().startsWith("balance")) continue;
         const display = finiteNumber(raw);
-        if (display === null || display <= 0) continue;
+        if (display === null || display < 0) continue;
+
+        if (smallest === 0 && display === 0) {
+          const zeroInfo = zeroDisplayScale(raw);
+          if (zeroInfo) return { smallest: 0, display: 0, scale: zeroInfo.scale, decimals: zeroInfo.decimals };
+          continue;
+        }
+
+        if (smallest <= 0 || display <= 0) continue;
         const ratio = smallest / display;
         const roundedScale = Math.round(ratio);
         const info = powerOfTenInfo(roundedScale);
@@ -228,10 +246,12 @@ export async function getFaucetPayReadOnlyPreflight(): Promise<FaucetPayReadOnly
 
   let currencies: unknown;
   let balance: unknown;
+  let balances: unknown;
   try {
-    [currencies, balance] = await Promise.all([
+    [currencies, balance, balances] = await Promise.all([
       readRequest<unknown>("/currencies"),
       readRequest<unknown>("/balance", { currency: asset }),
+      readRequest<unknown>("/balances"),
     ]);
   } catch (error) {
     return {
@@ -276,7 +296,7 @@ export async function getFaucetPayReadOnlyPreflight(): Promise<FaucetPayReadOnly
     };
   }
 
-  const pair = balancePair(balance);
+  const pair = balancePair(balance) ?? balancePair(balances);
   const metadataScale = scaleFromCurrencyMetadata(currencies, asset);
   const scaleInfo = pair ? { scale: pair.scale, decimals: pair.decimals } : metadataScale;
 
@@ -290,7 +310,7 @@ export async function getFaucetPayReadOnlyPreflight(): Promise<FaucetPayReadOnly
       balanceDisplay: pair?.display ?? null,
       inferredUnitScale: null,
       inferredDecimals: null,
-      detail: `${asset} is live, but the read-only response did not expose enough non-zero balance/precision evidence to prove its smallest-unit scale. No payout assumption was made.`,
+      detail: `${asset} is live, but /balance, /balances and /currencies did not expose enough precision evidence to prove its smallest-unit scale. No payout assumption was made.`,
     };
   }
 
