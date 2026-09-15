@@ -48,6 +48,18 @@ async function finalize(
   });
 }
 
+async function matchesCurrentPayoutAuthority(
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  reserved: ReservedWithdrawal,
+) {
+  const config = getFaucetPayPackConfig();
+  if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return false;
+  if (config.asset !== reserved.asset) return false;
+  if (config.amountCredits !== Number(reserved.amount_credits)) return false;
+  if (config.amountSmallestUnits !== Number(reserved.payout_amount_units)) return false;
+  return hasCurrentFaucetPayReadProof(admin);
+}
+
 async function executeReservedPayout(
   request: NextRequest,
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
@@ -74,7 +86,14 @@ async function executeReservedPayout(
 
     const finalized = await finalize(admin, reserved.withdrawal_id, "paid", payout.externalId, recovery ? "FaucetPay payout recovered with the original idempotency key" : "FaucetPay payout completed");
     if (finalized.error) return walletRedirect(request, "processing");
-    await recordReleaseEvidence("faucetpay_payout");
+
+    // Recovery is allowed to finish a payout created under an older pack, but
+    // that historical payout must never mint proof for the current release
+    // configuration. Only record release evidence when the exact reserved
+    // asset/credits/provider units still match the current read-proven pack.
+    if (await matchesCurrentPayoutAuthority(admin, reserved)) {
+      await recordReleaseEvidence("faucetpay_payout");
+    }
     return walletRedirect(request, "paid");
   } catch (error) {
     if (recovery || (error instanceof FaucetPayApiError && error.retryable)) {
