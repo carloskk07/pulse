@@ -22,10 +22,17 @@ requireText("app/api/withdrawals/route.ts", ["hasCurrentFaucetPayReadProof", "id
 requireText("app/api/return-reminder/route.ts", ["getCanonicalSiteUrl", "new URL(reminderId ? \"/return\" : \"/dashboard\", getCanonicalSiteUrl())"]);
 requireText("app/auth/page.tsx", ["safeAuthNext(params.next)"]);
 requireText("components/circuit-share-studio.tsx", ["copyTextToClipboard", "isNativeShareAbort"]);
+requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
+requireText("components/app-shell.tsx", ["/admin/leads", "/admin/prospects", "/admin/retention"]);
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 if (manifest.id !== "/" || manifest.scope !== "/" || !Array.isArray(manifest.icons) || manifest.icons.length === 0) {
   throw new Error("PWA manifest must keep stable id/scope and at least one application icon.");
+}
+for (const icon of manifest.icons) {
+  if (typeof icon?.src !== "string" || !icon.src.startsWith("/") || !existsSync(`public${icon.src}`)) {
+    throw new Error(`PWA manifest references a missing or invalid icon: ${icon?.src ?? "unknown"}`);
+  }
 }
 
 console.log("Release safety contracts PASS");
