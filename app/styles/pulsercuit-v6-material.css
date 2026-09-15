@@ -1,0 +1,230 @@
+/* Pulsercuit V6.4 — physical material depth.
+   Presentation only. Loaded after V6.3. No functional or financial semantics. */
+
+@keyframes pcMatFloat{0%,100%{transform:translate3d(0,0,0) rotate(.001deg)}50%{transform:translate3d(0,-10px,0) rotate(.001deg)}}
+@keyframes pcMatGlow{0%,100%{opacity:.35;filter:blur(22px)}50%{opacity:.68;filter:blur(28px)}}
+@keyframes pcMatSweep{0%{transform:translateX(-170%) rotate(18deg)}100%{transform:translateX(340%) rotate(18deg)}}
+@keyframes pcMatDust{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(8px,-6px,0)}}
+
+.pc-v6{
+  --pc-mat-gold:#f0cb6a;
+  --pc-mat-gold-hi:#fff1b1;
+  --pc-mat-charcoal:#070a08;
+  --pc-mat-glass:rgba(13,17,14,.62);
+}
+
+/* A subtle atmospheric layer prevents the page from reading as flat stacked sections. */
+.pc-v6>section{position:relative}
+.pc-v6>section:not(.pc-v6-final)::before{pointer-events:none}
+.pc-v6>section .pc-v6-shell:after{
+  content:"";
+  position:absolute;
+  inset:8% -6% auto auto;
+  width:38%;
+  height:58%;
+  background:radial-gradient(ellipse,rgba(241,205,108,.035),transparent 70%);
+  filter:blur(24px);
+  pointer-events:none;
+  z-index:-1;
+}
+
+/* HERO: add a reusable physical Pulsercuit core over the valley scene. */
+.pc-v6-hero-bg{overflow:visible!important}
+.pc-v6-hero-bg .pc-v6-sprite-hero{opacity:.72;filter:contrast(1.08) saturate(.84) brightness(.84)!important}
+.pc-v6-hero-bg:before{
+  width:510px!important;height:510px!important;
+  right:25px!important;top:-50px!important;
+  border-color:rgba(241,205,108,.12)!important;
+  box-shadow:0 0 0 38px rgba(241,205,108,.012),0 0 0 86px rgba(241,205,108,.006),0 0 110px rgba(241,205,108,.08)!important;
+}
+.pc-v6-hero-bg:after{
+  background:
+    linear-gradient(90deg,#020303 0%,rgba(2,3,3,.76) 11%,transparent 35%,transparent 82%,rgba(2,3,3,.32) 100%),
+    linear-gradient(180deg,transparent 70%,#020303 100%)!important;
+  z-index:5!important;
+}
+.pc-v6-hero-bg .pc-v6-sprite-hero:after{content:none}
+.pc-v6-hero-bg{
+  background-image:url('/v6/pulse-object-material.svg');
+  background-repeat:no-repeat;
+  background-size:500px 500px;
+  background-position:calc(100% - 38px) 5px;
+}
+.pc-v6-hero-bg::marker{display:none}
+.pc-v6-hero-copy{z-index:8}
+.pc-v6-hero-copy h1{
+  text-shadow:0 12px 56px rgba(0,0,0,.72),0 0 28px rgba(241,205,108,.035)!important;
+}
+.pc-v6-hero-copy h1 em{
+  background:linear-gradient(180deg,#fff2b2 0%,#f0ce74 52%,#b98939 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent!important;
+  text-shadow:none!important;
+}
+.pc-v6-hero-copy>p{color:#d0ccc0!important;text-shadow:0 2px 18px rgba(0,0,0,.8)}
+.pc-v6-hero-stats{
+  border:1px solid rgba(241,205,108,.065)!important;
+  border-left:0!important;border-right:0!important;
+  background:linear-gradient(90deg,rgba(12,15,13,.44),rgba(6,8,7,.14) 66%,transparent)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.016);
+}
+
+/* Buttons now read as machined objects rather than generic gradients. */
+.pc-v6-button.primary{
+  background:linear-gradient(180deg,#fff0ae 0%,#e7c363 46%,#b98732 100%)!important;
+  border-color:#f4d989!important;
+  box-shadow:0 12px 34px rgba(188,139,47,.24),inset 0 1px 0 rgba(255,255,255,.82),inset 0 -1px 0 rgba(85,55,12,.45)!important;
+}
+.pc-v6-button.ghost,.pc-v6-login{
+  background:linear-gradient(180deg,rgba(19,23,20,.72),rgba(5,7,6,.7))!important;
+  border-color:rgba(235,215,157,.17)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 10px 28px rgba(0,0,0,.16)!important;
+}
+
+/* Pillars: glass/metal cards with top-light reflection. */
+.pc-v6-pillar-grid article{
+  border-color:rgba(229,203,133,.16)!important;
+  background:
+    linear-gradient(126deg,rgba(255,255,255,.035),transparent 22%),
+    radial-gradient(circle at 50% -15%,rgba(239,204,110,.075),transparent 42%),
+    linear-gradient(160deg,#111511 0%,#090c0a 38%,#050706 100%)!important;
+  box-shadow:0 28px 70px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.055),inset 0 -1px 0 rgba(0,0,0,.55)!important;
+}
+.pc-v6-pillar-grid article:after{
+  left:10%!important;right:10%!important;height:1px!important;
+  background:linear-gradient(90deg,transparent,#f5df9b 40%,#9c7332 72%,transparent)!important;
+  opacity:.45!important;
+}
+.pc-v6-pillar-grid article:hover{
+  border-color:rgba(241,211,129,.28)!important;
+  box-shadow:0 38px 90px rgba(0,0,0,.5),0 0 44px rgba(230,188,84,.035),inset 0 1px 0 rgba(255,255,255,.07)!important;
+}
+.pc-v6-orb{
+  border:1px solid rgba(242,222,160,.28)!important;
+  background:radial-gradient(circle at 30% 24%,rgba(255,255,255,.18),rgba(26,32,27,.72) 34%,rgba(4,7,5,.95) 74%)!important;
+  box-shadow:0 13px 28px rgba(0,0,0,.45),0 0 22px currentColor,inset 0 1px 0 rgba(255,255,255,.14),inset 0 -10px 22px rgba(0,0,0,.52)!important;
+}
+
+/* Pulse Chamber: the same physical core becomes the product's visual signature. */
+.pc-v6-chamber{
+  border-color:rgba(236,220,171,.21)!important;
+  background:
+    linear-gradient(115deg,rgba(255,255,255,.025),transparent 18%),
+    radial-gradient(circle at 50% 49%,rgba(210,255,96,.115),transparent 21%),
+    radial-gradient(circle at 82% 8%,rgba(239,204,108,.055),transparent 21%),
+    linear-gradient(145deg,#111713,#060907 74%)!important;
+  box-shadow:0 42px 120px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.055),inset 0 -1px 0 rgba(0,0,0,.6)!important;
+}
+.pc-v6-pulse-core{isolation:isolate}
+.pc-v6-pulse-core .pc-v6-pulse-ring{
+  width:178px!important;height:178px!important;
+  border-color:rgba(223,255,99,.46)!important;
+  background:
+    radial-gradient(circle at 36% 28%,rgba(255,255,255,.075),transparent 19%),
+    radial-gradient(circle,rgba(27,38,25,.95),#050806 66%)!important;
+  box-shadow:0 0 0 1px rgba(244,216,130,.12),0 0 0 12px rgba(216,255,95,.025),0 0 0 24px rgba(216,255,95,.01),0 0 72px rgba(170,255,70,.28),inset 0 0 55px rgba(170,255,70,.1),inset 0 1px 0 rgba(255,255,255,.06)!important;
+}
+.pc-v6-pulse-core:before{border-color:rgba(239,204,108,.15)!important;border-style:solid!important}
+.pc-v6-pulse-core:after{border-color:rgba(223,255,99,.09)!important}
+.pc-v6-pulse-core>a{
+  background:linear-gradient(180deg,#fff0aa,#d9b44e 72%,#a9792b)!important;
+  box-shadow:0 12px 32px rgba(211,167,61,.26),inset 0 1px 0 rgba(255,255,255,.72)!important;
+}
+.pc-v6-mini-card{
+  border-color:rgba(229,211,157,.09)!important;
+  background:linear-gradient(145deg,rgba(28,33,29,.63),rgba(5,8,6,.71))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 12px 30px rgba(0,0,0,.18)!important;
+}
+
+/* Momentum medallions become heavier, with a physical shadow beneath each rank. */
+.pc-v6-ranks article:after{
+  content:"";display:block;width:64px;height:8px;margin:7px auto 0;
+  border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.62),transparent 68%);filter:blur(3px)
+}
+.pc-v6-rank-art{
+  filter:drop-shadow(0 16px 15px rgba(0,0,0,.52)) drop-shadow(0 0 12px rgba(241,210,125,.07)) contrast(1.08) saturate(.94)!important;
+}
+
+/* Share Studio cards get glass reflections and material edges. */
+.pc-v6-social-card{
+  border-color:rgba(235,219,169,.18)!important;
+  box-shadow:0 28px 70px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.055)!important;
+}
+.pc-v6-social-card:after{
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(2,3,3,.07) 17%,rgba(2,3,3,.18) 50%,rgba(2,3,3,.94) 100%)!important;
+}
+.pc-v6-social-card>*{text-shadow:0 2px 15px rgba(0,0,0,.72)}
+.pc-v6-social-card:hover{box-shadow:0 38px 88px rgba(0,0,0,.54),0 0 40px rgba(240,205,110,.04),inset 0 1px 0 rgba(255,255,255,.08)!important}
+.pc-v6-social-card::selection{background:rgba(241,205,108,.22)}
+
+/* Vault: increase metallic perception without touching the content model. */
+.pc-v6-vault-art{
+  filter:drop-shadow(0 32px 38px rgba(0,0,0,.42));
+}
+.pc-v6-vault-art:after{
+  content:"";position:absolute;inset:7% 10%;pointer-events:none;border-radius:18px;
+  background:linear-gradient(112deg,transparent 20%,rgba(255,244,201,.07) 33%,transparent 44%);
+  mix-blend-mode:screen;opacity:.48;animation:pcMatSweep 10s ease-in-out infinite;
+}
+.pc-v6-sprite-vault{
+  filter:contrast(1.12) saturate(.88) brightness(.9) drop-shadow(0 30px 45px rgba(0,0,0,.44))!important;
+}
+.pc-v6-vault-benefits{
+  border-color:rgba(238,214,151,.14)!important;
+  background:linear-gradient(155deg,rgba(18,22,18,.84),rgba(5,7,6,.94))!important;
+  box-shadow:0 30px 80px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+
+/* Final scene: bring the material core back as a closing visual echo. */
+.pc-v6-final-copy:after{
+  content:"";position:absolute;width:310px;height:310px;left:50%;top:50%;transform:translate(-50%,-53%);
+  background:url('/v6/pulse-object-material.svg') center/contain no-repeat;
+  opacity:.105;filter:saturate(.78) brightness(.92);pointer-events:none;z-index:0;
+}
+.pc-v6-final-copy>*{position:relative;z-index:2}
+.pc-v6-final-copy:before{width:270px!important;height:270px!important;border-color:rgba(240,203,106,.12)!important}
+.pc-v6-final-stats{
+  border-color:rgba(240,214,151,.09)!important;
+  background:linear-gradient(145deg,rgba(15,18,15,.52),rgba(3,5,4,.35))!important;
+  box-shadow:0 28px 72px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.035)!important;
+}
+
+/* Signed-in surfaces inherit the same physical language. */
+.app-sidebar{
+  background:linear-gradient(180deg,#070a08,#020303 72%)!important;
+  box-shadow:22px 0 70px rgba(0,0,0,.24),inset -1px 0 0 rgba(240,203,106,.05)!important;
+}
+.balance-chip,.wallet-balance-card,.pc-progress-hero,.drop-card,.withdrawal-panel,.transaction-card,.trust-card,.invite-hero-card,.pc-share-studio,.pc-next-circuit,.pc-missions-card,.pc-signal-card,.pc-momentum-card,.invite-card,.progress-card{
+  border-color:rgba(235,214,153,.105)!important;
+  background:linear-gradient(145deg,rgba(15,19,16,.96),rgba(5,7,6,.98))!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+.hourly-pulse-card,.pc-luxe-pulse-chamber{
+  border-color:rgba(232,214,160,.16)!important;
+  background:radial-gradient(circle at 70% 43%,rgba(181,255,76,.11),transparent 23%),linear-gradient(145deg,#111713,#050806 72%)!important;
+  box-shadow:0 58px 160px rgba(0,0,0,.52),0 0 100px rgba(180,255,83,.035),inset 0 1px 0 rgba(255,255,255,.045)!important;
+}
+
+@media(max-width:1100px){
+  .pc-v6-hero-bg{background-size:450px 450px;background-position:calc(100% + 25px) 24px}
+}
+
+@media(max-width:860px){
+  .pc-v6-hero-bg{background-size:400px 400px;background-position:54% 22px}
+  .pc-v6-hero-bg .pc-v6-sprite-hero{opacity:.56}
+  .pc-v6-hero-bg:before{width:390px!important;height:390px!important;right:105px!important;top:-5px!important}
+  .pc-v6-final-copy:after{width:260px;height:260px}
+}
+
+@media(max-width:560px){
+  .pc-v6-hero-bg{background-size:330px 330px;background-position:58% 34px}
+  .pc-v6-hero-bg:before{width:310px!important;height:310px!important;right:155px!important;top:15px!important}
+  .pc-v6-pillar-grid article{box-shadow:0 20px 52px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.045)!important}
+  .pc-v6-pulse-core .pc-v6-pulse-ring{width:154px!important;height:154px!important}
+  .pc-v6-final-copy:after{width:220px;height:220px;opacity:.09}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pc-v6-vault-art:after{animation:none!important;opacity:.22}
+}
