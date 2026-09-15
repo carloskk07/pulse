@@ -5,7 +5,7 @@ on:
     branches: [chore/reproducible-dependencies]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   snapshot:
@@ -13,15 +13,23 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: chore/reproducible-dependencies
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           package-manager-cache: false
       - name: Generate lockfile from current dependency contract
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - uses: actions/upload-artifact@v4
-        with:
-          name: pulsercuit-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit exact generated lockfile
+        shell: bash
+        run: |
+          if [ -z "$(git status --porcelain -- package-lock.json)" ]; then
+            echo "Lockfile already matches."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: lock resolved dependencies"
+          git push origin HEAD:chore/reproducible-dependencies
