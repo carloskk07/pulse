@@ -2,96 +2,49 @@
 
 ## Product thesis
 
-Pulse is not an offerwall. The base product is a recurring, treasury-backed reward rhythm. External CPA supply is optional Turbo inventory and must never control whether the core product exists.
+Pulse is the provider-independent, treasury-backed recurring reward rail. Turbo providers are optional inventory and do not determine whether the base product exists.
 
-The launch loop is:
+The core proof chain is:
 
-`FUNDED PULSE → CLAIM → RETURN → TRUST → OPTIONAL TURBO → WALLET → PAYOUT → PUBLIC PROOF`
+`FUNDED PULSE → CLAIM → AUTHORITATIVE LEDGER → WALLET → PAYOUT → RECEIPT → PROOF`
 
-Future sponsored rewards and Pulse Direct may add supply, but they are not launch prerequisites.
+## Claim authority
 
-## Financial contract
+A claim can settle only when authentication and Turnstile pass, the rolling interval has elapsed, risk policy allows the account, and the configured Treasury is enabled, open, funded and inside both global and per-user limits.
 
-A base Hourly Pulse may be credited only when all of the following are true:
+`claim_hourly_pulse()` commits the Treasury spend, `pulse_claims` evidence and `pulse_reward` ledger entry atomically. The legacy `/api/daily-pulse` financial path is retired.
 
-- the user is authenticated;
-- Turnstile succeeds for the `hourly_pulse` action;
-- the rolling interval from the previous successful claim has elapsed;
-- the account risk score is within the configured claim policy;
-- the configured treasury exists, is enabled and its kill switch is open;
-- the treasury has real unspent credits available;
-- the daily treasury budget remains within limit;
-- the per-user daily budget remains within limit.
+The default contract remains conservative: 1 credit, 60-minute rolling interval, Treasury `launch`, maximum claim risk score 59. Migrations do not fund or open that Treasury.
 
-Claim settlement is atomic in `claim_hourly_pulse()`: treasury spending, `pulse_claims` evidence and the `pulse_reward` ledger entry commit together or none of them commit.
+## Trust, Turbo and referrals
 
-The legacy `/api/daily-pulse` financial path is retired so it cannot bypass treasury controls.
+Trust is derived from real product history and private risk inputs. The UI exposes the trust result, not the anti-abuse inputs.
 
-## Rolling interval
+Turbo is optional extra earning. Browser activity alone never creates a Turbo reward; authoritative provider/direct settlement remains required.
 
-Eligibility is measured from the timestamp of the previous successful Hourly Pulse claim. It is not based on the wall-clock hour. This prevents a user from claiming at 10:59 and again at 11:00.
-
-Initial config is intentionally conservative and does not fund the treasury:
-
-- reward: 1 credit;
-- interval: 60 minutes;
-- treasury: `launch`;
-- maximum claim risk score: 59.
-
-The migration does **not** add funded credits, enable the treasury or open the kill switch. Real budget must be explicitly authorized before the first production claim.
-
-## Pulse Trust
-
-Pulse Trust is derived from real behavior rather than profile claims. Current evidence inputs include:
-
-- valid Hourly Pulse history;
-- active days;
-- confirmed monetization conversions;
-- completed paid withdrawals;
-- chargebacks/reversals;
-- current risk score.
-
-The public UI exposes the resulting trust level, not the exact anti-abuse thresholds.
-
-## Turbo
-
-Turbo is optional extra earning. Partner CPA, direct campaigns and future supply can live behind the same interface. A browser click or redirect is never sufficient authority to create a Turbo reward. Provider or direct settlement evidence remains mandatory.
-
-## Referrals
-
-Referral rewards are quality-gated. A signup alone creates no reward. The current rule qualifies after the invitee's first confirmed monetization conversion and reverses linked referral rewards if that qualifying conversion is charged back.
-
-## Pulse Proof
-
-`/proof` reads only aggregate production facts through a server-only RPC. It deliberately distinguishes:
-
-- Hourly Pulse rewards credited to the ledger;
-- confirmed Turbo conversions;
-- withdrawals actually marked paid by the payout flow.
-
-Zero is a valid value. No demo user, fake payout or synthetic event may be inserted to make proof metrics appear stronger.
+Referral rewards are quality-gated. Signup alone creates no financial reward, and linked rewards remain reversible when their qualifying economic evidence is reversed.
 
 ## PRODUCT_READY
 
-A specific offerwall provider is no longer a core release dependency. PRODUCT_READY requires:
+A specific offerwall provider is not a base-product dependency. Current `PRODUCT_READY` requires:
 
-1. production auth configured;
-2. production Turnstile configured and proven;
-3. valid Hourly Pulse config;
-4. real funded/open treasury;
-5. at least one real treasury-backed Hourly Pulse claim;
-6. fully configured payout pack;
-7. at least one controlled real paid withdrawal with current FaucetPay evidence.
+1. production auth and trusted server authority;
+2. current Turnstile proof;
+3. current Supabase Auth hardening and hosted password-recovery proofs;
+4. valid Hourly Pulse contract;
+5. real funded/open Treasury with positive safety limits;
+6. a real claim matching the current reward, interval and Treasury;
+7. a complete FaucetPay pack with current read-only unit proof;
+8. a controlled provider-side paid withdrawal with current payout evidence;
+9. actual destination receipt bound to that exact paid withdrawal;
+10. same-account causal continuity from claim and claim-ledger credit through withdrawal-ledger debit, provider-paid state and receipt.
 
-Turbo monetization is economically important but is not allowed to redefine whether the base Pulse product functions.
+## Payout recovery
 
-## Future layers, not current launch scope
+A `submitted` payout may already have reached the provider, so reconciliation preserves the original database values and idempotency key. A historical recovery may complete that original withdrawal, but current release evidence is recorded only when the recovered asset, credits and provider units still match the current read-proven payout configuration.
 
-- Sponsored Pulse / Boost Hours;
-- Community Boosts;
-- publisher embed/SDK;
-- advertiser self-service;
-- Pulse Network auctioning;
-- multiple CPA providers.
+## Proof discipline
 
-These layers should be activated only after the base loop proves retention, fraud control and real payout settlement.
+`/proof` reports factual production aggregates. Zero is valid. No demo user, fabricated balance, synthetic payout or fake activity may be inserted to improve proof metrics.
+
+Future sponsored rewards, community boosts, publisher integrations, advertiser self-service and additional providers remain outside the base launch dependency graph.
