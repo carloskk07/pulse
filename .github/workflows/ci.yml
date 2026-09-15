@@ -22,6 +22,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Audit production dependency surface
         run: npm audit --omit=dev --audit-level=high
+      - name: Verify governed legal policy bundle
+        run: npm run verify:legal
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
