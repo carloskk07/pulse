@@ -12,9 +12,9 @@ The public endpoint `/api/readiness` exposes only the aggregate state and return
 
 ## Required schema
 
-Apply migrations in order through `0030_wallet_withdrawal_read_contract.sql` and require the live `release_schema` marker to be at least v30.
+Apply migrations in order through `0031_current_hourly_claim_security_contract.sql` and require the live `release_schema` marker to be at least v31.
 
-Schema version alone is not sufficient. The runtime also verifies the security, Wallet recovery, Reward Exchange, Opportunity Intelligence, Pulse Direct, business-intake and advertiser-outbound contracts against the live database.
+Schema version alone is not sufficient. The runtime also verifies the security, Wallet recovery, Reward Exchange, Opportunity Intelligence, Pulse Direct, business-intake and advertiser-outbound contracts against the live database. The security contract must inspect the current `claim_hourly_pulse(uuid)` RPC, prove that `anon`/`authenticated` cannot execute it, prove that `service_role` can execute it, and require that the RPC remains `SECURITY INVOKER`.
 
 ## Required external evidence
 
@@ -59,9 +59,9 @@ Production promotion requires, at minimum:
 
 ```text
 CI = PASS
-canonical production health = PASS
+exact canonical release SHA = PASS
 /api/readiness = READY / HTTP 200
-live schema marker >= 30
+live schema marker >= 31
 all required runtime contracts = PASS
 all blocking configuration checks = PASS
 all required current-configuration external proofs = PASS
