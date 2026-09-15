@@ -1,11 +1,12 @@
+import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { getLegalOperatorIdentity } from "@/lib/legal-release";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 27;
-export const RELEASE_SCHEMA_MIGRATION = "0027_legal_launch_evidence.sql";
+export const RELEASE_SCHEMA_VERSION = 28;
+export const RELEASE_SCHEMA_MIGRATION = "0028_faucetpay_receipt_evidence.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -135,7 +136,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
     checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence cannot be verified until database authority is available.", true));
-    checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification and payout evidence is still required after setup.", true));
+    checks.push(check("faucetpay-receipt-proof", "Actual payout receipt", "pending", "Destination receipt evidence cannot be verified until database authority is available.", true));
+    checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification, payout and actual-receipt evidence is still required after setup.", true));
   } else {
     const { error: connectivityError } = await admin.from("app_config").select("key").limit(1);
     const databaseOk = !connectivityError;
@@ -255,6 +257,19 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         true,
       ));
 
+      const receiptState = await getFaucetPayReceiptProofState(admin, proofValue);
+      checks.push(check(
+        "faucetpay-receipt-proof",
+        "Actual payout receipt",
+        receiptState.receiptProofCurrent ? "pass" : "pending",
+        receiptState.receiptProofCurrent
+          ? "The current controlled FaucetPay payout has fingerprint-bound evidence that funds were observed at the actual destination."
+          : receiptState.withdrawal && receiptState.payoutProofCurrent
+            ? "Provider-side payout is proven, but actual receipt at the destination must still be explicitly verified in the private FaucetPay cockpit."
+            : "Complete and prove one controlled FaucetPay payout before destination receipt can be verified.",
+        true,
+      ));
+
       const providerEvidenceKey = rewardProvider?.evidenceKey;
       if (providerEvidenceKey) {
         const providerProof = !proofError && releaseEvidenceMatches(proofValue, providerEvidenceKey);
@@ -271,16 +286,17 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
 
       const turnstileProof = !proofError && releaseEvidenceMatches(proofValue, "turnstile");
       const faucetPayProof = !proofError && releaseEvidenceMatches(proofValue, "faucetpay_payout");
-      const proofComplete = turnstileProof && faucetPayProof;
+      const proofComplete = turnstileProof && faucetPayProof && receiptState.receiptProofCurrent;
       const missing = [
         !turnstileProof ? "Turnstile" : null,
-        !faucetPayProof ? "FaucetPay payout" : null,
+        !faucetPayProof ? "FaucetPay provider payout" : null,
+        !receiptState.receiptProofCurrent ? "actual payout receipt" : null,
       ].filter(Boolean).join(", ");
       checks.push(check(
         "external-proof",
         "Core external smoke evidence",
         proofComplete ? "pass" : "pending",
-        proofComplete ? "Current human-verification and payout configurations have matching controlled smoke evidence." : `Awaiting current-configuration core evidence: ${missing || "external flows"}.`,
+        proofComplete ? "Current human-verification, provider payout and actual destination-receipt configurations have matching controlled evidence." : `Awaiting current-configuration core evidence: ${missing || "external flows"}.`,
         true,
       ));
     } else {
@@ -291,7 +307,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence is still required after database recovery.", true));
       checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence is still required after database recovery.", true));
-      checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification and payout evidence is still required after database recovery.", true));
+      checks.push(check("faucetpay-receipt-proof", "Actual payout receipt", "pending", "Destination receipt evidence is still required after database recovery.", true));
+      checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification, payout and actual-receipt evidence is still required after database recovery.", true));
     }
   }
 
