@@ -38,6 +38,7 @@ jobs:
 
       - name: Validate application
         run: |
+          npm run verify:legal
           npm run typecheck
           npm run lint
 
