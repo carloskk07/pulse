@@ -26,6 +26,13 @@ function objectValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+function validTimestampOrder(first: unknown, second: unknown) {
+  if (typeof first !== "string" || typeof second !== "string") return false;
+  const left = Date.parse(first);
+  const right = Date.parse(second);
+  return Number.isFinite(left) && Number.isFinite(right) && left <= right;
+}
+
 export async function getProductReadiness(): Promise<ProductReadiness> {
   const checks: ProductReadinessCheck[] = [];
   const payout = getFaucetPayPackConfig();
@@ -54,6 +61,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
     checks.push({ id: "auth-hardening-proof", label: "Supabase Auth leaked-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
     checks.push({ id: "password-recovery-proof", label: "Hosted password recovery proof", pass: false, detail: "Real recovery evidence cannot be verified without trusted database authority." });
+    checks.push({ id: "base-loop-continuity", label: "Same-account base loop", pass: false, detail: "The authoritative same-account Pulse → Wallet → payout chain cannot be verified without trusted database authority." });
     checks.push({ id: "payout-receipt-proof", label: "Actual payout receipt", pass: false, detail: "Destination receipt cannot be verified without trusted database authority." });
     return {
       ready: false,
@@ -113,6 +121,102 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
   const paidWithdrawals = withdrawalResult.error ? 0 : Number(withdrawalResult.count ?? 0);
 
+  let baseLoopContinuity = false;
+  let baseLoopContinuityDetail = "Complete one controlled same-account Hourly Pulse → Wallet → FaucetPay payout → destination receipt chain.";
+
+  if (receiptState.withdrawal && receiptState.receiptProofCurrent && treasury) {
+    const chainWithdrawalResult = await admin
+      .from("withdrawals")
+      .select("id,user_id,ledger_entry_id,payout_provider,asset,amount_credits,status,external_id,created_at")
+      .eq("id", receiptState.withdrawal.id)
+      .maybeSingle();
+    const chainWithdrawal = chainWithdrawalResult.data;
+
+    if (!chainWithdrawalResult.error && chainWithdrawal?.user_id && chainWithdrawal.ledger_entry_id && chainWithdrawal.status === "paid") {
+      const chainClaimResult = await admin
+        .from("pulse_claims")
+        .select("id,user_id,treasury_id,reward_credits,ledger_entry_id,metadata,created_at")
+        .eq("user_id", chainWithdrawal.user_id)
+        .eq("treasury_id", treasury.id)
+        .eq("reward_credits", rewardCredits)
+        .contains("metadata", { interval_minutes: intervalMinutes })
+        .lte("created_at", chainWithdrawal.created_at)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const chainClaim = chainClaimResult.data;
+
+      if (!chainClaimResult.error && chainClaim?.ledger_entry_id) {
+        const ledgerResult = await admin
+          .from("ledger_entries")
+          .select("id,user_id,event_key,entry_type,state,credits,metadata,created_at")
+          .in("id", [chainClaim.ledger_entry_id, chainWithdrawal.ledger_entry_id]);
+        const claimLedger = ledgerResult.data?.find((row) => row.id === chainClaim.ledger_entry_id);
+        const withdrawalLedger = ledgerResult.data?.find((row) => row.id === chainWithdrawal.ledger_entry_id);
+        const chainClaimMetadata = objectValue(chainClaim.metadata);
+        const claimLedgerMetadata = objectValue(claimLedger?.metadata);
+        const withdrawalLedgerMetadata = objectValue(withdrawalLedger?.metadata);
+        const sameUser = chainClaim.user_id === chainWithdrawal.user_id;
+        const claimContractMatches = Boolean(
+          chainClaim.treasury_id === treasury.id &&
+          Number(chainClaim.reward_credits) === rewardCredits &&
+          Number(chainClaimMetadata.interval_minutes) === intervalMinutes
+        );
+        const claimLedgerMatches = Boolean(
+          claimLedger &&
+          claimLedger.user_id === chainWithdrawal.user_id &&
+          claimLedger.event_key === `hourly_pulse:${chainClaim.id}` &&
+          claimLedger.entry_type === "pulse_reward" &&
+          claimLedger.state === "available" &&
+          Number(claimLedger.credits) === rewardCredits &&
+          String(claimLedgerMetadata.claim_id ?? "") === chainClaim.id &&
+          claimLedgerMetadata.funding_source === "pulse" &&
+          claimLedgerMetadata.treasury_code === treasuryCode &&
+          Number(claimLedgerMetadata.interval_minutes) === intervalMinutes
+        );
+        const withdrawalMatchesReceipt = Boolean(
+          chainWithdrawal.id === receiptState.withdrawal.id &&
+          chainWithdrawal.payout_provider === "faucetpay" &&
+          chainWithdrawal.asset === receiptState.withdrawal.asset &&
+          Number(chainWithdrawal.amount_credits) === receiptState.withdrawal.amount_credits &&
+          chainWithdrawal.external_id === receiptState.withdrawal.external_id
+        );
+        const withdrawalLedgerMatches = Boolean(
+          withdrawalLedger &&
+          withdrawalLedger.user_id === chainWithdrawal.user_id &&
+          withdrawalLedger.event_key === `withdrawal:reserve:${chainWithdrawal.id}` &&
+          withdrawalLedger.entry_type === "withdrawal" &&
+          withdrawalLedger.state === "withdrawn" &&
+          Number(withdrawalLedger.credits) === -Number(chainWithdrawal.amount_credits) &&
+          withdrawalLedgerMetadata.provider === "faucetpay" &&
+          withdrawalLedgerMetadata.asset === chainWithdrawal.asset &&
+          String(withdrawalLedgerMetadata.withdrawal_id ?? "") === chainWithdrawal.id
+        );
+        const chronologyMatches = validTimestampOrder(chainClaim.created_at, chainWithdrawal.created_at)
+          && validTimestampOrder(claimLedger?.created_at, withdrawalLedger?.created_at);
+
+        baseLoopContinuity = Boolean(
+          !ledgerResult.error &&
+          sameUser &&
+          claimContractMatches &&
+          claimLedgerMatches &&
+          withdrawalMatchesReceipt &&
+          withdrawalLedgerMatches &&
+          chronologyMatches
+        );
+        baseLoopContinuityDetail = baseLoopContinuity
+          ? "One account has a current-contract Hourly Pulse claim, its authoritative Wallet ledger credit, the later FaucetPay withdrawal ledger debit, provider-paid status and matching destination-receipt proof in causal order."
+          : "The same-account claim and paid withdrawal exist, but their authoritative ledger links, current contract, receipt binding or causal order do not all agree.";
+      } else {
+        baseLoopContinuityDetail = "The receipt-bound payout account has no earlier Hourly Pulse claim matching the current reward, interval and Treasury contract.";
+      }
+    } else {
+      baseLoopContinuityDetail = "The receipt-bound paid withdrawal could not be linked to a valid account and authoritative withdrawal ledger entry.";
+    }
+  } else if (receiptState.withdrawal && receiptState.payoutProofCurrent) {
+    baseLoopContinuityDetail = "Provider-side payout exists, but actual destination receipt must be proven before the same-account base loop can close.";
+  }
+
   checks.push({
     id: "auth-hardening-proof",
     label: "Supabase Auth leaked-password protection",
@@ -164,6 +268,12 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
       : latestClaim
         ? "A historical Pulse claim exists, but it does not match the current reward, interval or Treasury contract. Complete one real claim under the current configuration."
         : "At least one real Treasury-backed Hourly Pulse claim must complete under the current reward, interval and Treasury contract.",
+  });
+  checks.push({
+    id: "base-loop-continuity",
+    label: "Same-account base loop",
+    pass: baseLoopContinuity,
+    detail: baseLoopContinuityDetail,
   });
   checks.push({
     id: "payout-proof",
