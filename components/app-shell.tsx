@@ -12,6 +12,13 @@ const links = [
   { id: "invite", href: "/invite", label: "Share", Icon: Users },
 ];
 
+const adminLinks = [
+  { id: "product", href: "/admin/product", label: "Product", Icon: Shield },
+  { id: "support-admin", href: "/admin/support", label: "Support Ops", Icon: Users },
+  { id: "faucetpay-admin", href: "/admin/faucetpay", label: "FaucetPay", Icon: Wallet },
+  { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
+];
+
 function initials(value: string) {
   return value.replace(/[^a-zA-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "PC";
 }
@@ -44,14 +51,8 @@ export async function AppShell({ children, active }: { children: React.ReactNode
   }
 
   const admin = isAdminEmail(user?.email);
-  const sidebarLinks = admin
-    ? [...links,
-        { id: "product", href: "/admin/product", label: "Product", Icon: Shield },
-        { id: "support-admin", href: "/admin/support", label: "Support", Icon: Users },
-        { id: "faucetpay-admin", href: "/admin/faucetpay", label: "FaucetPay", Icon: Wallet },
-        { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
-      ]
-    : links;
+  const sidebarLinks = admin ? [...links, ...adminLinks] : links;
+  const adminMobileActive = admin && adminLinks.some((link) => link.id === active);
 
   return (
     <div className="app-frame">
@@ -74,6 +75,25 @@ export async function AppShell({ children, active }: { children: React.ReactNode
         {links.map(({ id, href, label: navLabel, Icon }) => (
           <Link key={href} className={active === id ? "active" : ""} href={href}><Icon /><span>{navLabel}</span></Link>
         ))}
+        <details className="bottom-nav-more">
+          <summary className={adminMobileActive ? "active" : ""} aria-label="More navigation and account actions">
+            <span className="bottom-nav-more-icon" aria-hidden="true">•••</span>
+            <span>More</span>
+          </summary>
+          <div className="bottom-nav-menu">
+            <div className="bottom-nav-menu-user">
+              <span className="avatar">{initials(label)}</span>
+              <div><strong>{label}</strong><small>{user ? `${trustName(trustLevel)} · Trust ${trustLevel}/5` : "Preview mode"}</small></div>
+            </div>
+            <Link href={user ? "/account" : "/auth?next=/account"}>Account</Link>
+            <Link href="/proof">Proof</Link>
+            <Link href="/support">Help</Link>
+            {admin ? adminLinks.map(({ id, href, label: navLabel, Icon }) => (
+              <Link key={href} className={active === id ? "active" : ""} href={href}><Icon />{navLabel}</Link>
+            )) : null}
+            {user ? <form action={signOut}><button type="submit">Sign out</button></form> : <Link href="/auth?next=/dashboard">Log in</Link>}
+          </div>
+        </details>
       </nav>
     </div>
   );
