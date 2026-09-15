@@ -7,7 +7,7 @@ export async function GET() {
   const report = await getReleaseReadiness();
   return Response.json(
     {
-      service: "reward-pulse",
+      service: "pulsercuit",
       version: "0.1.0",
       readiness: report.state,
       ready: report.ready,
