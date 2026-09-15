@@ -1,6 +1,16 @@
 import { ArrowUpRight, Clock } from "./icons";
-import type { Offer } from "@/lib/mock-data";
 import { formatUsd } from "@/lib/credits";
+
+type Offer = {
+  id: string;
+  title: string;
+  category: "survey" | "quest" | "app";
+  rewardUsd: number;
+  minutes: number;
+  match: number;
+  completionRate: number;
+  badge: string;
+};
 
 export function OfferCard({ offer, featured = false }: { offer: Offer; featured?: boolean }) {
   return (
