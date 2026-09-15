@@ -4,10 +4,18 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   MIN_PASSWORD_LENGTH,
+  PASSWORD_RECOVERY_CONTEXT_LEGACY,
+  PASSWORD_RECOVERY_CONTEXT_OTP,
+  PASSWORD_RECOVERY_CONTEXT_PKCE,
   PASSWORD_RECOVERY_COOKIE,
   safeAuthNext,
   validNewPassword,
 } from "@/lib/auth-security";
+import {
+  armPasswordRecoveryProofChallenge,
+  finalizePasswordRecoveryProof,
+  hasRecentRecoverySend,
+} from "@/lib/auth-recovery-proof";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -49,7 +57,10 @@ export async function signIn(formData: FormData) {
     const code = "code" in error ? String(error.code ?? "") : "";
     redirect(authError(code === "weak_password" ? "password-upgrade-required" : "invalid-credentials", next, ref));
   }
-  if (data.user && ref) await bindReferralForUser(data.user.id, ref);
+  if (data.user) {
+    await finalizePasswordRecoveryProof(data.user.id);
+    if (ref) await bindReferralForUser(data.user.id, ref);
+  }
   redirect(next);
 }
 
@@ -107,7 +118,12 @@ export async function requestPasswordReset(formData: FormData) {
 export async function updateRecoveredPassword(formData: FormData) {
   const cookieStore = await cookies();
   const recoveryContext = cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value;
-  if (recoveryContext !== "1") redirect("/auth/recover?error=recovery-required");
+  const validRecoveryContexts = new Set([
+    PASSWORD_RECOVERY_CONTEXT_LEGACY,
+    PASSWORD_RECOVERY_CONTEXT_PKCE,
+    PASSWORD_RECOVERY_CONTEXT_OTP,
+  ]);
+  if (!recoveryContext || !validRecoveryContexts.has(recoveryContext)) redirect("/auth/recover?error=recovery-required");
 
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/auth/update-password?error=service-not-configured");
@@ -122,6 +138,15 @@ export async function updateRecoveredPassword(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) redirect("/auth/update-password?error=password-update-failed");
+
+  if (recoveryContext === PASSWORD_RECOVERY_CONTEXT_OTP) {
+    await armPasswordRecoveryProofChallenge(user.id, "otp");
+  } else if (recoveryContext === PASSWORD_RECOVERY_CONTEXT_PKCE) {
+    const recoverySentAt = "recovery_sent_at" in user ? String(user.recovery_sent_at ?? "") : null;
+    if (hasRecentRecoverySend(recoverySentAt)) {
+      await armPasswordRecoveryProofChallenge(user.id, "pkce");
+    }
+  }
 
   cookieStore.set(PASSWORD_RECOVERY_COOKIE, "", {
     httpOnly: true,
