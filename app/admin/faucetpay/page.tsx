@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { getFaucetPayTestPlan } from "@/lib/faucetpay-test-plan";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
-import { verifyAndRecordFaucetPayReadProof } from "./actions";
+import { confirmFaucetPayReceipt, verifyAndRecordFaucetPayReadProof } from "./actions";
 
 export const metadata = { title: "FaucetPay preflight" };
 export const dynamic = "force-dynamic";
@@ -61,6 +62,11 @@ const proofCopy: Record<string, string> = {
   "unit_scale_unresolved": "The live response did not contain enough evidence to prove the smallest-unit scale. No assumption was recorded.",
   "pack_economics_mismatch": "The configured internal credits do not match the nominal USD value in the payout label. No proof was recorded.",
   "pack_mismatch": "The configured provider units do not match the live unit evidence. No proof was recorded.",
+  "receipt-confirmation-required": "No receipt proof was recorded. Explicit confirmation that the funds were observed at the destination is required.",
+  "receipt-no-paid-withdrawal": "No paid FaucetPay withdrawal is available to bind to a destination-receipt proof.",
+  "receipt-payout-proof-required": "Provider-side payout proof is missing or stale. Actual-receipt evidence cannot be recorded against an unproven payout.",
+  "receipt-record-failed": "The paid withdrawal is eligible, but destination-receipt evidence could not be recorded. PRODUCT_READY remains blocked.",
+  "receipt-recorded": "Actual destination receipt was explicitly confirmed and fingerprint-bound to the current paid FaucetPay withdrawal and payout configuration.",
 };
 
 export default async function FaucetPayPreflightPage({ searchParams }: Props) {
@@ -80,7 +86,11 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
   const proofResult = admin
     ? await admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle()
     : { data: null, error: null };
-  const readEvidenceCurrent = !proofResult.error && releaseEvidenceMatches(proofResult.data?.value, "faucetpay_read");
+  const proofValue = proofResult.data?.value;
+  const readEvidenceCurrent = !proofResult.error && releaseEvidenceMatches(proofValue, "faucetpay_read");
+  const receiptState = admin
+    ? await getFaucetPayReceiptProofState(admin, proofValue)
+    : { withdrawal: null, payoutProofCurrent: false, receiptProofCurrent: false };
 
   return (
     <AppShell active="faucetpay-admin">
@@ -93,7 +103,7 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
         <span className={statusTone(probe.state)}>{probe.state.replaceAll("_", " ")}</span>
       </div>
 
-      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
+      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "receipt-recorded" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
 
       <section className="admin-panel">
         <div className="app-section-head">
@@ -128,6 +138,31 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
             <button className="button" type="submit">{readEvidenceCurrent ? "Re-verify & refresh proof" : "Verify live rail & record proof"}</button>
           </form>
         ) : <p className="admin-panel-note"><strong>Proof recording is disabled.</strong> The server must first prove the asset, credit economics and provider-unit scale from current configuration and live FaucetPay data.</p>}
+      </section>
+
+      <section className="admin-panel">
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">Final settlement truth</span><h2>Actual destination receipt</h2></div>
+          <span className={`admin-badge ${receiptState.receiptProofCurrent ? "" : receiptState.withdrawal && receiptState.payoutProofCurrent ? "proof" : "setup"}`}>{receiptState.receiptProofCurrent ? "RECEIPT PROVEN" : receiptState.withdrawal ? "AWAITING RECEIPT" : "NO PAID WITHDRAWAL"}</span>
+        </div>
+        <p className="admin-panel-note">A FaucetPay success response proves provider-side payout acceptance, not that the destination actually received spendable funds. PRODUCT_READY remains blocked until the controlled test withdrawal is observed at the destination and explicitly confirmed here.</p>
+        {receiptState.withdrawal ? (
+          <div className="admin-secondary-grid">
+            <article><span>Paid withdrawal</span><strong>{receiptState.withdrawal.id.slice(0, 8)}…</strong></article>
+            <article><span>Provider</span><strong>FaucetPay</strong></article>
+            <article><span>Asset</span><strong>{receiptState.withdrawal.asset}</strong></article>
+            <article><span>Credits settled</span><strong>{integer(receiptState.withdrawal.amount_credits)}</strong></article>
+            <article><span>Provider units</span><strong>{integer(receiptState.withdrawal.payout_amount_units)}</strong></article>
+            <article><span>Provider payout proof</span><strong>{receiptState.payoutProofCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
+          </div>
+        ) : null}
+        {!receiptState.receiptProofCurrent && receiptState.withdrawal && receiptState.payoutProofCurrent ? (
+          <form action={confirmFaucetPayReceipt}>
+            <label className="admin-panel-note"><input type="checkbox" name="receipt_confirmation" value="RECEIVED" required /> I personally verified that this exact controlled payout is visible as received at the configured destination.</label>
+            <button className="button" type="submit">Confirm actual receipt</button>
+          </form>
+        ) : null}
+        {receiptState.receiptProofCurrent ? <p className="admin-panel-note"><strong>Current receipt evidence is fingerprint-bound.</strong> It becomes stale if the payout configuration or bound paid withdrawal changes.</p> : null}
       </section>
 
       <section className="admin-panel">

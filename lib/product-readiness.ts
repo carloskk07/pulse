@@ -1,3 +1,4 @@
+import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -49,6 +50,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
     checks.push({ id: "auth-hardening-proof", label: "Supabase Auth leaked-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
     checks.push({ id: "password-recovery-proof", label: "Hosted password recovery proof", pass: false, detail: "Real recovery evidence cannot be verified without trusted database authority." });
+    checks.push({ id: "payout-receipt-proof", label: "Actual payout receipt", pass: false, detail: "Destination receipt cannot be verified without trusted database authority." });
     return {
       ready: false,
       checks,
@@ -89,6 +91,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
   const faucetPayReadProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_read");
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
+  const receiptState = await getFaucetPayReceiptProofState(admin, proof);
   const pulseClaims = pulseClaimResult.error ? 0 : Number(pulseClaimResult.count ?? 0);
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
   const paidWithdrawals = withdrawalResult.error ? 0 : Number(withdrawalResult.count ?? 0);
@@ -143,11 +146,21 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   });
   checks.push({
     id: "payout-proof",
-    label: "Real payout proof",
+    label: "Provider-side payout proof",
     pass: payoutProof && paidWithdrawals > 0,
     detail: payoutProof && paidWithdrawals > 0
-      ? `${paidWithdrawals} paid withdrawal(s) exist with current FaucetPay evidence.`
-      : "At least one controlled paid withdrawal must complete through the configured payout route.",
+      ? `${paidWithdrawals} paid withdrawal(s) exist with current provider-side FaucetPay evidence.`
+      : "At least one controlled withdrawal must reach authoritative provider-side paid status through the configured payout route.",
+  });
+  checks.push({
+    id: "payout-receipt-proof",
+    label: "Actual payout receipt",
+    pass: receiptState.receiptProofCurrent,
+    detail: receiptState.receiptProofCurrent
+      ? "The current controlled FaucetPay payout was explicitly observed as received at its destination and fingerprint-bound to that exact paid withdrawal."
+      : receiptState.withdrawal && receiptState.payoutProofCurrent
+        ? "A paid FaucetPay withdrawal exists, but actual spendable receipt at the destination still requires explicit external verification in the private FaucetPay cockpit."
+        : "Complete and prove one controlled FaucetPay payout before destination receipt can be verified.",
   });
 
   const blockers = checks.filter((item) => !item.pass).map((item) => item.label);
