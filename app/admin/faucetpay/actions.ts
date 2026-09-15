@@ -39,15 +39,18 @@ export async function verifyAndRecordFaucetPayReadProof() {
 
 export async function confirmFaucetPayReceipt(formData: FormData) {
   await requireAdmin();
+  const confirmedWithdrawalId = String(formData.get("withdrawal_id") ?? "").trim();
   if (String(formData.get("receipt_confirmation") ?? "") !== "RECEIVED") {
     redirect(resultUrl("receipt-confirmation-required"));
   }
+  if (!confirmedWithdrawalId) redirect(resultUrl("receipt-withdrawal-changed"));
 
   const admin = createSupabaseAdminClient();
   if (!admin) redirect(resultUrl("auth-unavailable"));
 
   const state = await getFaucetPayReceiptProofState(admin);
   if (!state.withdrawal) redirect(resultUrl("receipt-no-paid-withdrawal"));
+  if (state.withdrawal.id !== confirmedWithdrawalId) redirect(resultUrl("receipt-withdrawal-changed"));
   if (!state.payoutProofCurrent) redirect(resultUrl("receipt-payout-proof-required"));
   if (state.receiptProofCurrent) redirect(resultUrl("receipt-recorded"));
 
