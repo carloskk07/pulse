@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -11,8 +12,7 @@ function earnRedirect(request: NextRequest, state: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) return earnRedirect(request, "origin-rejected");
+  if (!isTrustedSameOriginMutation(request)) return earnRedirect(request, "origin-rejected");
 
   const formData = await request.formData();
   const campaignId = String(formData.get("campaign") ?? "").trim();
