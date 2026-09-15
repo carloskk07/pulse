@@ -38,6 +38,8 @@ requireText("app/api/pulse/claim/route.ts", ["isTrustedSameOriginMutation(reques
 requireText("app/api/withdrawals/route.ts", ["isTrustedSameOriginMutation(request)", "hasCurrentFaucetPayReadProof", "idempotency_key", "matchesCurrentPayoutAuthority"]);
 requireText("app/api/return-reminder/route.ts", ["export async function POST", "isTrustedSameOriginMutation(request)", "getCanonicalSiteUrl", "new URL(reminderId ? \"/return\" : \"/dashboard\", getCanonicalSiteUrl())"]);
 forbidText("app/api/return-reminder/route.ts", ["export async function GET"]);
+requireText("app/api/direct/start/route.ts", ["isTrustedSameOriginMutation(request)", 'admin.rpc("start_direct_campaign_session"', 'target.protocol !== "https:"']);
+forbidText("app/api/direct/start/route.ts", ['request.headers.get("origin")']);
 requireText("components/next-circuit-panel.tsx", ['action="/api/return-reminder"', 'method="post"', 'type="submit"']);
 requireText("app/api/business/leads/route.ts", ["POSITIVE_INTEGER_RE", "url.username || url.password"]);
 requireText("app/auth/page.tsx", ["safeAuthNext(params.next)"]);
