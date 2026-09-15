@@ -1,44 +1,62 @@
 # Product Completion — consumer readiness boundary
 
-This document separates **consumer product completion** from the stricter **PRODUCT_READY financial gate**.
+This document separates **consumer product implementation** from the stricter **PRODUCT_READY financial gate**.
 
-## Completed in this release
+## Implemented product surface
 
-- Public story simplified to: choose → complete → verify → withdraw.
-- Contextual first-reward onboarding for signed-in accounts with zero available balance.
-- Public Help Center with Turnstile-protected support intake and traceable protocols.
-- Signed-in users can see their own recent support protocols.
-- Admin support queue with explicit open / in-review / resolved / closed lifecycle.
-- Account page with identity, trust level, membership date, editable handle and direct access to support/privacy requests.
-- Public Terms, Privacy and Rewards Policy pages.
-- Sign-up surface links to Terms, Privacy and Rewards Policy.
-- Public sitemap includes only useful public trust/help pages; financial product surfaces remain outside public marketing indexing.
-- Core mobile navigation remains intentionally small: Home, Drops, Wallet and Invite.
+- Mobile-first public, authentication and signed-in product surfaces.
+- Hourly Pulse with rolling eligibility and Treasury gating.
+- Authoritative ledger and Wallet surfaces.
+- Optional Turbo routes with provider/direct settlement authority separated from browser activity.
+- Public Proof based on factual production aggregates.
+- Quality-gated referrals and product-history-derived Trust.
+- Turnstile-protected sensitive actions.
+- Help Center with server-authoritative support intake and admin lifecycle.
+- Account identity, privacy/support access and editable handle.
+- Hosted password-recovery implementation with a separate real-world proof gate.
+- Public Terms, Privacy and Rewards Policy governed by the legal-policy manifest.
+- Private admin cockpits for release, product and FaucetPay evidence.
 
-## Deliberately not claimed as complete
+Implementation is not the same thing as proven financial readiness.
 
-### Financial proof
+## Deliberately not claimed as PRODUCT_READY
 
-`PRODUCT_READY` remains blocked until the complete external loop is proven with real evidence:
+`PRODUCT_READY` remains blocked until the provider-independent base loop is proven with real, current evidence:
 
-`ACCOUNT → EARN → REAL CALLBACK → LEDGER CREDIT → WALLET → WITHDRAWAL → REAL PAYOUT → RECEIVED`
+```text
+ACCOUNT
+→ FUNDED/OPEN TREASURY
+→ CURRENT HOURLY PULSE CLAIM
+→ AUTHORITATIVE LEDGER CREDIT
+→ WALLET
+→ WITHDRAWAL LEDGER DEBIT
+→ FAUCETPAY PROVIDER-PAID STATE
+→ ACTUAL DESTINATION RECEIPT
+```
 
-Required external proofs still include:
+Required external/operational proof includes:
 
-1. ayeT Sandbox Identifier preflight producing current `ayet_transport` evidence without financial writes.
-2. One fresh real ayeT conversion producing the authoritative monetization event, ledger credit and current `ayet_callback` evidence.
-3. Exact FaucetPay payout pack/unit configuration.
-4. One controlled paid withdrawal producing current `faucetpay_payout` evidence and a paid withdrawal row.
+1. Current Turnstile production evidence.
+2. Supabase Auth leaked-password protection with matching hardening evidence.
+3. Real hosted password-recovery completion proof.
+4. Qualified legal-policy review and international-transfer review for the current operator/provider set.
+5. FaucetPay read-only proof of the live settlement asset, economic pack and exact provider unit scale.
+6. A real funded/open Treasury and one current-contract Hourly Pulse claim.
+7. One controlled paid FaucetPay withdrawal with current provider-side payout evidence.
+8. Explicit actual-receipt evidence pinned to that exact withdrawal.
+9. Same-account causal continuity across claim, ledger, withdrawal and receipt.
 
-No growth, advertiser acquisition or scale push should resume before those gates are closed.
+Optional ayeT/Turbo evidence is not a base-product prerequisite. When Turbo is configured, its conversions must still be authoritative, signed/deduplicated and independently proven before any Turbo reward can be treated as real.
 
-### Password self-service recovery
+No growth, paid acquisition or broad claim of proven payouts should resume before the blocking base-product gates are closed.
 
-Password recovery is not promoted as completed in this release. A production-grade recovery flow should only be enabled after the hosted Supabase recovery email template, redirect allowlist, SMTP delivery and full PKCE recovery session can be validated end to end. Until then, account-access problems route to the Help Center instead of exposing a partially tested recovery path.
+## Password self-service recovery
 
-### Legal launch identity
+The recovery implementation exists, but release authority comes only from a completed hosted proof: recovery email → recovery session → password update → later successful sign-in with the new password. Configuration or UI presence alone does not satisfy the gate.
 
-The policy surfaces now explain the product's actual data, reward and support behavior, but a broad public launch still requires the operator's formal legal identity, jurisdiction-specific contact/representative details where required, and professional legal review. These values must not be invented in code.
+## Legal launch identity
+
+Policy surfaces describe the product's actual data, reward and support behavior, but broad launch still requires a real operator identity, applicable jurisdiction/contact details and qualified review. These values must come from production configuration and must never be invented in code.
 
 ## Support authority model
 
@@ -49,4 +67,4 @@ The policy surfaces now explain the product's actual data, reward and support be
 
 ## Product rule
 
-Completion work may improve clarity, supportability and trust, but it must never convert configuration or synthetic activity into financial readiness evidence.
+Completion work may improve clarity, supportability and trust, but it must never convert configuration, historical evidence or synthetic activity into current financial readiness evidence.
