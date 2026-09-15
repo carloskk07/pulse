@@ -32,7 +32,7 @@ async function claimReceiptRedirect(request: NextRequest, userId: string) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isTrustedSameOriginMutation(request)) return dashboardRedirect(request, "origin-rejected");
+  if (!isTrustedSameOriginMutation(request)) return dashboardRedirect(request, "verification-failed");
 
   const supabase = await createSupabaseServerClient();
   if (!supabase) return dashboardRedirect(request, "service-not-configured");
