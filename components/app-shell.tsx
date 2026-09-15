@@ -52,7 +52,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
 
   const admin = isAdminEmail(user?.email);
   const sidebarLinks = admin ? [...links, ...adminLinks] : links;
-  const adminMobileActive = admin && adminLinks.some((link) => link.id === active);
+  const utilityMobileActive = ["account", "support", "proof"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
 
   return (
     <div className="app-frame">
@@ -76,7 +76,7 @@ export async function AppShell({ children, active }: { children: React.ReactNode
           <Link key={href} className={active === id ? "active" : ""} href={href}><Icon /><span>{navLabel}</span></Link>
         ))}
         <details className="bottom-nav-more">
-          <summary className={adminMobileActive ? "active" : ""} aria-label="More navigation and account actions">
+          <summary className={utilityMobileActive ? "active" : ""} aria-label="More navigation and account actions">
             <span className="bottom-nav-more-icon" aria-hidden="true">•••</span>
             <span>More</span>
           </summary>
@@ -85,9 +85,9 @@ export async function AppShell({ children, active }: { children: React.ReactNode
               <span className="avatar">{initials(label)}</span>
               <div><strong>{label}</strong><small>{user ? `${trustName(trustLevel)} · Trust ${trustLevel}/5` : "Preview mode"}</small></div>
             </div>
-            <Link href={user ? "/account" : "/auth?next=/account"}>Account</Link>
-            <Link href="/proof">Proof</Link>
-            <Link href="/support">Help</Link>
+            <Link className={active === "account" ? "active" : ""} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
+            <Link className={active === "proof" ? "active" : ""} href="/proof">Proof</Link>
+            <Link className={active === "support" ? "active" : ""} href="/support">Help</Link>
             {admin ? adminLinks.map(({ id, href, label: navLabel, Icon }) => (
               <Link key={href} className={active === id ? "active" : ""} href={href}><Icon />{navLabel}</Link>
             )) : null}
