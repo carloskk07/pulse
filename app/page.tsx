@@ -9,7 +9,7 @@ const structuredData = {
   name: "Pulsercuit",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
-  description: "Pulsercuit is a premium reward circuit built around funded Pulses, visible momentum, shareable progress and verified payout proof.",
+  description: "Pulsercuit is a premium reward circuit built around funded Pulses, visible momentum, shareable progress and an evidence-gated payout path.",
 };
 
 const ranks = [
