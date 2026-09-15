@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { copyTextToClipboard, isNativeShareAbort } from "@/lib/client-share";
 
 type ShareMode = "rhythm" | "signal" | "achievement";
 type ShareStatus = "idle" | "copied" | "shared" | "failed";
@@ -15,35 +16,6 @@ type Props = {
 
 function safeInt(value: number, max = 9999) {
   return Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
-}
-
-async function copyShareText(text: string) {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Some browsers expose Clipboard API but reject it outside a permitted context.
-    }
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  textarea.setSelectionRange(0, textarea.value.length);
-
-  try {
-    return document.execCommand("copy");
-  } catch {
-    return false;
-  } finally {
-    textarea.remove();
-  }
 }
 
 export function CircuitShareStudio({ days, signal, stage, pulseCount, achievement }: Props) {
@@ -87,7 +59,7 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
   }
 
   async function share() {
-    const url = typeof window === "undefined" ? "https://pulsercuit.pro/progress" : new URL("/progress", window.location.origin).toString();
+    const url = new URL("/progress", window.location.origin).toString();
     const shareText = `${moment.text} ${url}`;
 
     if (navigator.share) {
@@ -97,11 +69,11 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
         resetStatusSoon();
         return;
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (isNativeShareAbort(error)) return;
       }
     }
 
-    const copied = await copyShareText(shareText);
+    const copied = await copyTextToClipboard(shareText);
     setStatus(copied ? "copied" : "failed");
     resetStatusSoon();
   }
