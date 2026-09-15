@@ -21,9 +21,11 @@ export function PulseCountdown({ target }: { target: string | null }) {
   const [remaining, setRemaining] = useState(() => remainingMs(target));
 
   useEffect(() => {
+    setRemaining(remainingMs(target));
     const timer = window.setInterval(() => setRemaining(remainingMs(target)), 1000);
     return () => window.clearInterval(timer);
   }, [target]);
 
-  return <span className={remaining <= 0 ? "pulse-countdown ready" : "pulse-countdown"} aria-live="polite">{formatRemaining(remaining)}</span>;
+  const label = remaining <= 0 ? "Pulse ready" : `Pulse available in ${formatRemaining(remaining)}`;
+  return <span className={remaining <= 0 ? "pulse-countdown ready" : "pulse-countdown"} role="timer" aria-label={label}>{formatRemaining(remaining)}</span>;
 }
