@@ -11,6 +11,7 @@ import "./styles/pulsercuit-v5-1-surfaces.css";
 import "./styles/pulsercuit-v6.css";
 import "./styles/pulsercuit-v6-fixes.css";
 import "./styles/pulsercuit-v6-reference.css";
+import "./styles/pulsercuit-v6-ultra.css";
 
 export const metadata: Metadata = {
   metadataBase: getCanonicalSiteUrl(),
