@@ -18,6 +18,7 @@ import {
 } from "@/lib/auth-recovery-proof";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
+import { getCanonicalSiteUrl } from "@/lib/site-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -77,8 +78,7 @@ export async function signUp(formData: FormData) {
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "signup" });
   if (!verification.success) redirect(authError(turnstileAuthError(verification), next, ref));
   await recordReleaseEvidence("turnstile");
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const callback = new URL("/auth/callback", siteUrl);
+  const callback = new URL("/auth/callback", getCanonicalSiteUrl());
   callback.searchParams.set("next", next);
   if (ref) callback.searchParams.set("ref", ref);
   const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callback.toString() } });
@@ -105,8 +105,7 @@ export async function requestPasswordReset(formData: FormData) {
   if (!verification.success) redirect(`/auth/recover?error=${encodeURIComponent(turnstileAuthError(verification))}`);
   await recordReleaseEvidence("turnstile");
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const callback = new URL("/auth/callback", siteUrl);
+  const callback = new URL("/auth/callback", getCanonicalSiteUrl());
   callback.searchParams.set("flow", "recovery");
   callback.searchParams.set("next", "/auth/update-password");
 
