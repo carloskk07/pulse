@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
+import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -87,10 +88,6 @@ async function executeReservedPayout(
     const finalized = await finalize(admin, reserved.withdrawal_id, "paid", payout.externalId, recovery ? "FaucetPay payout recovered with the original idempotency key" : "FaucetPay payout completed");
     if (finalized.error) return walletRedirect(request, "processing");
 
-    // Recovery is allowed to finish a payout created under an older pack, but
-    // that historical payout must never mint proof for the current release
-    // configuration. Only record release evidence when the exact reserved
-    // asset/credits/provider units still match the current read-proven pack.
     if (await matchesCurrentPayoutAuthority(admin, reserved)) {
       await recordReleaseEvidence("faucetpay_payout");
     }
@@ -107,6 +104,8 @@ async function executeReservedPayout(
 }
 
 export async function POST(request: NextRequest) {
+  if (!isTrustedSameOriginMutation(request)) return walletRedirect(request, "verification-failed");
+
   const supabase = await createSupabaseServerClient();
   if (!supabase) return walletRedirect(request, "service-not-configured");
 
@@ -160,8 +159,6 @@ export async function POST(request: NextRequest) {
       payout_amount_units: active.payout_amount_units ?? undefined,
     };
 
-    // A submitted payout may already have reached FaucetPay. Reconciliation must
-    // keep using the original idempotency key even if current configuration later drifts.
     return executeReservedPayout(request, admin, new FaucetPayProvider(), user.id, reserved, ip, true);
   }
 
