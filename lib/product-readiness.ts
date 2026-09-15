@@ -47,6 +47,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const admin = createSupabaseAdminClient();
   if (!admin) {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
+    checks.push({ id: "auth-hardening-proof", label: "Supabase Auth leaked-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
     return {
       ready: false,
       checks,
@@ -82,6 +83,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   );
 
   const proof = proofResult.data?.value;
+  const authHardeningProof = !proofResult.error && releaseEvidenceMatches(proof, "supabase_auth_hardening");
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
   const faucetPayReadProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_read");
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
@@ -89,6 +91,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
   const paidWithdrawals = withdrawalResult.error ? 0 : Number(withdrawalResult.count ?? 0);
 
+  checks.push({
+    id: "auth-hardening-proof",
+    label: "Supabase Auth leaked-password protection",
+    pass: authHardeningProof,
+    detail: authHardeningProof
+      ? "Current Supabase project has matching external Auth-hardening evidence."
+      : "Enable leaked-password protection, clear the Supabase security-advisor warning, then record fingerprint-bound evidence.",
+  });
   checks.push({
     id: "hourly-pulse-config",
     label: "Hourly Pulse contract",
