@@ -57,15 +57,25 @@ export function calculateProspectFit(signals: ProspectSignals) {
   return Math.max(0, Math.min(100, score));
 }
 
-export function normalizeProspectDomain(raw: string) {
+export function normalizeProspectUrl(raw: string, maxLength = 1000) {
   const value = raw.trim();
-  if (!value) return "";
+  if (!value) return null;
+
   try {
     const url = new URL(value.includes("://") ? value : `https://${value}`);
-    return url.hostname.toLowerCase().replace(/^www\./, "");
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (!url.hostname || url.username || url.password) return null;
+    const normalized = url.toString();
+    return normalized.length <= maxLength ? normalized : null;
   } catch {
-    return value.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] ?? "";
+    return null;
   }
+}
+
+export function normalizeProspectDomain(raw: string) {
+  const url = normalizeProspectUrl(raw, 2000);
+  if (!url) return "";
+  return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
 }
 
 export async function getOutboundProspects(): Promise<AdvertiserProspect[]> {

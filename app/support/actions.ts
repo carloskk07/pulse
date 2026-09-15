@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 
 const categories = new Set(["earning", "withdrawal", "account", "privacy", "other"]);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function supportUrl(state: string, id?: string) {
   const params = new URLSearchParams({ state });
@@ -18,7 +19,7 @@ export async function createSupportCase(formData: FormData) {
   const category = String(formData.get("category") ?? "").trim();
   const subject = String(formData.get("subject") ?? "").trim().slice(0, 120);
   const message = String(formData.get("message") ?? "").trim().slice(0, 4000);
-  const suppliedEmail = String(formData.get("email") ?? "").trim().toLowerCase().slice(0, 320);
+  const suppliedEmail = String(formData.get("email") ?? "").trim().toLowerCase().slice(0, 254);
 
   if (!categories.has(category) || subject.length < 3 || message.length < 10) redirect(supportUrl("invalid"));
 
@@ -29,8 +30,8 @@ export async function createSupportCase(formData: FormData) {
 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
-  const email = (user?.email ?? suppliedEmail).trim().toLowerCase();
-  if (!email || !email.includes("@")) redirect(supportUrl("invalid-email"));
+  const email = (user?.email ?? suppliedEmail).trim().toLowerCase().slice(0, 254);
+  if (!EMAIL_RE.test(email)) redirect(supportUrl("invalid-email"));
 
   const admin = createSupabaseAdminClient();
   if (!admin) redirect(supportUrl("unavailable"));

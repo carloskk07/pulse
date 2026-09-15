@@ -1,9 +1,19 @@
 {
   "name": "Pulsercuit",
   "short_name": "Pulsercuit",
+  "id": "/",
+  "scope": "/",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#020404",
   "theme_color": "#020404",
-  "description": "Return. Rise. Repeat."
+  "description": "Return. Rise. Repeat.",
+  "icons": [
+    {
+      "src": "/v6/pulse-object-material.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }

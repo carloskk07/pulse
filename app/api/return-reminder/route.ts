@@ -1,6 +1,7 @@
 import { createReminderAttribution } from "@/lib/retention-attribution";
 import { buildReturnReminderCalendar } from "@/lib/return-reminder";
 import { getRewardSnapshot } from "@/lib/reward-state";
+import { getCanonicalSiteUrl } from "@/lib/site-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +39,7 @@ export async function GET() {
   }
 
   const reminderId = await createReminderAttribution(user.id, state.nextClaimAt);
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pulsercuit.pro";
-  const returnUrl = new URL(reminderId ? "/return" : "/dashboard", siteUrl);
+  const returnUrl = new URL(reminderId ? "/return" : "/dashboard", getCanonicalSiteUrl());
   if (reminderId) returnUrl.searchParams.set("rid", reminderId);
 
   const calendar = buildReturnReminderCalendar(state.nextClaimAt, returnUrl.toString(), reminderId);

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-function remainingMs(target: string | null) {
+function remainingMs(target: string | null, now: number) {
   if (!target) return 0;
-  const value = new Date(target).getTime() - Date.now();
+  const value = new Date(target).getTime() - now;
   return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
 
@@ -18,12 +18,14 @@ function formatRemaining(ms: number) {
 }
 
 export function PulseCountdown({ target }: { target: string | null }) {
-  const [remaining, setRemaining] = useState(() => remainingMs(target));
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    const timer = window.setInterval(() => setRemaining(remainingMs(target)), 1000);
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [target]);
+  }, []);
 
-  return <span className={remaining <= 0 ? "pulse-countdown ready" : "pulse-countdown"} aria-live="polite">{formatRemaining(remaining)}</span>;
+  const remaining = remainingMs(target, now);
+  const label = remaining <= 0 ? "Pulse ready" : `Pulse available in ${formatRemaining(remaining)}`;
+  return <span className={remaining <= 0 ? "pulse-countdown ready" : "pulse-countdown"} role="timer" aria-label={label}>{formatRemaining(remaining)}</span>;
 }

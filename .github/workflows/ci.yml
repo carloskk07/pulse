@@ -24,6 +24,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Verify governed legal policy bundle
         run: npm run verify:legal
+      - name: Verify release safety contracts
+        run: npm run verify:safety
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build

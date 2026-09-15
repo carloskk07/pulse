@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { TurnstileField } from "@/components/turnstile-field";
-import { MIN_PASSWORD_LENGTH } from "@/lib/auth-security";
+import { MIN_PASSWORD_LENGTH, safeAuthNext } from "@/lib/auth-security";
 import { cleanReferralCode } from "@/lib/referrals";
 import { signIn, signUp } from "./actions";
 
@@ -30,7 +30,7 @@ const errorCopy: Record<string, string> = {
 
 export default async function AuthPage({ searchParams }: Props) {
   const params = await searchParams;
-  const next = params.next?.startsWith("/") && !params.next.startsWith("//") ? params.next : "/dashboard";
+  const next = safeAuthNext(params.next);
   const ref = cleanReferralCode(params.ref);
 
   return (
