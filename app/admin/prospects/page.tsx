@@ -30,6 +30,12 @@ function scoreClass(score: number) {
   return "learning";
 }
 
+function datetimeLocalUtc(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 16) : "";
+}
+
 export default async function AdvertiserProspectsPage({ searchParams }: Props) {
   const params = await searchParams;
   const supabase = await createSupabaseServerClient();
@@ -77,7 +83,7 @@ export default async function AdvertiserProspectsPage({ searchParams }: Props) {
                 <select name="status" defaultValue={item.status} aria-label={`Stage for ${item.companyName}`}>
                   <option value="new">New</option><option value="researching">Researching</option><option value="ready">Ready</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="pilot">Pilot</option><option value="rejected">Rejected</option><option value="closed">Closed</option>
                 </select>
-                <input name="nextActionAt" type="datetime-local" aria-label="Next action" />
+                <input name="nextActionAt" type="datetime-local" defaultValue={datetimeLocalUtc(item.nextActionAt)} aria-label="Next action in UTC" title="UTC" />
                 <button className="button button-sm" type="submit">Save</button>
               </form>
             </article>
