@@ -1,6 +1,7 @@
 import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { getLegalOperatorIdentity } from "@/lib/legal-release";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
+import { CANONICAL_SITE_ORIGIN, isCanonicalProductionSiteUrl } from "@/lib/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
@@ -31,18 +32,6 @@ export type ReleaseReadinessReport = {
 
 function configured(...keys: string[]) {
   return keys.every((key) => Boolean(process.env[key]?.trim()));
-}
-
-function publicSiteReady() {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!raw) return false;
-  try {
-    const url = new URL(raw);
-    const local = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1";
-    return url.protocol === "https:" && !local;
-  } catch {
-    return false;
-  }
 }
 
 function objectValue(value: unknown) {
@@ -80,13 +69,13 @@ function check(id: string, label: string, status: ReadinessCheckStatus, detail: 
 
 export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   const checks: ReadinessCheck[] = [];
-  const siteReady = publicSiteReady();
+  const siteReady = isCanonicalProductionSiteUrl();
 
   checks.push(check(
     "public-site",
-    "Public HTTPS URL",
+    "Canonical public origin",
     siteReady ? "pass" : "fail",
-    siteReady ? "A non-local HTTPS site URL is configured." : "Set NEXT_PUBLIC_SITE_URL to the final HTTPS domain.",
+    siteReady ? `${CANONICAL_SITE_ORIGIN} is the configured production origin.` : `Set NEXT_PUBLIC_SITE_URL exactly to ${CANONICAL_SITE_ORIGIN}.`,
   ));
 
   const authConfigured = configured("NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY");
