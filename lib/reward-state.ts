@@ -91,10 +91,15 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
   if (!user) return { ...disconnectedSnapshot, preview: false };
 
   const admin = createSupabaseAdminClient();
-  const [balanceResult, pulseClaimsResult, profileResult, pulseConfigResult] = await Promise.all([
+  const [balanceResult, pulseClaimsResult, profileResult, riskProfileResult, pulseConfigResult] = await Promise.all([
     supabase.from("user_balances").select("available_credits,pending_credits").eq("user_id", user.id).maybeSingle(),
     supabase.from("pulse_claims").select("created_at,reward_credits").eq("user_id", user.id).order("created_at", { ascending: false }).limit(200),
-    supabase.from("profiles").select("handle,trust_level,risk_score").eq("id", user.id).maybeSingle(),
+    // Keep the user-scoped profile read inside the explicit authenticated column grants.
+    // risk_score is intentionally not exposed to the authenticated Data API role.
+    supabase.from("profiles").select("handle,trust_level").eq("id", user.id).maybeSingle(),
+    admin
+      ? admin.from("profiles").select("risk_score").eq("id", user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
     admin ? admin.from("app_config").select("value").eq("key", "hourly_pulse").maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
@@ -134,7 +139,7 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
     signedIn: true,
     userLabel: profileResult.data?.handle || fallbackLabel,
     trustLevel: Number(profileResult.data?.trust_level ?? 0),
-    riskScore: Number(profileResult.data?.risk_score ?? 0),
+    riskScore: Number(riskProfileResult.data?.risk_score ?? 0),
     availableCredits: Number(balanceResult.data?.available_credits ?? 0),
     pendingCredits: Number(balanceResult.data?.pending_credits ?? 0),
     streakDays: streakFromClaims(claimDays),
