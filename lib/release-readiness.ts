@@ -1,10 +1,11 @@
+import { getLegalOperatorIdentity } from "@/lib/legal-release";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 26;
-export const RELEASE_SCHEMA_MIGRATION = "0026_password_recovery_evidence.sql";
+export const RELEASE_SCHEMA_VERSION = 27;
+export const RELEASE_SCHEMA_MIGRATION = "0027_legal_launch_evidence.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -99,6 +100,17 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   const turnstileConfigured = configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY");
   checks.push(check("turnstile", "Human verification", turnstileConfigured ? "pass" : "fail", turnstileConfigured ? "Turnstile public and server keys are configured." : "Configure both Turnstile keys before enabling claims, signup and withdrawals."));
 
+  const legalIdentity = getLegalOperatorIdentity();
+  checks.push(check(
+    "legal-operator",
+    "Formal legal operator identity",
+    legalIdentity ? "pass" : "fail",
+    legalIdentity
+      ? `${legalIdentity.name} is configured for ${legalIdentity.jurisdiction} with formal legal and privacy contact channels.`
+      : "Configure the real operator name, jurisdiction, formal address, legal contact email and privacy contact email before launch. Do not use placeholders.",
+    true,
+  ));
+
   const rewardProvider = getPrimaryConfiguredRewardProvider();
   checks.push(check(
     "reward-provider",
@@ -118,6 +130,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
     checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
+    checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Legal-review evidence cannot be verified until database authority is available.", true));
+    checks.push(check("international-transfer-review", "International data-transfer review", "pending", "International-transfer evidence cannot be verified until database authority is available.", true));
     checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
     checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence cannot be verified until database authority is available.", true));
@@ -185,6 +199,29 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       ));
 
       const proofValue = proofRow?.value;
+
+      const legalPolicyReview = !proofError && releaseEvidenceMatches(proofValue, "legal_policy_review");
+      checks.push(check(
+        "legal-policy-review",
+        "Qualified legal policy review",
+        legalPolicyReview ? "pass" : "pending",
+        legalPolicyReview
+          ? "The current governed Terms, Privacy and Rewards Policy bundle has matching external legal-review evidence for the configured operator identity."
+          : "Have qualified counsel review the current governed policy revision for the intended launch jurisdictions, then record evidence against that exact revision and operator identity.",
+        true,
+      ));
+
+      const transferReview = !proofError && releaseEvidenceMatches(proofValue, "international_transfer_review");
+      checks.push(check(
+        "international-transfer-review",
+        "International data-transfer review",
+        transferReview ? "pass" : "pending",
+        transferReview
+          ? "The current operator, governed policy bundle and configured external-provider set have matching international-transfer review evidence."
+          : "Confirm the applicable transfer mechanisms, disclosures and safeguards for the current production provider set, then record evidence against that exact provider set.",
+        true,
+      ));
+
       const authHardeningProof = !proofError && releaseEvidenceMatches(proofValue, "supabase_auth_hardening");
       checks.push(check(
         "supabase-auth-hardening",
@@ -249,6 +286,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     } else {
       checks.push(check("schema", "Schema version", "fail", "Schema version cannot be verified while database access is failing."));
       checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Runtime contracts cannot be verified while database access is failing."));
+      checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Legal-review evidence is still required after database recovery.", true));
+      checks.push(check("international-transfer-review", "International data-transfer review", "pending", "International-transfer review evidence is still required after database recovery.", true));
       checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence is still required after database recovery.", true));
       checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence is still required after database recovery.", true));
