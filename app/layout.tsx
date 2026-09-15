@@ -8,6 +8,7 @@ import "./styles/pulsercuit-v5.css";
 import "./styles/pulsercuit-v5-1.css";
 import "./styles/pulsercuit-v5-1-surfaces.css";
 import "./styles/pulsercuit-v6.css";
+import "./styles/pulsercuit-v6-fixes.css";
 
 function getMetadataBase() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
