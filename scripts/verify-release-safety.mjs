@@ -13,6 +13,15 @@ function requireText(path, fragments) {
   }
 }
 
+function forbidText(path, fragments) {
+  const value = read(path);
+  for (const fragment of fragments) {
+    if (value.includes(fragment)) {
+      throw new Error(`${path} contains forbidden release-safety pattern: ${fragment}`);
+    }
+  }
+}
+
 if (existsSync("lib/mock-data.ts")) {
   throw new Error("Dead fabricated offer fixtures must not ship in lib/mock-data.ts.");
 }
@@ -22,13 +31,20 @@ requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release ident
 requireText("lib/release-readiness.ts", ["RELEASE_SCHEMA_VERSION = 32", 'RELEASE_SCHEMA_MIGRATION = "0032_authenticated_read_scope_contract.sql"', 'admin.rpc("release_authenticated_read_scope_contract")']);
 requireText("supabase/migrations/0031_current_hourly_claim_security_contract.sql", ["claim_hourly_pulse(uuid) security invoker", "claim_hourly_pulse(uuid)', 'EXECUTE'", "release_security_contract"]);
 requireText("supabase/migrations/0032_authenticated_read_scope_contract.sql", ["release_authenticated_read_scope_contract", "security_invoker=true", "risk_score", "role_table_grants"]);
-requireText("app/api/withdrawals/route.ts", ["hasCurrentFaucetPayReadProof", "idempotency_key", "matchesCurrentPayoutAuthority"]);
-requireText("app/api/return-reminder/route.ts", ["getCanonicalSiteUrl", "new URL(reminderId ? \"/return\" : \"/dashboard\", getCanonicalSiteUrl())"]);
+requireText("lib/request-security.ts", ["isTrustedSameOriginMutation", 'request.headers.get("origin")', 'request.headers.get("sec-fetch-site")', 'fetchSite !== "same-origin"']);
+requireText("app/api/pulse/claim/route.ts", ["isTrustedSameOriginMutation(request)", "claim_hourly_pulse"]);
+requireText("app/api/withdrawals/route.ts", ["isTrustedSameOriginMutation(request)", "hasCurrentFaucetPayReadProof", "idempotency_key", "matchesCurrentPayoutAuthority"]);
+requireText("app/api/return-reminder/route.ts", ["export async function POST", "isTrustedSameOriginMutation(request)", "getCanonicalSiteUrl", "new URL(reminderId ? \"/return\" : \"/dashboard\", getCanonicalSiteUrl())"]);
+forbidText("app/api/return-reminder/route.ts", ["export async function GET"]);
+requireText("components/next-circuit-panel.tsx", ['action="/api/return-reminder"', 'method="post"', 'type="submit"']);
 requireText("app/api/business/leads/route.ts", ["POSITIVE_INTEGER_RE", "url.username || url.password"]);
 requireText("app/auth/page.tsx", ["safeAuthNext(params.next)"]);
 requireText("components/circuit-share-studio.tsx", ["copyTextToClipboard", "isNativeShareAbort"]);
-requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
+requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "UUID_RE", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
+requireText("app/admin/support/actions.ts", ["UUID_RE.test(id)"]);
 requireText("components/app-shell.tsx", ["/admin/leads", "/admin/prospects", "/admin/retention"]);
+requireText("app/styles/pulsercuit-v7-fixes.css", ["Truthful public rank presentation", ".pc-v6-ranks article:nth-child(3):before{display:none!important}"]);
+requireText("app/styles/pulsercuit-v7-audit.css", ['content:"PULSERCUIT / 01"']);
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 if (manifest.id !== "/" || manifest.scope !== "/" || !Array.isArray(manifest.icons) || manifest.icons.length === 0) {
