@@ -5,6 +5,7 @@ import {
   recordAttributedPulseCompletion,
   RETENTION_ATTRIBUTION_COOKIE,
 } from "@/lib/retention-attribution";
+import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -31,6 +32,8 @@ async function claimReceiptRedirect(request: NextRequest, userId: string) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isTrustedSameOriginMutation(request)) return dashboardRedirect(request, "verification-failed");
+
   const supabase = await createSupabaseServerClient();
   if (!supabase) return dashboardRedirect(request, "service-not-configured");
 

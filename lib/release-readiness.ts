@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 32;
-export const RELEASE_SCHEMA_MIGRATION = "0032_authenticated_read_scope_contract.sql";
+export const RELEASE_SCHEMA_VERSION = 34;
+export const RELEASE_SCHEMA_MIGRATION = "0034_treasury_idempotency_expiry.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -119,7 +119,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, Treasury reservation lifecycle, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
     checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Legal-review evidence cannot be verified until database authority is available.", true));
     checks.push(check("international-transfer-review", "International data-transfer review", "pending", "International-transfer evidence cannot be verified until database authority is available.", true));
     checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
@@ -189,7 +189,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake and private advertiser outbound contracts are proven."
+          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, authoritative Treasury reservation TTL, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake and private advertiser outbound contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 

@@ -1,4 +1,6 @@
+import { type NextRequest } from "next/server";
 import { createReminderAttribution } from "@/lib/retention-attribution";
+import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { buildReturnReminderCalendar } from "@/lib/return-reminder";
 import { getRewardSnapshot } from "@/lib/reward-state";
 import { getCanonicalSiteUrl } from "@/lib/site-url";
@@ -6,7 +8,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function POST(request: NextRequest) {
+  if (!isTrustedSameOriginMutation(request)) {
+    return new Response("Cross-origin reminder export was rejected.", {
+      status: 403,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
   const [state, supabase] = await Promise.all([getRewardSnapshot(), createSupabaseServerClient()]);
 
   if (!state.signedIn || state.preview || !supabase) {
