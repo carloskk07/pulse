@@ -1,0 +1,195 @@
+/* Pulsercuit V6.5 — adaptive sensory motion.
+   Presentation only. Pointer depth is desktop-only and reduced-motion safe. */
+
+.pc-v6{
+  --pc-sx:0;
+  --pc-sy:0;
+  --pc-scroll:0;
+  --pc-light-x:50%;
+  --pc-light-y:50%;
+}
+
+/* Thin progress rail: communicates movement through the story without becoming UI chrome. */
+.pc-sensory-progress{
+  position:fixed;
+  z-index:120;
+  top:0;
+  left:0;
+  width:100%;
+  height:1px;
+  pointer-events:none;
+  transform:scaleX(var(--pc-scroll));
+  transform-origin:left center;
+  background:linear-gradient(90deg,#8d6727,#ffe79c 58%,#dfff63);
+  box-shadow:0 0 12px rgba(242,207,114,.22);
+  opacity:.72;
+}
+
+/* Scroll reveals only activate after the client controller is mounted.
+   With JS disabled or reduced motion, all content stays visible. */
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-section-intro,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-pillar-grid article,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-chamber,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-chamber-quote,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-ranks article,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-social-card,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-share-side,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-vault-art,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-vault-benefits,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-final .pc-v6-final-copy,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-final .pc-v6-final-mantra,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-final .pc-v6-final-stats{
+  opacity:0;
+  translate:0 18px;
+  transition:opacity .72s cubic-bezier(.2,.8,.2,1),translate .82s cubic-bezier(.2,.8,.2,1);
+}
+
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-section-intro,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-pillar-grid article,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-chamber,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-chamber-quote,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-ranks article,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-social-card,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-share-side,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-vault-art,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-section.pc-sensory-visible .pc-v6-vault-benefits,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-final.pc-sensory-visible .pc-v6-final-copy,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-final.pc-sensory-visible .pc-v6-final-mantra,
+.pc-v6.pc-sensory-reveal-ready .pc-v6-final.pc-sensory-visible .pc-v6-final-stats{
+  opacity:1;
+  translate:0 0;
+}
+
+.pc-v6.pc-sensory-reveal-ready .pc-v6-pillar-grid article:nth-child(2),
+.pc-v6.pc-sensory-reveal-ready .pc-v6-ranks article:nth-child(2),
+.pc-v6.pc-sensory-reveal-ready .pc-v6-social-card:nth-child(2){transition-delay:.07s}
+.pc-v6.pc-sensory-reveal-ready .pc-v6-pillar-grid article:nth-child(3),
+.pc-v6.pc-sensory-reveal-ready .pc-v6-ranks article:nth-child(3),
+.pc-v6.pc-sensory-reveal-ready .pc-v6-social-card:nth-child(3){transition-delay:.14s}
+.pc-v6.pc-sensory-reveal-ready .pc-v6-pillar-grid article:nth-child(4),
+.pc-v6.pc-sensory-reveal-ready .pc-v6-ranks article:nth-child(4),
+.pc-v6.pc-sensory-reveal-ready .pc-v6-social-card:nth-child(4){transition-delay:.21s}
+.pc-v6.pc-sensory-reveal-ready .pc-v6-ranks article:nth-child(5){transition-delay:.28s}
+
+/* Desktop pointer response: everything moves by a few pixels only.
+   The goal is optical depth, not a game-like tilt effect. */
+.pc-v6.pc-sensory-pointer .pc-v6-hero{
+  background:
+    radial-gradient(circle at var(--pc-light-x) var(--pc-light-y),rgba(242,207,114,.055),transparent 28%),
+    #020303;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-hero-bg{
+  transform:translate3d(calc(var(--pc-sx) * 14px),calc(var(--pc-sy) * 9px + var(--pc-scroll) * 10px),0);
+  will-change:transform;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-hero-copy{
+  transform:translate3d(calc(var(--pc-sx) * -3px),calc(var(--pc-sy) * -2px),0);
+  will-change:transform;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-hero-mantra{
+  transform:translate3d(calc(var(--pc-sx) * 5px),calc(var(--pc-sy) * 4px),0);
+  will-change:transform;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-pillar-grid{
+  transform:perspective(1200px) rotateX(calc(var(--pc-sy) * -0.7deg)) rotateY(calc(var(--pc-sx) * 0.9deg));
+  transform-origin:center;
+  will-change:transform;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-chamber-stage{
+  transform:perspective(1400px) rotateX(calc(var(--pc-sy) * -0.45deg)) rotateY(calc(var(--pc-sx) * 0.65deg));
+  transform-origin:center 45%;
+  will-change:transform;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-ranks{
+  transform:translate3d(calc(var(--pc-sx) * 4px),calc(var(--pc-sy) * 2px),0);
+  will-change:transform;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-share-cards{
+  transform:perspective(1300px) rotateX(calc(var(--pc-sy) * -0.4deg)) rotateY(calc(var(--pc-sx) * 0.55deg));
+  transform-origin:center;
+  will-change:transform;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-vault-art{
+  transform:translate3d(calc(var(--pc-sx) * 5px),calc(var(--pc-sy) * 3px),0);
+  will-change:transform;
+}
+
+/* Background planes travel at slightly different rates, creating scene depth. */
+.pc-v6.pc-sensory-pointer .pc-v6-mountain-cut{
+  translate:calc(var(--pc-sx) * 5px) calc(var(--pc-scroll) * -12px);
+}
+.pc-v6.pc-sensory-pointer .pc-v6-road-cut{
+  translate:calc(var(--pc-sx) * -6px) calc(var(--pc-scroll) * -15px);
+}
+.pc-v6.pc-sensory-pointer .pc-v6-space-cut{
+  translate:calc(var(--pc-sx) * 4px) calc(var(--pc-scroll) * -10px);
+}
+
+/* Pointer-controlled specular highlight on the material hero object. */
+.pc-v6.pc-sensory-pointer .pc-v6-hero-bg:after{
+  background:
+    radial-gradient(circle at var(--pc-light-x) var(--pc-light-y),rgba(255,244,204,.07),transparent 20%),
+    linear-gradient(90deg,#020303 0%,rgba(2,3,3,.76) 11%,transparent 35%,transparent 82%,rgba(2,3,3,.32) 100%),
+    linear-gradient(180deg,transparent 70%,#020303 100%)!important;
+}
+
+.pc-v6.pc-sensory-pointer .pc-v6-final:before{
+  background-position:
+    calc(50% + var(--pc-sx) * 7px)
+    calc(50% + var(--pc-sy) * 5px)!important;
+}
+
+/* The signed-in product also gets a restrained ambient response, but no transforms. */
+.pc-v6.pc-sensory-pointer ~ .app-frame,
+body:has(.pc-v6.pc-sensory-pointer) .app-frame{
+  background:
+    radial-gradient(circle at var(--pc-light-x,82%) 0%,rgba(242,207,114,.04),transparent 25%),
+    radial-gradient(circle at 42% 18%,rgba(171,255,93,.018),transparent 22%),
+    #020404!important;
+}
+
+@media(max-width:899px){
+  .pc-sensory-progress{opacity:.48}
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-section-intro,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-pillar-grid article,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-chamber,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-chamber-quote,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-ranks article,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-social-card,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-share-side,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-vault-art,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section .pc-v6-vault-benefits,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-final .pc-v6-final-copy,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-final .pc-v6-final-mantra,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-final .pc-v6-final-stats{
+    translate:0 10px;
+    transition-duration:.58s;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pc-sensory-progress{display:none}
+  .pc-v6 .pc-v6-section-intro,
+  .pc-v6 .pc-v6-pillar-grid article,
+  .pc-v6 .pc-v6-chamber,
+  .pc-v6 .pc-v6-chamber-quote,
+  .pc-v6 .pc-v6-ranks article,
+  .pc-v6 .pc-v6-social-card,
+  .pc-v6 .pc-v6-share-side,
+  .pc-v6 .pc-v6-vault-art,
+  .pc-v6 .pc-v6-vault-benefits,
+  .pc-v6 .pc-v6-final-copy,
+  .pc-v6 .pc-v6-final-mantra,
+  .pc-v6 .pc-v6-final-stats{
+    opacity:1!important;
+    translate:none!important;
+  }
+}

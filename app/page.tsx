@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
 import { ArrowUpRight, Shield, Spark, Trend, Users } from "@/components/icons";
 
@@ -24,6 +25,7 @@ export default function HomePage() {
   return (
     <main className="pc-v6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <PulsercuitSensoryLayer />
       <SiteHeader />
 
       <section className="pc-v6-hero">
