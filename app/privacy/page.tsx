@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { LegalOperatorDisclosure } from "@/components/legal-operator-disclosure";
 import { PulsercuitBrand } from "@/components/pulsercuit-brand";
 
 export const metadata = { title: "Privacy" };
+export const dynamic = "force-dynamic";
 
 export default function PrivacyPage() {
   return <main className="completion-page">
     <header className="completion-header shell"><PulsercuitBrand /><nav><Link href="/support">Help</Link><Link href="/terms">Terms</Link></nav></header>
     <section className="completion-hero shell"><span className="section-kicker">Privacy</span><h1>Clear data practices.</h1><p>Pulsercuit uses account, security, reward and payout data to operate the service, prevent abuse and keep financial events traceable.</p></section>
     <article className="policy-body shell">
+      <LegalOperatorDisclosure />
       <h2>What we process</h2><p>We may process account identifiers, authentication and session records, profile information, reward and ledger events, payout status and destination references, referral activity, security and anti-abuse signals, support requests, device or network information and technical logs needed to operate and protect the service.</p>
       <h2>Why we process it</h2><p>We use data to create and protect accounts, display the correct account state, verify rewards, maintain the ledger, process and recover payouts, prevent fraud and duplicate activity, rank useful opportunities, answer support requests, investigate disputes and meet legal, accounting or compliance obligations.</p>
       <h2>Sharing and service providers</h2><p>Infrastructure, authentication, human-verification, reward, analytics where enabled, and payout providers may process limited data when needed for their role. Provider-side opportunities and payouts can also be subject to the provider’s own privacy terms. We do not treat the public marketing page as authority to create financial events.</p>
