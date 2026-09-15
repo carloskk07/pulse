@@ -1,10 +1,17 @@
 import { createHash } from "node:crypto";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth-security";
+import {
+  getInternationalTransferProviderSet,
+  getLegalOperatorIdentity,
+  getLegalPolicyBundleIdentity,
+} from "@/lib/legal-release";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const FAUCETPAY_READ_PROOF_SCHEMA = "faucetpay-read-proof-v2";
 const SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "supabase-auth-hardening-proof-v1";
 const PASSWORD_RECOVERY_PROOF_SCHEMA = "password-recovery-proof-v1";
+const LEGAL_POLICY_REVIEW_PROOF_SCHEMA = "legal-policy-review-proof-v1";
+const INTERNATIONAL_TRANSFER_REVIEW_PROOF_SCHEMA = "international-transfer-review-proof-v1";
 
 export type ReleaseEvidenceKind =
   | "turnstile"
@@ -13,7 +20,22 @@ export type ReleaseEvidenceKind =
   | "faucetpay_read"
   | "faucetpay_payout"
   | "supabase_auth_hardening"
-  | "password_recovery";
+  | "password_recovery"
+  | "legal_policy_review"
+  | "international_transfer_review";
+
+function legalIdentityValues() {
+  const identity = getLegalOperatorIdentity();
+  if (!identity) return [""];
+  return [
+    identity.name,
+    identity.jurisdiction,
+    identity.address,
+    identity.legalContactEmail,
+    identity.privacyContactEmail,
+    identity.registrationId ?? "not-applicable",
+  ];
+}
 
 function configuredValues(kind: ReleaseEvidenceKind) {
   if (kind === "turnstile") {
@@ -49,6 +71,21 @@ function configuredValues(kind: ReleaseEvidenceKind) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SITE_URL,
       String(MIN_PASSWORD_LENGTH),
+    ];
+  }
+  if (kind === "legal_policy_review") {
+    return [
+      LEGAL_POLICY_REVIEW_PROOF_SCHEMA,
+      ...getLegalPolicyBundleIdentity(),
+      ...legalIdentityValues(),
+    ];
+  }
+  if (kind === "international_transfer_review") {
+    return [
+      INTERNATIONAL_TRANSFER_REVIEW_PROOF_SCHEMA,
+      ...getLegalPolicyBundleIdentity(),
+      ...legalIdentityValues(),
+      ...getInternationalTransferProviderSet(),
     ];
   }
   return [
