@@ -28,11 +28,12 @@ if (existsSync("lib/mock-data.ts")) {
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha"]);
-requireText("lib/release-readiness.ts", ["RELEASE_SCHEMA_VERSION = 34", 'RELEASE_SCHEMA_MIGRATION = "0034_treasury_idempotency_expiry.sql"', 'admin.rpc("release_authenticated_read_scope_contract")', 'admin.rpc("release_reward_exchange_contract")']);
+requireText("lib/release-readiness.ts", ["RELEASE_SCHEMA_VERSION = 35", 'RELEASE_SCHEMA_MIGRATION = "0035_direct_event_temporal_integrity.sql"', 'admin.rpc("release_authenticated_read_scope_contract")', 'admin.rpc("release_reward_exchange_contract")', 'admin.rpc("release_pulse_direct_contract")']);
 requireText("supabase/migrations/0031_current_hourly_claim_security_contract.sql", ["claim_hourly_pulse(uuid) security invoker", "claim_hourly_pulse(uuid)', 'EXECUTE'", "release_security_contract"]);
 requireText("supabase/migrations/0032_authenticated_read_scope_contract.sql", ["release_authenticated_read_scope_contract", "security_invoker=true", "risk_score", "role_table_grants"]);
 requireText("supabase/migrations/0033_treasury_reservation_expiry.sql", ["release_expired_treasury_reservations", "status = 'expired'", "expires_at <= now()", "perform public.release_expired_treasury_reservations(v_treasury_id)", "release_reward_exchange_contract", "version', 33"]);
 requireText("supabase/migrations/0034_treasury_idempotency_expiry.sql", ["v_existing.status = 'reserved' and v_existing.expires_at <= now()", "perform public.release_expired_treasury_reservations(v_existing.treasury_id)", "reservation_status", "version', 34"]);
+requireText("supabase/migrations/0035_direct_event_temporal_integrity.sql", ["invalid_occurred_at", "v_session.created_at - interval '5 minutes'", "v_session.expires_at + interval '5 minutes'", "v_effective_occurred_at", "release_pulse_direct_contract", "version', 35"]);
 requireText("lib/request-security.ts", ["isTrustedSameOriginMutation", 'request.headers.get("origin")', 'request.headers.get("sec-fetch-site")', 'fetchSite !== "same-origin"']);
 requireText("app/api/pulse/claim/route.ts", ["isTrustedSameOriginMutation(request)", "claim_hourly_pulse"]);
 requireText("app/api/withdrawals/route.ts", ["isTrustedSameOriginMutation(request)", "hasCurrentFaucetPayReadProof", "idempotency_key", "matchesCurrentPayoutAuthority"]);
@@ -40,6 +41,7 @@ requireText("app/api/return-reminder/route.ts", ["export async function POST", "
 forbidText("app/api/return-reminder/route.ts", ["export async function GET"]);
 requireText("app/api/direct/start/route.ts", ["isTrustedSameOriginMutation(request)", 'admin.rpc("start_direct_campaign_session"', 'target.protocol !== "https:"']);
 forbidText("app/api/direct/start/route.ts", ['request.headers.get("origin")']);
+requireText("app/api/direct/callback/route.ts", ["invalid_occurred_at", 'admin.rpc("settle_direct_campaign_completion"', 'p_occurred_at: occurredAt.toISOString()']);
 requireText("components/next-circuit-panel.tsx", ['action="/api/return-reminder"', 'method="post"', 'type="submit"']);
 requireText("app/api/business/leads/route.ts", ["POSITIVE_INTEGER_RE", "url.username || url.password"]);
 requireText("app/auth/page.tsx", ["safeAuthNext(params.next)"]);

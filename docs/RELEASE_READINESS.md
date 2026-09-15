@@ -12,13 +12,15 @@ The public endpoint `/api/readiness` exposes only the aggregate state and return
 
 ## Required schema
 
-Apply migrations in order through `0034_treasury_idempotency_expiry.sql` and require the live `release_schema` marker to be at least v34.
+Apply migrations in order through `0035_direct_event_temporal_integrity.sql` and require the live `release_schema` marker to be at least v35.
 
 Schema version alone is not sufficient. The runtime verifies the security, authenticated read-scope, Wallet recovery, Reward Exchange, Opportunity Intelligence, Pulse Direct, business-intake and advertiser-outbound contracts against the live database. The security contract must inspect the current `claim_hourly_pulse(uuid)` RPC, prove that `anon`/`authenticated` cannot execute it, prove that `service_role` can execute it, and require that the RPC remains `SECURITY INVOKER`.
 
 The authenticated read-scope contract separately proves that own-row policies for profiles, ledger, claims, Hourly Pulse history, referrals, support and withdrawals have not widened; `user_balances` remains a `security_invoker` view; sensitive `risk_score` and financial ledger metadata are not client-readable; and no direct public-table write privilege has leaked to `anon` or `authenticated`.
 
 The Reward Exchange contract also requires authoritative Treasury reservation accounting. Reservation TTL is not advisory: overdue `reserved` rows are transitioned to `expired`, their amount is released from `reserved_credits` before new capacity is evaluated, late finalize/consume is rejected as expired, and repeated idempotent requests reconcile their original reservation before reporting state. The contract fails if the Treasury's aggregate `reserved_credits` no longer equals the sum of authoritative `reserved` reservations.
+
+Pulse Direct provider timestamps are evidence rather than independent financial authority. A settlement timestamp must be causally compatible with the live reserved session: it cannot predate the session beyond the bounded clock-skew allowance, cannot be materially future-dated, and cannot sit beyond the session expiry window. The same validated effective timestamp is written to both Direct and monetization event records, and the Pulse Direct runtime contract verifies that these guards remain present.
 
 ## Required external evidence
 
@@ -65,7 +67,7 @@ Production promotion requires, at minimum:
 CI = PASS
 exact canonical release SHA = PASS
 /api/readiness = READY / HTTP 200
-live schema marker >= 34
+live schema marker >= 35
 all required runtime contracts = PASS
 all blocking configuration checks = PASS
 all required current-configuration external proofs = PASS

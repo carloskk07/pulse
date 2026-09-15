@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   if (status === "unknown_session" || status === "not_found") return json(404, { status });
   if (status === "session_expired" || status === "session_not_reserved") return json(409, { status });
   if (status === "duplicate_event" || status === "session_already_settled") return json(409, { status });
-  if (status === "invalid_request") return json(400, { status });
+  if (status === "invalid_request" || status === "invalid_occurred_at") return json(400, { status });
   if (status === "credited" || status === "idempotent") return json(200, result);
 
   return json(409, result);
