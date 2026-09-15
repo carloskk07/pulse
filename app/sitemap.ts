@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
+import { getCanonicalSiteUrl } from "@/lib/site-url";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com").replace(/\/$/, "");
+  const base = getCanonicalSiteUrl().origin;
   return [
     { url: base, changeFrequency: "weekly", priority: 1 },
     { url: `${base}/proof`, changeFrequency: "daily", priority: 0.8 },

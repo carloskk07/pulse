@@ -28,6 +28,7 @@ const securityHeaders = [
 ];
 
 const privateNoIndexRoutes = [
+  "/account/:path*",
   "/admin/:path*",
   "/auth/:path*",
   "/dashboard/:path*",
@@ -35,6 +36,7 @@ const privateNoIndexRoutes = [
   "/wallet/:path*",
   "/invite/:path*",
   "/r/:path*",
+  "/return/:path*",
 ];
 
 const nextConfig: NextConfig = {
