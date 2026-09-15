@@ -2,8 +2,15 @@ import { createHash } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const FAUCETPAY_READ_PROOF_SCHEMA = "faucetpay-read-proof-v2";
+const SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "supabase-auth-hardening-proof-v1";
 
-export type ReleaseEvidenceKind = "turnstile" | "ayet_transport" | "ayet_callback" | "faucetpay_read" | "faucetpay_payout";
+export type ReleaseEvidenceKind =
+  | "turnstile"
+  | "ayet_transport"
+  | "ayet_callback"
+  | "faucetpay_read"
+  | "faucetpay_payout"
+  | "supabase_auth_hardening";
 
 function configuredValues(kind: ReleaseEvidenceKind) {
   if (kind === "turnstile") {
@@ -25,6 +32,12 @@ function configuredValues(kind: ReleaseEvidenceKind) {
       process.env.FAUCETPAY_PAYOUT_CREDITS,
       process.env.FAUCETPAY_PAYOUT_UNITS,
       process.env.FAUCETPAY_PAYOUT_LABEL,
+    ];
+  }
+  if (kind === "supabase_auth_hardening") {
+    return [
+      SUPABASE_AUTH_HARDENING_PROOF_SCHEMA,
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
     ];
   }
   return [
