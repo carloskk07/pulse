@@ -3,16 +3,20 @@ import { PulsercuitBrand } from "./pulsercuit-brand";
 
 export function SiteHeader() {
   return (
-    <header className="site-header shell pc-v5-header pc-luxe-header">
-      <PulsercuitBrand />
-      <nav className="marketing-nav" aria-label="Primary navigation">
-        <Link href="/#how">How it works</Link>
-        <Link href="/#share">Share</Link>
-        <Link href="/proof">Proof</Link>
-      </nav>
-      <div className="header-actions">
-        <Link className="text-link" href="/auth?next=/dashboard">Sign in</Link>
-        <Link className="button button-sm pc-v5-primary" href="/auth?next=/dashboard">Enter the circuit</Link>
+    <header className="site-header pc-v6-header">
+      <div className="pc-v6-shell pc-v6-header-inner">
+        <PulsercuitBrand />
+        <nav className="pc-v6-nav" aria-label="Primary navigation">
+          <Link href="/#how">Pulse</Link>
+          <Link href="/earn">Rewards</Link>
+          <Link href="/#about">About</Link>
+          <Link href="/proof">Proof</Link>
+          <Link href="/#community">Community</Link>
+        </nav>
+        <div className="pc-v6-header-actions">
+          <Link className="pc-v6-login" href="/auth?next=/dashboard">Log in</Link>
+          <Link className="pc-v6-button compact primary" href="/auth?next=/dashboard">Enter the circuit <span>→</span></Link>
+        </div>
       </div>
     </header>
   );

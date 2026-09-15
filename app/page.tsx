@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
-import { ProductPreview } from "@/components/product-preview";
-import { PulsercuitNetwork } from "@/components/pulsercuit-network";
 import { ArrowUpRight, Check, Shield, Spark, Trend, Users, Wallet } from "@/components/icons";
+import { getPublicSocialProof } from "@/lib/social-proof";
 
 export const revalidate = 60;
 
@@ -12,98 +11,168 @@ const structuredData = {
   name: "Pulsercuit",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
-  description: "A premium reward circuit built around funded Pulses, visible status, factual milestones and verified payout proof.",
+  description: "Pulsercuit is a premium reward circuit built around funded Pulses, visible momentum, shareable progress and verified payout proof.",
 };
 
-export default function HomePage() {
+function count(value: number, available: boolean) {
+  return available ? value.toLocaleString("en-US") : "—";
+}
+
+const ranks = [
+  { id: "spark", name: "Spark", note: "Begin the journey" },
+  { id: "flow", name: "Flow", note: "Build consistency" },
+  { id: "rhythm", name: "Rhythm", note: "Find your stride" },
+  { id: "circuit", name: "Circuit", note: "Expand your impact" },
+  { id: "resonance", name: "Resonance", note: "Leave a legacy" },
+] as const;
+
+export default async function HomePage() {
+  const proof = await getPublicSocialProof();
+
   return (
-    <main className="marketing-page pc-v5-marketing pc-luxe-marketing">
+    <main className="pc-v6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
-      <div className="pc-luxe-vignette" aria-hidden="true" />
-      <div className="pc-luxe-aurora pc-luxe-aurora-a" aria-hidden="true" />
-      <div className="pc-luxe-aurora pc-luxe-aurora-b" aria-hidden="true" />
       <SiteHeader />
 
-      <section className="hero shell pc-v5-hero pc-luxe-hero">
-        <div className="hero-copy pc-v5-hero-copy">
-          <div className="eyebrow pc-v5-eyebrow pc-luxe-eyebrow"><span className="live-dot" /> Pulsercuit · premium reward circuit</div>
-          <h1>Return. Rise. <em>Repeat.</em></h1>
-          <p className="pc-v5-hero-lead">Claim funded Pulses. Build status. Unlock milestones. Share the climb. Move toward a verified payout.</p>
-          <div className="hero-actions pc-v5-actions">
-            <Link className="button button-lg pc-v5-primary pc-luxe-primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
-            <Link className="button button-ghost button-lg" href="/proof">See live proof</Link>
+      <section className="pc-v6-hero">
+        <div className="pc-v6-hero-bg" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-hero" /></div>
+        <div className="pc-v6-shell pc-v6-hero-grid">
+          <div className="pc-v6-hero-copy">
+            <span className="pc-v6-kicker">Pulsercuit</span>
+            <h1>Return. <em>Rise.</em> Repeat.</h1>
+            <p>A premium reward ritual built around Pulse, Momentum, Vault and Share.</p>
+            <div className="pc-v6-actions">
+              <Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
+              <Link className="pc-v6-button ghost" href="/proof">See live proof <span className="pc-v6-play">›</span></Link>
+            </div>
           </div>
-          <div className="trust-strip pc-v5-trust-strip pc-luxe-trust-strip">
-            <span><Check /> Free to join</span>
-            <span><Shield /> Funded rewards only</span>
-            <span><Check /> No fake activity</span>
+
+          <div className="pc-v6-hero-mantra" aria-hidden="true"><span>More</span><span>than</span><span>rewards</span><span>a brighter</span><span>you</span></div>
+        </div>
+
+        <div className="pc-v6-shell pc-v6-hero-stats">
+          <div><strong>{count(proof.memberCount, proof.available)}</strong><span>Active members</span></div>
+          <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Rewards unlocked</span></div>
+          <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
+        </div>
+      </section>
+
+      <section className="pc-v6-section pc-v6-pillars" id="about">
+        <div className="pc-v6-mountain-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-mountain" /></div>
+        <div className="pc-v6-shell pc-v6-section-grid">
+          <div className="pc-v6-section-intro">
+            <span className="pc-v6-kicker">The four pillars</span>
+            <h2>A different<br />kind of reward<br />platform.</h2>
+            <p className="pc-v6-spaced">Same actions.<br />A brighter tomorrow.</p>
+            <i className="pc-v6-gold-line" />
+          </div>
+          <div className="pc-v6-pillar-grid">
+            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Show up hourly.<br />Keep the rhythm.</p><Link href="/#how">Build habits <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb gold"><Trend /></div><h3>Momentum</h3><p>Turn time into<br />progress.</p><Link href="/progress">Climb higher <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb green"><Shield /></div><h3>Vault</h3><p>Lock in rewards.<br />Get payout ready.</p><Link href="/wallet">Secure yours <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb amber"><Users /></div><h3>Share</h3><p>Spread the pulse.<br />Grow together.</p><Link href="/invite">Multiply impact <ArrowUpRight /></Link></article>
           </div>
         </div>
-        <div className="hero-product pc-v5-product-stage pc-luxe-product-stage"><ProductPreview /></div>
       </section>
 
-      <section className="shell pc-luxe-value-rail" aria-label="Pulsercuit experience">
-        <article><Spark /><div><small>Pulse</small><strong>Claim the moment.</strong><p>One clear funded action.</p></div></article>
-        <article><Trend /><div><small>Momentum</small><strong>Raise your status.</strong><p>Rhythm, Signal and unlocks.</p></div></article>
-        <article><Wallet /><div><small>Vault</small><strong>See the real path.</strong><p>Available, reserved, paid.</p></div></article>
-      </section>
+      <section className="pc-v6-section pc-v6-chamber-section" id="how">
+        <div className="pc-v6-shell pc-v6-chamber-grid">
+          <div className="pc-v6-section-intro compact">
+            <span className="pc-v6-kicker">The core experience</span>
+            <h2>Pulse<br />Chamber</h2>
+            <p className="pc-v6-spaced">Real time progress.<br />Real rewards.<br />A more focused you.</p>
+            <Link className="pc-v6-outline-link" href="/dashboard">Explore the dashboard <ArrowUpRight /></Link>
+          </div>
 
-      <section className="section shell pc-luxe-loop-section" id="how">
-        <div className="section-heading pc-luxe-section-head">
-          <span className="section-kicker">One loop. Four reasons to return.</span>
-          <h2>Every action should move something you can see.</h2>
-        </div>
-        <div className="pc-luxe-loop-grid">
-          <article className="pc-luxe-loop-card hero-card"><span>01</span><Spark /><h3>Claim</h3><p>Return when your funded Pulse opens.</p></article>
-          <article className="pc-luxe-loop-card"><span>02</span><Trend /><h3>Rise</h3><p>Build Signal, rhythm and rank.</p></article>
-          <article className="pc-luxe-loop-card"><span>03</span><Shield /><h3>Unlock</h3><p>Earn factual milestone seals.</p></article>
-          <article className="pc-luxe-loop-card"><span>04</span><Users /><h3>Share</h3><p>Turn progress into a moment worth showing.</p></article>
-        </div>
-      </section>
+          <div className="pc-v6-chamber">
+            <div className="pc-v6-chamber-head"><div><span className="pc-v6-badge">✦</span><small>Good evening,</small><strong>Circuit Member</strong></div><div className="pc-v6-live"><i /> Pulsercuit<br /><span>live state</span></div></div>
+            <div className="pc-v6-chamber-body">
+              <div className="pc-v6-chamber-left">
+                <div className="pc-v6-mini-card"><small>Your rank</small><strong>Start at Spark</strong><div className="pc-v6-mini-track"><span /></div></div>
+                <div className="pc-v6-mini-card"><small>Daily streak</small><strong>Build your rhythm</strong><span>Keep going</span></div>
+              </div>
 
-      <section className="section shell pc-luxe-status-section">
-        <div className="pc-luxe-status-copy">
-          <span className="section-kicker">Status that comes from history</span>
-          <h2>Your circuit should feel more valuable every time it becomes more real.</h2>
-          <p>Pulse creates the rhythm. Momentum turns it into identity. Proof keeps the financial side honest.</p>
-          <div className="pc-luxe-status-pills"><span>Signal</span><span>Rhythm</span><span>Trust</span><span>Milestones</span></div>
-        </div>
-        <PulsercuitNetwork />
-      </section>
+              <div className="pc-v6-pulse-core">
+                <div className="pc-v6-pulse-ring"><div className="pc-v6-wave">⌁</div><small>Next Pulse</small><strong>LIVE</strong></div>
+                <Link href="/auth?next=/dashboard">Tap the Pulse</Link>
+              </div>
 
-      <section className="section shell pc-luxe-share-showcase" id="share">
-        <div className="section-heading pc-luxe-section-head">
-          <span className="section-kicker">Made to be shared</span>
-          <h2>Progress should look like an achievement.</h2>
-          <p>Share cards use factual history only. No private balance and no invented payout claims.</p>
-        </div>
-        <div className="pc-luxe-card-wall">
-          <article className="pc-luxe-share-card tone-gold"><small>Pulsercuit · share preview</small><strong>7-day<br />rhythm.</strong><span>Consistency unlocked</span></article>
-          <article className="pc-luxe-share-card tone-lime featured"><small>Circuit rank</small><strong>Resonance</strong><span>Signal 82 / 100</span></article>
-          <article className="pc-luxe-share-card tone-violet"><small>Milestone</small><strong>Ten<br />Pulses.</strong><span>Real history only</span></article>
+              <div className="pc-v6-chamber-right">
+                <div className="pc-v6-mini-card accent"><small>Next unlock</small><strong>Milestone seal</strong><span>Built from real history</span></div>
+                <div className="pc-v6-mini-card vault"><small>Vault balance</small><strong>Live after sign-in</strong><span><i /> authoritative only</span><Link href="/wallet">View Vault <ArrowUpRight /></Link></div>
+              </div>
+            </div>
+            <blockquote>“Small consistent actions<br />create extraordinary freedom.”</blockquote>
+          </div>
         </div>
       </section>
 
-      <section className="section shell pc-luxe-proof-section">
-        <div>
-          <span className="section-kicker">Proof before hype</span>
-          <h2>Luxury means nothing if the numbers are fake.</h2>
-          <p>Rewards, balance and completed payouts stay separate facts. Zero stays visible when zero is the truth.</p>
-        </div>
-        <div className="pc-luxe-proof-actions">
-          <div><Check /><span>Server-authoritative eligibility</span></div>
-          <div><Check /><span>Treasury-gated rewards</span></div>
-          <div><Check /><span>Provider-confirmed payouts</span></div>
-          <Link className="button button-ghost" href="/proof">Inspect live proof <ArrowUpRight /></Link>
+      <section className="pc-v6-section pc-v6-momentum-section">
+        <div className="pc-v6-road-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-road" /></div>
+        <div className="pc-v6-shell pc-v6-momentum-grid">
+          <div className="pc-v6-section-intro compact">
+            <span className="pc-v6-kicker">Your journey</span>
+            <h2>Momentum<br />Lives Here</h2>
+            <p className="pc-v6-spaced">Higher ranks.<br />Bigger possibilities.</p>
+            <Link className="pc-v6-outline-link" href="/progress">View all ranks <ArrowUpRight /></Link>
+          </div>
+          <div className="pc-v6-ranks">
+            {ranks.map((rank) => <article key={rank.id}><div className={`pc-v6-rank-art rank-${rank.id}`} /><strong>{rank.name}</strong><span>{rank.note}</span></article>)}
+          </div>
+          <div className="pc-v6-side-mantra"><span>Progress</span><span>turns</span><span>people</span><span>into</span><span>possibilities</span></div>
         </div>
       </section>
 
-      <section className="final-cta shell pc-v5-final-cta pc-luxe-final-cta">
-        <div><span className="section-kicker">Your circuit starts here</span><h2>Make the next return count.</h2><p>Enter free. Build real momentum. Share only what you actually earned.</p></div>
-        <Link className="button button-lg button-dark" href="/auth?next=/dashboard">Enter Pulsercuit <ArrowUpRight /></Link>
+      <section className="pc-v6-section pc-v6-share" id="community">
+        <div className="pc-v6-shell pc-v6-share-grid">
+          <div className="pc-v6-section-intro compact">
+            <span className="pc-v6-kicker">Share Studio</span>
+            <h2>Moments<br />Move People</h2>
+            <p>Your progress can<br />inspire the next one.</p>
+            <Link className="pc-v6-outline-link" href="/progress#circuit-moments">Create your card <ArrowUpRight /></Link>
+          </div>
+          <div className="pc-v6-share-cards">
+            <article className="pc-v6-social-card violet"><small>Pulsercuit</small><strong>RHYTHM</strong><span>Show the streak.<br />Keep the story moving.</span></article>
+            <article className="pc-v6-social-card gold"><small>Pulsercuit</small><strong>RANK</strong><span>Spark to Resonance.<br />Earn every stage.</span></article>
+            <article className="pc-v6-social-card lime"><small>Pulsercuit</small><strong>PROOF</strong><span>Real state.<br />Real rewards.</span></article>
+            <article className="pc-v6-social-card eclipse"><small>Pulsercuit</small><strong>Still showing up.</strong><span>Return. Rise. Repeat.</span></article>
+          </div>
+          <div className="pc-v6-share-side"><span className="pc-v6-spaced">Be a signal<br />not noise</span><div className="pc-v6-social-icons"><i>𝕏</i><i>◎</i><i>◉</i><i>◫</i><i>↗</i></div><Link className="pc-v6-outline-link" href="/invite">Share the pulse <ArrowUpRight /></Link></div>
+        </div>
       </section>
 
-      <footer className="footer shell"><div><strong>Pulsercuit</strong><span>© 2026 · Return. Rise. Repeat.</span></div><div><Link href="#how">How it works</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div></footer>
+      <section className="pc-v6-section pc-v6-vault-section">
+        <div className="pc-v6-space-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-space" /></div>
+        <div className="pc-v6-shell pc-v6-vault-grid">
+          <div className="pc-v6-section-intro compact">
+            <span className="pc-v6-kicker">The Vault</span>
+            <h2>Your Effort<br />Deserves More</h2>
+            <p>Secure rewards. Real payouts.<br />A brighter tomorrow.</p>
+            <Link className="pc-v6-outline-link" href="/wallet">Open your vault <ArrowUpRight /></Link>
+          </div>
+          <div className="pc-v6-vault-art"><div className="pc-v6-sprite pc-v6-sprite-vault" /><span>Lock today<br />freedom<br />tomorrow</span></div>
+          <div className="pc-v6-vault-benefits">
+            <div><span>◇</span><p><strong>Real rewards</strong><small>Credits convert to configured value.</small></p></div>
+            <div><span className="lime">✓</span><p><strong>Payout ready</strong><small>Transparent. No games.</small></p></div>
+            <div><span>≋</span><p><strong>Your control</strong><small>You decide when to withdraw.</small></p></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="pc-v6-final">
+        <div className="pc-v6-eclipse" aria-hidden="true" />
+        <div className="pc-v6-shell pc-v6-final-grid">
+          <div className="pc-v6-final-mantra">Discipline<br />creates<br />freedom</div>
+          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>A Brighter You<br />Starts Now.</h2><p>Return. Rise. Repeat.</p><Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link></div>
+          <div className="pc-v6-final-stats">
+            <div><Users /><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
+            <div><Spark /><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Rewards</span></div>
+            <div><Check /><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid</span></div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="pc-v6-footer"><div className="pc-v6-shell"><strong>Pulsercuit</strong><span>© 2026 · Return. Rise. Repeat.</span><nav><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav></div></footer>
     </main>
   );
 }

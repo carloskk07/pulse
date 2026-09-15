@@ -7,6 +7,7 @@ import "./styles/pulsercuit-v4-2.css";
 import "./styles/pulsercuit-v5.css";
 import "./styles/pulsercuit-v5-1.css";
 import "./styles/pulsercuit-v5-1-surfaces.css";
+import "./styles/pulsercuit-v6.css";
 
 function getMetadataBase() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
     template: "%s · Pulsercuit",
   },
   description:
-    "Claim funded Pulses, build visible status, unlock factual milestones, share your momentum and move toward verified payouts.",
+    "A cinematic reward circuit built around funded Pulses, visible momentum, shareable progress and verified payout proof.",
   applicationName: "Pulsercuit",
   manifest: "/manifest.webmanifest",
   keywords: ["reward platform", "gamified rewards", "recurring rewards", "reward streaks", "transparent payouts", "Pulsercuit", "Pulse rewards"],
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Pulsercuit — Return. Rise. Repeat.",
-    description: "A premium reward circuit built around funded Pulses, visible status and verified payout proof.",
+    description: "A premium reward ritual built around Pulse, Momentum, Vault and Share.",
     type: "website",
     siteName: "Pulsercuit",
   },
@@ -54,7 +55,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#050607",
+  themeColor: "#020404",
   colorScheme: "dark",
 };
 
