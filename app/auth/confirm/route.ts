@@ -1,6 +1,6 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { PASSWORD_RECOVERY_COOKIE, recoveryCookieOptions, safeAuthNext } from "@/lib/auth-security";
+import { PASSWORD_RECOVERY_CONTEXT_OTP, PASSWORD_RECOVERY_COOKIE, recoveryCookieOptions, safeAuthNext } from "@/lib/auth-security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       const response = NextResponse.redirect(new URL(next, request.url), 303);
       response.headers.set("Cache-Control", "private, no-store");
       if (type === "recovery" && next === "/auth/update-password") {
-        response.cookies.set(PASSWORD_RECOVERY_COOKIE, "1", recoveryCookieOptions());
+        response.cookies.set(PASSWORD_RECOVERY_COOKIE, PASSWORD_RECOVERY_CONTEXT_OTP, recoveryCookieOptions());
       }
       return response;
     }
