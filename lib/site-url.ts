@@ -1,26 +1,38 @@
-const CANONICAL_SITE_URL = "https://pulsercuit.pro";
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+export const CANONICAL_SITE_ORIGIN = "https://pulsercuit.pro";
+
+function parseSiteUrl(value: string | undefined) {
+  const candidate = value?.trim();
+  if (!candidate) return null;
+
+  try {
+    const normalized = /^[a-z][a-z\d+.-]*:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
+    const url = new URL(normalized);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+export function isCanonicalProductionSiteUrl(value = process.env.NEXT_PUBLIC_SITE_URL) {
+  const url = parseSiteUrl(value);
+  if (!url) return false;
+  const rootPath = url.pathname === "" || url.pathname === "/";
+  return url.origin === CANONICAL_SITE_ORIGIN && rootPath && !url.search && !url.hash;
+}
 
 export function getCanonicalSiteUrl() {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  const production = process.env.NODE_ENV === "production";
-
-  for (const candidate of [configured, CANONICAL_SITE_URL]) {
-    if (!candidate) continue;
-
-    try {
-      const normalized = /^[a-z][a-z\d+.-]*:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
-      const url = new URL(normalized);
-      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
-      if (production && (url.protocol !== "https:" || LOCAL_HOSTS.has(url.hostname))) continue;
-      url.pathname = "/";
-      url.search = "";
-      url.hash = "";
-      return url;
-    } catch {
-      // Fall through to the canonical production domain.
-    }
+  if (process.env.NODE_ENV === "production") {
+    return new URL(CANONICAL_SITE_ORIGIN);
   }
 
-  return new URL(CANONICAL_SITE_URL);
+  const configured = parseSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+  if (configured) {
+    configured.pathname = "/";
+    configured.search = "";
+    configured.hash = "";
+    return configured;
+  }
+
+  return new URL(CANONICAL_SITE_ORIGIN);
 }
