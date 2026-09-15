@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const FAUCETPAY_READ_PROOF_SCHEMA = "faucetpay-read-proof-v2";
 const SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "supabase-auth-hardening-proof-v1";
+const PASSWORD_RECOVERY_PROOF_SCHEMA = "password-recovery-proof-v1";
 
 export type ReleaseEvidenceKind =
   | "turnstile"
@@ -10,7 +12,8 @@ export type ReleaseEvidenceKind =
   | "ayet_callback"
   | "faucetpay_read"
   | "faucetpay_payout"
-  | "supabase_auth_hardening";
+  | "supabase_auth_hardening"
+  | "password_recovery";
 
 function configuredValues(kind: ReleaseEvidenceKind) {
   if (kind === "turnstile") {
@@ -38,6 +41,14 @@ function configuredValues(kind: ReleaseEvidenceKind) {
     return [
       SUPABASE_AUTH_HARDENING_PROOF_SCHEMA,
       process.env.NEXT_PUBLIC_SUPABASE_URL,
+    ];
+  }
+  if (kind === "password_recovery") {
+    return [
+      PASSWORD_RECOVERY_PROOF_SCHEMA,
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SITE_URL,
+      String(MIN_PASSWORD_LENGTH),
     ];
   }
   return [

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PASSWORD_RECOVERY_COOKIE, recoveryCookieOptions, safeAuthNext } from "@/lib/auth-security";
+import { PASSWORD_RECOVERY_CONTEXT_PKCE, PASSWORD_RECOVERY_COOKIE, recoveryCookieOptions, safeAuthNext } from "@/lib/auth-security";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       const response = NextResponse.redirect(new URL(next, url.origin), 303);
       response.headers.set("Cache-Control", "private, no-store");
       if (flow === "recovery" && next === "/auth/update-password") {
-        response.cookies.set(PASSWORD_RECOVERY_COOKIE, "1", recoveryCookieOptions());
+        response.cookies.set(PASSWORD_RECOVERY_COOKIE, PASSWORD_RECOVERY_CONTEXT_PKCE, recoveryCookieOptions());
       }
       return response;
     }

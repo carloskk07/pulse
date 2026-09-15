@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 25;
-export const RELEASE_SCHEMA_MIGRATION = "0025_supabase_auth_hardening_evidence.sql";
+export const RELEASE_SCHEMA_VERSION = 26;
+export const RELEASE_SCHEMA_MIGRATION = "0026_password_recovery_evidence.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -119,6 +119,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
     checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake and advertiser outbound contracts cannot be verified without database access."));
     checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
+    checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence cannot be verified until database authority is available.", true));
     checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification and payout evidence is still required after setup.", true));
   } else {
@@ -195,6 +196,17 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         true,
       ));
 
+      const passwordRecoveryProof = !proofError && releaseEvidenceMatches(proofValue, "password_recovery");
+      checks.push(check(
+        "password-recovery-proof",
+        "Hosted password recovery proof",
+        passwordRecoveryProof ? "pass" : "pending",
+        passwordRecoveryProof
+          ? "A current hosted recovery flow completed password update and a later successful new-password sign-in for the same user."
+          : "Complete a real hosted recovery email, change the password through the recovery session, then sign in with the new password. Evidence is recorded automatically only after that final sign-in.",
+        true,
+      ));
+
       const faucetPayReadProof = !proofError && releaseEvidenceMatches(proofValue, "faucetpay_read");
       checks.push(check(
         "faucetpay-read-proof",
@@ -238,6 +250,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       checks.push(check("schema", "Schema version", "fail", "Schema version cannot be verified while database access is failing."));
       checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Runtime contracts cannot be verified while database access is failing."));
       checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence is still required after database recovery.", true));
+      checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence is still required after database recovery.", true));
       checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification and payout evidence is still required after database recovery.", true));
     }

@@ -1,5 +1,8 @@
 export const PASSWORD_RECOVERY_COOKIE = "pc_password_recovery";
 export const PASSWORD_RECOVERY_MAX_AGE_SECONDS = 10 * 60;
+export const PASSWORD_RECOVERY_CONTEXT_LEGACY = "1";
+export const PASSWORD_RECOVERY_CONTEXT_PKCE = "pkce";
+export const PASSWORD_RECOVERY_CONTEXT_OTP = "otp";
 export const MIN_PASSWORD_LENGTH = 12;
 
 const AUTH_REDIRECT_BASE = "https://pulsercuit.invalid";

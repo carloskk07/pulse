@@ -48,6 +48,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   if (!admin) {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
     checks.push({ id: "auth-hardening-proof", label: "Supabase Auth leaked-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
+    checks.push({ id: "password-recovery-proof", label: "Hosted password recovery proof", pass: false, detail: "Real recovery evidence cannot be verified without trusted database authority." });
     return {
       ready: false,
       checks,
@@ -84,6 +85,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
 
   const proof = proofResult.data?.value;
   const authHardeningProof = !proofResult.error && releaseEvidenceMatches(proof, "supabase_auth_hardening");
+  const passwordRecoveryProof = !proofResult.error && releaseEvidenceMatches(proof, "password_recovery");
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
   const faucetPayReadProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_read");
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
@@ -98,6 +100,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     detail: authHardeningProof
       ? "Current Supabase project has matching external Auth-hardening evidence."
       : "Enable leaked-password protection, clear the Supabase security-advisor warning, then record fingerprint-bound evidence.",
+  });
+  checks.push({
+    id: "password-recovery-proof",
+    label: "Hosted password recovery proof",
+    pass: passwordRecoveryProof,
+    detail: passwordRecoveryProof
+      ? "A current hosted recovery flow completed password update and a later successful new-password sign-in for the same user."
+      : "Complete a real hosted recovery email, change the password through the recovery session, then sign in with the new password. The proof is recorded automatically.",
   });
   checks.push({
     id: "hourly-pulse-config",
