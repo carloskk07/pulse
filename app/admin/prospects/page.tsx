@@ -7,6 +7,15 @@ import { updateProspectStatus, upsertProspect } from "./actions";
 export const metadata = { title: "Advertiser Prospects" };
 export const dynamic = "force-dynamic";
 
+type Props = { searchParams: Promise<{ state?: string }> };
+
+const stateCopy: Record<string, string> = {
+  invalid: "The prospect data was rejected because a URL, email, stage or date was invalid.",
+  unavailable: "Prospect storage is temporarily unavailable. No change was recorded.",
+  saved: "Prospect saved with validated public-source data.",
+  updated: "Prospect stage updated.",
+};
+
 function adminEmails() {
   return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
 }
@@ -21,7 +30,8 @@ function scoreClass(score: number) {
   return "learning";
 }
 
-export default async function AdvertiserProspectsPage() {
+export default async function AdvertiserProspectsPage({ searchParams }: Props) {
+  const params = await searchParams;
   const supabase = await createSupabaseServerClient();
   if (!supabase) notFound();
   const { data: { user } } = await supabase.auth.getUser();
@@ -37,6 +47,7 @@ export default async function AdvertiserProspectsPage() {
   return (
     <AppShell active="prospects">
       <div className="admin-head"><div><span className="app-eyebrow">Outbound acquisition</span><h1>Advertiser prospects</h1><p>Company-level research only. Score fit first, then contact a small number of strong candidates with a specific pilot hypothesis.</p></div><span className={`admin-badge ${highFit > 0 ? "proof" : "setup"}`}>{highFit} HIGH FIT</span></div>
+      {params.state ? <div className={`claim-message ${params.state === "saved" || params.state === "updated" ? "success" : "neutral"}`}>{stateCopy[params.state] ?? "Prospect state updated."}</div> : null}
 
       <section className="admin-secondary-grid">
         <article><span>Total prospects</span><strong>{prospects.length}</strong></article>
@@ -58,9 +69,9 @@ export default async function AdvertiserProspectsPage() {
           <div className="prospect-row header"><span>Company</span><span>Fit</span><span>Pilot hypothesis</span><span>Stage</span></div>
           {prospects.length ? prospects.map((item) => (
             <article className="prospect-row" key={item.id}>
-              <div className="prospect-company"><strong>{item.companyName}</strong><small>{segmentLabel(item.segment)}{item.country ? ` · ${item.country}` : ""}</small><a href={item.website} target="_blank" rel="noopener">{item.domain}</a>{item.publicContactEmail ? <small>{item.publicContactEmail}</small> : null}</div>
+              <div className="prospect-company"><strong>{item.companyName}</strong><small>{segmentLabel(item.segment)}{item.country ? ` · ${item.country}` : ""}</small><a href={item.website} target="_blank" rel="noopener noreferrer">{item.domain}</a>{item.publicContactEmail ? <small>{item.publicContactEmail}</small> : null}</div>
               <div className={`prospect-score ${scoreClass(item.fitScore)}`}><strong>{item.fitScore}</strong><span>/100</span></div>
-              <div className="prospect-pilot"><p>{item.suggestedPilot ?? "Define a verified-action pilot before outreach."}</p><a href={item.sourceUrl} target="_blank" rel="noopener">Source</a></div>
+              <div className="prospect-pilot"><p>{item.suggestedPilot ?? "Define a verified-action pilot before outreach."}</p><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Source</a></div>
               <form className="prospect-stage-form" action={updateProspectStatus}>
                 <input type="hidden" name="id" value={item.id} />
                 <select name="status" defaultValue={item.status} aria-label={`Stage for ${item.companyName}`}>
