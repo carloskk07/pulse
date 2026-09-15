@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LOCAL_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const SEGMENTS = new Set<ProspectSegment>(["mobile_game", "consumer_app", "saas", "research", "other"]);
 const STATUSES = new Set<ProspectStatus>(["new", "researching", "ready", "contacted", "replied", "pilot", "rejected", "closed"]);
 
@@ -40,7 +41,8 @@ function parseStatus(value: string) {
 
 function parseOptionalDate(value: string) {
   if (!value) return null;
-  const date = new Date(value);
+  if (!LOCAL_DATETIME_RE.test(value)) return undefined;
+  const date = new Date(`${value}:00Z`);
   return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
 }
 
