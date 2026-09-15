@@ -13,70 +13,76 @@ const EMPTY_PROOF: PublicSocialProof = {
   available: false,
 };
 
+let cachedProof: PublicSocialProof | null = null;
+let pendingProof: Promise<PublicSocialProof> | null = null;
+
 function count(value: number, available: boolean) {
   return available ? value.toLocaleString("en-US") : "—";
 }
 
-export function V6HeroProof() {
-  const [proof, setProof] = useState<PublicSocialProof>(EMPTY_PROOF);
+function loadPublicProof() {
+  if (cachedProof) return Promise.resolve(cachedProof);
+  if (pendingProof) return pendingProof;
+
+  pendingProof = fetch("/api/public/social-proof", {
+    method: "GET",
+    headers: { accept: "application/json" },
+  })
+    .then(async (response) => {
+      if (!response.ok) return EMPTY_PROOF;
+      const proof = (await response.json()) as PublicSocialProof;
+      cachedProof = proof;
+      return proof;
+    })
+    .catch(() => {
+      console.error("[v6-proof] runtime refresh failed");
+      return EMPTY_PROOF;
+    })
+    .finally(() => {
+      pendingProof = null;
+    });
+
+  return pendingProof;
+}
+
+function usePublicProof() {
+  const [proof, setProof] = useState<PublicSocialProof>(cachedProof ?? EMPTY_PROOF);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
 
-    fetch("/api/public/social-proof", {
-      method: "GET",
-      headers: { accept: "application/json" },
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((nextProof: PublicSocialProof | null) => {
-        if (nextProof && !controller.signal.aborted) setProof(nextProof);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        console.error("[v6-proof] runtime refresh failed");
-      });
+    void loadPublicProof().then((nextProof) => {
+      if (active) setProof(nextProof);
+    });
 
-    return () => controller.abort();
+    return () => {
+      active = false;
+    };
   }, []);
+
+  return proof;
+}
+
+export function V6HeroProof() {
+  const proof = usePublicProof();
 
   return (
     <div className="pc-v6-shell pc-v6-hero-stats" aria-live="polite">
-      <div><strong>{count(proof.memberCount, proof.available)}</strong><span>Active members</span></div>
-      <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Rewards unlocked</span></div>
+      <div><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
+      <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Reward events</span></div>
       <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
     </div>
   );
 }
 
 export function V6FinalProof() {
-  const [proof, setProof] = useState<PublicSocialProof>(EMPTY_PROOF);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch("/api/public/social-proof", {
-      method: "GET",
-      headers: { accept: "application/json" },
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((nextProof: PublicSocialProof | null) => {
-        if (nextProof && !controller.signal.aborted) setProof(nextProof);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        console.error("[v6-proof] runtime refresh failed");
-      });
-
-    return () => controller.abort();
-  }, []);
+  const proof = usePublicProof();
 
   return (
     <div className="pc-v6-final-stats" aria-live="polite">
       <div><Users /><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
-      <div><Spark /><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Rewards</span></div>
-      <div><Check /><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid</span></div>
+      <div><Spark /><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Reward events</span></div>
+      <div><Check /><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
     </div>
   );
 }
