@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { getReleaseEvidenceFingerprint, releaseEvidenceMatches } from "@/lib/release-evidence";
 import type { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const FAUCETPAY_RECEIPT_PROOF_SCHEMA = "faucetpay-receipt-proof-v1";
+const FAUCETPAY_RECEIPT_PROOF_SCHEMA = "faucetpay-receipt-proof-v2";
 
 type AdminClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
 
@@ -55,6 +55,15 @@ function normalizePaidWithdrawal(value: unknown): FaucetPayPaidWithdrawal | null
   };
 }
 
+function receiptEvidence(value: unknown) {
+  return objectValue(objectValue(value).faucetpay_receipt);
+}
+
+function receiptWithdrawalId(value: unknown) {
+  const id = receiptEvidence(value).withdrawal_id;
+  return typeof id === "string" && id.trim() ? id.trim() : null;
+}
+
 export function getFaucetPayReceiptFingerprint(withdrawal: FaucetPayPaidWithdrawal) {
   const payoutFingerprint = getReleaseEvidenceFingerprint("faucetpay_payout");
   if (!payoutFingerprint) return null;
@@ -79,8 +88,24 @@ export function faucetPayReceiptEvidenceMatches(proof: unknown, withdrawal: Fauc
   if (!withdrawal) return false;
   const expected = getFaucetPayReceiptFingerprint(withdrawal);
   if (!expected) return false;
-  const evidence = objectValue(objectValue(proof).faucetpay_receipt);
-  return evidence.fingerprint === expected && typeof evidence.verified_at === "string" && evidence.verified_at.length > 0;
+  const evidence = receiptEvidence(proof);
+  return evidence.withdrawal_id === withdrawal.id
+    && evidence.fingerprint === expected
+    && typeof evidence.verified_at === "string"
+    && evidence.verified_at.length > 0;
+}
+
+async function getFaucetPayPaidWithdrawalById(admin: AdminClient, withdrawalId: string) {
+  const { data, error } = await admin
+    .from("withdrawals")
+    .select("id,payout_provider,asset,destination,amount_credits,payout_amount_units,external_id,status")
+    .eq("id", withdrawalId)
+    .eq("payout_provider", "faucetpay")
+    .eq("status", "paid")
+    .maybeSingle();
+
+  if (error) return null;
+  return normalizePaidWithdrawal(data);
 }
 
 export async function getLatestFaucetPayPaidWithdrawal(admin: AdminClient) {
@@ -98,26 +123,35 @@ export async function getLatestFaucetPayPaidWithdrawal(admin: AdminClient) {
 }
 
 export async function getFaucetPayReceiptProofState(admin: AdminClient, proofValue?: unknown) {
-  const [withdrawal, proofResult] = await Promise.all([
-    getLatestFaucetPayPaidWithdrawal(admin),
-    proofValue === undefined
-      ? admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle()
-      : Promise.resolve({ data: { value: proofValue }, error: null }),
-  ]);
+  const proofResult = proofValue === undefined
+    ? await admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle()
+    : { data: { value: proofValue }, error: null };
 
   const proof = proofResult.data?.value;
   const payoutProofCurrent = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
-  const receiptProofCurrent = !proofResult.error && payoutProofCurrent && faucetPayReceiptEvidenceMatches(proof, withdrawal);
+  const boundWithdrawalId = !proofResult.error ? receiptWithdrawalId(proof) : null;
+  const boundWithdrawal = boundWithdrawalId
+    ? await getFaucetPayPaidWithdrawalById(admin, boundWithdrawalId)
+    : null;
+  const latestWithdrawal = boundWithdrawal ?? await getLatestFaucetPayPaidWithdrawal(admin);
+  const receiptProofCurrent = !proofResult.error
+    && payoutProofCurrent
+    && faucetPayReceiptEvidenceMatches(proof, boundWithdrawal);
 
-  return { withdrawal, payoutProofCurrent, receiptProofCurrent };
+  return {
+    withdrawal: boundWithdrawal ?? latestWithdrawal,
+    boundWithdrawal,
+    payoutProofCurrent,
+    receiptProofCurrent,
+  };
 }
 
 export async function recordFaucetPayReceiptProof(admin: AdminClient, withdrawal: FaucetPayPaidWithdrawal) {
   const fingerprint = getFaucetPayReceiptFingerprint(withdrawal);
   if (!fingerprint) return false;
 
-  const { data, error } = await admin.rpc("record_release_evidence", {
-    p_kind: "faucetpay_receipt",
+  const { data, error } = await admin.rpc("record_faucetpay_receipt_evidence", {
+    p_withdrawal_id: withdrawal.id,
     p_fingerprint: fingerprint,
   });
   return !error && data === true;
