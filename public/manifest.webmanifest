@@ -3,7 +3,7 @@
   "short_name": "Pulsercuit",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#040609",
-  "theme_color": "#040609",
-  "description": "Return. Pulse. Repeat."
+  "background_color": "#020404",
+  "theme_color": "#020404",
+  "description": "Return. Rise. Repeat."
 }
