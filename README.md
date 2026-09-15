@@ -78,6 +78,7 @@ A successful build or deploy is not financial authorization. The release gate se
 - Pending / confirmed / available / withdrawn / reversed states remain explicit.
 - Unfunded Pulse rewards stay closed.
 - Treasury funding, enablement and safety limits require explicit authorization.
+- Treasury reservations expire authoritatively: overdue capacity is released before new reserve/claim decisions and cannot be consumed after TTL.
 - FaucetPay read proof, provider payout and actual destination receipt are separate authorities.
 - Historical payout recovery cannot prove a different current payout configuration.
 - Circuit Signal, achievements and sharing never create monetary value.
