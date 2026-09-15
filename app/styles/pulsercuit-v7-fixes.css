@@ -1,0 +1,69 @@
+/* Pulsercuit V7.1 — visual regression fixes.
+   Presentation-only. Keeps product, financial and provider semantics unchanged. */
+
+/* Truthful public rank presentation: never imply a current member state. */
+.pc-v6-ranks article:nth-child(3):before{display:none!important}
+
+/* Safari/WebKit parity for masks used by cinematic overlays. */
+.pc-v6::before{
+  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,.28) 72%,rgba(0,0,0,.64));
+}
+.app-frame:after{
+  -webkit-mask-image:linear-gradient(180deg,#000,transparent 74%);
+}
+.pc-luxe-pulse-stage:before{
+  -webkit-mask-image:radial-gradient(ellipse at 75% 45%,#000 0 36%,transparent 72%);
+}
+.pc-luxe-momentum-hero:before,.pc-luxe-rhythm-track:before{
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 20%,#000 85%,transparent);
+}
+.pc-luxe-vault-balance:before{
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 32%);
+}
+
+/* Avoid fixed-background repaint/jank on public surfaces. */
+main:not(.pc-v6):not(.app-content):not(.auth-page){
+  background-attachment:scroll!important;
+}
+
+/* Keep hover depth off touch/coarse-pointer devices to avoid sticky states. */
+@media(hover:none),(pointer:coarse){
+  .pc-v6-social-card:hover,.pc-v6-pillar-grid article:hover,.button:not(:disabled):hover,.icon-button:hover{
+    transform:none!important;
+  }
+}
+
+/* Tablet/mobile: center the optical hero ring instead of fragile right offsets. */
+@media(max-width:860px){
+  .pc-v6-hero-bg:before{
+    left:50%!important;
+    right:auto!important;
+    transform:translateX(-50%)!important;
+  }
+}
+
+/* V7 had accidentally overridden the safe mobile hero height with 520px. */
+@media(max-width:760px){
+  .pc-v6-hero{min-height:690px!important}
+  .pc-v6-hero-copy{padding-top:28px!important}
+  .pc-v6-hero-bg:before{width:300px!important;height:300px!important;top:10px!important}
+  .pc-v6-hero-copy h1{font-size:clamp(54px,14vw,74px)!important;line-height:.86!important}
+  .pc-v6-hero-copy>p{font-size:15px!important;line-height:1.5!important;max-width:92%!important}
+  .pc-v6-actions{gap:10px!important}
+  .pc-v6-button{min-height:46px!important;padding-inline:18px!important}
+}
+
+@media(max-width:560px){
+  .pc-v6-hero{min-height:710px!important}
+  .pc-v6-hero-bg:before{width:270px!important;height:270px!important}
+  .pc-v6-hero-copy h1{font-size:clamp(50px,15vw,66px)!important}
+}
+
+/* Preserve all content in reduced-motion mode even if reveal state mounted first. */
+@media(prefers-reduced-motion:reduce){
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section *,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-final *{
+    animation:none!important;
+    transition:none!important;
+  }
+}
