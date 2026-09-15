@@ -1,0 +1,113 @@
+/* Pulsercuit V6.1 — visual truth + usability hardening.
+   Loaded after V6 so fixes stay isolated from financial/product logic. */
+
+@keyframes pc6PreviewSweep {
+  0%, 100% { transform: translateX(-12%); opacity: .28; }
+  50% { transform: translateX(165%); opacity: .62; }
+}
+
+.pc-v6 {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.pc-v6 a:focus-visible,
+.pc-v6 button:focus-visible,
+.app-frame a:focus-visible,
+.app-frame button:focus-visible {
+  outline: 2px solid var(--pc6-gold);
+  outline-offset: 4px;
+}
+
+.pc-v6-chamber-stage {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 18px;
+  align-items: center;
+}
+
+.pc-v6-chamber {
+  min-width: 0;
+}
+
+.pc-v6-chamber-quote {
+  margin: 0;
+  width: 150px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11px;
+  line-height: 1.52;
+  color: #b8b3a7;
+  text-align: right;
+  font-style: italic;
+}
+
+.pc-v6-chamber blockquote {
+  display: none;
+}
+
+.pc-v6-live.preview {
+  color: #ead89d;
+}
+
+.pc-v6-live.preview i {
+  background: var(--pc6-gold);
+  box-shadow: 0 0 8px rgba(241, 210, 125, .7);
+}
+
+.pc-v6-preview-track {
+  height: 4px;
+  border-radius: 999px;
+  background: #171d18;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.pc-v6-preview-track span {
+  display: block;
+  width: 32%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(216,255,95,.68), transparent);
+  animation: pc6PreviewSweep 3.8s ease-in-out infinite;
+}
+
+/* Functional text must remain readable even though the approved reference uses micro-type. */
+.pc-v6-pillar-grid p { font-size: 11px; }
+.pc-v6-pillar-grid a { font-size: 9px; }
+.pc-v6-chamber-head small { font-size: 8px; }
+.pc-v6-live { font-size: 8px; }
+.pc-v6-mini-card small { font-size: 8px; }
+.pc-v6-mini-card > span { font-size: 9px; }
+.pc-v6-mini-card.vault a { font-size: 9px; }
+.pc-v6-pulse-ring small { font-size: 8px; }
+.pc-v6-ranks span { font-size: 9px; }
+.pc-v6-social-card small { font-size: 9px; }
+.pc-v6-social-card span { font-size: 9px; }
+.pc-v6-vault-art > span { font-size: 8px; }
+.pc-v6-vault-benefits small { font-size: 9px; line-height: 1.35; }
+.pc-v6-final-stats span { font-size: 8px; }
+.pc-v6-footer span,
+.pc-v6-footer nav a { font-size: 9px; }
+
+/* Avoid accidental full-width CTA expansion inside the compact mobile header. */
+@media (max-width: 560px) {
+  .pc-v6-header-inner { gap: 10px; }
+  .pc-v6-header-actions { gap: 7px; min-width: 0; }
+  .pc-v6-header-actions .pc-v6-button { width: auto !important; padding-inline: 10px; white-space: nowrap; }
+  .pc-v6-header .brand-word { font-size: 14px; }
+  .pc-v6-chamber-quote { display: none; }
+  .pc-v6-social-card small,
+  .pc-v6-social-card span,
+  .pc-v6-ranks span,
+  .pc-v6-mini-card > span,
+  .pc-v6-vault-benefits small { font-size: 10px; }
+}
+
+@media (max-width: 1100px) {
+  .pc-v6-chamber-stage { grid-template-columns: 1fr; }
+  .pc-v6-chamber-quote { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-v6-preview-track span { animation: none; transform: none; opacity: .45; }
+}
