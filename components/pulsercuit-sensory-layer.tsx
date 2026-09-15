@@ -11,6 +11,7 @@ export function PulsercuitSensoryLayer() {
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const pointerSurface = document.documentElement;
     const revealTargets = Array.from(
       root.querySelectorAll<HTMLElement>(".pc-v6-section, .pc-v6-final"),
     );
@@ -70,26 +71,22 @@ export function PulsercuitSensoryLayer() {
       if (!animationFrame) animationFrame = window.requestAnimationFrame(renderFrame);
     };
 
+    const resetPointer = () => {
+      targetX = 0;
+      targetY = 0;
+      scheduleFrame();
+    };
+
     const syncPointerMode = () => {
       pointerEnabled = finePointer.matches && !reducedMotion.matches && window.innerWidth >= 900;
       root.classList.toggle("pc-sensory-pointer", pointerEnabled);
-      if (!pointerEnabled) {
-        targetX = 0;
-        targetY = 0;
-        scheduleFrame();
-      }
+      if (!pointerEnabled) resetPointer();
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (!pointerEnabled) return;
       targetX = clamp((event.clientX / window.innerWidth - 0.5) * 2, -1, 1);
       targetY = clamp((event.clientY / window.innerHeight - 0.5) * 2, -1, 1);
-      scheduleFrame();
-    };
-
-    const onPointerLeave = () => {
-      targetX = 0;
-      targetY = 0;
       scheduleFrame();
     };
 
@@ -110,7 +107,8 @@ export function PulsercuitSensoryLayer() {
     root.style.setProperty("--pc-scroll", currentScroll.toFixed(4));
 
     window.addEventListener("pointermove", onPointerMove, { passive: true });
-    window.addEventListener("pointerout", onPointerLeave, { passive: true });
+    pointerSurface.addEventListener("pointerleave", resetPointer, { passive: true });
+    window.addEventListener("blur", resetPointer);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize, { passive: true });
     finePointer.addEventListener("change", syncPointerMode);
@@ -126,7 +124,8 @@ export function PulsercuitSensoryLayer() {
       root.style.removeProperty("--pc-light-x");
       root.style.removeProperty("--pc-light-y");
       window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerout", onPointerLeave);
+      pointerSurface.removeEventListener("pointerleave", resetPointer);
+      window.removeEventListener("blur", resetPointer);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       finePointer.removeEventListener("change", syncPointerMode);
