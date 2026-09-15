@@ -1,0 +1,118 @@
+/* Pulsercuit V6.2 — reference-parity visual layer.
+   Loaded last. Changes presentation only; no reward, auth or financial authority. */
+
+:root{
+  --pc6-ref-gold:#f4d377;
+  --pc6-ref-gold-hot:#ffe9a2;
+  --pc6-ref-lime:#dfff61;
+  --pc6-ref-black:#020303;
+}
+
+/* Reference composition is denser and more editorial than the earlier V6 pass. */
+.pc-v6-shell{width:min(1210px,calc(100% - 64px))}
+.pc-v6-header{height:62px;background:linear-gradient(180deg,rgba(2,4,4,.9),rgba(2,4,4,.38));border-bottom-color:rgba(255,255,255,.045)}
+.pc-v6-header-inner{grid-template-columns:210px 1fr auto;gap:24px}
+.pc-v6-nav{gap:30px}.pc-v6-nav a{font-size:11px}
+.pc-v6-login{border-radius:9px;padding:9px 14px}
+.pc-v6-button.compact{min-height:37px;border-radius:18px;padding-inline:17px}
+
+/* HERO — real scenic art instead of a small clipped sprite. */
+.pc-v6-hero{min-height:540px;padding-top:62px;background:#020303;border-bottom-color:rgba(241,210,125,.12)}
+.pc-v6-hero:before{background:linear-gradient(90deg,#020303 0%,rgba(2,3,3,.86) 31%,rgba(2,3,3,.28) 52%,rgba(2,3,3,.07) 73%,rgba(2,3,3,.44) 100%)}
+.pc-v6-hero:after{content:"";position:absolute;inset:auto 0 0;height:130px;background:linear-gradient(180deg,transparent,#020303 88%);z-index:1;pointer-events:none}
+.pc-v6-hero-bg{right:0;top:42px;width:min(68vw,870px);height:438px;overflow:visible;opacity:1;filter:none}
+.pc-v6-sprite-hero{width:100%;height:100%;right:0;top:0;transform:none;animation:pc6Float 11s ease-in-out infinite;background-image:url('/v6/hero-orb-scene.svg');background-size:cover;background-position:center;background-repeat:no-repeat;filter:contrast(1.06) saturate(.92)}
+.pc-v6-hero-bg:after{background:linear-gradient(90deg,#020303 0%,rgba(2,3,3,.76) 12%,transparent 42%,transparent 78%,rgba(2,3,3,.42) 100%),linear-gradient(180deg,transparent 73%,#020303 100%)}
+.pc-v6-hero-grid{min-height:365px;grid-template-columns:minmax(0,1.04fr) minmax(320px,.96fr)}
+.pc-v6-hero-copy{padding-top:22px;max-width:610px}
+.pc-v6-hero-copy h1{font-size:clamp(52px,5.25vw,74px);line-height:.93;letter-spacing:-.055em;margin:14px 0 12px}
+.pc-v6-hero-copy>p{font-size:16px;line-height:1.42;max-width:430px;color:#c6c3b8}
+.pc-v6-actions{margin-top:22px}.pc-v6-button{min-height:46px;border-radius:21px}
+.pc-v6-hero-mantra{margin-right:0;margin-top:20px;font-size:7px;gap:6px}
+.pc-v6-hero-stats{position:relative;z-index:4;padding:16px 0 18px;max-width:660px}
+.pc-v6-hero-stats strong{font-size:18px}.pc-v6-hero-stats span{font-size:9px}
+
+/* Shared section rhythm — thinner boundaries and screenshot-like density. */
+.pc-v6-section{background:#030505;border-bottom-color:rgba(255,255,255,.06)}
+.pc-v6-section-grid{min-height:310px;grid-template-columns:205px 1fr;gap:44px;padding-block:18px}
+.pc-v6-section-intro h2,.pc-v6-section-intro.compact h2{font-size:38px;line-height:.94}
+.pc-v6-section-intro p{font-size:11px}
+
+/* FOUR PILLARS — restore the mountain artwork on the full right edge. */
+.pc-v6-pillars{min-height:320px;background:linear-gradient(90deg,#030505 0 76%,rgba(5,12,7,.88) 100%)}
+.pc-v6-mountain-cut{right:0;top:0;width:330px;height:100%;opacity:.92}
+.pc-v6-sprite-mountain{right:-10px;top:0;width:100%;height:100%;transform:none;background-image:url('/v6/pillar-mountain-scene.svg');background-size:cover;background-position:center;background-repeat:no-repeat;filter:contrast(1.08) saturate(.9)}
+.pc-v6-mountain-cut:after{background:linear-gradient(90deg,#030505 0%,rgba(3,5,5,.7) 24%,transparent 70%),linear-gradient(180deg,#030505 0%,transparent 24%,#030505 100%)}
+.pc-v6-pillar-grid{padding-right:185px;gap:11px}
+.pc-v6-pillar-grid article{min-height:196px;border-color:rgba(241,210,125,.2);background:linear-gradient(180deg,rgba(10,13,11,.94),rgba(5,7,6,.92));box-shadow:0 18px 45px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.025)}
+.pc-v6-orb{width:49px;height:49px}
+
+/* PULSE CHAMBER — brighter console edge, tighter like the target art. */
+.pc-v6-chamber-section{padding-block:10px;background:#020303}
+.pc-v6-chamber-grid{grid-template-columns:190px 1fr;gap:32px;min-height:362px}
+.pc-v6-chamber-stage{grid-template-columns:minmax(0,1fr) 150px;gap:16px}
+.pc-v6-chamber{min-height:300px;border-color:rgba(225,233,217,.3);background:radial-gradient(circle at 49% 48%,rgba(188,255,84,.1),transparent 22%),linear-gradient(145deg,#0d1210,#050807 72%);box-shadow:0 30px 90px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.045)}
+.pc-v6-chamber:after{content:"";position:absolute;inset:8px;border:1px solid rgba(255,255,255,.025);border-radius:8px;pointer-events:none}
+.pc-v6-pulse-ring{width:174px;height:174px;box-shadow:0 0 0 10px rgba(216,255,95,.03),0 0 0 20px rgba(216,255,95,.015),0 0 48px rgba(170,255,70,.25),inset 0 0 42px rgba(170,255,70,.1)}
+.pc-v6-wave{font-size:66px}.pc-v6-chamber-quote{font-size:10px}
+
+/* MOMENTUM — the missing winding-road image is now a dedicated scene. */
+.pc-v6-momentum-section{min-height:330px;background:#030505}
+.pc-v6-momentum-grid{grid-template-columns:185px 1fr 72px;gap:28px;min-height:330px}
+.pc-v6-road-cut{right:0;inset-block:0;width:355px;opacity:1}
+.pc-v6-sprite-road{right:-22px;top:0;width:100%;height:100%;transform:none;background-image:url('/v6/momentum-road-scene.svg');background-size:cover;background-position:center;background-repeat:no-repeat;filter:contrast(1.08) saturate(.88)}
+.pc-v6-road-cut:after{background:linear-gradient(90deg,#030505 0%,rgba(3,5,5,.82) 28%,transparent 68%),linear-gradient(180deg,#030505 0%,transparent 18%,#030505 100%)}
+.pc-v6-ranks{padding-right:150px;gap:4px}
+.pc-v6-rank-art{width:84px;height:84px;background-size:920px 552px;filter:drop-shadow(0 10px 16px rgba(0,0,0,.5)) drop-shadow(0 0 10px rgba(241,210,125,.08))}
+.pc-v6-rank-art.rank-spark{background-position:-432px -428px}.pc-v6-rank-art.rank-flow{background-position:-524px -428px}.pc-v6-rank-art.rank-rhythm{background-position:-616px -428px}.pc-v6-rank-art.rank-circuit{background-position:-708px -428px}.pc-v6-rank-art.rank-resonance{background-position:-800px -428px;width:96px}
+
+/* SHARE STUDIO — replace four flat gradients with four image-backed stories. */
+.pc-v6-share-grid{grid-template-columns:175px 1fr 138px;gap:22px;min-height:340px}
+.pc-v6-share-cards{gap:9px}
+.pc-v6-social-card{min-height:210px;border-color:rgba(235,226,195,.2);background:#070808;box-shadow:0 20px 48px rgba(0,0,0,.34)}
+.pc-v6-social-card:before{background-image:url('/v6/share-scenes.svg')!important;background-size:400% 100%!important;background-repeat:no-repeat!important;opacity:.92!important;filter:contrast(1.06) saturate(.95)}
+.pc-v6-social-card.violet:before{background-position:0 0!important}.pc-v6-social-card.gold:before{background-position:33.333% 0!important}.pc-v6-social-card.lime:before{background-position:66.666% 0!important}.pc-v6-social-card.eclipse:before{background-position:100% 0!important}
+.pc-v6-social-card:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,3,3,.06) 0%,rgba(2,3,3,.13) 46%,rgba(2,3,3,.86) 100%);z-index:0}
+.pc-v6-social-card>*{z-index:2}
+.pc-v6-social-card strong{font-size:22px;text-shadow:0 2px 18px rgba(0,0,0,.7)}
+.pc-v6-social-card span{color:#d0c9b9}
+
+/* VAULT — dedicated safe artwork, no more generic sprite crop. */
+.pc-v6-vault-section{min-height:350px;background:#030505}
+.pc-v6-vault-grid{grid-template-columns:185px minmax(390px,1fr) 230px;gap:25px;min-height:350px}
+.pc-v6-vault-art{min-height:285px;overflow:visible}
+.pc-v6-sprite-vault{width:100%;height:285px;transform:none;background-image:url('/v6/vault-safe-scene.svg');background-size:cover;background-position:center;background-repeat:no-repeat;filter:contrast(1.08) saturate(.92);box-shadow:none}
+.pc-v6-vault-art>span{left:5px;top:86px;color:#d3c7ac;text-shadow:0 2px 8px #000}
+.pc-v6-space-cut{right:0;width:310px;opacity:.65}
+.pc-v6-vault-benefits{position:relative;z-index:3;background:linear-gradient(150deg,rgba(10,13,11,.92),rgba(4,6,5,.94));backdrop-filter:blur(8px)}
+
+/* FINAL — full cinematic valley instead of geometric CSS wedges. */
+.pc-v6-final{min-height:280px;background:#020303;overflow:hidden}
+.pc-v6-final:before{content:"";position:absolute;inset:0;width:auto;height:auto;bottom:auto;left:0;transform:none;background-image:linear-gradient(90deg,rgba(2,3,3,.45),transparent 26%,transparent 74%,rgba(2,3,3,.45)),url('/v6/final-valley-scene.svg');background-size:cover;background-position:center;filter:none;opacity:.96}
+.pc-v6-final:after{content:"";position:absolute;inset:0;width:auto;height:auto;right:auto;bottom:auto;transform:none;background:linear-gradient(180deg,rgba(2,3,3,.14),rgba(2,3,3,.08) 52%,#020303 100%)}
+.pc-v6-eclipse{display:none}
+.pc-v6-final-grid{min-height:280px;grid-template-columns:155px 1fr 315px;gap:22px}
+.pc-v6-final-copy h2{font-size:39px;text-shadow:0 3px 28px rgba(0,0,0,.72)}
+.pc-v6-final-copy>p{color:#d0c7b3}.pc-v6-final-mantra{color:#ddd0b4;text-shadow:0 2px 8px #000}
+.pc-v6-final-stats{background:rgba(2,3,3,.24);border-radius:9px;backdrop-filter:blur(4px)}
+
+/* Fine reference details. */
+.pc-v6-kicker{color:#d8cdb5}.pc-v6-gold-line{height:1px;width:28px}
+.pc-v6-outline-link{padding:10px 18px;border-color:rgba(241,210,125,.56);background:rgba(3,5,4,.52)}
+.pc-v6-pillar-grid article:hover,.pc-v6-social-card:hover{transform:translateY(-2px);border-color:rgba(241,210,125,.42);transition:.22s ease}
+
+@media(max-width:1100px){
+  .pc-v6-hero-bg{right:-90px;width:820px}.pc-v6-pillar-grid{padding-right:105px}.pc-v6-mountain-cut{width:245px}.pc-v6-ranks{padding-right:90px}.pc-v6-road-cut{width:280px}.pc-v6-vault-grid{grid-template-columns:180px 1fr 215px}
+}
+
+@media(max-width:860px){
+  .pc-v6-shell{width:min(100% - 30px,740px)}.pc-v6-header{height:64px}.pc-v6-hero{min-height:700px;padding-top:64px}.pc-v6-hero-grid{padding-top:70px}.pc-v6-hero-copy h1{font-size:62px}.pc-v6-hero-bg{top:315px;right:50%;width:760px;height:390px;transform:translateX(57%);opacity:.88}.pc-v6-hero-stats{margin-top:168px}
+  .pc-v6-section-grid,.pc-v6-chamber-grid,.pc-v6-momentum-grid,.pc-v6-vault-grid{grid-template-columns:1fr}.pc-v6-pillar-grid{padding-right:0}.pc-v6-mountain-cut{display:block;width:210px;opacity:.32}.pc-v6-chamber-stage{grid-template-columns:1fr}.pc-v6-ranks{padding-right:0}.pc-v6-road-cut{display:block;width:260px;opacity:.22}.pc-v6-share-grid{grid-template-columns:1fr}.pc-v6-share-side{grid-column:auto}.pc-v6-vault-grid{gap:15px}.pc-v6-vault-art{order:2;min-height:255px}.pc-v6-sprite-vault{height:255px}.pc-v6-vault-benefits{order:3}.pc-v6-space-cut{display:none}.pc-v6-final-grid{grid-template-columns:1fr}.pc-v6-final-mantra{display:none}
+}
+
+@media(max-width:560px){
+  .pc-v6-shell{width:calc(100% - 24px)}.pc-v6-header-actions .pc-v6-button{border-radius:17px}.pc-v6-hero{min-height:680px}.pc-v6-hero-grid{padding-top:48px}.pc-v6-hero-copy h1{font-size:49px}.pc-v6-hero-copy>p{font-size:14px;max-width:330px}.pc-v6-actions{grid-template-columns:1fr 1fr;display:grid;gap:9px}.pc-v6-button{padding-inline:12px;font-size:10px}.pc-v6-hero-bg{top:330px;width:620px;height:320px;transform:translateX(61%)}.pc-v6-hero-stats{margin-top:126px}.pc-v6-hero-stats strong{font-size:15px}
+  .pc-v6-pillar-grid{grid-template-columns:1fr 1fr}.pc-v6-pillar-grid article{min-height:172px}.pc-v6-mountain-cut{width:155px}.pc-v6-chamber{min-height:306px}.pc-v6-pulse-ring{width:154px;height:154px}.pc-v6-road-cut{width:180px}.pc-v6-ranks{grid-template-columns:repeat(3,1fr)}.pc-v6-share-cards{grid-template-columns:1fr 1fr}.pc-v6-social-card{min-height:188px}.pc-v6-vault-art{min-height:220px}.pc-v6-sprite-vault{height:220px;background-size:cover}.pc-v6-final{min-height:330px}.pc-v6-final-grid{min-height:330px}
+}
+
+@media(prefers-reduced-motion:reduce){.pc-v6-sprite-hero{animation:none}}
