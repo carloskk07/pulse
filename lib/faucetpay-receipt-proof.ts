@@ -10,6 +10,7 @@ type JsonRecord = Record<string, unknown>;
 
 export type FaucetPayPaidWithdrawal = {
   id: string;
+  idempotency_key: string;
   payout_provider: string;
   asset: string;
   destination: string;
@@ -33,18 +34,20 @@ function normalizePaidWithdrawal(value: unknown): FaucetPayPaidWithdrawal | null
   const amountCredits = positiveSafeInteger(row.amount_credits);
   const payoutAmountUnits = positiveSafeInteger(row.payout_amount_units);
   const id = typeof row.id === "string" ? row.id : "";
+  const idempotencyKey = typeof row.idempotency_key === "string" ? row.idempotency_key.trim() : "";
   const provider = typeof row.payout_provider === "string" ? row.payout_provider.trim().toLowerCase() : "";
   const asset = typeof row.asset === "string" ? row.asset.trim().toUpperCase() : "";
   const destination = typeof row.destination === "string" ? row.destination.trim() : "";
   const externalId = typeof row.external_id === "string" ? row.external_id.trim() : "";
   const status = row.status === "paid" ? "paid" : "";
 
-  if (!id || provider !== "faucetpay" || !asset || !destination || !externalId || status !== "paid" || !amountCredits || !payoutAmountUnits) {
+  if (!id || !idempotencyKey || provider !== "faucetpay" || !asset || !destination || !externalId || status !== "paid" || !amountCredits || !payoutAmountUnits) {
     return null;
   }
 
   return {
     id,
+    idempotency_key: idempotencyKey,
     payout_provider: provider,
     asset,
     destination,
@@ -68,6 +71,7 @@ function withdrawalIdentity(withdrawal: FaucetPayPaidWithdrawal) {
   const destinationHash = createHash("sha256").update(withdrawal.destination).digest("hex");
   return [
     withdrawal.id,
+    withdrawal.idempotency_key,
     withdrawal.external_id,
     withdrawal.payout_provider,
     withdrawal.asset,
@@ -118,7 +122,7 @@ export function faucetPayReceiptEvidenceMatches(proof: unknown, withdrawal: Fauc
 export async function getFaucetPayPaidWithdrawalById(admin: AdminClient, withdrawalId: string) {
   const { data, error } = await admin
     .from("withdrawals")
-    .select("id,payout_provider,asset,destination,amount_credits,payout_amount_units,external_id,status")
+    .select("id,idempotency_key,payout_provider,asset,destination,amount_credits,payout_amount_units,external_id,status")
     .eq("id", withdrawalId)
     .eq("payout_provider", "faucetpay")
     .eq("status", "paid")
@@ -131,7 +135,7 @@ export async function getFaucetPayPaidWithdrawalById(admin: AdminClient, withdra
 export async function getLatestFaucetPayPaidWithdrawal(admin: AdminClient) {
   const { data, error } = await admin
     .from("withdrawals")
-    .select("id,payout_provider,asset,destination,amount_credits,payout_amount_units,external_id,status")
+    .select("id,idempotency_key,payout_provider,asset,destination,amount_credits,payout_amount_units,external_id,status")
     .eq("payout_provider", "faucetpay")
     .eq("status", "paid")
     .order("updated_at", { ascending: false })
