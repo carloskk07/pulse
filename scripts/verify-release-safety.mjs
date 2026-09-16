@@ -28,7 +28,7 @@ if (existsSync("lib/mock-data.ts")) {
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha"]);
-requireText("lib/release-readiness.ts", ["RELEASE_SCHEMA_VERSION = 35", 'RELEASE_SCHEMA_MIGRATION = "0035_direct_event_temporal_integrity.sql"', 'admin.rpc("release_authenticated_read_scope_contract")', 'admin.rpc("release_reward_exchange_contract")', 'admin.rpc("release_pulse_direct_contract")']);
+requireText("lib/release-readiness.ts", ["RELEASE_SCHEMA_VERSION = 36", 'RELEASE_SCHEMA_MIGRATION = "0036_hourly_pulse_pilot_isolation.sql"', 'admin.rpc("release_authenticated_read_scope_contract")', 'admin.rpc("release_reward_exchange_contract")', 'admin.rpc("release_pulse_direct_contract")', 'admin.rpc("release_hourly_pulse_pilot_contract")']);
 requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36", 'admin.rpc("release_hourly_pulse_pilot_contract")', "schemaVersion >= HOURLY_PILOT_SCHEMA_VERSION"]);
 requireText("app/api/readiness/route.ts", ["getHourlyPilotReadiness", "hourlyPilot.ok", 'service: "pulsercuit"']);
 requireText("supabase/migrations/0031_current_hourly_claim_security_contract.sql", ["claim_hourly_pulse(uuid) security invoker", "claim_hourly_pulse(uuid)', 'EXECUTE'", "release_security_contract"]);
