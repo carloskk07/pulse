@@ -12,13 +12,15 @@ The public endpoint `/api/readiness` exposes only the aggregate state and return
 
 ## Required schema
 
-Apply migrations in order through `0039_faucetpay_proof_chain.sql` and require the live `release_schema` marker to be at least v39.
+Apply migrations in order through `0040_withdrawal_dispatch_lease.sql` and require the live `release_schema` marker to be at least v40.
 
 Schema version alone is not sufficient. The runtime verifies the security, authenticated read-scope, Wallet recovery, withdrawal settlement, exact FaucetPay payout→receipt proof chain, Reward Exchange, Opportunity Intelligence, Pulse Direct, business-intake and advertiser-outbound contracts against the live database. The Hourly Pulse pilot gate separately requires `release_hourly_pulse_pilot_contract()` to pass under schema v36 or later before aggregate readiness can advance beyond `SETUP_REQUIRED`. The security contract must inspect the current `claim_hourly_pulse(uuid)` RPC, prove that `anon`/`authenticated` cannot execute it, prove that `service_role` can execute it, and require that the RPC remains `SECURITY INVOKER`.
 
 The authenticated read-scope contract separately proves that own-row policies for profiles, ledger, claims, Hourly Pulse history, referrals, support and withdrawals have not widened; `user_balances` remains a `security_invoker` view; sensitive `risk_score` and financial ledger metadata are not client-readable; and no direct public-table write privilege has leaked to `anon` or `authenticated`.
 
-The withdrawal settlement contract separately proves that withdrawal idempotency remains unique, only one active withdrawal can exist per user, settlement RPC authority remains restricted to `service_role`, and no row may be promoted to `paid` without a non-empty provider `external_id`. A paid withdrawal is terminal, its provider reference is immutable, and the same `(payout_provider, external_id)` cannot back two paid withdrawals. The FaucetPay v2 retry path therefore reuses the original persisted idempotency key instead of creating a second withdrawal authority.
+The withdrawal settlement contract separately proves that withdrawal idempotency remains unique, only one active withdrawal can exist per user, settlement RPC authority remains restricted to `service_role`, and no row may be promoted to `paid` without a non-empty provider `external_id`. A paid withdrawal is terminal, its provider reference is immutable, and the same `(payout_provider, external_id)` cannot back two paid withdrawals.
+
+Schema v40 adds a second local authority before any external send: `claim_withdrawal_dispatch()` obtains a row lock and grants a time-bounded dispatch lease to only one execution at a time. The lease persists `dispatch_claimed_at` and increments `dispatch_attempts`; concurrent or too-early retries receive `dispatch=false` and cannot call FaucetPay. After the lease window a recovery attempt may acquire a new lease, but it must reuse the withdrawal's original persisted idempotency key. Provider-side idempotency therefore remains a second line of defense rather than the sole duplicate-send control.
 
 The FaucetPay proof-chain contract adds another authority boundary. Generic release evidence cannot create `faucetpay_payout`. Provider-side payout evidence is recorded only after the runtime re-reads one exact `paid` FaucetPay withdrawal, and its fingerprint binds the current payout configuration, withdrawal id, provider payout id, asset, credits, provider units and a hash of the destination. Actual-receipt evidence must then reference the same exact withdrawal id and derives from that exact payout fingerprint. A stale cockpit form also carries the displayed withdrawal id and is rejected if the current payout authority changed before confirmation.
 
@@ -60,6 +62,7 @@ configuration
 → real funded/open Treasury
 → current Hourly Pulse claim
 → authoritative Wallet ledger
+→ atomic withdrawal dispatch lease
 → exact paid FaucetPay withdrawal
 → payout proof bound to that withdrawal
 → actual destination receipt bound to that same withdrawal
@@ -76,7 +79,7 @@ Production promotion requires, at minimum:
 CI = PASS
 exact canonical release SHA = PASS
 /api/readiness = READY / HTTP 200
-live schema marker >= 39
+live schema marker >= 40
 release_withdrawal_settlement_contract() = PASS
 release_faucetpay_proof_chain_contract() = PASS
 release_hourly_pulse_pilot_contract() = PASS
