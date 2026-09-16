@@ -1,5 +1,7 @@
 -- Supabase v38: make payout settlement truth explicit and machine-verifiable.
 -- No withdrawal may be marked paid without an authoritative provider reference.
+-- A provider payout may back at most one paid withdrawal, and a paid settlement
+-- is terminal with an immutable provider reference.
 -- The release contract also proves the idempotency and single-active-withdrawal
 -- invariants used by the FaucetPay v2 retry path.
 
@@ -9,6 +11,37 @@ alter table public.withdrawals
 alter table public.withdrawals
   add constraint withdrawals_paid_external_id_check
   check (status <> 'paid' or nullif(trim(external_id), '') is not null);
+
+create unique index if not exists withdrawals_paid_provider_external_id_uidx
+  on public.withdrawals(payout_provider, external_id)
+  where status = 'paid' and external_id is not null;
+
+create or replace function public.enforce_withdrawal_paid_terminal()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+begin
+  if old.status = 'paid' then
+    if new.status <> 'paid' then
+      raise exception 'paid withdrawal status is terminal' using errcode = '23514';
+    end if;
+    if new.external_id is distinct from old.external_id then
+      raise exception 'paid withdrawal provider reference is immutable' using errcode = '23514';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.enforce_withdrawal_paid_terminal() from public, anon, authenticated;
+
+drop trigger if exists withdrawals_paid_terminal_guard on public.withdrawals;
+create trigger withdrawals_paid_terminal_guard
+before update on public.withdrawals
+for each row
+execute function public.enforce_withdrawal_paid_terminal();
 
 create or replace function public.finalize_withdrawal(
   p_withdrawal_id uuid,
@@ -101,6 +134,7 @@ as $$
       from pg_catalog.pg_constraint c
       where c.conrelid = 'public.withdrawals'::regclass
         and c.conname = 'withdrawals_paid_external_id_check'
+        and c.contype = 'c'
     )
     and exists (
       select 1
@@ -118,6 +152,23 @@ as $$
         and idx.relname = 'withdrawals_one_active_per_user_idx'
         and i.indisunique
         and i.indpred is not null
+    )
+    and exists (
+      select 1
+      from pg_catalog.pg_index i
+      join pg_catalog.pg_class idx on idx.oid = i.indexrelid
+      where i.indrelid = 'public.withdrawals'::regclass
+        and idx.relname = 'withdrawals_paid_provider_external_id_uidx'
+        and i.indisunique
+        and i.indpred is not null
+    )
+    and exists (
+      select 1
+      from pg_catalog.pg_trigger t
+      where t.tgrelid = 'public.withdrawals'::regclass
+        and t.tgname = 'withdrawals_paid_terminal_guard'
+        and not t.tgisinternal
+        and t.tgenabled <> 'D'
     )
     and has_function_privilege('service_role', 'public.reserve_withdrawal(uuid,text,text,text,text,bigint,bigint)', 'EXECUTE')
     and has_function_privilege('service_role', 'public.finalize_withdrawal(uuid,text,text,text)', 'EXECUTE')
@@ -137,7 +188,7 @@ values (
   'release_schema',
   jsonb_build_object('version', 38, 'migration', '0038_withdrawal_settlement_integrity.sql'),
   38,
-  'Withdrawal settlement requires provider identity and proves idempotent single-active service-role authority'
+  'Withdrawal settlement requires provider identity, terminal paid state and idempotent single-active service-role authority'
 )
 on conflict (key) do update
 set value = excluded.value,
