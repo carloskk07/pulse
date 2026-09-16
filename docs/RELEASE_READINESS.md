@@ -12,9 +12,9 @@ The public endpoint `/api/readiness` exposes only the aggregate state and return
 
 ## Required schema
 
-Apply migrations in order through `0035_direct_event_temporal_integrity.sql` and require the live `release_schema` marker to be at least v35.
+Apply migrations in order through `0036_hourly_pulse_pilot_isolation.sql` and require the live `release_schema` marker to be at least v36.
 
-Schema version alone is not sufficient. The runtime verifies the security, authenticated read-scope, Wallet recovery, Reward Exchange, Opportunity Intelligence, Pulse Direct, business-intake and advertiser-outbound contracts against the live database. The security contract must inspect the current `claim_hourly_pulse(uuid)` RPC, prove that `anon`/`authenticated` cannot execute it, prove that `service_role` can execute it, and require that the RPC remains `SECURITY INVOKER`.
+Schema version alone is not sufficient. The runtime verifies the security, authenticated read-scope, Wallet recovery, Reward Exchange, Opportunity Intelligence, Pulse Direct, business-intake and advertiser-outbound contracts against the live database. The Hourly Pulse pilot gate separately requires `release_hourly_pulse_pilot_contract()` to pass under schema v36 before aggregate readiness can advance beyond `SETUP_REQUIRED`. The security contract must inspect the current `claim_hourly_pulse(uuid)` RPC, prove that `anon`/`authenticated` cannot execute it, prove that `service_role` can execute it, and require that the RPC remains `SECURITY INVOKER`.
 
 The authenticated read-scope contract separately proves that own-row policies for profiles, ledger, claims, Hourly Pulse history, referrals, support and withdrawals have not widened; `user_balances` remains a `security_invoker` view; sensitive `risk_score` and financial ledger metadata are not client-readable; and no direct public-table write privilege has leaked to `anon` or `authenticated`.
 
@@ -67,7 +67,8 @@ Production promotion requires, at minimum:
 CI = PASS
 exact canonical release SHA = PASS
 /api/readiness = READY / HTTP 200
-live schema marker >= 35
+live schema marker >= 36
+release_hourly_pulse_pilot_contract() = PASS
 all required runtime contracts = PASS
 all blocking configuration checks = PASS
 all required current-configuration external proofs = PASS
