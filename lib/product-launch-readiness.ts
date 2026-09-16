@@ -1,10 +1,10 @@
+import { getCurrentReleaseReadiness } from "@/lib/current-release-readiness";
 import { getProductReadiness } from "@/lib/product-readiness";
-import { getReleaseReadiness } from "@/lib/release-readiness";
 
 export async function getProductLaunchReadiness() {
   const [product, release] = await Promise.all([
     getProductReadiness(),
-    getReleaseReadiness(),
+    getCurrentReleaseReadiness(),
   ]);
 
   const releaseBlockers = release.checks.filter(

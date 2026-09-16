@@ -1,13 +1,13 @@
+import { getCurrentReleaseReadiness } from "@/lib/current-release-readiness";
 import { getHourlyPilotReadiness } from "@/lib/hourly-pilot-readiness";
 import { getProductReadiness } from "@/lib/product-readiness";
-import { getReleaseReadiness } from "@/lib/release-readiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [release, product, hourlyPilot] = await Promise.all([
-    getReleaseReadiness(),
+    getCurrentReleaseReadiness(),
     getProductReadiness(),
     getHourlyPilotReadiness(),
   ]);
