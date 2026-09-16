@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   if (result.status === "claimed") return claimReceiptRedirect(request, user.id);
   if (result.status === "not_ready") return dashboardRedirect(request, "not-ready");
   if (result.status === "risk_hold") return dashboardRedirect(request, "trust-review");
-  if (["treasury_closed", "treasury_missing", "budget_disabled", "insufficient_treasury", "daily_budget_exhausted", "user_daily_limit"].includes(result.status ?? "")) {
+  if (["pilot_restricted", "treasury_closed", "treasury_missing", "budget_disabled", "insufficient_treasury", "daily_budget_exhausted", "user_daily_limit"].includes(result.status ?? "")) {
     return dashboardRedirect(request, "budget-paused");
   }
 
