@@ -1,0 +1,35 @@
+name: Verify FaucetPay send key presence
+
+on:
+  push:
+    branches: [ops/faucetpay-send-presence-proof]
+    paths:
+      - .github/workflows/faucetpay-send-presence-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-send-key:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Verify production env key exists without reading its value
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN"
+          status="$(curl --silent --show-error --output /tmp/vercel-envs.json --write-out '%{http_code}' \
+            --request GET \
+            --url 'https://api.vercel.com/v10/projects/pulse/env?slug=carloskk07s-projects' \
+            --header "Authorization: Bearer $VERCEL_TOKEN")"
+          case "$status" in 2??) ;; *) echo "Vercel env listing failed with HTTP $status" >&2; exit 1 ;; esac
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/vercel-envs.json', 'utf8'));
+          const envs = Array.isArray(body.envs) ? body.envs : Array.isArray(body) ? body : [];
+          const match = envs.find((entry) => entry?.key === 'FAUCETPAY_SCOPED_KEY' && Array.isArray(entry.target) && entry.target.includes('production'));
+          if (!match) throw new Error('FAUCETPAY_SCOPED_KEY is not configured for Production');
+          console.log('FAUCETPAY_SCOPED_KEY production presence PASS');
+          NODE
