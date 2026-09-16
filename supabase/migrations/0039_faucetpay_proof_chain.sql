@@ -72,6 +72,7 @@ begin
       and w.status = 'paid'
       and w.amount_credits > 0
       and coalesce(w.payout_amount_units, 0) > 0
+      and length(trim(coalesce(w.idempotency_key, ''))) > 0
       and length(trim(coalesce(w.external_id, ''))) > 0
       and length(trim(coalesce(w.destination, ''))) > 0
   ) into v_exists;
@@ -95,7 +96,7 @@ begin
     'Provider-side FaucetPay payout proven for one exact paid withdrawal'
   )
   on conflict (key) do update
-  set value = public.app_config.value || jsonb_build_object(
+  set value = (public.app_config.value - 'faucetpay_receipt') || jsonb_build_object(
         'faucetpay_payout',
         jsonb_build_object(
           'verified_at', now(),
@@ -104,7 +105,7 @@ begin
         )
       ),
       version = public.app_config.version + 1,
-      reason = 'Provider-side FaucetPay payout proven for one exact paid withdrawal',
+      reason = 'Provider-side FaucetPay payout proven for one exact paid withdrawal; prior receipt binding invalidated',
       updated_at = now();
 
   return true;
@@ -150,6 +151,7 @@ begin
       and w.status = 'paid'
       and w.amount_credits > 0
       and coalesce(w.payout_amount_units, 0) > 0
+      and length(trim(coalesce(w.idempotency_key, ''))) > 0
       and length(trim(coalesce(w.external_id, ''))) > 0
       and length(trim(coalesce(w.destination, ''))) > 0
   ) into v_exists;
@@ -193,7 +195,7 @@ revoke all on function public.record_faucetpay_receipt_evidence(uuid,text) from 
 grant execute on function public.record_faucetpay_receipt_evidence(uuid,text) to service_role;
 
 -- Old payout evidence was configuration-bound only, not withdrawal-bound. Fail
--- closed during the authority transition; production currently has no payout or
+-- closed during the authority transition. Production currently has no payout or
 -- receipt evidence, but this also makes upgrades safe for any future environment.
 update public.app_config
 set value = value - 'faucetpay_payout' - 'faucetpay_receipt',
@@ -219,6 +221,7 @@ as $$
     and not has_function_privilege('anon', 'public.record_faucetpay_receipt_evidence(uuid,text)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.record_faucetpay_receipt_evidence(uuid,text)', 'EXECUTE')
     and position('faucetpay_payout' in pg_catalog.pg_get_functiondef('public.record_release_evidence(text,text)'::regprocedure)) = 0
+    and position('idempotency_key' in pg_catalog.pg_get_functiondef('public.record_faucetpay_payout_evidence(uuid,text)'::regprocedure)) > 0
     and position('withdrawal_id' in pg_catalog.pg_get_functiondef('public.record_faucetpay_payout_evidence(uuid,text)'::regprocedure)) > 0
     and position('faucetpay_payout,withdrawal_id' in pg_catalog.pg_get_functiondef('public.record_faucetpay_receipt_evidence(uuid,text)'::regprocedure)) > 0;
 $$;
@@ -231,7 +234,7 @@ values (
   'release_schema',
   jsonb_build_object('version', 39, 'migration', '0039_faucetpay_proof_chain.sql'),
   39,
-  'FaucetPay provider payout and actual receipt proofs must bind to the same exact paid withdrawal'
+  'FaucetPay provider payout and actual receipt proofs must bind to the same exact paid withdrawal and idempotency authority'
 )
 on conflict (key) do update
 set value = excluded.value,
