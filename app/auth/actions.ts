@@ -12,9 +12,8 @@ import {
   validNewPassword,
 } from "@/lib/auth-security";
 import {
-  armPasswordRecoveryProofChallenge,
   finalizePasswordRecoveryProof,
-  hasRecentRecoverySend,
+  markPasswordRecoveryPasswordUpdated,
 } from "@/lib/auth-recovery-proof";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
@@ -134,12 +133,9 @@ export async function updateRecoveredPassword(formData: FormData) {
   if (error) redirect("/auth/update-password?error=password-update-failed");
 
   if (recoveryContext === PASSWORD_RECOVERY_CONTEXT_OTP) {
-    await armPasswordRecoveryProofChallenge(user.id, "otp");
+    await markPasswordRecoveryPasswordUpdated(user.id, "otp");
   } else if (recoveryContext === PASSWORD_RECOVERY_CONTEXT_PKCE) {
-    const recoverySentAt = "recovery_sent_at" in user ? String(user.recovery_sent_at ?? "") : null;
-    if (hasRecentRecoverySend(recoverySentAt)) {
-      await armPasswordRecoveryProofChallenge(user.id, "pkce");
-    }
+    await markPasswordRecoveryPasswordUpdated(user.id, "pkce");
   }
 
   cookieStore.set(PASSWORD_RECOVERY_COOKIE, "", {
