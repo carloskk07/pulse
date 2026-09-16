@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Brand } from "@/components/brand";
-import { MIN_PASSWORD_LENGTH, PASSWORD_RECOVERY_COOKIE } from "@/lib/auth-security";
+import { isPasswordRecoveryContext, MIN_PASSWORD_LENGTH, PASSWORD_RECOVERY_COOKIE } from "@/lib/auth-security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateRecoveredPassword } from "../actions";
 
@@ -20,7 +20,8 @@ const errorCopy: Record<string, string> = {
 
 export default async function UpdatePasswordPage({ searchParams }: Props) {
   const cookieStore = await cookies();
-  if (cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value !== "1") redirect("/auth/recover?error=recovery-required");
+  const recoveryContext = cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value;
+  if (!isPasswordRecoveryContext(recoveryContext)) redirect("/auth/recover?error=recovery-required");
 
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/auth/recover?error=service-not-configured");
