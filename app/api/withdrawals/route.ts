@@ -55,6 +55,11 @@ async function finalize(
   });
 }
 
+function finalizeStatus(data: unknown) {
+  const settlement = (data ?? {}) as FinalizeWithdrawalResult;
+  return typeof settlement.status === "string" ? settlement.status : "";
+}
+
 function authoritativePaidSettlement(data: unknown, providerExternalId: string) {
   const settlement = (data ?? {}) as FinalizeWithdrawalResult;
   const settledExternalId = typeof settlement.external_id === "string" ? settlement.external_id.trim() : "";
@@ -90,6 +95,24 @@ async function executeReservedPayout(
     return walletRedirect(request, "reserve-failed");
   }
 
+  const submitted = await finalize(
+    admin,
+    reserved.withdrawal_id,
+    "submitted",
+    null,
+    recovery ? "FaucetPay payout recovery dispatch prepared" : "FaucetPay payout dispatch prepared",
+  );
+  if (submitted.error) return walletRedirect(request, "processing");
+
+  const submittedStatus = finalizeStatus(submitted.data);
+  if (submittedStatus === "paid") {
+    if (await matchesCurrentPayoutAuthority(admin, reserved)) {
+      await recordFaucetPayPayoutProofById(admin, reserved.withdrawal_id);
+    }
+    return walletRedirect(request, "paid");
+  }
+  if (submittedStatus !== "submitted") return walletRedirect(request, "processing");
+
   try {
     const payout = await provider.send({
       userId,
@@ -111,13 +134,14 @@ async function executeReservedPayout(
     }
     return walletRedirect(request, "paid");
   } catch (error) {
-    if (recovery || (error instanceof FaucetPayApiError && error.retryable)) {
-      await finalize(admin, reserved.withdrawal_id, "submitted", null, error instanceof Error ? error.message : "Payout state is still unknown");
-      return walletRedirect(request, "processing");
-    }
-
-    await finalize(admin, reserved.withdrawal_id, "failed", null, error instanceof Error ? error.message : "Payout failed");
-    return walletRedirect(request, "failed");
+    await finalize(
+      admin,
+      reserved.withdrawal_id,
+      "submitted",
+      null,
+      error instanceof Error ? error.message : "Payout dispatch requires authoritative reconciliation",
+    );
+    return walletRedirect(request, "processing");
   }
 }
 
