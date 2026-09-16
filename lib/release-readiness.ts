@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 38;
-export const RELEASE_SCHEMA_MIGRATION = "0038_withdrawal_settlement_integrity.sql";
+export const RELEASE_SCHEMA_VERSION = 39;
+export const RELEASE_SCHEMA_MIGRATION = "0039_faucetpay_proof_chain.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -119,12 +119,13 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, withdrawal settlement integrity, Treasury reservation lifecycle, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound and Hourly Pulse pilot isolation contracts cannot be verified without database access."));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, withdrawal settlement integrity, exact FaucetPay payout→receipt proof chaining, Treasury reservation lifecycle, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound and Hourly Pulse pilot isolation contracts cannot be verified without database access."));
     checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Legal-review evidence cannot be verified until database authority is available.", true));
     checks.push(check("international-transfer-review", "International data-transfer review", "pending", "International-transfer evidence cannot be verified until database authority is available.", true));
     checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
     checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence cannot be verified until database authority is available.", true));
+    checks.push(check("faucetpay-payout-proof", "Exact FaucetPay provider payout", "pending", "Provider payout evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-receipt-proof", "Actual payout receipt", "pending", "Destination receipt evidence cannot be verified until database authority is available.", true));
     checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification, payout and actual-receipt evidence is still required after setup.", true));
   } else {
@@ -141,6 +142,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         authenticatedReadScopeContract,
         withdrawalReadContract,
         withdrawalSettlementContract,
+        faucetPayProofChainContract,
         rewardExchangeContract,
         opportunityIntelligenceContract,
         pulseDirectContract,
@@ -156,6 +158,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         admin.rpc("release_authenticated_read_scope_contract"),
         admin.rpc("release_withdrawal_read_contract"),
         admin.rpc("release_withdrawal_settlement_contract"),
+        admin.rpc("release_faucetpay_proof_chain_contract"),
         admin.rpc("release_reward_exchange_contract"),
         admin.rpc("release_opportunity_intelligence_contract"),
         admin.rpc("release_pulse_direct_contract"),
@@ -174,6 +177,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       const authenticatedReadScopeOk = !authenticatedReadScopeContract.error && authenticatedReadScopeContract.data === true;
       const withdrawalReadOk = !withdrawalReadContract.error && withdrawalReadContract.data === true;
       const withdrawalSettlementOk = !withdrawalSettlementContract.error && withdrawalSettlementContract.data === true;
+      const faucetPayProofChainOk = !faucetPayProofChainContract.error && faucetPayProofChainContract.data === true;
       const rewardExchangeOk = !rewardExchangeContract.error && rewardExchangeContract.data === true;
       const opportunityIntelligenceOk = !opportunityIntelligenceContract.error && opportunityIntelligenceContract.data === true;
       const pulseDirectOk = !pulseDirectContract.error && pulseDirectContract.data === true;
@@ -186,6 +190,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         && authenticatedReadScopeOk
         && withdrawalReadOk
         && withdrawalSettlementOk
+        && faucetPayProofChainOk
         && rewardExchangeOk
         && opportunityIntelligenceOk
         && pulseDirectOk
@@ -197,7 +202,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, authoritative Treasury reservation TTL, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound and Hourly Pulse pilot isolation contracts are proven."
+          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound and Hourly Pulse pilot isolation contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 
@@ -260,13 +265,22 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
 
       const receiptState = await getFaucetPayReceiptProofState(admin, proofValue);
       checks.push(check(
+        "faucetpay-payout-proof",
+        "Exact FaucetPay provider payout",
+        receiptState.payoutProofCurrent ? "pass" : "pending",
+        receiptState.payoutProofCurrent
+          ? "The current payout configuration is fingerprint-bound to one exact paid FaucetPay withdrawal and provider payout reference."
+          : "Complete one controlled FaucetPay payout under the current proven payout authority. Evidence must bind to that exact paid withdrawal.",
+        true,
+      ));
+      checks.push(check(
         "faucetpay-receipt-proof",
         "Actual payout receipt",
         receiptState.receiptProofCurrent ? "pass" : "pending",
         receiptState.receiptProofCurrent
-          ? "The current controlled FaucetPay payout has fingerprint-bound evidence that funds were observed at the actual destination."
-          : receiptState.withdrawal && receiptState.payoutProofCurrent
-            ? "Provider-side payout is proven, but actual receipt at the destination must still be explicitly verified in the private FaucetPay cockpit."
+          ? "The same exact payout-bound FaucetPay withdrawal has fingerprint-bound evidence that funds were observed at the actual destination."
+          : receiptState.payoutWithdrawal && receiptState.payoutProofCurrent
+            ? "Provider-side payout is proven for an exact withdrawal, but receipt at that same destination must still be explicitly verified in the private FaucetPay cockpit."
             : "Complete and prove one controlled FaucetPay payout before destination receipt can be verified.",
         true,
       ));
@@ -286,18 +300,18 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       }
 
       const turnstileProof = !proofError && releaseEvidenceMatches(proofValue, "turnstile");
-      const faucetPayProof = !proofError && releaseEvidenceMatches(proofValue, "faucetpay_payout");
+      const faucetPayProof = receiptState.payoutProofCurrent;
       const proofComplete = turnstileProof && faucetPayProof && receiptState.receiptProofCurrent;
       const missing = [
         !turnstileProof ? "Turnstile" : null,
-        !faucetPayProof ? "FaucetPay provider payout" : null,
-        !receiptState.receiptProofCurrent ? "actual payout receipt" : null,
+        !faucetPayProof ? "exact FaucetPay provider payout" : null,
+        !receiptState.receiptProofCurrent ? "same-withdrawal actual payout receipt" : null,
       ].filter(Boolean).join(", ");
       checks.push(check(
         "external-proof",
         "Core external smoke evidence",
         proofComplete ? "pass" : "pending",
-        proofComplete ? "Current human-verification, provider payout and actual destination-receipt configurations have matching controlled evidence." : `Awaiting current-configuration core evidence: ${missing || "external flows"}.`,
+        proofComplete ? "Current human-verification evidence and the exact same-withdrawal FaucetPay payout→receipt chain are proven." : `Awaiting current-configuration core evidence: ${missing || "external flows"}.`,
         true,
       ));
     } else {
@@ -308,6 +322,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence is still required after database recovery.", true));
       checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence is still required after database recovery.", true));
+      checks.push(check("faucetpay-payout-proof", "Exact FaucetPay provider payout", "pending", "Provider payout evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-receipt-proof", "Actual payout receipt", "pending", "Destination receipt evidence is still required after database recovery.", true));
       checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification, payout and actual-receipt evidence is still required after database recovery.", true));
     }
