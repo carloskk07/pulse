@@ -16,7 +16,7 @@ export function hasRecentRecoverySend(recoverySentAt: string | null | undefined,
   return age >= 0 && age <= maxAge;
 }
 
-export async function armPasswordRecoveryProofChallenge(userId: string, source: PasswordRecoveryProofSource) {
+export async function beginPasswordRecoveryProofChallenge(userId: string, source: PasswordRecoveryProofSource) {
   const admin = createSupabaseAdminClient();
   if (!admin || !userId) return false;
 
@@ -26,10 +26,29 @@ export async function armPasswordRecoveryProofChallenge(userId: string, source: 
     user_id: userId,
     source,
     armed_at: now.toISOString(),
+    password_updated_at: null,
     expires_at: expiresAt.toISOString(),
   });
 
   return !error;
+}
+
+export async function markPasswordRecoveryPasswordUpdated(userId: string, source: PasswordRecoveryProofSource) {
+  const admin = createSupabaseAdminClient();
+  if (!admin || !userId) return false;
+
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("auth_recovery_proof_challenges")
+    .update({ password_updated_at: now })
+    .eq("user_id", userId)
+    .eq("source", source)
+    .is("password_updated_at", null)
+    .gt("expires_at", now)
+    .select("user_id")
+    .maybeSingle();
+
+  return !error && Boolean(data?.user_id);
 }
 
 export async function finalizePasswordRecoveryProof(userId: string) {
@@ -38,11 +57,17 @@ export async function finalizePasswordRecoveryProof(userId: string) {
 
   const { data, error } = await admin
     .from("auth_recovery_proof_challenges")
-    .select("user_id,expires_at")
+    .select("user_id,password_updated_at,expires_at")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (error || !data || Date.parse(data.expires_at) <= Date.now()) return false;
+  if (
+    error
+    || !data
+    || !data.password_updated_at
+    || Date.parse(data.password_updated_at) > Date.now()
+    || Date.parse(data.expires_at) <= Date.now()
+  ) return false;
 
   const recorded = await recordReleaseEvidence("password_recovery");
   if (!recorded) return false;
