@@ -99,7 +99,7 @@ jobs:
           echo "Canonical production did not converge to the exact Pulsercuit commit $GITHUB_SHA."
           exit 1
 
-      - name: Verify canonical release-readiness contract
+      - name: Validate readiness contract and report launch state
         shell: bash
         run: |
           body_file="$(mktemp)"
@@ -128,5 +128,31 @@ jobs:
             throw new Error(`ready=${body.ready} disagrees with readiness=${body.readiness}.`);
           }
 
-          console.log(`Readiness contract PASS: HTTP ${status}, state=${body.readiness}, ready=${body.ready}`);
+          const launchStatus = body.ready ? "READY" : "NOT READY";
+          console.log(`Readiness contract VALID: HTTP ${status}, state=${body.readiness}, ready=${body.ready}`);
+          console.log(`Launch status: ${launchStatus}`);
+
+          if (!body.ready) {
+            console.log(`::warning title=Pulsercuit launch readiness::Canonical deployment is healthy, but launch readiness is ${body.readiness}. This step validates response integrity; it does not certify the product as launch-ready.`);
+          }
+
+          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+          if (summaryPath) {
+            const rows = [
+              "## Pulsercuit production gate",
+              "",
+              "| Check | Result |",
+              "| --- | --- |",
+              `| Canonical commit | \`${process.env.GITHUB_SHA ?? "unknown"}\` |`,
+              `| Readiness response | HTTP ${status} |`,
+              `| Readiness state | **${body.readiness}** |`,
+              `| Launch ready | **${body.ready ? "YES" : "NO"}** |`,
+              "",
+              body.ready
+                ? "The canonical production release is healthy and the launch-readiness gate is READY."
+                : "The canonical production release is healthy, but product launch readiness remains open. A green deploy must not be interpreted as launch approval.",
+              "",
+            ];
+            fs.appendFileSync(summaryPath, `${rows.join("\n")}\n`, "utf8");
+          }
           NODE
