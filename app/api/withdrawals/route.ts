@@ -35,6 +35,11 @@ type ActiveWithdrawalRow = {
   status: "requested" | "held" | "submitted";
 };
 
+type FinalizeWithdrawalResult = {
+  status?: string;
+  external_id?: string | null;
+};
+
 async function finalize(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
   withdrawalId: string,
@@ -48,6 +53,16 @@ async function finalize(
     p_external_id: externalId,
     p_message: message,
   });
+}
+
+function authoritativePaidSettlement(data: unknown, providerExternalId: string) {
+  const settlement = (data ?? {}) as FinalizeWithdrawalResult;
+  const settledExternalId = typeof settlement.external_id === "string" ? settlement.external_id.trim() : "";
+  const expectedExternalId = providerExternalId.trim();
+  return settlement.status === "paid"
+    && Boolean(settledExternalId)
+    && Boolean(expectedExternalId)
+    && settledExternalId === expectedExternalId;
 }
 
 async function matchesCurrentPayoutAuthority(
@@ -87,7 +102,9 @@ async function executeReservedPayout(
     });
 
     const finalized = await finalize(admin, reserved.withdrawal_id, "paid", payout.externalId, recovery ? "FaucetPay payout recovered with the original idempotency key" : "FaucetPay payout completed");
-    if (finalized.error) return walletRedirect(request, "processing");
+    if (finalized.error || !authoritativePaidSettlement(finalized.data, payout.externalId)) {
+      return walletRedirect(request, "processing");
+    }
 
     if (await matchesCurrentPayoutAuthority(admin, reserved)) {
       await recordFaucetPayPayoutProofById(admin, reserved.withdrawal_id);

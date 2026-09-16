@@ -100,10 +100,11 @@ export class FaucetPayProvider implements PayoutProvider {
     });
 
     const payoutId = payload.data?.payout_id;
-    if (payoutId === undefined || payoutId === null) {
-      throw new FaucetPayApiError("FaucetPay confirmed the request without a payout id.", true);
+    const externalId = payoutId === undefined || payoutId === null ? "" : String(payoutId).trim();
+    if (!externalId) {
+      throw new FaucetPayApiError("FaucetPay confirmed the request without a usable payout id.", true);
     }
 
-    return { externalId: String(payoutId), status: "paid" as const };
+    return { externalId, status: "paid" as const };
   }
 }
