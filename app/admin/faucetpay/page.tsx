@@ -7,7 +7,7 @@ import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
-import { confirmFaucetPayReceipt, verifyAndRecordFaucetPayReadProof } from "./actions";
+import { confirmFaucetPayReceipt, reconcileFaucetPayPayoutProof, verifyAndRecordFaucetPayReadProof } from "./actions";
 
 export const metadata = { title: "FaucetPay preflight" };
 export const dynamic = "force-dynamic";
@@ -62,6 +62,10 @@ const proofCopy: Record<string, string> = {
   "unit_scale_unresolved": "The live response did not contain enough evidence to prove the smallest-unit scale. No assumption was recorded.",
   "pack_economics_mismatch": "The configured internal credits do not match the nominal USD value in the payout label. No proof was recorded.",
   "pack_mismatch": "The configured provider units do not match the live unit evidence. No proof was recorded.",
+  "payout-proof-no-paid-withdrawal": "No persisted paid FaucetPay withdrawal is available to reconstruct provider payout proof.",
+  "payout-proof-changed": "The paid withdrawal changed after this cockpit view was rendered. No payout proof was changed; refresh before reconciling.",
+  "payout-proof-reconcile-failed": "The paid withdrawal is still authoritative, but its payout proof could not be reconstructed. No provider call was made.",
+  "payout-proof-reconciled": "Provider payout proof was reconstructed from the exact persisted paid withdrawal. No payout was resent.",
   "receipt-confirmation-required": "No receipt proof was recorded. Explicit confirmation that the funds were observed at the destination is required.",
   "receipt-no-paid-withdrawal": "No payout-bound paid FaucetPay withdrawal is available for destination-receipt proof.",
   "receipt-payout-proof-required": "Provider-side payout proof is missing or stale. Actual-receipt evidence cannot be recorded against an unproven payout.",
@@ -105,7 +109,7 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
         <span className={statusTone(probe.state)}>{probe.state.replaceAll("_", " ")}</span>
       </div>
 
-      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "receipt-recorded" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
+      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
 
       <section className="admin-panel">
         <div className="app-section-head">
@@ -157,6 +161,13 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
             <article><span>Provider units</span><strong>{integer(settlementWithdrawal.payout_amount_units)}</strong></article>
             <article><span>Provider payout proof</span><strong>{receiptState.payoutProofCurrent ? "CURRENT · EXACT WITHDRAWAL" : "MISSING / STALE"}</strong></article>
           </div>
+        ) : null}
+        {settlementWithdrawal && !receiptState.payoutProofCurrent ? (
+          <form action={reconcileFaucetPayPayoutProof}>
+            <input type="hidden" name="withdrawal_id" value={settlementWithdrawal.id} />
+            <p className="admin-panel-note">Rebuild provider payout proof from this exact persisted <code>paid</code> withdrawal. This reconciliation does not call FaucetPay and cannot resend funds.</p>
+            <button className="button" type="submit">Reconcile provider payout proof</button>
+          </form>
         ) : null}
         {!receiptState.receiptProofCurrent && receiptState.payoutWithdrawal && receiptState.payoutProofCurrent ? (
           <form action={confirmFaucetPayReceipt}>

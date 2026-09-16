@@ -1,7 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getFaucetPayReceiptProofState, recordFaucetPayReceiptProof } from "@/lib/faucetpay-receipt-proof";
+import {
+  getFaucetPayReceiptProofState,
+  recordFaucetPayPayoutProof,
+  recordFaucetPayReceiptProof,
+} from "@/lib/faucetpay-receipt-proof";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -35,6 +39,27 @@ export async function verifyAndRecordFaucetPayReadProof() {
 
   const recorded = await recordReleaseEvidence("faucetpay_read");
   redirect(resultUrl(recorded ? "recorded" : "record-failed"));
+}
+
+export async function reconcileFaucetPayPayoutProof(formData: FormData) {
+  await requireAdmin();
+
+  const expectedWithdrawalId = String(formData.get("withdrawal_id") ?? "").trim();
+  if (!expectedWithdrawalId) redirect(resultUrl("payout-proof-changed"));
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect(resultUrl("auth-unavailable"));
+
+  const state = await getFaucetPayReceiptProofState(admin);
+  const paidWithdrawal = state.withdrawal;
+  if (!paidWithdrawal) redirect(resultUrl("payout-proof-no-paid-withdrawal"));
+  if (paidWithdrawal.id !== expectedWithdrawalId) redirect(resultUrl("payout-proof-changed"));
+  if (state.payoutProofCurrent && state.payoutWithdrawal?.id === expectedWithdrawalId) {
+    redirect(resultUrl("payout-proof-reconciled"));
+  }
+
+  const recorded = await recordFaucetPayPayoutProof(admin, paidWithdrawal);
+  redirect(resultUrl(recorded ? "payout-proof-reconciled" : "payout-proof-reconcile-failed"));
 }
 
 export async function confirmFaucetPayReceipt(formData: FormData) {
