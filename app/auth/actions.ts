@@ -3,8 +3,8 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
+  isPasswordRecoveryContext,
   MIN_PASSWORD_LENGTH,
-  PASSWORD_RECOVERY_CONTEXT_LEGACY,
   PASSWORD_RECOVERY_CONTEXT_OTP,
   PASSWORD_RECOVERY_CONTEXT_PKCE,
   PASSWORD_RECOVERY_COOKIE,
@@ -117,12 +117,7 @@ export async function requestPasswordReset(formData: FormData) {
 export async function updateRecoveredPassword(formData: FormData) {
   const cookieStore = await cookies();
   const recoveryContext = cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value;
-  const validRecoveryContexts = new Set([
-    PASSWORD_RECOVERY_CONTEXT_LEGACY,
-    PASSWORD_RECOVERY_CONTEXT_PKCE,
-    PASSWORD_RECOVERY_CONTEXT_OTP,
-  ]);
-  if (!recoveryContext || !validRecoveryContexts.has(recoveryContext)) redirect("/auth/recover?error=recovery-required");
+  if (!isPasswordRecoveryContext(recoveryContext)) redirect("/auth/recover?error=recovery-required");
 
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/auth/update-password?error=service-not-configured");
