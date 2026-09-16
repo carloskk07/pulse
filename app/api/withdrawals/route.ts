@@ -11,6 +11,8 @@ import { FaucetPayApiError, FaucetPayProvider, getFaucetPayPackConfig } from "@/
 
 export const runtime = "nodejs";
 
+const PAYOUT_DISPATCH_RETRY_SECONDS = 30;
+
 function walletRedirect(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/wallet?withdraw=${encodeURIComponent(state)}`, request.url), 303);
 }
@@ -40,6 +42,14 @@ type FinalizeWithdrawalResult = {
   external_id?: string | null;
 };
 
+type DispatchClaimResult = {
+  status?: string;
+  dispatch?: boolean;
+  external_id?: string | null;
+  retry_after_seconds?: number;
+  attempt?: number;
+};
+
 async function finalize(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
   withdrawalId: string,
@@ -55,9 +65,14 @@ async function finalize(
   });
 }
 
-function finalizeStatus(data: unknown) {
-  const settlement = (data ?? {}) as FinalizeWithdrawalResult;
-  return typeof settlement.status === "string" ? settlement.status : "";
+async function claimDispatch(
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  withdrawalId: string,
+) {
+  return admin.rpc("claim_withdrawal_dispatch", {
+    p_withdrawal_id: withdrawalId,
+    p_retry_after_seconds: PAYOUT_DISPATCH_RETRY_SECONDS,
+  });
 }
 
 function authoritativePaidSettlement(data: unknown, providerExternalId: string) {
@@ -95,23 +110,19 @@ async function executeReservedPayout(
     return walletRedirect(request, "reserve-failed");
   }
 
-  const submitted = await finalize(
-    admin,
-    reserved.withdrawal_id,
-    "submitted",
-    null,
-    recovery ? "FaucetPay payout recovery dispatch prepared" : "FaucetPay payout dispatch prepared",
-  );
-  if (submitted.error) return walletRedirect(request, "processing");
+  const claimed = await claimDispatch(admin, reserved.withdrawal_id);
+  if (claimed.error) return walletRedirect(request, "processing");
 
-  const submittedStatus = finalizeStatus(submitted.data);
-  if (submittedStatus === "paid") {
+  const dispatch = (claimed.data ?? {}) as DispatchClaimResult;
+  if (dispatch.status === "paid") {
     if (await matchesCurrentPayoutAuthority(admin, reserved)) {
       await recordFaucetPayPayoutProofById(admin, reserved.withdrawal_id);
     }
     return walletRedirect(request, "paid");
   }
-  if (submittedStatus !== "submitted") return walletRedirect(request, "processing");
+  if (dispatch.status === "held") return walletRedirect(request, "held");
+  if (dispatch.status === "failed" || dispatch.status === "cancelled") return walletRedirect(request, "failed");
+  if (dispatch.status !== "submitted" || dispatch.dispatch !== true) return walletRedirect(request, "processing");
 
   try {
     const payout = await provider.send({
