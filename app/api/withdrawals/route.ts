@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
+import { recordFaucetPayPayoutProofById } from "@/lib/faucetpay-receipt-proof";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -89,7 +90,7 @@ async function executeReservedPayout(
     if (finalized.error) return walletRedirect(request, "processing");
 
     if (await matchesCurrentPayoutAuthority(admin, reserved)) {
-      await recordReleaseEvidence("faucetpay_payout");
+      await recordFaucetPayPayoutProofById(admin, reserved.withdrawal_id);
     }
     return walletRedirect(request, "paid");
   } catch (error) {
