@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 function remainingMs(target: string | null, now: number) {
   if (!target) return 0;
@@ -18,7 +19,9 @@ function formatRemaining(ms: number) {
 }
 
 export function PulseCountdown({ target }: { target: string | null }) {
+  const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
+  const refreshedTarget = useRef<string | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -26,6 +29,15 @@ export function PulseCountdown({ target }: { target: string | null }) {
   }, []);
 
   const remaining = remainingMs(target, now);
+
+  useEffect(() => {
+    if (!target || remaining > 0 || refreshedTarget.current === target) return;
+
+    refreshedTarget.current = target;
+    const timer = window.setTimeout(() => router.refresh(), 1250);
+    return () => window.clearTimeout(timer);
+  }, [remaining, router, target]);
+
   const label = remaining <= 0 ? "Pulse ready" : `Pulse available in ${formatRemaining(remaining)}`;
   return <span className={remaining <= 0 ? "pulse-countdown ready" : "pulse-countdown"} role="timer" aria-label={label}>{formatRemaining(remaining)}</span>;
 }
