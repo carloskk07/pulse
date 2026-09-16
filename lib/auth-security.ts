@@ -5,8 +5,17 @@ export const PASSWORD_RECOVERY_CONTEXT_PKCE = "pkce";
 export const PASSWORD_RECOVERY_CONTEXT_OTP = "otp";
 export const MIN_PASSWORD_LENGTH = 12;
 
+const PASSWORD_RECOVERY_CONTEXTS = new Set<string>([
+  PASSWORD_RECOVERY_CONTEXT_LEGACY,
+  PASSWORD_RECOVERY_CONTEXT_PKCE,
+  PASSWORD_RECOVERY_CONTEXT_OTP,
+]);
 const AUTH_REDIRECT_BASE = "https://pulsercuit.invalid";
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
+
+export function isPasswordRecoveryContext(value: string | null | undefined) {
+  return Boolean(value && PASSWORD_RECOVERY_CONTEXTS.has(value));
+}
 
 function normalizeInternalPath(value: string | null | undefined) {
   const candidate = value?.trim();
