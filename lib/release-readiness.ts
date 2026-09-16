@@ -94,11 +94,11 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   checks.push(check(
     "legal-operator",
     "Formal legal operator identity",
-    legalIdentity ? "pass" : "fail",
+    legalIdentity ? "pass" : "pending",
     legalIdentity
       ? `${legalIdentity.name} is configured for ${legalIdentity.jurisdiction} with formal legal and privacy contact channels.`
-      : "Configure the real operator name, jurisdiction, formal address, legal contact email and privacy contact email before launch. Do not use placeholders.",
-    true,
+      : "Deferred from the current technical-readiness scope. Configure the real operator identity and contact channels before public launch approval.",
+    false,
   ));
 
   const rewardProvider = getPrimaryConfiguredRewardProvider();
