@@ -24,6 +24,8 @@ export type ReleaseEvidenceKind =
   | "legal_policy_review"
   | "international_transfer_review";
 
+export type GenericRecordableReleaseEvidenceKind = Exclude<ReleaseEvidenceKind, "faucetpay_payout">;
+
 function legalIdentityValues() {
   const identity = getLegalOperatorIdentity();
   if (!identity) return [""];
@@ -114,7 +116,7 @@ export function releaseEvidenceMatches(value: unknown, kind: ReleaseEvidenceKind
   return evidence.fingerprint === expected && typeof evidence.verified_at === "string" && evidence.verified_at.length > 0;
 }
 
-export async function recordReleaseEvidence(kind: ReleaseEvidenceKind) {
+export async function recordReleaseEvidence(kind: GenericRecordableReleaseEvidenceKind) {
   const fingerprint = getReleaseEvidenceFingerprint(kind);
   const admin = createSupabaseAdminClient();
   if (!fingerprint || !admin) return false;
