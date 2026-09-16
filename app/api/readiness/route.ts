@@ -21,7 +21,7 @@ export async function GET() {
 
   return Response.json(
     {
-      service: "pulsercircuit",
+      service: "pulsercuit",
       version: "0.1.0",
       readiness,
       ready,
