@@ -93,6 +93,13 @@ jobs:
           const present = (key) => Boolean((values.get(key) ?? "").trim());
           const all = (...keys) => keys.every(present);
           const siteValue = (values.get("NEXT_PUBLIC_SITE_URL") ?? "").trim().replace(/\/+$/, "");
+          const legalOperatorPresent = all(
+            "LEGAL_OPERATOR_NAME",
+            "LEGAL_OPERATOR_JURISDICTION",
+            "LEGAL_OPERATOR_ADDRESS",
+            "LEGAL_CONTACT_EMAIL",
+            "PRIVACY_CONTACT_EMAIL",
+          );
 
           const checks = [
             ["public-site", siteValue === "https://pulsercuit.pro"],
@@ -100,13 +107,6 @@ jobs:
             ["service-role", present("SUPABASE_SERVICE_ROLE_KEY")],
             ["admin-allowlist", present("ADMIN_EMAILS")],
             ["turnstile", all("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY")],
-            ["legal-operator", all(
-              "LEGAL_OPERATOR_NAME",
-              "LEGAL_OPERATOR_JURISDICTION",
-              "LEGAL_OPERATOR_ADDRESS",
-              "LEGAL_CONTACT_EMAIL",
-              "PRIVACY_CONTACT_EMAIL",
-            )],
             ["faucetpay", all(
               "FAUCETPAY_SCOPED_KEY",
               "FAUCETPAY_PAYOUT_CURRENCY",
@@ -119,10 +119,14 @@ jobs:
           for (const [id, ok] of checks) {
             console.log(`Release config ${id}: ${ok ? "PRESENT" : "MISSING"}`);
           }
+          console.log(`Release config legal-operator: ${legalOperatorPresent ? "PRESENT" : "DEFERRED"}`);
 
           const missing = checks.filter(([, ok]) => !ok).map(([id]) => id);
           if (missing.length) {
-            console.log(`::warning title=Pulsercuit release configuration::Missing required release configuration groups: ${missing.join(", ")}. Values are intentionally never printed.`);
+            console.log(`::warning title=Pulsercuit release configuration::Missing required technical release configuration groups: ${missing.join(", ")}. Values are intentionally never printed.`);
+          }
+          if (!legalOperatorPresent) {
+            console.log("::notice title=Pulsercuit deferred legal configuration::Legal operator identity remains explicitly deferred and does not satisfy public-launch legal approval.");
           }
 
           const summaryPath = process.env.GITHUB_STEP_SUMMARY;
@@ -133,8 +137,9 @@ jobs:
               "| Configuration group | Presence |",
               "| --- | --- |",
               ...checks.map(([id, ok]) => `| ${id} | **${ok ? "PRESENT" : "MISSING"}** |`),
+              `| legal-operator | **${legalOperatorPresent ? "PRESENT" : "DEFERRED"}** |`,
               "",
-              "Only presence/shape is reported. Secret values are never printed.",
+              "Only presence/shape is reported. Secret values are never printed. DEFERRED is non-blocking for technical-readiness work and is not legal launch approval.",
               "",
             ];
             fs.appendFileSync(summaryPath, `${rows.join("\n")}\n`, "utf8");
