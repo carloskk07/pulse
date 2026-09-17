@@ -17,7 +17,7 @@ export default async function ReferralLanding({ params }: Props) {
 
   const { data, error } = await admin.from("profiles").select("handle").eq("referral_code", code).maybeSingle();
   if (error || !data) notFound();
-  const inviter = data.handle || "A Reward Pulse member";
+  const inviter = data.handle || "A Pulsercuit member";
 
   return (
     <main className="referral-landing">

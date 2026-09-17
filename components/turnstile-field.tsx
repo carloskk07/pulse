@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type TurnstileStatus = "loading" | "waiting" | "verified" | "expired" | "error" | "blocked";
+type TurnstileTheme = "dark" | "light" | "auto";
 
 type TurnstileApi = {
   render: (container: HTMLElement, options: Record<string, unknown>) => string;
@@ -26,7 +27,7 @@ const statusCopy: Record<TurnstileStatus, string> = {
   blocked: "Verification was blocked or could not load. Allow challenges.cloudflare.com for this site, then reload.",
 };
 
-export function TurnstileField({ action }: { action: string }) {
+export function TurnstileField({ action, theme = "dark" }: { action: string; theme?: TurnstileTheme }) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -42,10 +43,14 @@ export function TurnstileField({ action }: { action: string }) {
     if (!siteKey || !api || !container) return false;
 
     try {
+      const availableWidth = container.getBoundingClientRect().width;
+      const size = availableWidth > 0 && availableWidth < 300 ? "compact" : "flexible";
+
       widgetIdRef.current = api.render(container, {
         sitekey: siteKey,
         action,
-        theme: "dark",
+        theme,
+        size,
         appearance: "always",
         "response-field": false,
         callback: (nextToken: string) => {
@@ -81,7 +86,7 @@ export function TurnstileField({ action }: { action: string }) {
       setStatus("error");
       return false;
     }
-  }, [action, siteKey]);
+  }, [action, siteKey, theme]);
 
   useEffect(() => {
     if (!siteKey) {

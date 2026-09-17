@@ -18,6 +18,7 @@ import "./styles/pulsercuit-v7-universe.css";
 import "./styles/pulsercuit-v7-fixes.css";
 import "./styles/pulsercuit-v7-audit.css";
 import "./styles/pulsercuit-v10-visual-hardening.css";
+import "./styles/pulsercuit-v10-sitewide-audit.css";
 
 export const metadata: Metadata = {
   metadataBase: getCanonicalSiteUrl(),

@@ -77,7 +77,7 @@ export default function BusinessIntegrationPage() {
 
       <section className="final-cta shell business-final-cta"><div><span className="section-kicker">Technical fit first</span><h2>Tell us the event. We&apos;ll tell you if the pilot is practical.</h2><p>A campaign request does not create spend or funding authority. We review the verification path before asking for budget.</p></div><Link className="button button-lg button-dark" href="/business#pilot">Request pilot review <ArrowUpRight /></Link></section>
 
-      <footer className="footer shell"><div><strong>Reward Pulse</strong><span>© 2026. Verified-action infrastructure.</span></div><div><Link href="/business">Business</Link><Link href="/">For users</Link></div></footer>
+      <footer className="footer shell"><div><strong>Pulsercuit</strong><span>© 2026. Verified-action infrastructure.</span></div><div><Link href="/business">Business</Link><Link href="/">For users</Link></div></footer>
     </main>
   );
 }
