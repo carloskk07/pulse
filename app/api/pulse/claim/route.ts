@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import {
@@ -14,10 +15,17 @@ function dashboardRedirect(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/dashboard?claim=${encodeURIComponent(state)}`, request.url), 303);
 }
 
+function revalidateRewardViews() {
+  for (const path of ["/dashboard", "/dashboard/claimed", "/wallet", "/progress"]) {
+    revalidatePath(path);
+  }
+}
+
 async function claimReceiptRedirect(request: NextRequest, userId: string) {
   const reminderId = cleanReminderId(request.cookies.get(RETENTION_ATTRIBUTION_COOKIE)?.value);
   if (reminderId) await recordAttributedPulseCompletion(userId, reminderId);
 
+  revalidateRewardViews();
   const response = NextResponse.redirect(new URL("/dashboard/claimed", request.url), 303);
   if (reminderId) {
     response.cookies.set(RETENTION_ATTRIBUTION_COOKIE, "", {
