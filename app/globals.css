@@ -33,14 +33,14 @@
 /* Current public homepage system — one authority controls the fragment order. */
 @import "./styles/home.css";
 
-/* Current unversioned theme, then page-specific latest systems */
+/* Current unversioned theme, then current Dashboard systems */
 @import "./styles/theme.css";
-@import "./styles/pulse-dashboard-v9.css";
-@import "./styles/pulse-dashboard-v9-1.css";
+@import "./styles/dashboard-command-center.css";
+@import "./styles/dashboard-refinement.css";
 @import "./styles/current.css";
 
 /* Release hardening and canonical geometry — these must remain last. */
-@import "./styles/pulsercuit-v10-visual-hardening.css";
-@import "./styles/pulsercuit-v10-sitewide-audit.css";
-@import "./styles/pulsercuit-v11-touch-foundation.css";
-@import "./styles/pulsercuit-v11-layout-authority.css";
+@import "./styles/visual-hardening.css";
+@import "./styles/sitewide-audit.css";
+@import "./styles/touch-foundation.css";
+@import "./styles/layout-authority.css";
