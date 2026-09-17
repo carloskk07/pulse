@@ -1,0 +1,231 @@
+/* Pulsercuit current theme.
+   Unversioned visual language for the live product. This file owns color,
+   materials and cinematic treatment only; geometry remains under the final
+   layout authorities. Public rules are opt-in by page class — never inferred
+   through broad main:not(...) selectors. */
+
+:root{
+  --pc7-bg:#020303;
+  --pc7-bg-2:#050807;
+  --pc7-panel:rgba(8,11,9,.88);
+  --pc7-panel-hi:rgba(15,19,15,.94);
+  --pc7-gold:#e6bd5d;
+  --pc7-gold-hi:#fff0ad;
+  --pc7-gold-lo:#8d6225;
+  --pc7-lime:#d9ff72;
+  --pc7-cyan:#78eaff;
+  --pc7-violet:#a997ff;
+  --pc7-text:#f7f2e6;
+  --pc7-muted:#9b9d95;
+  --pc7-line:rgba(235,203,124,.14);
+  --pc7-shadow:0 34px 100px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+html{background:var(--pc7-bg)}
+body{
+  background:
+    radial-gradient(circle at 82% 2%,rgba(222,173,66,.08),transparent 24%),
+    radial-gradient(circle at 8% 22%,rgba(117,234,255,.025),transparent 25%),
+    linear-gradient(180deg,#020303,#050807 48%,#020303);
+  color:var(--pc7-text);
+}
+::selection{background:rgba(230,189,93,.28);color:#fff7dd}
+
+/* Home: cinematic finish on the already-scoped V6 structure. */
+.pc-v6{
+  background:
+    radial-gradient(circle at 78% 5%,rgba(226,177,65,.055),transparent 22%),
+    linear-gradient(180deg,#020303,#050706 60%,#020303)!important;
+}
+.pc-v6-hero{min-height:650px!important;border-bottom:1px solid rgba(232,195,100,.12)}
+.pc-v6-hero-bg{filter:saturate(.92) contrast(1.12) brightness(.9);transform:scale(1.02)}
+.pc-v6-hero-copy{padding-top:42px!important}
+.pc-v6-hero-copy h1{
+  font-size:clamp(76px,8.2vw,132px)!important;
+  line-height:.82!important;
+  letter-spacing:-.075em!important;
+  text-shadow:0 20px 70px rgba(0,0,0,.62)!important;
+}
+.pc-v6-hero-copy h1 em{
+  background:linear-gradient(180deg,#fff4bc 0%,#edcb6c 45%,#aa7428 100%)!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  color:transparent!important;
+}
+.pc-v6-hero-copy>p{max-width:560px!important;color:#cec7b5!important;font-size:17px!important}
+.pc-v6-button.primary{
+  color:#171005!important;
+  background:linear-gradient(180deg,#fff0aa,#deb650 62%,#a97627)!important;
+  border-color:#f3d680!important;
+  box-shadow:0 15px 42px rgba(190,134,33,.28),inset 0 1px 0 rgba(255,255,255,.84),inset 0 -1px 0 rgba(80,48,7,.44)!important;
+}
+.pc-v6-button.ghost{border-color:rgba(235,205,130,.2)!important;background:rgba(4,6,5,.64)!important;backdrop-filter:blur(18px)}
+.pc-v6-section{border-top:1px solid rgba(235,201,116,.085)!important}
+.pc-v6-pillar-grid article,.pc-v6-social-card,.pc-v6-vault-benefits,.pc-v6-chamber{
+  border-color:rgba(235,201,116,.17)!important;
+  box-shadow:0 34px 110px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.045)!important;
+}
+.pc-v6-pillar-grid article{background:linear-gradient(155deg,rgba(17,21,18,.95),rgba(4,6,5,.98))!important}
+.pc-v6-chamber-section{background:radial-gradient(circle at 67% 42%,rgba(216,255,114,.055),transparent 23%),linear-gradient(180deg,#030504,#070a08)!important}
+.pc-v6-chamber{background:radial-gradient(circle at 50% 49%,rgba(205,255,91,.1),transparent 21%),linear-gradient(145deg,#111713,#050806 74%)!important}
+.pc-v6-momentum-section{background:linear-gradient(180deg,rgba(2,3,3,.42),rgba(2,3,3,.72)),url('/v6/momentum-road-scene.svg') center/cover no-repeat!important}
+.pc-v6-road-cut{opacity:.38!important}
+.pc-v6-share{background:linear-gradient(180deg,#040605,#070907)!important}
+.pc-v6-vault-section{background:linear-gradient(90deg,rgba(2,3,3,.94),rgba(2,3,3,.56) 48%,rgba(2,3,3,.82)),url('/v6/vault-safe-scene.svg') center/cover no-repeat!important}
+.pc-v6-space-cut{opacity:.26!important}
+.pc-v6-final{min-height:410px!important;background:linear-gradient(180deg,rgba(2,3,3,.28),#020303 94%),url('/v6/final-valley-scene.svg') center/cover no-repeat!important}
+
+/* Shared dark-product typography. Light completion/legal pages are excluded. */
+.app-page-head h1,.auth-copy h1,.auth-card h2,.app-section-head h2,
+.withdrawal-panel h2,.transaction-card h2,.trust-card h3,.pc-progress-head h1,.pc-luxe-turbo-head h1,
+.proof-page h1,.proof-page h2,.business-page h1,.business-page h2,.integration-page h1,.integration-page h2,.referral-landing h1,.referral-landing h2{text-wrap:balance}
+.app-page-head h1,.pc-progress-head h1,.pc-luxe-turbo-head h1{
+  color:#fff9e9;
+  font-size:clamp(48px,5vw,78px)!important;
+  line-height:.91!important;
+  letter-spacing:-.07em!important;
+  text-shadow:0 16px 55px rgba(0,0,0,.52);
+}
+.app-eyebrow,.pulse-line,.section-kicker{color:var(--pc7-gold)!important;letter-spacing:.18em!important;text-transform:uppercase}
+
+/* Signed-in product world. V11 remains authoritative for layout geometry. */
+.app-frame{
+  position:relative;
+  isolation:isolate;
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 74% 0,rgba(221,173,69,.09),transparent 27%),
+    radial-gradient(circle at 34% 36%,rgba(216,255,114,.018),transparent 28%),
+    linear-gradient(180deg,#030504,#070a08 52%,#030403)!important;
+}
+.app-frame:before{
+  content:"";
+  position:fixed;
+  z-index:-2;
+  inset:0 0 0 230px;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg,rgba(2,3,3,.28),rgba(2,3,3,.86) 48%,#020303 100%),
+    linear-gradient(90deg,rgba(2,3,3,.78),transparent 34%,rgba(2,3,3,.38)),
+    url('/v6/final-valley-scene.svg') center top/cover no-repeat;
+  opacity:.44;
+  filter:saturate(.86) contrast(1.12) brightness(.72);
+}
+.app-frame:after{
+  content:"";
+  position:fixed;
+  z-index:-1;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(circle at 76% 18%,rgba(243,199,89,.055),transparent 24%),repeating-linear-gradient(90deg,transparent 0 79px,rgba(245,220,153,.012) 80px);
+  mask-image:linear-gradient(180deg,#000,transparent 74%);
+}
+.app-sidebar{
+  border-right:1px solid rgba(236,204,125,.09)!important;
+  background:radial-gradient(circle at 50% -10%,rgba(233,190,84,.075),transparent 30%),linear-gradient(180deg,rgba(7,10,8,.985),rgba(2,3,3,.995))!important;
+  box-shadow:28px 0 90px rgba(0,0,0,.35),inset -1px 0 0 rgba(255,255,255,.012)!important;
+  backdrop-filter:blur(26px);
+}
+.app-nav a{position:relative;border:1px solid transparent;color:#8f9791!important;transition:transform .28s ease,color .28s ease,border-color .28s ease,background .28s ease,box-shadow .28s ease}
+.app-nav a:hover{color:#f6e8bb!important;transform:translateX(3px);border-color:rgba(231,193,98,.08);background:linear-gradient(90deg,rgba(231,193,98,.055),transparent)!important}
+.app-nav a.active{color:#fff2bd!important;border-color:rgba(236,201,111,.16)!important;background:linear-gradient(90deg,rgba(236,201,111,.12),rgba(236,201,111,.02))!important;box-shadow:inset 2px 0 0 var(--pc7-gold),0 12px 28px rgba(0,0,0,.16)!important}
+.sidebar-user{border-top:1px solid rgba(236,204,125,.08)!important}
+.avatar{color:#1a1205!important;background:linear-gradient(145deg,#fff0a5,#d5a545 68%,#815619)!important;border:1px solid #f1d47d!important;box-shadow:0 10px 28px rgba(196,142,41,.2),inset 0 1px 0 #fff7d1!important}
+.app-content{position:relative;z-index:1}
+.app-content:before{content:"";position:absolute;pointer-events:none;z-index:-1;inset:0;background:linear-gradient(180deg,rgba(2,3,3,.2),rgba(2,3,3,.68) 520px,rgba(2,3,3,.88))}
+.app-page-head{position:relative;padding-top:18px;padding-bottom:22px}
+.app-page-head:after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,var(--pc7-gold),rgba(230,189,93,.12) 34%,transparent 78%)}
+.app-page-head p{max-width:720px;color:#a6aaa4!important}
+
+/* Shared premium product surfaces. */
+.app-content :where(.balance-chip,.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.quick-win-card,.reward-row,.pc-progress-hero,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.pc-dashboard-ribbon,.first-reward-guide,.pulse-proof-link,.pc-luxe-share-strip,.hourly-pulse-card,.daily-pulse-card,.admin-card,.admin-panel,.admin-table,.support-card,.account-card){
+  border-color:rgba(235,205,132,.12)!important;
+  background:linear-gradient(130deg,rgba(255,255,255,.026),transparent 18%),radial-gradient(circle at 88% 0,rgba(230,189,93,.055),transparent 26%),linear-gradient(155deg,rgba(15,19,16,.94),rgba(5,7,6,.97))!important;
+  box-shadow:var(--pc7-shadow)!important;
+  backdrop-filter:blur(18px) saturate(1.08);
+}
+.app-content :where(.balance-chip,.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.quick-win-card,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.hourly-pulse-card){position:relative;overflow:hidden}
+.app-content :where(.balance-chip,.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.quick-win-card,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.hourly-pulse-card)::after{content:"";position:absolute;pointer-events:none;left:7%;right:7%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,235,170,.46),rgba(147,104,37,.28),transparent);opacity:.58}
+.app-content :where(.wallet-balance-card,.pc-progress-hero,.hourly-pulse-card,.pc-luxe-pulse-chamber){background:radial-gradient(circle at 70% 40%,rgba(216,255,114,.105),transparent 22%),radial-gradient(circle at 92% 0,rgba(236,196,96,.085),transparent 28%),linear-gradient(145deg,#111713,#050806 72%)!important;border-color:rgba(236,208,135,.18)!important;box-shadow:0 58px 160px rgba(0,0,0,.52),0 0 95px rgba(212,255,100,.025),inset 0 1px 0 rgba(255,255,255,.05)!important}
+
+/* Product-specific scenic motifs. */
+.pc-luxe-pulse-stage{position:relative}
+.pc-luxe-pulse-stage:before{content:"";position:absolute;pointer-events:none;inset:-30px -30px -22px;z-index:-1;opacity:.26;background:url('/v6/hero-orb-scene.svg') 78% 46%/780px auto no-repeat;filter:saturate(.85) contrast(1.12) brightness(.74);mask-image:radial-gradient(ellipse at 75% 45%,#000 0 36%,transparent 72%)}
+.pc-luxe-pulse-chamber{min-height:430px!important}
+.pc-luxe-pulse-copy h2{max-width:700px;font-size:clamp(44px,4.4vw,70px)!important;line-height:.92!important;letter-spacing:-.067em!important}
+.pc-luxe-core-panel{filter:drop-shadow(0 28px 42px rgba(0,0,0,.48))}
+.pc-luxe-momentum-hero,.pc-luxe-rhythm-track{position:relative}
+.pc-luxe-momentum-hero:before,.pc-luxe-rhythm-track:before{content:"";position:absolute;pointer-events:none;inset:0;background:url('/v6/momentum-road-scene.svg') center 64%/cover no-repeat;opacity:.16;filter:saturate(.9) brightness(.7) contrast(1.12);mask-image:linear-gradient(90deg,transparent,#000 20%,#000 85%,transparent)}
+.pc-luxe-momentum-hero>*,.pc-luxe-rhythm-track>*{position:relative;z-index:1}
+.pc-luxe-vault-balance,.pc-luxe-vault-action,.pc-luxe-vault-grid{position:relative}
+.pc-luxe-vault-balance:before{content:"";position:absolute;pointer-events:none;inset:0 0 0 46%;background:url('/v6/vault-safe-scene.svg') center/cover no-repeat;opacity:.25;filter:saturate(.86) contrast(1.14) brightness(.7);mask-image:linear-gradient(90deg,transparent,#000 32%)}
+.pc-luxe-vault-balance>*{position:relative;z-index:1}
+
+/* Forms and physical controls. Dark pages opt in explicitly. */
+.app-content :where(input,textarea,select),.auth-page :where(input,textarea,select),.business-page :where(input,textarea,select),.referral-landing :where(input,textarea,select){
+  color:#f6f0df!important;
+  background:linear-gradient(180deg,rgba(18,22,19,.86),rgba(5,7,6,.92))!important;
+  border-color:rgba(229,202,132,.13)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.app-content :where(input,textarea,select):focus,.auth-page :where(input,textarea,select):focus,.business-page :where(input,textarea,select):focus,.referral-landing :where(input,textarea,select):focus{
+  outline:none!important;
+  border-color:rgba(235,197,101,.42)!important;
+  box-shadow:0 0 0 3px rgba(235,197,101,.055),0 0 30px rgba(235,197,101,.035)!important;
+}
+.button,.pc-v5-primary,.pulse-claim-button{border-color:rgba(239,212,143,.2)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 12px 30px rgba(0,0,0,.2)}
+.button-light,.pc-v5-primary,.pulse-claim-button:not(:disabled){color:#171005!important;background:linear-gradient(180deg,#fff0aa,#dfb750 62%,#aa7828)!important;border-color:#f0d17a!important;box-shadow:0 14px 36px rgba(194,139,37,.23),inset 0 1px 0 rgba(255,255,255,.82),inset 0 -1px 0 rgba(83,52,10,.42)!important}
+.button-ghost,.button-secondary{color:#f2e4bb!important;background:linear-gradient(180deg,rgba(18,22,19,.78),rgba(4,6,5,.83))!important;border-color:rgba(235,203,127,.16)!important}
+.button:not(:disabled):hover,.icon-button:hover{transform:translateY(-2px)}
+
+/* Auth cinematic gateway. */
+.pc-luxe-auth-page{min-height:100vh;position:relative;isolation:isolate;background:radial-gradient(circle at 76% 25%,rgba(228,184,73,.1),transparent 28%),linear-gradient(180deg,rgba(2,3,3,.46),rgba(2,3,3,.9)),url('/v6/hero-orb-scene.svg') 76% 42%/cover no-repeat!important}
+.pc-luxe-auth-page:after{content:"";position:fixed;pointer-events:none;z-index:-1;inset:0;background:linear-gradient(90deg,#020303 0%,rgba(2,3,3,.87) 35%,rgba(2,3,3,.34) 67%,rgba(2,3,3,.68))}
+.pc-luxe-auth-shell{align-items:center!important;min-height:calc(100vh - 110px)}
+.pc-luxe-auth-card{border-color:rgba(239,208,134,.18)!important;background:linear-gradient(155deg,rgba(15,19,16,.92),rgba(4,6,5,.95))!important;box-shadow:0 60px 170px rgba(0,0,0,.56),inset 0 1px 0 rgba(255,255,255,.05)!important;backdrop-filter:blur(26px) saturate(1.08)}
+.pc-luxe-auth-copy h1 em{background:linear-gradient(180deg,#fff1b1,#d8ab45 68%,#8e6123)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
+.auth-circuit-core{box-shadow:0 0 70px rgba(231,190,82,.18)!important}
+
+/* Explicit dark public worlds. New pages must opt in with one of these roots. */
+:where(.proof-page,.business-page,.integration-page,.referral-landing){
+  position:relative;
+  isolation:isolate;
+  min-height:100vh;
+  background:linear-gradient(180deg,rgba(2,3,3,.74),rgba(2,3,3,.94) 58%,#020303),url('/v6/final-valley-scene.svg') center top/cover fixed no-repeat;
+}
+:where(.proof-page,.business-page,.integration-page,.referral-landing)::before{
+  content:"";
+  position:fixed;
+  pointer-events:none;
+  z-index:-1;
+  inset:0;
+  background:radial-gradient(circle at 72% 8%,rgba(232,190,82,.08),transparent 24%);
+}
+:where(.proof-page,.business-page,.integration-page,.referral-landing) :where(article,section>div[class*="card"],div[class*="panel"],div[class*="card"]){border-color:rgba(235,205,132,.11)!important}
+
+/* Data surfaces and status feedback on dark pages only. */
+.app-content table,.proof-page table,.business-page table,.integration-page table,.referral-landing table{
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  overflow:hidden;
+  border:1px solid rgba(235,205,132,.1)!important;
+  border-radius:18px;
+  background:rgba(5,7,6,.72)!important;
+  box-shadow:0 28px 80px rgba(0,0,0,.26)!important;
+}
+.app-content th,.proof-page th,.business-page th,.integration-page th,.referral-landing th{color:#e8cf8f!important;background:rgba(232,190,82,.045)!important;border-color:rgba(235,205,132,.08)!important}
+.app-content td,.proof-page td,.business-page td,.integration-page td,.referral-landing td{border-color:rgba(255,255,255,.045)!important}
+.claim-message,.preview-banner,.auth-alert{border-color:rgba(235,205,132,.13)!important;background:linear-gradient(90deg,rgba(231,190,82,.055),rgba(5,7,6,.78))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important}
+.claim-message.success,.auth-alert.success{border-color:rgba(216,255,114,.16)!important;background:rgba(216,255,114,.035)!important}
+
+@media(max-width:760px){
+  .app-content{background:linear-gradient(180deg,#050807,#020303)!important}
+  .app-content :where(.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.hourly-pulse-card){backdrop-filter:none}
+  .pc-luxe-auth-page{background:radial-gradient(circle at 50% 4%,rgba(230,189,82,.08),transparent 28%),linear-gradient(180deg,#050807,#020303)!important}
+  .pc-luxe-auth-page:after{display:none}
+  :where(.proof-page,.business-page,.integration-page,.referral-landing){background:linear-gradient(180deg,#050807,#020303)!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .app-frame *,.auth-page *{scroll-behavior:auto!important;animation:none!important;transition-duration:.01ms!important}
+}
