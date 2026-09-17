@@ -36,9 +36,10 @@ export function TurnstileField({ action }: { action: string }) {
   const [token, setToken] = useState("");
 
   const renderWidget = useCallback(() => {
+    if (widgetIdRef.current) return true;
     const api = window.turnstile;
     const container = containerRef.current;
-    if (!siteKey || !api || !container || widgetIdRef.current) return false;
+    if (!siteKey || !api || !container) return false;
 
     try {
       widgetIdRef.current = api.render(container, {
@@ -92,7 +93,7 @@ export function TurnstileField({ action }: { action: string }) {
     if (renderWidget()) return;
 
     // Multiple TurnstileField instances share one deduplicated Next.js Script.
-    // Each instance must independently observe when the global API becomes ready;
+    // Each instance independently observes when the global API becomes ready;
     // relying only on one Script onLoad can leave later widgets unrendered.
     const interval = window.setInterval(() => {
       if (renderWidget()) window.clearInterval(interval);
