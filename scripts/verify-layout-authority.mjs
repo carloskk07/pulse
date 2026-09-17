@@ -19,17 +19,24 @@ const theme = read("app/styles/theme.css");
 const pulseExperience = read("app/styles/pulse-experience.css");
 const momentum = read("app/styles/momentum.css");
 const luxe = read("app/styles/luxe.css");
-const pulseExperienceImport = '@import "./styles/pulse-experience.css";';
-const momentumImport = '@import "./styles/momentum.css";';
-const shareStudioImport = '@import "./styles/share-studio.css";';
-const nextCircuitImport = '@import "./styles/next-circuit.css";';
-const postClaimImport = '@import "./styles/post-claim.css";';
-const luxeImport = '@import "./styles/luxe.css";';
-const themeImport = '@import "./styles/theme.css";';
-const touchImport = '@import "./styles/pulsercuit-v11-touch-foundation.css";';
-const authorityImport = '@import "./styles/pulsercuit-v11-layout-authority.css";';
-const v10AuditImport = '@import "./styles/pulsercuit-v10-sitewide-audit.css";';
-const currentImport = '@import "./styles/current.css";';
+
+const imports = {
+  pulseExperience: '@import "./styles/pulse-experience.css";',
+  momentum: '@import "./styles/momentum.css";',
+  shareStudio: '@import "./styles/share-studio.css";',
+  nextCircuit: '@import "./styles/next-circuit.css";',
+  postClaim: '@import "./styles/post-claim.css";',
+  luxe: '@import "./styles/luxe.css";',
+  home: '@import "./styles/home.css";',
+  theme: '@import "./styles/theme.css";',
+  dashboardCommand: '@import "./styles/dashboard-command-center.css";',
+  dashboardRefinement: '@import "./styles/dashboard-refinement.css";',
+  current: '@import "./styles/current.css";',
+  visualHardening: '@import "./styles/visual-hardening.css";',
+  sitewideAudit: '@import "./styles/sitewide-audit.css";',
+  touchFoundation: '@import "./styles/touch-foundation.css";',
+  layoutAuthority: '@import "./styles/layout-authority.css";',
+};
 
 if (!layout.includes('import "./globals.css";')) {
   throw new Error("Root layout must load the canonical globals.css manifest.");
@@ -38,21 +45,37 @@ if (layout.includes('import "./styles/')) {
   throw new Error("Root layout must not load visual layers directly; globals.css is the single cascade entry point.");
 }
 
-for (const item of [pulseExperienceImport, momentumImport, shareStudioImport, nextCircuitImport, postClaimImport, luxeImport, themeImport, currentImport, touchImport, authorityImport]) {
+for (const item of Object.values(imports)) {
   if (!manifest.includes(item)) throw new Error(`Canonical manifest must load ${item}.`);
 }
-if (manifest.lastIndexOf(currentImport) > manifest.lastIndexOf(v10AuditImport)) {
-  throw new Error("Extracted current rules must load before release hardening layers.");
+
+const ordered = [
+  imports.pulseExperience,
+  imports.momentum,
+  imports.shareStudio,
+  imports.nextCircuit,
+  imports.postClaim,
+  imports.luxe,
+  imports.home,
+  imports.theme,
+  imports.dashboardCommand,
+  imports.dashboardRefinement,
+  imports.current,
+  imports.visualHardening,
+  imports.sitewideAudit,
+  imports.touchFoundation,
+  imports.layoutAuthority,
+];
+let previous = -1;
+for (const item of ordered) {
+  const index = manifest.indexOf(item);
+  if (index <= previous) throw new Error(`Canonical CSS cascade order drifted at ${item}.`);
+  previous = index;
 }
-if (manifest.lastIndexOf(touchImport) < manifest.lastIndexOf(v10AuditImport)) {
-  throw new Error("V11 touch foundation must load after V10 visual layers.");
-}
-if (manifest.lastIndexOf(authorityImport) < manifest.lastIndexOf(touchImport)) {
-  throw new Error("V11 layout authority must remain the final visual authority.");
-}
-const afterAuthority = manifest.slice(manifest.lastIndexOf(authorityImport) + authorityImport.length);
+
+const afterAuthority = manifest.slice(manifest.indexOf(imports.layoutAuthority) + imports.layoutAuthority.length);
 if (/@import\s+["'].+\.css["']/.test(afterAuthority)) {
-  throw new Error("No stylesheet may load after V11 layout authority.");
+  throw new Error("No stylesheet may load after the canonical layout authority.");
 }
 
 const retired = [
@@ -78,34 +101,19 @@ const retired = [
   "app/styles/pulsercuit-v7-fixes.css",
   "app/styles/pulsercuit-v7-audit.css",
   "app/styles/pulsercuit-v7-universe.css",
+  "app/styles/pulse-dashboard-v9.css",
+  "app/styles/pulse-dashboard-v9-1.css",
+  "app/styles/pulsercuit-v10-visual-hardening.css",
+  "app/styles/pulsercuit-v10-sitewide-audit.css",
+  "app/styles/pulsercuit-v11-touch-foundation.css",
+  "app/styles/pulsercuit-v11-layout-authority.css",
 ];
 for (const path of retired) {
-  if (existsSync(path)) throw new Error(`Retired global visual generation returned: ${path}`);
+  if (existsSync(path)) throw new Error(`Retired visual-generation filename returned: ${path}`);
   const basename = path.split("/").at(-1);
   if (basename && manifest.includes(basename)) throw new Error(`Retired stylesheet is still imported: ${basename}`);
 }
 
-const pulseExperienceIndex = manifest.indexOf(pulseExperienceImport);
-const momentumIndex = manifest.indexOf(momentumImport);
-const shareStudioIndex = manifest.indexOf(shareStudioImport);
-const nextCircuitIndex = manifest.indexOf(nextCircuitImport);
-const postClaimIndex = manifest.indexOf(postClaimImport);
-const luxeIndex = manifest.indexOf(luxeImport);
-if (
-  pulseExperienceIndex < 0
-  || momentumIndex < pulseExperienceIndex
-  || shareStudioIndex < momentumIndex
-  || nextCircuitIndex < shareStudioIndex
-  || postClaimIndex < nextCircuitIndex
-  || luxeIndex < postClaimIndex
-) {
-  throw new Error("Current product experience cascade order drifted before Luxe finish.");
-}
-const v9 = manifest.indexOf('@import "./styles/pulse-dashboard-v9.css";');
-const currentTheme = manifest.indexOf(themeImport);
-if (v9 < 0 || currentTheme < 0 || v9 < currentTheme) {
-  throw new Error("Dashboard V9 must load after the current unversioned theme, never before it.");
-}
 if (theme.includes("main:not(")) {
   throw new Error("Current theme must use explicit page scopes; broad exclusion selectors are forbidden.");
 }
@@ -143,7 +151,6 @@ requireText("app/styles/pulse-experience.css", [
   ".pc-v9-dashboard .pulse-onboarding{",
   "@media(prefers-reduced-motion:reduce)",
 ]);
-
 requireText("app/styles/momentum.css", [
   "/* Current Momentum experience.",
   ".pc-signal-grid{",
@@ -186,6 +193,18 @@ requireText("app/styles/luxe.css", [
   ".pc-luxe-best-turbo{",
   ".pc-luxe-auth-card{",
 ]);
+requireText("app/styles/dashboard-command-center.css", [
+  "/* Pulsercuit Dashboard V9 — live command center */",
+  ".pc-v9-dashboard{",
+  ".pc-v9-chamber{",
+  ".pc-v9-progress-deck{",
+]);
+requireText("app/styles/dashboard-refinement.css", [
+  "/* Pulsercuit Dashboard V9.1 — composition, hierarchy and density refinement */",
+  ".pc-v9-dashboard{",
+  ".pc-v9-chamber{",
+  "@media(max-width:1100px)",
+]);
 requireText("app/styles/auth.css", [
   "/* Product-rail visual belongs to authentication",
   ".auth-circuit-visual{",
@@ -197,7 +216,6 @@ requireText("app/styles/completion.css", [
   ".completion-page .support-proof-note{",
   ".completion-page .support-proof-note i{",
 ]);
-
 requireText("app/styles/theme.css", [
   "/* Pulsercuit current theme.",
   "--pc7-gold:#e6bd5d",
@@ -210,7 +228,6 @@ requireText("app/styles/theme.css", [
   ":where(.proof-page,.business-page,.integration-page,.referral-landing){",
   ".business-page :where(input,textarea,select)",
 ]);
-
 requireText("app/styles/current.css", [
   "current presentation bridge",
   "--pc-lime:#cfff67",
@@ -239,7 +256,7 @@ requireText("app/proof/page.tsx", ["<SiteHeader />"]);
 requireText("app/business/page.tsx", ["<SiteHeader />"]);
 requireText("app/business/integration/page.tsx", ["<SiteHeader />"]);
 
-requireText("app/styles/pulsercuit-v11-layout-authority.css", [
+requireText("app/styles/layout-authority.css", [
   "/* Pulsercuit V11 — canonical layout authority.",
   "--pc11-public-max:1200px",
   ".shell,.pc-v6-shell{",
@@ -258,8 +275,7 @@ requireText("app/styles/pulsercuit-v11-layout-authority.css", [
   ".auth-shell{grid-template-columns:1fr!important",
   ".pc-v6-pillar-grid,.pc-v6-share-cards{grid-template-columns:1fr!important",
 ]);
-
-requireText("app/styles/pulsercuit-v11-touch-foundation.css", [
+requireText("app/styles/touch-foundation.css", [
   "@media(max-width:1120px)",
   ".bottom-nav{",
   ".bottom-nav-more summary::-webkit-details-marker{display:none}",

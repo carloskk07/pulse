@@ -43,29 +43,29 @@ function contrast(foreground, background) {
 }
 
 const manifest = read("app/globals.css");
-const hardeningImport = '@import "./styles/pulsercuit-v10-visual-hardening.css";';
-const auditImport = '@import "./styles/pulsercuit-v10-sitewide-audit.css";';
+const hardeningImport = '@import "./styles/visual-hardening.css";';
+const auditImport = '@import "./styles/sitewide-audit.css";';
 const currentImport = '@import "./styles/current.css";';
-const touchImport = '@import "./styles/pulsercuit-v11-touch-foundation.css";';
-const authorityImport = '@import "./styles/pulsercuit-v11-layout-authority.css";';
+const touchImport = '@import "./styles/touch-foundation.css";';
+const authorityImport = '@import "./styles/layout-authority.css";';
 
 for (const item of [currentImport, hardeningImport, auditImport, touchImport, authorityImport]) {
   if (!manifest.includes(item)) throw new Error(`Canonical CSS manifest must load ${item}.`);
 }
 if (manifest.lastIndexOf(hardeningImport) < manifest.lastIndexOf(currentImport)) {
-  throw new Error("V10 visual hardening must remain after extracted current rules.");
+  throw new Error("Visual hardening must remain after extracted current rules.");
 }
 if (manifest.lastIndexOf(auditImport) < manifest.lastIndexOf(hardeningImport)) {
-  throw new Error("V10 site-wide audit corrections must remain after visual hardening.");
+  throw new Error("Site-wide audit corrections must remain after visual hardening.");
 }
 if (manifest.lastIndexOf(touchImport) < manifest.lastIndexOf(auditImport)) {
-  throw new Error("V11 touch foundation must remain after V10 audit corrections.");
+  throw new Error("Touch foundation must remain after site-wide audit corrections.");
 }
 if (manifest.lastIndexOf(authorityImport) < manifest.lastIndexOf(touchImport)) {
-  throw new Error("V11 layout authority must remain the final visual authority.");
+  throw new Error("Layout authority must remain the final visual authority.");
 }
 
-requireText("app/styles/pulsercuit-v10-visual-hardening.css", [
+requireText("app/styles/visual-hardening.css", [
   "/* Pulsercuit V10 — site-wide visual hardening authority.",
   "min-width:320px",
   "overflow-x:clip",
@@ -87,7 +87,7 @@ requireText("app/styles/pulsercuit-v10-visual-hardening.css", [
   "@media(prefers-reduced-motion:reduce)",
 ]);
 
-requireText("app/styles/pulsercuit-v10-sitewide-audit.css", [
+requireText("app/styles/sitewide-audit.css", [
   "/* Pulsercuit V10 — site-wide audit corrections.",
   ".completion-page{color-scheme:light}",
   ".completion-page .claim-message.success",
@@ -158,7 +158,7 @@ for (const [label, foreground, background] of contrastPairs) {
   if (ratio < 4.5) throw new Error(`${label} contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1.`);
 }
 
-const auditCss = read("app/styles/pulsercuit-v10-sitewide-audit.css");
+const auditCss = read("app/styles/sitewide-audit.css");
 const narrowNavContract = "@media(max-width:560px){\n  /* Do not regress below the readability floor on the narrowest phones. */\n  .bottom-nav>a,.bottom-nav-more summary{font-size:10px!important}\n}";
 if (!auditCss.includes(narrowNavContract)) {
   throw new Error("Narrow-phone bottom navigation must preserve the 10px readability floor.");
