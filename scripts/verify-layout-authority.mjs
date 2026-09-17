@@ -229,14 +229,13 @@ requireText("app/styles/theme.css", [
   ".business-page :where(input,textarea,select)",
 ]);
 requireText("app/styles/current.css", [
-  "current presentation bridge",
-  "--pc-lime:#cfff67",
-  ".pc-dashboard-ribbon{",
-  ".pc-momentum-card{",
-  ".pc-share-preview{",
-  ".pc-v5-primary{",
-  ".pc-v6-ranks article:nth-child(3):before{display:none!important}",
-  "-webkit-mask-image",
+  "current semantic bridge",
+  '@import "./current/tokens.css";',
+  '@import "./current/dashboard-components.css";',
+  '@import "./current/share-preview.css";',
+  '@import "./current/momentum-actions.css";',
+  '@import "./current/compatibility-hardening.css";',
+  '@import "./current/responsive-contracts.css";',
 ]);
 
 requireText("components/pulse-core-visual.tsx", [
