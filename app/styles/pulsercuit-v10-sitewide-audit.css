@@ -14,9 +14,9 @@
 }
 .turnstile-field>div{max-width:100%!important}
 
-/* Light completion/support surfaces must not inherit dark-app microcopy or
-   dark status colors. These values keep small labels and state messages
-   readable against the native warm-white completion palette. */
+/* Light completion/support surfaces must not inherit dark-app microcopy,
+   browser-native dark controls or dark status colors. */
+.completion-page{color-scheme:light}
 .completion-page :where(.section-kicker,.app-eyebrow){color:#566159!important}
 .completion-page .claim-message{
   color:#38443b!important;
