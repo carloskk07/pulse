@@ -1,26 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { getCanonicalSiteUrl } from "@/lib/site-url";
 import "./globals.css";
-import "./styles/pulse-v3-marketing.css";
-import "./styles/pulsercuit-v4.css";
-import "./styles/pulsercuit-v4-1.css";
-import "./styles/pulsercuit-v4-2.css";
-import "./styles/pulsercuit-v5.css";
-import "./styles/pulsercuit-v5-1.css";
-import "./styles/pulsercuit-v5-1-surfaces.css";
-import "./styles/pulsercuit-v6.css";
-import "./styles/pulsercuit-v6-fixes.css";
-import "./styles/pulsercuit-v6-reference.css";
-import "./styles/pulsercuit-v6-ultra.css";
-import "./styles/pulsercuit-v6-material.css";
-import "./styles/pulsercuit-v6-sensory.css";
-import "./styles/pulsercuit-v7-universe.css";
-import "./styles/pulsercuit-v7-fixes.css";
-import "./styles/pulsercuit-v7-audit.css";
-import "./styles/pulsercuit-v10-visual-hardening.css";
-import "./styles/pulsercuit-v10-sitewide-audit.css";
-import "./styles/pulsercuit-v11-touch-foundation.css";
-import "./styles/pulsercuit-v11-layout-authority.css";
 
 export const metadata: Metadata = {
   metadataBase: getCanonicalSiteUrl(),

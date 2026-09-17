@@ -1,0 +1,146 @@
+/* Pulsercuit current presentation bridge.
+   This file contains only live selectors extracted from retired broad visual
+   generations. Keep it small: new page systems belong in their semantic file,
+   not in another numbered global skin. */
+
+/* A few current V4.1/V4.2 feature components still consume these token names.
+   Keep the tokens here instead of retaining the entire V4 skin. */
+:root{
+  --pc-lime:#cfff67;
+  --pc-cyan:#72f3ff;
+  --pc-violet:#a690ff;
+  --pc-warm:#ffd87d;
+}
+
+/* Dashboard status ribbon: still used by the V9 dashboard markup. */
+.pc-dashboard-ribbon{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 30px;
+}
+.pc-dashboard-ribbon article{
+  min-width:0;
+  padding:18px 20px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:20px;
+  background:rgba(255,255,255,.018);
+}
+.pc-dashboard-ribbon small{
+  display:block;
+  margin-bottom:9px;
+  color:#818b9a;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.pc-dashboard-ribbon strong{font-size:15px;letter-spacing:-.02em}
+.pc-dashboard-ribbon span{display:block;margin-top:5px;color:#818b9a;font-size:10px}
+.pc-dashboard-ribbon .live strong{color:var(--pulse-v3-lime,#cfff67)}
+.pc-dashboard-ribbon .cyan strong{color:var(--pulse-v3-cyan,#71ebff)}
+.pc-dashboard-ribbon .violet strong{color:#b8a9ff}
+.pc-dashboard-ribbon .warm strong{color:#ffd87d}
+
+/* Dashboard rhythm card: live markup predates V9 but remains part of the
+   current factual Momentum block. */
+.pc-momentum-card{
+  position:relative;
+  overflow:hidden;
+  padding:28px;
+  border:1px solid rgba(255,255,255,.065);
+  border-radius:28px;
+  background:
+    radial-gradient(circle at 90% 10%,rgba(166,144,255,.08),transparent 30%),
+    linear-gradient(150deg,rgba(255,255,255,.026),rgba(255,255,255,.007));
+}
+.pc-momentum-card:after{
+  content:"";
+  position:absolute;
+  right:-65px;
+  bottom:-75px;
+  width:190px;
+  height:190px;
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:50%;
+  box-shadow:0 0 0 36px rgba(255,255,255,.01),0 0 0 72px rgba(255,255,255,.006);
+  pointer-events:none;
+}
+.pc-momentum-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.pc-momentum-top strong{font-size:34px;letter-spacing:-.06em}
+.pc-momentum-top span{color:#818b9a;font-size:10px}
+.pc-milestone-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:28px}
+.pc-milestone-track span{
+  padding:11px 8px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:14px;
+  background:rgba(255,255,255,.012);
+  color:#818b9a;
+  font-size:10px;
+  text-align:center;
+}
+.pc-milestone-track span.done{
+  border-color:var(--pulse-v3-lime,#cfff67);
+  background:var(--pulse-v3-lime,#cfff67);
+  color:#0a0f11;
+  font-weight:850;
+  box-shadow:0 0 24px rgba(207,255,103,.12);
+}
+
+/* Share page preview: current Invite markup still uses these semantic blocks. */
+.pc-share-preview{display:grid;grid-template-columns:1.25fr .75fr;gap:12px;margin-top:18px}
+.pc-share-card{
+  min-width:0;
+  padding:26px;
+  border:1px solid rgba(207,255,103,.1);
+  border-radius:26px;
+  background:linear-gradient(145deg,rgba(207,255,103,.06),rgba(255,255,255,.012));
+}
+.pc-share-card small{color:#818b9a;font-size:10px;letter-spacing:.15em;text-transform:uppercase}
+.pc-share-card h3{margin:32px 0 10px;font-size:29px;line-height:.98;letter-spacing:-.055em}
+.pc-share-card h3 em{color:var(--pulse-v3-lime,#cfff67);font-style:normal}
+.pc-share-card p{color:#818b9a;font-size:11px;line-height:1.6}
+
+/* The Momentum CTA is still named from V5 in JSX. Preserve its appearance
+   without loading the entire V5 global skin. */
+.pc-v5-primary{
+  border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(180deg,#e3ff92,#c8ff4d);
+  box-shadow:0 12px 36px rgba(200,255,77,.12),inset 0 1px 0 rgba(255,255,255,.45);
+}
+.pc-v5-primary:hover{
+  box-shadow:0 18px 44px rgba(200,255,77,.18),inset 0 1px 0 rgba(255,255,255,.5);
+}
+
+/* Small hardenings migrated from the retired V7 fix layer. */
+.pc-v6-ranks article:nth-child(3):before{display:none!important}
+.pc-share-studio,.pc-share-studio-placeholder{scroll-margin-top:84px}
+.pc-v6::before{-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,.28) 72%,rgba(0,0,0,.64))}
+.app-frame:after{-webkit-mask-image:linear-gradient(180deg,#000,transparent 74%)}
+.pc-luxe-pulse-stage:before{-webkit-mask-image:radial-gradient(ellipse at 75% 45%,#000 0 36%,transparent 72%)}
+.pc-luxe-momentum-hero:before,.pc-luxe-rhythm-track:before{-webkit-mask-image:linear-gradient(90deg,transparent,#000 20%,#000 85%,transparent)}
+.pc-luxe-vault-balance:before{-webkit-mask-image:linear-gradient(90deg,transparent,#000 32%)}
+
+@media(hover:none),(pointer:coarse){
+  .pc-v6-social-card:hover,.pc-v6-pillar-grid article:hover,.button:not(:disabled):hover,.icon-button:hover{transform:none!important}
+}
+
+@media(max-width:1050px){
+  .pc-dashboard-ribbon{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .pc-share-preview{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .pc-dashboard-ribbon{grid-template-columns:1fr}
+  .pc-milestone-track{gap:5px}
+  .pc-milestone-track span{padding:9px 4px;font-size:10px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section *,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-final *{
+    animation:none!important;
+    transition:none!important;
+  }
+}

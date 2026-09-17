@@ -71,8 +71,8 @@ requireText("components/circuit-share-studio.tsx", ["copyTextToClipboard", "isNa
 requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "UUID_RE", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
 requireText("app/admin/support/actions.ts", ["UUID_RE.test(id)"]);
 requireText("components/app-shell.tsx", ["/admin/leads", "/admin/prospects", "/admin/retention"]);
-requireText("app/styles/pulsercuit-v7-fixes.css", ["Truthful public rank presentation", ".pc-v6-ranks article:nth-child(3):before{display:none!important}"]);
-requireText("app/styles/pulsercuit-v7-audit.css", ['content:"PULSERCUIT / 01"']);
+requireText("app/styles/current.css", [".pc-v6-ranks article:nth-child(3):before{display:none!important}"]);
+requireText("app/styles/pulsercuit-v6-ultra.css", ['content:"PULSECIRCUIT / 01"']);
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 if (manifest.id !== "/" || manifest.scope !== "/" || !Array.isArray(manifest.icons) || manifest.icons.length === 0) {
