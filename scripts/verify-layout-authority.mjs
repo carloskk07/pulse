@@ -16,6 +16,8 @@ function requireText(path, fragments) {
 const layout = read("app/layout.tsx");
 const manifest = read("app/globals.css");
 const theme = read("app/styles/theme.css");
+const pulseExperience = read("app/styles/pulse-experience.css");
+const pulseExperienceImport = '@import "./styles/pulse-experience.css";';
 const themeImport = '@import "./styles/theme.css";';
 const touchImport = '@import "./styles/pulsercuit-v11-touch-foundation.css";';
 const authorityImport = '@import "./styles/pulsercuit-v11-layout-authority.css";';
@@ -29,7 +31,7 @@ if (layout.includes('import "./styles/')) {
   throw new Error("Root layout must not load visual layers directly; globals.css is the single cascade entry point.");
 }
 
-for (const item of [themeImport, currentImport, touchImport, authorityImport]) {
+for (const item of [pulseExperienceImport, themeImport, currentImport, touchImport, authorityImport]) {
   if (!manifest.includes(item)) throw new Error(`Canonical manifest must load ${item}.`);
 }
 if (manifest.lastIndexOf(currentImport) > manifest.lastIndexOf(v10AuditImport)) {
@@ -48,6 +50,8 @@ if (/@import\s+["'].+\.css["']/.test(afterAuthority)) {
 
 const retired = [
   "app/styles/responsive.css",
+  "app/styles/pulse-v2.css",
+  "app/styles/pulse-v3.css",
   "app/styles/pulse-v3-marketing.css",
   "app/styles/pulsercuit-v4.css",
   "app/styles/pulsercuit-v5.css",
@@ -61,17 +65,43 @@ for (const path of retired) {
   if (basename && manifest.includes(basename)) throw new Error(`Retired stylesheet is still imported: ${basename}`);
 }
 
+const v4 = manifest.indexOf('@import "./styles/pulsercuit-v4-1.css";');
+const pulseExperienceIndex = manifest.indexOf(pulseExperienceImport);
+if (v4 < 0 || pulseExperienceIndex < 0 || v4 < pulseExperienceIndex) {
+  throw new Error("Current Pulse experience must load before retained later feature systems.");
+}
 const v9 = manifest.indexOf('@import "./styles/pulse-dashboard-v9.css";');
 const currentTheme = manifest.indexOf(themeImport);
 if (v9 < 0 || currentTheme < 0 || v9 < currentTheme) {
   throw new Error("Dashboard V9 must load after the current unversioned theme, never before it.");
 }
 if (theme.includes("main:not(")) {
-  throw new Error("Current theme must use explicit page scopes; broad main:not(...) selectors are forbidden.");
+  throw new Error("Current theme must use explicit page scopes; broad exclusion selectors are forbidden.");
 }
 if (theme.includes(".completion-page")) {
   throw new Error("Dark current theme must not target the light completion/legal surface family.");
 }
+
+for (const forbidden of [".app-frame{", ".app-sidebar{", ".auth-page{", ".proof-page{", ".brand-mark{"]) {
+  if (pulseExperience.includes(forbidden)) {
+    throw new Error(`Pulse experience must not own a retired global surface: ${forbidden}`);
+  }
+}
+
+requireText("app/styles/pulse-experience.css", [
+  "/* Current Pulse experience.",
+  "--pulse-v3-lime:#cfff67",
+  "--pulse-v2-accent:var(--pulse-v3-lime)",
+  ".pc-v9-dashboard .balance-chip-v2{",
+  ".pc-v9-dashboard .hourly-pulse-card{",
+  ".pulse-core-visual{",
+  ".pulse-core-field{",
+  ".pulse-core-ring.ring-four{",
+  ".pulse-core-visual.is-paused",
+  ".pc-v9-dashboard .pulse-integrity-rail{",
+  ".pc-v9-dashboard .pulse-onboarding{",
+  "@media(prefers-reduced-motion:reduce)",
+]);
 
 requireText("app/styles/theme.css", [
   "/* Pulsercuit current theme.",
@@ -97,6 +127,13 @@ requireText("app/styles/current.css", [
   "-webkit-mask-image",
 ]);
 
+requireText("components/pulse-core-visual.tsx", [
+  'className={`pulse-core-visual is-${state}`}',
+  'className="pulse-core-field"',
+  'className="pulse-core-ring ring-four"',
+  'className="pulse-core-heart"',
+  'className="pulse-core-readout"',
+]);
 requireText("components/site-header.tsx", [
   'export function SiteHeader({ overlay = false }',
   'overlay ? "is-overlay" : "is-flow"',
