@@ -128,7 +128,72 @@
 .business-page .footer strong,
 .integration-page .footer strong{letter-spacing:-.025em}
 
+/* Deep audit: readable information remains readable. Several historical
+   visual layers intentionally used 6–9px labels; these are real product copy,
+   not decorative marks, so the final authority establishes a 10px floor. */
+.pc-v6 :where(
+  .pc-v6-pillar-grid a,
+  .pc-v6-chamber-head small,
+  .pc-v6-live,
+  .pc-v6-mini-card small,
+  .pc-v6-mini-card>span,
+  .pc-v6-mini-card.vault a,
+  .pc-v6-pulse-ring small,
+  .pc-v6-ranks span,
+  .pc-v6-social-card small,
+  .pc-v6-social-card span,
+  .pc-v6-vault-benefits small,
+  .pc-v6-final-stats span,
+  .pc-v6-footer span,
+  .pc-v6-footer nav a
+){font-size:max(10px,.625rem)!important;line-height:1.45}
+.pc-v6 :where(.pc-v6-pillar-grid a,.pc-v6-mini-card.vault a,.pc-v6-footer nav a){font-size:11px!important}
+
+.sidebar-user small,
+.sidebar-signout,
+.withdrawal-form>small,
+.pc-luxe-share-stats small,
+.pc-luxe-share-stats span,
+.pc-luxe-rank-track i,
+.milestone-number{
+  font-size:max(10px,.625rem)!important;
+  line-height:1.4;
+}
+.sidebar-signout{min-height:34px;display:inline-flex;align-items:center}
+.sidebar-tools a.active{opacity:1!important;color:#fff2bd!important;font-weight:800}
+.bottom-nav .bottom-nav-menu>a.active{
+  background:rgba(230,189,93,.1)!important;
+  color:#fff2bd!important;
+}
+
+/* Ranked Turbo is a decision surface. Reward, time, health and confidence are
+   equally part of the choice and therefore must remain available on tablet. */
+@media(max-width:1180px){
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row{
+    grid-template-columns:minmax(220px,1.5fr) repeat(4,minmax(72px,.55fr))!important;
+  }
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row.direct-opportunity-row{
+    grid-template-columns:minmax(220px,1.5fr) repeat(4,minmax(72px,.55fr)) auto!important;
+  }
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row .reward-metric{
+    display:grid!important;
+    min-width:0;
+    gap:4px;
+  }
+}
+
+@media(max-width:980px){
+  /* V10 hardening made navigation touch-safe; this pass raises the mobile
+     label floor without changing the six-target geometry. */
+  .bottom-nav>a,.bottom-nav-more summary{font-size:10px!important}
+}
+
 @media(max-width:760px){
+  /* A legacy generic mobile rule hid the public wordmark. The current V6
+     header already removes secondary navigation and Log in, so the canonical
+     brand comfortably fits beside the compact CTA even at narrow widths. */
+  .pc-v6-header .brand-word{display:inline-flex!important}
+
   .completion-page .completion-header nav{flex-wrap:wrap;justify-content:flex-end}
   .completion-page .completion-header{gap:14px}
   .completion-page .claim-message{font-size:12px!important}
@@ -136,6 +201,35 @@
   .admin-provider-table:not(.direct-campaign-table) .admin-provider-row{min-width:620px!important}
   .direct-campaign-table .admin-provider-row{min-width:780px!important}
   .business-lead-row,.business-lead-row.header{min-width:820px!important}
+
+  /* Mobile Turbo becomes a semantic card: title first, all four decision
+     metrics in a 2×2 matrix, optional action last. Nothing is discarded. */
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row,
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row.direct-opportunity-row{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row .reward-row-main{
+    grid-column:1/-1!important;
+  }
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row .reward-metric{
+    display:grid!important;
+    gap:4px;
+    padding:10px 12px;
+    border:1px solid rgba(255,255,255,.055);
+    border-radius:12px;
+    background:rgba(255,255,255,.018);
+  }
+  .pc-luxe-ranked-turbo .reward-row.intelligence-row .direct-row-action{
+    grid-column:1/-1!important;
+    width:100%;
+    min-height:44px!important;
+    justify-self:stretch!important;
+  }
+}
+
+@media(max-width:560px){
+  .bottom-nav>a,.bottom-nav-more summary{font-size:9px!important}
 }
 
 @media(max-width:420px){
@@ -148,6 +242,14 @@
   .completion-page .completion-header nav a{min-height:40px;display:inline-flex;align-items:center}
   .turnstile-status{min-width:0}
   .turnstile-status>span:not(.turnstile-status-dot){min-width:0;overflow-wrap:anywhere}
+
+  /* 320–420px phones should not squeeze editorial cards into ~140px columns. */
+  .pc-v6-pillar-grid,
+  .pc-v6-share-cards{grid-template-columns:1fr!important}
+  .pc-v6-ranks{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .pc-v6-ranks article:last-child:nth-child(odd){grid-column:1/-1}
+  .pc-v6-pillar-grid article,.pc-v6-social-card{min-height:0!important}
+  .pc-v6-header .brand-word{font-size:13px!important}
 }
 
 @media(prefers-reduced-motion:reduce){

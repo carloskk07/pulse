@@ -91,6 +91,15 @@ requireText("app/styles/pulsercuit-v10-sitewide-audit.css", [
   ".business-lead-row.header",
   ".turnstile-field{",
   "overflow:visible!important",
+  "font-size:max(10px,.625rem)!important",
+  ".sidebar-tools a.active",
+  ".bottom-nav .bottom-nav-menu>a.active",
+  ".pc-luxe-ranked-turbo .reward-row.intelligence-row .reward-metric",
+  "grid-template-columns:minmax(220px,1.5fr) repeat(4,minmax(72px,.55fr))!important",
+  ".bottom-nav>a,.bottom-nav-more summary{font-size:10px!important}",
+  ".pc-v6-header .brand-word{display:inline-flex!important}",
+  "grid-template-columns:repeat(2,minmax(0,1fr))!important",
+  ".pc-v6-share-cards{grid-template-columns:1fr!important}",
   "@media(max-width:420px)",
 ]);
 
@@ -115,6 +124,14 @@ requireText("components/turnstile-field.tsx", [
 
 requireText("app/support/page.tsx", [
   '<TurnstileField action="support" theme="light" />',
+]);
+
+requireText("components/app-shell.tsx", [
+  'aria-current={active === id ? "page" : undefined}',
+  'className={active === "account" ? "active" : ""}',
+  'aria-current={active === "account" ? "page" : undefined}',
+  'aria-current={active === "proof" ? "page" : undefined}',
+  'aria-current={active === "support" ? "page" : undefined}',
 ]);
 
 const legacyBrandHits = [...uiFiles("app"), ...uiFiles("components")].filter((path) => read(path).includes("Reward Pulse"));
