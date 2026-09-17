@@ -63,20 +63,24 @@ export async function AppShell({ children, active }: { children: React.ReactNode
         <PulsercuitBrand />
         <nav className="app-nav" aria-label="Application">
           {sidebarLinks.map(({ id, href, label: navLabel, Icon }) => (
-            <Link key={href} className={active === id ? "active" : ""} href={href}><Icon />{navLabel}</Link>
+            <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon />{navLabel}</Link>
           ))}
         </nav>
         <div className="sidebar-user">
           <span className="avatar">{initials(label)}</span>
           <div><strong>{label}</strong><small>{user ? `${trustName(trustLevel)} · Trust ${trustLevel}/5` : "Preview mode"}</small></div>
-          <div className="sidebar-tools"><Link href={user ? "/account" : "/auth?next=/account"}>Account</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link></div>
+          <div className="sidebar-tools">
+            <Link className={active === "account" ? "active" : ""} aria-current={active === "account" ? "page" : undefined} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
+            <Link className={active === "proof" ? "active" : ""} aria-current={active === "proof" ? "page" : undefined} href="/proof">Proof</Link>
+            <Link className={active === "support" ? "active" : ""} aria-current={active === "support" ? "page" : undefined} href="/support">Help</Link>
+          </div>
           {user ? <form action={signOut}><button className="sidebar-signout" type="submit">Sign out</button></form> : null}
         </div>
       </aside>
       <main className="app-content">{children}</main>
       <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
-          <Link key={href} className={active === id ? "active" : ""} href={href}><Icon /><span>{navLabel}</span></Link>
+          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon /><span>{navLabel}</span></Link>
         ))}
         <details className="bottom-nav-more">
           <summary className={utilityMobileActive ? "active" : ""} aria-label="More navigation and account actions">
@@ -88,11 +92,11 @@ export async function AppShell({ children, active }: { children: React.ReactNode
               <span className="avatar">{initials(label)}</span>
               <div><strong>{label}</strong><small>{user ? `${trustName(trustLevel)} · Trust ${trustLevel}/5` : "Preview mode"}</small></div>
             </div>
-            <Link className={active === "account" ? "active" : ""} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
-            <Link className={active === "proof" ? "active" : ""} href="/proof">Proof</Link>
-            <Link className={active === "support" ? "active" : ""} href="/support">Help</Link>
+            <Link className={active === "account" ? "active" : ""} aria-current={active === "account" ? "page" : undefined} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
+            <Link className={active === "proof" ? "active" : ""} aria-current={active === "proof" ? "page" : undefined} href="/proof">Proof</Link>
+            <Link className={active === "support" ? "active" : ""} aria-current={active === "support" ? "page" : undefined} href="/support">Help</Link>
             {admin ? adminLinks.map(({ id, href, label: navLabel, Icon }) => (
-              <Link key={href} className={active === id ? "active" : ""} href={href}><Icon />{navLabel}</Link>
+              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon />{navLabel}</Link>
             )) : null}
             {user ? <form action={signOut}><button type="submit">Sign out</button></form> : <Link href="/auth?next=/dashboard">Log in</Link>}
           </div>
