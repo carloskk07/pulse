@@ -114,6 +114,20 @@ requireText("app/styles/pulsercuit-v10-sitewide-audit.css", [
   "Do not regress below the readability floor",
   "@media(max-width:420px)",
   ".auth-trust span{font-size:10px!important}",
+  "/* Fourth-pass release audit:",
+  "--muted-2:#818b9a;",
+  "--pulse-muted-2:#818b9a;",
+  ".auth-page,\n.referral-landing{overflow-x:clip!important;overflow-y:visible!important}",
+  ".app-frame .account-grid .completion-card{",
+  ".app-frame .account-grid .inline-action{color:#385c18!important}",
+  ".app-frame .account-grid .button-secondary{",
+  ".referral-landing .referral-funnel>small{font-size:11px!important;line-height:1.55!important}",
+  ".integration-path-grid article>span,",
+  ".prospect-signal-fieldset legend,",
+  ".admin-badge{",
+  ".pc-v6-header .pc-v6-button.compact{min-height:44px}",
+  ".completion-header nav a,",
+  ".integration-code{font-size:11px!important;line-height:1.7}",
 ]);
 
 const contrastPairs = [
@@ -126,6 +140,11 @@ const contrastPairs = [
   ["business form note", "#8b94a5", "#07090d"],
   ["business form placeholder", "#7d8796", "#0a0e14"],
   ["Turbo Quick Win metadata", "#8b94a5", "#07090d"],
+  ["dark product secondary copy", "#818b9a", "#11151d"],
+  ["account light-card action", "#385c18", "#ffffff"],
+  ["account light-card metadata", "#59645c", "#ffffff"],
+  ["public chamber live detail", "#818b83", "#0e1312"],
+  ["dark balance metadata", "#8b94a5", "#12161f"],
 ];
 for (const [label, foreground, background] of contrastPairs) {
   const ratio = contrast(foreground, background);
