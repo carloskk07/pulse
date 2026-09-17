@@ -1,8 +1,13 @@
+/* Canonical global cascade manifest.
+   Keep structural foundations first, feature-specific systems in the middle,
+   and release hardening/layout authorities last. Do not add another numbered
+   global skin without retiring the layer it replaces. */
+
+/* Foundations and semantic surfaces */
 @import "./styles/core.css";
 @import "./styles/marketing.css";
 @import "./styles/social-proof.css";
 @import "./styles/product.css";
-@import "./styles/responsive.css";
 @import "./styles/referral.css";
 @import "./styles/auth.css";
 @import "./styles/functional.css";
@@ -16,10 +21,34 @@
 @import "./styles/business-integration.css";
 @import "./styles/completion.css";
 @import "./styles/pulse-core.css";
+
+/* Live application feature systems */
 @import "./styles/pulse-v2.css";
 @import "./styles/pulse-v3.css";
+@import "./styles/pulsercuit-v4-1.css";
+@import "./styles/pulsercuit-v4-2.css";
 @import "./styles/pulse-v4-3.css";
 @import "./styles/pulse-v4-3-retention.css";
 @import "./styles/pulse-v4-3-postclaim.css";
+@import "./styles/pulsercuit-v5-1.css";
+@import "./styles/pulsercuit-v5-1-surfaces.css";
+
+/* Current public homepage system — intentionally scoped to .pc-v6 */
+@import "./styles/pulsercuit-v6.css";
+@import "./styles/pulsercuit-v6-fixes.css";
+@import "./styles/pulsercuit-v6-reference.css";
+@import "./styles/pulsercuit-v6-ultra.css";
+@import "./styles/pulsercuit-v6-material.css";
+@import "./styles/pulsercuit-v6-sensory.css";
+
+/* Current cinematic application theme, then page-specific latest systems */
+@import "./styles/pulsercuit-v7-universe.css";
 @import "./styles/pulse-dashboard-v9.css";
 @import "./styles/pulse-dashboard-v9-1.css";
+@import "./styles/current.css";
+
+/* Release hardening and canonical geometry — these must remain last. */
+@import "./styles/pulsercuit-v10-visual-hardening.css";
+@import "./styles/pulsercuit-v10-sitewide-audit.css";
+@import "./styles/pulsercuit-v11-touch-foundation.css";
+@import "./styles/pulsercuit-v11-layout-authority.css";
