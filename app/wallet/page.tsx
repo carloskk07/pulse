@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { FeedbackMessage } from "@/components/feedback-message";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
@@ -34,6 +35,17 @@ const withdrawalCopy: Record<string, string> = {
   "reserve-failed": "The payout could not be recovered safely. No new payout was created.",
   failed: "The payout failed definitively and reserved credits were restored.",
 };
+
+const withdrawalErrorStates = new Set([
+  "invalid-destination",
+  "provider-temporary",
+  "verification-failed",
+  "verification-not-configured",
+  "payout-not-configured",
+  "service-not-configured",
+  "reserve-failed",
+  "failed",
+]);
 
 function compactDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
@@ -112,7 +124,7 @@ export default async function WalletPage({ searchParams }: Props) {
   return (
     <AppShell active="wallet">
       <div className="app-page-head pc-luxe-vault-head"><div><span className="app-eyebrow">Vault</span><h1>Protected value. Clear path.</h1><p>Available. Reserved. Paid. Never blurred together.</p></div></div>
-      {params.withdraw ? <div className={`claim-message ${params.withdraw === "paid" ? "success" : "neutral"}`}>{withdrawalCopy[params.withdraw] ?? "Payout state updated."}</div> : null}
+      {params.withdraw ? <FeedbackMessage tone={params.withdraw === "paid" ? "success" : withdrawalErrorStates.has(params.withdraw) ? "error" : "neutral"}>{withdrawalCopy[params.withdraw] ?? "Payout state updated."}</FeedbackMessage> : null}
       {state.preview ? <div className="preview-banner">Live value appears only when the authoritative reward service is connected.</div> : null}
 
       <section className="wallet-balance-card pc-luxe-vault-balance"><div className="wallet-big-icon"><Wallet /></div><div><span>Available</span><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong>{!state.preview ? <small>{state.availableCredits.toLocaleString("en-US")} credits</small> : null}</div><div className="payout-pack-label"><small>{activeWithdrawal ? "Reserved payout" : "Payout target"}</small><strong>{payoutPackLabel}</strong></div></section>
