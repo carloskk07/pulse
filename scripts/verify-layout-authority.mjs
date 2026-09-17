@@ -203,7 +203,7 @@ requireText("app/styles/dashboard-refinement.css", [
   "/* Pulsercuit Dashboard V9.1 — composition, hierarchy and density refinement */",
   ".pc-v9-dashboard{",
   ".pc-v9-chamber{",
-  "@media(max-width:1180px)",
+  "@media(max-width:1100px)",
 ]);
 requireText("app/styles/auth.css", [
   "/* Product-rail visual belongs to authentication",
