@@ -1,0 +1,332 @@
+/* Pulsercuit V11 — canonical layout authority.
+   Geometry only: containers, flow, grids, responsive breakpoints and light/dark
+   surface isolation. This file must remain the final stylesheet loaded by the
+   root layout. It does not change reward, auth, ledger, payout or provider logic. */
+
+:root{
+  --pc11-public-max:1200px;
+  --pc11-app-max:1320px;
+  --pc11-sidebar:232px;
+  --pc11-gutter:clamp(18px,3.1vw,40px);
+  --pc11-app-gutter:clamp(20px,3vw,44px);
+  --pc11-section-space:clamp(64px,7vw,108px);
+}
+
+html,body{width:100%;max-width:100%;overflow-x:clip}
+body{min-width:320px}
+
+/* One horizontal rhythm for every public surface. */
+.shell,.pc-v6-shell{
+  width:min(var(--pc11-public-max),calc(100% - var(--pc11-gutter) - var(--pc11-gutter)))!important;
+  margin-inline:auto!important;
+}
+.shell>*,.pc-v6-shell>*{min-width:0}
+
+/* SiteHeader is in normal document flow by default. Only the homepage opts
+   into the cinematic overlay. This prevents the shared header from sitting on
+   top of Proof / Business / Integration content. */
+.pc-v6-header{
+  left:0!important;
+  right:0!important;
+  width:100%!important;
+  z-index:80!important;
+}
+.pc-v6-header.is-flow{
+  position:relative!important;
+  inset:auto!important;
+  height:auto!important;
+  min-height:78px!important;
+  background:linear-gradient(180deg,rgba(2,4,4,.98),rgba(2,4,4,.94))!important;
+}
+.pc-v6-header.is-overlay{
+  position:absolute!important;
+  inset:0 0 auto!important;
+  height:72px!important;
+}
+.pc-v6-header-inner{
+  width:min(var(--pc11-public-max),calc(100% - var(--pc11-gutter) - var(--pc11-gutter)))!important;
+  min-height:72px!important;
+  height:100%!important;
+  grid-template-columns:minmax(170px,220px) minmax(0,1fr) auto!important;
+  gap:clamp(14px,2.2vw,30px)!important;
+}
+.pc-v6-nav{min-width:0;gap:clamp(16px,2.1vw,30px)!important}
+.pc-v6-header-actions{min-width:0;justify-self:end;flex-wrap:nowrap}
+
+/* Signed-in application: the main column is centered independently of the
+   sidebar. Padding is part of the same contract on Dashboard, Momentum, Turbo,
+   Vault, Share, Account and every operator page. */
+.app-frame{
+  display:grid!important;
+  grid-template-columns:var(--pc11-sidebar) minmax(0,1fr)!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.app-sidebar{width:var(--pc11-sidebar)!important;min-width:0!important}
+.app-content{
+  width:100%!important;
+  max-width:var(--pc11-app-max)!important;
+  margin-inline:auto!important;
+  padding:clamp(34px,3.5vw,52px) var(--pc11-app-gutter) 96px!important;
+}
+.app-content>*,.app-content section,.app-content article,.app-content form{min-width:0}
+.app-page-head,.admin-head{
+  width:100%;
+  display:flex;
+  align-items:flex-end!important;
+  justify-content:space-between;
+  gap:clamp(18px,3vw,34px)!important;
+}
+.app-page-head>div:first-child,.admin-head>div:first-child{min-width:0;flex:1 1 auto}
+.app-page-head h1,.admin-head h1{margin-right:0!important}
+.app-section,.dashboard-hero,.pc-luxe-pulse-stage{width:100%;min-width:0}
+
+/* No card or grid is allowed to establish page-level horizontal overflow. */
+:where(
+  .pc-v9-chamber,.pc-v9-hud,.pc-v9-progress-deck,.pc-v9-trajectory,
+  .dashboard-lower-grid,.wallet-grid,.withdrawal-panel,.wallet-balance-card,
+  .pc-progress-hero,.pc-luxe-rank-road,.pc-achievement-grid,.pc-progress-cta,
+  .drop-stage,.quick-win-grid,.reward-list,.reward-row,.earning-principles,
+  .invite-card,.invite-hero-card,.milestones,.first-reward-guide,
+  .admin-kpi-grid,.admin-secondary-grid,.readiness-list,.admin-panel,
+  .prospect-form,.prospect-table,.business-lead-table,.admin-provider-table
+){max-width:100%;min-width:0}
+:where(
+  .pc-v9-chamber,.pc-v9-hud,.pc-v9-progress-deck,.dashboard-lower-grid,
+  .wallet-grid,.pc-progress-hero,.drop-stage,.quick-win-grid,
+  .admin-kpi-grid,.admin-secondary-grid,.readiness-list,.prospect-form
+)>*{min-width:0}
+
+/* Public V6 homepage: keep every section on the same centerline. */
+.pc-v6{width:100%;max-width:100%;overflow-x:clip!important}
+.pc-v6-hero-grid,.pc-v6-section-grid,.pc-v6-chamber-grid,.pc-v6-momentum-grid,
+.pc-v6-share-grid,.pc-v6-vault-grid,.pc-v6-final-grid{width:100%;min-width:0}
+.pc-v6 :where(.pc-v6-section-intro,.pc-v6-chamber-stage,.pc-v6-ranks,.pc-v6-share-cards,.pc-v6-vault-art,.pc-v6-vault-benefits){min-width:0}
+.pc-v6-section{overflow-x:clip}
+
+/* Dark public utility pages share the same header/container rhythm. */
+.proof-page,.business-page,.integration-page,.referral-landing{
+  width:100%;max-width:100%;overflow-x:clip!important;overflow-y:visible!important;
+}
+.proof-page .proof-hero{padding-top:clamp(56px,7vw,92px)!important}
+.business-hero,.integration-hero{margin-inline:auto!important}
+.business-hero,.business-pilot-section,.integration-boundaries{min-width:0}
+.business-hero>*,.business-pilot-section>*,.integration-boundaries>*{min-width:0}
+.business-form-grid>*{min-width:0}
+
+/* The completion/legal family is intentionally light. Prevent the legacy V7
+   catch-all public selector from turning these pages into a dark hybrid. */
+.completion-page{
+  color-scheme:light!important;
+  background:#f5f7f4!important;
+  color:#101511!important;
+  width:100%;max-width:100%;overflow-x:clip!important;
+}
+.completion-page::before,.completion-page::after{display:none!important;content:none!important}
+.completion-page :where(h1,h2,h3,strong){color:#101511}
+.completion-page :where(p,li){color:#525e55}
+.completion-page :where(input,textarea,select){
+  color:#101511!important;
+  background:#fbfcfa!important;
+  border-color:#d9dfda!important;
+  box-shadow:none!important;
+}
+.completion-page :where(input,textarea)::placeholder{color:#667168!important;opacity:1!important}
+.completion-page :where(input,textarea,select):focus{
+  border-color:#7a8c7d!important;
+  box-shadow:0 0 0 3px rgba(122,140,125,.13)!important;
+}
+.completion-grid,.completion-section,.policy-body{min-width:0}
+
+/* Auth and referral should align to the same public gutter instead of their own
+   historical width calculations. */
+.auth-header,.auth-shell,.referral-header,.referral-funnel{
+  width:min(var(--pc11-public-max),calc(100% - var(--pc11-gutter) - var(--pc11-gutter)))!important;
+  margin-inline:auto!important;
+}
+.auth-shell>*{min-width:0}
+.auth-card{max-width:520px!important}
+
+/* Laptop / compact desktop. The application has a sidebar, so responsive
+   decisions must happen earlier than public-page breakpoints. */
+@media(max-width:1400px){
+  .pc-v9-chamber{
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto auto auto!important;
+    min-height:0!important;
+    padding:42px 36px 0!important;
+  }
+  .pc-v9-pulse-copy{max-width:760px!important}
+  .pc-v9-core-panel{min-height:380px!important}
+  .pc-v9-core-panel .pulse-core-visual{width:min(100%,380px)!important}
+  .pc-v9-integrity{grid-column:1!important}
+  .pc-v9-hud,.pc-v9-progress-deck,.quick-win-grid,.admin-kpi-grid,.admin-secondary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .pc-v9-progress-deck>article:last-child:nth-child(odd){grid-column:1/-1}
+  .dashboard-lower-grid,.wallet-grid,.pc-progress-hero{grid-template-columns:1fr!important}
+  .offers-app-grid.four{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+@media(max-width:1180px){
+  .business-hero,.business-pilot-section{
+    grid-template-columns:1fr!important;
+    gap:42px!important;
+  }
+  .business-hero{min-height:0!important;padding-block:70px 84px!important}
+  .business-console,.business-form{width:100%;max-width:760px!important}
+  .business-pilot-copy{position:static!important;max-width:760px}
+  .business-flow{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .business-flow>i{display:none!important}
+  .integration-path-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .drop-stage{grid-template-columns:1fr!important}
+  .drop-aside{min-height:0!important;gap:22px}
+  .first-reward-guide{grid-template-columns:1fr!important}
+  .prospect-form{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* Touch application mode starts before the sidebar can squeeze a 10–12 inch
+   viewport. This is deliberately earlier than the historical 980px switch. */
+@media(max-width:1120px){
+  .app-frame{display:block!important}
+  .app-frame:before{left:0!important;inset:0!important}
+  .app-sidebar{display:none!important}
+  .app-content{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:32px var(--pc11-gutter) calc(112px + env(safe-area-inset-bottom))!important;
+  }
+  .bottom-nav{
+    display:flex!important;
+    position:fixed!important;
+    z-index:100!important;
+    left:max(12px,env(safe-area-inset-left))!important;
+    right:max(12px,env(safe-area-inset-right))!important;
+    bottom:max(12px,env(safe-area-inset-bottom))!important;
+    min-height:66px!important;
+    height:auto!important;
+    padding:7px!important;
+    gap:3px!important;
+    align-items:stretch!important;
+    justify-content:space-around!important;
+    overflow:visible!important;
+    border:1px solid rgba(235,205,132,.16)!important;
+    border-radius:22px!important;
+    background:linear-gradient(180deg,rgba(15,19,16,.97),rgba(4,6,5,.985))!important;
+    box-shadow:0 22px 64px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.045)!important;
+    backdrop-filter:blur(22px) saturate(1.15);
+  }
+  .bottom-nav>a,.bottom-nav-more{flex:1 1 0!important;min-width:0!important}
+  .bottom-nav>a,.bottom-nav-more summary{
+    min-height:52px!important;
+    padding:5px 3px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+  .bottom-nav-more{display:block!important;position:relative!important;height:auto!important}
+  .bottom-nav-menu{right:0!important;bottom:calc(100% + 14px)!important}
+}
+
+@media(max-width:980px){
+  .pc-v6-header-inner{grid-template-columns:minmax(0,1fr) auto!important;gap:12px!important}
+  .pc-v6-nav{display:none!important}
+  .pc-v6-header-actions{justify-self:end}
+
+  .auth-shell{grid-template-columns:1fr!important;gap:32px!important;align-items:start!important}
+  .auth-copy{max-width:760px}
+  .auth-card{justify-self:stretch!important;width:100%!important;max-width:620px!important}
+
+  .completion-grid{grid-template-columns:1fr!important}
+  .completion-card{width:100%}
+  .integration-boundaries{grid-template-columns:1fr!important;gap:34px!important}
+  .integration-flow{grid-template-columns:1fr!important}
+  .integration-flow>i{display:none!important}
+  .business-principles,.business-value-grid{grid-template-columns:1fr!important}
+  .business-flow{grid-template-columns:1fr!important}
+  .proof-principles{grid-template-columns:1fr!important}
+}
+
+@media(max-width:760px){
+  :root{--pc11-gutter:16px;--pc11-app-gutter:16px}
+
+  .app-page-head,.admin-head,.app-section-head,.completion-section-head{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    gap:14px!important;
+  }
+  .app-page-head>*:last-child,.admin-head>*:last-child{max-width:100%}
+
+  .pc-v9-hud,.pc-v9-progress-deck,.quick-win-grid,.admin-kpi-grid,.admin-secondary-grid,
+  .offers-app-grid.four,.readiness-list,.prospect-form{
+    grid-template-columns:1fr!important;
+  }
+  .pc-v9-progress-deck>article:last-child:nth-child(odd){grid-column:auto!important}
+
+  .wallet-balance-card,.withdrawal-panel,.invite-card,.pc-progress-cta{
+    grid-template-columns:1fr!important;
+  }
+  .wallet-balance-card{align-items:start!important}
+  .invite-card{justify-items:start}
+
+  .pc-v6-hero{min-height:700px!important}
+  .pc-v6-hero-grid{grid-template-columns:1fr!important;align-items:start!important;padding-top:58px!important}
+  .pc-v6-hero-mantra,.pc-v6-side-mantra{display:none!important}
+  .pc-v6-hero-copy{max-width:100%!important}
+  .pc-v6-hero-bg{top:350px!important;right:50%!important;transform:translateX(58%) scale(.82)!important;transform-origin:center!important}
+  .pc-v6-section-grid,.pc-v6-chamber-grid,.pc-v6-momentum-grid,.pc-v6-share-grid,.pc-v6-vault-grid,.pc-v6-final-grid{
+    grid-template-columns:1fr!important;
+    gap:26px!important;
+  }
+  .pc-v6-pillar-grid,.pc-v6-share-cards{grid-template-columns:1fr!important;padding-right:0!important}
+  .pc-v6-ranks{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .pc-v6-ranks article:last-child:nth-child(odd){grid-column:1/-1}
+  .pc-v6-chamber-body{grid-template-columns:1fr!important}
+  .pc-v6-chamber-left,.pc-v6-chamber-right{display:none!important}
+  .pc-v6-vault-art{order:2}.pc-v6-vault-benefits{order:3}
+  .pc-v6-footer .pc-v6-shell{align-items:flex-start!important;flex-direction:column!important}
+  .pc-v6-footer nav{margin-left:0!important;width:100%!important;flex-wrap:wrap}
+
+  .integration-path-grid,.integration-checks{grid-template-columns:1fr!important}
+  .business-form-grid{grid-template-columns:1fr!important}
+  .business-hero-copy h1,.integration-hero h1{font-size:clamp(44px,12vw,58px)!important}
+  .business-console-head,.business-console-foot{align-items:flex-start!important;flex-direction:column!important}
+
+  .completion-header{align-items:flex-start!important;flex-direction:column!important;padding-block:14px!important}
+  .completion-header nav{width:100%!important;justify-content:flex-start!important;flex-wrap:wrap!important}
+  .completion-hero{padding-top:42px!important}
+  .completion-footer{align-items:flex-start!important;flex-direction:column!important}
+
+  .proof-grid{grid-template-columns:1fr!important}
+  .proof-cta{align-items:flex-start!important;flex-direction:column!important}
+}
+
+@media(max-width:560px){
+  .pc-v6-header.is-flow{min-height:68px!important}
+  .pc-v6-header-inner{min-height:64px!important;gap:8px!important}
+  .pc-v6-login{display:none!important}
+  .pc-v6-header-actions .pc-v6-button{min-height:40px!important;padding-inline:12px!important;font-size:10px!important}
+  .pc-v6-header .brand-word{font-size:13px!important}
+
+  .app-content{padding-inline:16px!important}
+  .bottom-nav{left:8px!important;right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important}
+  .bottom-nav>a,.bottom-nav-more summary{font-size:10px!important}
+
+  .pc-v9-chamber{padding:26px 16px 0!important}
+  .pc-v9-core-panel{min-height:300px!important}
+  .pc-v9-core-panel .pulse-core-visual{width:min(100%,300px)!important}
+  .reward-row{grid-template-columns:1fr!important}
+  .reward-row-main{grid-column:auto!important}
+  .reward-row .reward-metric{display:grid!important}
+  .direct-row-action{width:100%!important;justify-self:stretch!important}
+
+  .auth-card,.completion-card,.admin-panel,.readiness-panel{padding:20px!important}
+  .referral-funnel h1{font-size:clamp(42px,13vw,56px)!important}
+  .referral-benefits{flex-direction:column!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pc-v11-layout-authority{scroll-behavior:auto}
+}
