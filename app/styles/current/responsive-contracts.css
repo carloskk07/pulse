@@ -1,0 +1,19 @@
+@media(max-width:1050px){
+  .pc-dashboard-ribbon{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .pc-share-preview{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .pc-dashboard-ribbon{grid-template-columns:1fr}
+  .pc-milestone-track{gap:5px}
+  .pc-milestone-track span{padding:9px 4px;font-size:10px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-section *,
+  .pc-v6.pc-sensory-reveal-ready .pc-v6-final *{
+    animation:none!important;
+    transition:none!important;
+  }
+}
