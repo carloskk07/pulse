@@ -21,6 +21,9 @@ const momentum = read("app/styles/momentum.css");
 const luxe = read("app/styles/luxe.css");
 const pulseExperienceImport = '@import "./styles/pulse-experience.css";';
 const momentumImport = '@import "./styles/momentum.css";';
+const shareStudioImport = '@import "./styles/share-studio.css";';
+const nextCircuitImport = '@import "./styles/next-circuit.css";';
+const postClaimImport = '@import "./styles/post-claim.css";';
 const luxeImport = '@import "./styles/luxe.css";';
 const themeImport = '@import "./styles/theme.css";';
 const touchImport = '@import "./styles/pulsercuit-v11-touch-foundation.css";';
@@ -35,7 +38,7 @@ if (layout.includes('import "./styles/')) {
   throw new Error("Root layout must not load visual layers directly; globals.css is the single cascade entry point.");
 }
 
-for (const item of [pulseExperienceImport, momentumImport, luxeImport, themeImport, currentImport, touchImport, authorityImport]) {
+for (const item of [pulseExperienceImport, momentumImport, shareStudioImport, nextCircuitImport, postClaimImport, luxeImport, themeImport, currentImport, touchImport, authorityImport]) {
   if (!manifest.includes(item)) throw new Error(`Canonical manifest must load ${item}.`);
 }
 if (manifest.lastIndexOf(currentImport) > manifest.lastIndexOf(v10AuditImport)) {
@@ -60,9 +63,18 @@ const retired = [
   "app/styles/pulsercuit-v4.css",
   "app/styles/pulsercuit-v4-1.css",
   "app/styles/pulsercuit-v4-2.css",
+  "app/styles/pulse-v4-3.css",
+  "app/styles/pulse-v4-3-retention.css",
+  "app/styles/pulse-v4-3-postclaim.css",
   "app/styles/pulsercuit-v5.css",
   "app/styles/pulsercuit-v5-1.css",
   "app/styles/pulsercuit-v5-1-surfaces.css",
+  "app/styles/pulsercuit-v6.css",
+  "app/styles/pulsercuit-v6-fixes.css",
+  "app/styles/pulsercuit-v6-reference.css",
+  "app/styles/pulsercuit-v6-ultra.css",
+  "app/styles/pulsercuit-v6-material.css",
+  "app/styles/pulsercuit-v6-sensory.css",
   "app/styles/pulsercuit-v7-fixes.css",
   "app/styles/pulsercuit-v7-audit.css",
   "app/styles/pulsercuit-v7-universe.css",
@@ -73,15 +85,21 @@ for (const path of retired) {
   if (basename && manifest.includes(basename)) throw new Error(`Retired stylesheet is still imported: ${basename}`);
 }
 
-const v43 = manifest.indexOf('@import "./styles/pulse-v4-3.css";');
 const pulseExperienceIndex = manifest.indexOf(pulseExperienceImport);
 const momentumIndex = manifest.indexOf(momentumImport);
+const shareStudioIndex = manifest.indexOf(shareStudioImport);
+const nextCircuitIndex = manifest.indexOf(nextCircuitImport);
+const postClaimIndex = manifest.indexOf(postClaimImport);
 const luxeIndex = manifest.indexOf(luxeImport);
-if (v43 < 0 || pulseExperienceIndex < 0 || momentumIndex < 0 || v43 < pulseExperienceIndex || v43 < momentumIndex) {
-  throw new Error("Current Pulse and Momentum experiences must load before retained V4.3 feature systems.");
-}
-if (luxeIndex < v43) {
-  throw new Error("Luxe finish must load after V4.3 component foundations.");
+if (
+  pulseExperienceIndex < 0
+  || momentumIndex < pulseExperienceIndex
+  || shareStudioIndex < momentumIndex
+  || nextCircuitIndex < shareStudioIndex
+  || postClaimIndex < nextCircuitIndex
+  || luxeIndex < postClaimIndex
+) {
+  throw new Error("Current product experience cascade order drifted before Luxe finish.");
 }
 const v9 = manifest.indexOf('@import "./styles/pulse-dashboard-v9.css";');
 const currentTheme = manifest.indexOf(themeImport);
@@ -137,6 +155,24 @@ requireText("app/styles/momentum.css", [
   ".pc-weekly-card,.pc-retention-callout{",
   ".pc-achievement-grid{",
   ".pc-progress-cta{",
+]);
+requireText("app/styles/share-studio.css", [
+  "/* Pulsercuit V4.3 — factual social moments */",
+  ".pc-share-studio{",
+  ".pc-share-moment-card{",
+  ".pc-share-moment-foot button{",
+]);
+requireText("app/styles/next-circuit.css", [
+  "/* Pulsercuit V4.3 — factual retention / Next Circuit */",
+  ".pc-next-circuit{",
+  ".pc-next-primary{",
+  ".pc-next-reminder{",
+]);
+requireText("app/styles/post-claim.css", [
+  "/* Pulsercuit V8 — premium post-claim progress experience */",
+  ".pc-v8-victory{",
+  ".pc-v8-progress-zone{",
+  ".pc-v8-return-stage{",
 ]);
 requireText("app/styles/luxe.css", [
   "/* Current Luxe product finish.",
