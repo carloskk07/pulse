@@ -62,6 +62,7 @@ requireText("app/styles/pulsercuit-v10-visual-hardening.css", [
 
 requireText("app/styles/pulsercuit-v10-sitewide-audit.css", [
   "/* Pulsercuit V10 — site-wide audit corrections.",
+  ".completion-page{color-scheme:light}",
   ".completion-page .claim-message.success",
   ".completion-page .status-pill",
   ".direct-campaign-table .admin-provider-row",
