@@ -94,8 +94,6 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
   const [balanceResult, pulseClaimsResult, profileResult, riskProfileResult, pulseConfigResult] = await Promise.all([
     supabase.from("user_balances").select("available_credits,pending_credits").eq("user_id", user.id).maybeSingle(),
     supabase.from("pulse_claims").select("created_at,reward_credits").eq("user_id", user.id).order("created_at", { ascending: false }).limit(200),
-    // Keep the user-scoped profile read inside the explicit authenticated column grants.
-    // risk_score is intentionally not exposed to the authenticated Data API role.
     supabase.from("profiles").select("handle,trust_level").eq("id", user.id).maybeSingle(),
     admin
       ? admin.from("profiles").select("risk_score").eq("id", user.id).maybeSingle()
@@ -181,7 +179,12 @@ export function creditsToUsd(credits: number) {
 
 export function formatUsdFromCredits(credits: number, signed = false) {
   const value = creditsToUsd(Math.abs(credits));
-  const formatted = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(value);
+  const formatted = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
+  }).format(value);
   if (!signed || credits === 0) return formatted;
   return `${credits > 0 ? "+" : "−"}${formatted}`;
 }
