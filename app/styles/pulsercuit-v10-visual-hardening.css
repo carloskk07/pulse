@@ -1,0 +1,489 @@
+/* Pulsercuit V10 — site-wide visual hardening authority.
+   Presentation only: no reward, ledger, treasury, payout, auth or provider semantics.
+   This file is intentionally loaded last so old generational CSS cannot reintroduce
+   overflow, tablet compression, inaccessible microcopy or unsafe fixed navigation. */
+
+:root{
+  --pc10-content-max:1320px;
+  --pc10-page-pad:clamp(24px,4.25vw,60px);
+  --pc10-panel-radius:clamp(20px,2.1vw,30px);
+  --pc10-touch:44px;
+  --pc10-muted:#9aa39f;
+  --pc10-muted-strong:#b1b8b3;
+  --pc10-line:rgba(239,215,151,.13);
+}
+
+/* Global resilience */
+html{
+  min-width:320px;
+  text-size-adjust:100%;
+  -webkit-text-size-adjust:100%;
+  scrollbar-gutter:stable;
+}
+body{overflow-x:clip}
+img,video,canvas,svg{max-width:100%}
+img,video,canvas{height:auto}
+button,input,textarea,select{font:inherit}
+button,input,textarea,select{max-width:100%}
+:where(p,h1,h2,h3,h4,strong,small,span,a,code){overflow-wrap:break-word}
+:where(pre,code){font-variant-ligatures:none}
+pre{max-width:100%;overflow:auto}
+[hidden]{display:none!important}
+
+/* Keep focus obvious after all legacy overrides. */
+body :where(a,button,input,textarea,select,summary):focus-visible{
+  outline:2px solid var(--pc7-gold,#e6bd5d)!important;
+  outline-offset:3px!important;
+}
+:where(button,.button,[role="button"]):disabled{
+  cursor:not-allowed!important;
+  filter:saturate(.55);
+}
+
+/* App shell: stable desktop sizing and scroll-safe administration. */
+.app-frame{
+  min-height:100dvh!important;
+  grid-template-columns:clamp(220px,17vw,258px) minmax(0,1fr)!important;
+}
+.app-sidebar{
+  height:100dvh!important;
+  min-height:0;
+  overflow:hidden;
+}
+.app-nav{
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+  padding-bottom:12px;
+}
+.app-nav::-webkit-scrollbar{display:none}
+.sidebar-user{flex:0 0 auto;min-width:0}
+.sidebar-user>div{min-width:0}
+.sidebar-user strong,.sidebar-user small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-tools{
+  display:flex!important;
+  flex-flow:row wrap!important;
+  gap:6px 10px!important;
+  align-items:center!important;
+}
+.sidebar-tools a{white-space:nowrap}
+.app-content{
+  width:min(100%,var(--pc10-content-max))!important;
+  min-width:0;
+  padding-left:var(--pc10-page-pad)!important;
+  padding-right:var(--pc10-page-pad)!important;
+}
+.app-content>*{min-width:0}
+.app-frame:before{left:clamp(220px,17vw,258px)!important}
+
+/* Page hierarchy: one rhythm across product, support and operations. */
+.app-page-head,.admin-head,.app-section-head,.completion-section-head{
+  min-width:0;
+}
+.app-page-head>*,.admin-head>*,.app-section-head>*{min-width:0}
+.app-page-head h1,.admin-head h1,.pc-progress-head h1,.pc-luxe-turbo-head h1{
+  max-width:900px;
+  text-wrap:balance;
+}
+.app-page-head p,.admin-head p,.app-section-head p{
+  line-height:1.6;
+}
+.app-eyebrow,.section-kicker,.pulse-line{
+  line-height:1.35;
+}
+.balance-chip,.pc-v9-vault-chip{
+  flex:0 0 auto;
+  min-width:min(238px,100%);
+}
+
+/* Raise the readability floor without flattening the premium density. */
+.pc-v9-hud article>span,
+.pc-v9-trajectory span,
+.pc-v9-trajectory small,
+.pc-v9-progress-card p,
+.pc-v9-section-sub,
+.admin-kpi small,
+.admin-secondary-grid span,
+.readiness-item small,
+.readiness-counts span,
+.admin-provider-row.header,
+.prospect-row.header,
+.prospect-score span,
+.payout-pack-label small,
+.transaction-row small,
+.state-list span,
+.milestone-row small{
+  color:#89948f!important;
+  font-size:max(10px,.625rem)!important;
+  line-height:1.45;
+}
+.pc-v9-head-proof span,.status-pill,.app-eyebrow,.section-kicker{
+  font-size:max(10px,.625rem);
+}
+.claim-message,.preview-banner{
+  font-size:12px!important;
+  line-height:1.5;
+}
+
+/* Generic layout containment for complex cards and live values. */
+:where(
+  .wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,
+  .invite-hero-card,.milestones,.drop-card,.drop-aside,.quick-win-card,
+  .pc-progress-hero,.pc-identity-card,.pc-weekly-card,.pc-retention-callout,
+  .pc-share-studio,.pc-next-circuit,.pc-dashboard-ribbon,.first-reward-guide,
+  .admin-panel,.readiness-panel,.admin-kpi,.admin-decision-card,
+  .business-console,.business-form,.completion-card
+){min-width:0}
+:where(.wallet-balance-card,.invite-hero-card,.admin-panel,.business-console,.completion-card){overflow-wrap:anywhere}
+.referral-box{min-width:0}
+.referral-box code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Dashboard: eliminate the 800–1100px squeeze zone. */
+.pc-v9-head{align-items:flex-end}
+.pc-v9-chamber{min-width:0}
+.pc-v9-core-panel,.pulse-core-visual{max-width:100%}
+.pc-v9-trajectory,.pc-v9-progress-deck,.pc-v9-hud{min-width:0}
+.pc-v9-progress-card>a{max-width:calc(100% - 48px)}
+
+/* Vault / transaction truth must remain readable with long provider values. */
+.wallet-balance-card>*,.withdrawal-panel>*{min-width:0}
+.payout-pack-label{max-width:360px}
+.transaction-row{min-width:0}
+.transaction-row>div{min-width:0}
+.transaction-row strong,.transaction-row small{overflow-wrap:anywhere}
+.withdrawal-form input{min-height:46px}
+
+/* Turbo rows: preserve every metric without forcing the whole page wider. */
+.reward-row,.reward-row-main,.reward-metric,.drop-card-foot,.drop-stat{min-width:0}
+.reward-row-main strong,.reward-row-main small{overflow-wrap:anywhere}
+.filter-row{scrollbar-width:thin;overscroll-behavior-x:contain}
+
+/* Admin and prospect cockpit: scrolling belongs to the data surface, not the page. */
+.admin-provider-table,.prospect-table{
+  max-width:100%;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+}
+.admin-provider-row{min-width:640px}
+.prospect-row{min-width:780px}
+.prospect-table{display:block!important}
+.prospect-table .prospect-row{display:grid}
+.admin-badge,.readiness-counts span{white-space:normal;text-align:center}
+.admin-panel :where(code,pre),.support-ops-card :where(code,pre){overflow-wrap:anywhere}
+
+/* Forms: consistent geometry and reliable mobile interaction. */
+:where(.app-content,.auth-page,.business-page,.completion-page) :where(input,textarea,select){
+  min-height:44px;
+}
+:where(.app-content,.auth-page,.business-page,.completion-page) textarea{min-height:110px}
+:where(.auth-form,.withdrawal-form,.business-form,.completion-form,.prospect-form,.prospect-stage-form) label{min-width:0}
+.turnstile-shell,.turnstile-field{max-width:100%}
+.turnstile-field>div{max-width:100%}
+
+/* Auth: keep the two-form card readable at every viewport height. */
+.auth-page{min-height:100dvh}
+.auth-shell{min-height:calc(100dvh - 88px)}
+.auth-card{width:min(100%,520px);justify-self:end}
+.auth-copy{min-width:0}
+.auth-copy h1{text-wrap:balance}
+.auth-form .button{min-height:48px}
+
+/* Public / business surfaces: contain cinematic decoration and long copy. */
+.pc-v6,.business-page{overflow-x:clip}
+.pc-v6-shell,.shell{min-width:0}
+.pc-v6-section-grid,.pc-v6-chamber-grid,.pc-v6-momentum-grid,.pc-v6-share-grid,.pc-v6-vault-grid,
+.business-hero,.business-pilot-section,.business-value-grid,.business-principles,.business-flow{min-width:0}
+.pc-v6-section-intro,.pc-v6-chamber-stage,.pc-v6-ranks,.pc-v6-share-cards,.pc-v6-vault-art,
+.business-hero-copy,.business-console,.business-pilot-copy,.business-form{min-width:0}
+.pc-v6 :where(h1,h2,h3,p),.business-page :where(h1,h2,h3,p){text-wrap:pretty}
+#about,#how,#community{scroll-margin-top:96px}
+
+/* Light policy/completion surfaces keep their native contrast. */
+.completion-page :where(.policy-body,.completion-card){max-width:100%}
+.completion-page .policy-body :where(p,li){overflow-wrap:anywhere}
+.account-facts strong{min-width:0;text-align:right;overflow-wrap:anywhere}
+
+/* Large-tablet correction while desktop navigation is still present. */
+@media(max-width:1180px){
+  .pc-v9-chamber{
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto auto auto!important;
+    min-height:0!important;
+    padding:44px 40px 0!important;
+  }
+  .pc-v9-pulse-copy{max-width:760px!important}
+  .pc-v9-core-panel{min-height:390px!important}
+  .pc-v9-core-panel .pulse-core-visual{width:min(100%,390px)!important}
+  .pc-v9-integrity{grid-column:1!important}
+  .pc-v9-hud{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .pc-v9-progress-deck{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .pc-v9-progress-deck>article:last-child:nth-child(odd){grid-column:1/-1}
+
+  .wallet-grid{grid-template-columns:1fr!important}
+  .pc-progress-hero{grid-template-columns:1fr!important}
+  .pc-luxe-rank-road{min-width:0}
+
+  .reward-row{
+    grid-template-columns:minmax(0,1.7fr) repeat(2,minmax(90px,.65fr))!important;
+    gap:12px!important;
+  }
+  .reward-row .reward-metric:nth-of-type(n+3){display:none}
+}
+
+/* App switches to touch navigation before the sidebar can crush content. */
+@media(max-width:980px){
+  .app-frame{display:block!important}
+  .app-frame:before{left:0!important;inset:0!important}
+  .app-sidebar{display:none!important}
+  .app-content{
+    width:100%!important;
+    max-width:none!important;
+    padding:34px clamp(18px,4.5vw,42px) calc(112px + env(safe-area-inset-bottom))!important;
+  }
+  .bottom-nav{
+    display:flex!important;
+    position:fixed!important;
+    z-index:100!important;
+    left:max(12px,env(safe-area-inset-left))!important;
+    right:max(12px,env(safe-area-inset-right))!important;
+    bottom:max(12px,env(safe-area-inset-bottom))!important;
+    min-height:66px!important;
+    height:auto!important;
+    padding:7px!important;
+    gap:3px;
+    align-items:stretch;
+    justify-content:space-around;
+    overflow:visible!important;
+    border:1px solid rgba(235,205,132,.16)!important;
+    border-radius:22px!important;
+    background:linear-gradient(180deg,rgba(15,19,16,.97),rgba(4,6,5,.985))!important;
+    box-shadow:0 22px 64px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.045)!important;
+    backdrop-filter:blur(22px) saturate(1.15);
+  }
+  .bottom-nav>a,.bottom-nav-more{
+    flex:1 1 0!important;
+    min-width:0!important;
+  }
+  .bottom-nav>a,.bottom-nav-more summary{
+    min-height:52px!important;
+    padding:5px 3px!important;
+    border-radius:14px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+    color:#969e99!important;
+    font-size:9px!important;
+    line-height:1.1;
+    text-align:center;
+  }
+  .bottom-nav>a svg{width:18px!important;height:18px!important;flex:0 0 auto}
+  .bottom-nav>a.active,.bottom-nav-more[open] summary,.bottom-nav-more summary.active{
+    color:#fff2bd!important;
+    background:linear-gradient(180deg,rgba(230,189,93,.14),rgba(230,189,93,.045))!important;
+    box-shadow:inset 0 0 0 1px rgba(230,189,93,.09)!important;
+  }
+  .bottom-nav-more{display:block!important;position:relative;height:auto!important}
+  .bottom-nav-more summary{list-style:none;cursor:pointer;user-select:none}
+  .bottom-nav-more summary::-webkit-details-marker{display:none}
+  .bottom-nav-more summary::marker{content:""}
+  .bottom-nav-more-icon{height:18px!important;display:grid!important;place-items:center;font-size:13px;font-weight:850;color:#c8b47b}
+  .bottom-nav-menu{
+    position:absolute!important;
+    right:0!important;
+    bottom:calc(100% + 14px)!important;
+    width:min(320px,calc(100vw - 24px))!important;
+    max-height:min(70dvh,560px)!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    padding:12px!important;
+    border:1px solid rgba(235,205,132,.17)!important;
+    border-radius:19px!important;
+    background:linear-gradient(155deg,rgba(17,21,18,.99),rgba(3,5,4,.995))!important;
+    box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)!important;
+    backdrop-filter:blur(24px);
+  }
+  .bottom-nav-menu-user{min-width:0}
+  .bottom-nav .bottom-nav-menu>a,.bottom-nav .bottom-nav-menu form button{
+    width:100%!important;
+    min-height:44px!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:9px!important;
+    padding:9px 10px!important;
+    border:0!important;
+    border-radius:11px!important;
+    background:transparent!important;
+    color:#c8cbc3!important;
+    font-size:12px!important;
+    text-align:left!important;
+  }
+
+  .app-page-head,.admin-head{
+    gap:22px!important;
+  }
+  .app-page-head h1,.admin-head h1,.pc-progress-head h1,.pc-luxe-turbo-head h1{
+    font-size:clamp(44px,7vw,68px)!important;
+  }
+
+  .business-pilot-copy{position:static!important}
+  .auth-card{justify-self:stretch;width:100%}
+}
+
+@media(max-width:760px){
+  .app-content{padding-top:26px!important}
+  .app-page-head,.admin-head,.app-section-head{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+  }
+  .app-page-head h1,.admin-head h1,.pc-progress-head h1,.pc-luxe-turbo-head h1{
+    font-size:clamp(38px,10vw,54px)!important;
+    line-height:.94!important;
+    letter-spacing:-.06em!important;
+  }
+  .balance-chip,.pc-v9-vault-chip{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  .pc-v9-hud,.pc-v9-progress-deck,.pc-v9-trajectory{
+    grid-template-columns:1fr!important;
+  }
+  .pc-v9-progress-deck>article:last-child:nth-child(odd){grid-column:auto}
+  .pc-v9-chamber{
+    padding:28px 18px 0!important;
+    border-radius:26px!important;
+  }
+  .pc-v9-pulse-copy h2{font-size:clamp(40px,11vw,52px)!important}
+  .pc-v9-core-panel{min-height:320px!important}
+  .pc-v9-core-panel .pulse-core-visual{width:min(100%,320px)!important}
+  .pc-v9-core-telemetry{display:none!important}
+
+  .wallet-balance-card{
+    grid-template-columns:auto minmax(0,1fr)!important;
+    padding:24px!important;
+  }
+  .wallet-balance-card .payout-pack-label{
+    grid-column:1/-1;
+    margin-left:0!important;
+    text-align:left!important;
+    max-width:none;
+  }
+  .withdrawal-panel{padding:22px!important}
+  .transaction-row{grid-template-columns:auto minmax(0,1fr) auto!important}
+
+  .reward-row{
+    grid-template-columns:1fr auto!important;
+    gap:10px!important;
+  }
+  .reward-row-main{grid-column:1/-1}
+  .reward-row .reward-metric{display:block!important}
+  .reward-row .reward-metric:nth-of-type(n+3){display:none!important}
+  .direct-row-action{min-height:40px}
+
+  .admin-provider-table{border-radius:14px}
+  .admin-provider-row{min-width:560px}
+  .prospect-row{min-width:0!important}
+  .prospect-table{overflow:visible!important}
+
+  .auth-header{height:68px!important}
+  .auth-shell{
+    min-height:calc(100dvh - 68px)!important;
+    gap:26px!important;
+    padding-block:22px 54px!important;
+  }
+  .auth-copy h1{font-size:clamp(44px,12vw,58px)!important}
+  .auth-copy>p{font-size:15px!important}
+  .auth-circuit-visual{transform:scale(.9);transform-origin:left center}
+  .auth-card{padding:22px!important;border-radius:22px!important}
+
+  .business-hero-copy h1{font-size:clamp(44px,12vw,58px)!important}
+  .business-console-head{align-items:flex-start;flex-direction:column}
+  .business-metric-row{gap:14px}
+  .business-form{padding:20px!important}
+
+  .pc-v6-hero-mantra,.pc-v6-side-mantra{display:none!important}
+  .pc-v6-actions{width:100%;max-width:520px}
+  .pc-v6-actions .pc-v6-button{justify-content:center}
+  .pc-v6-share-side{min-width:0}
+
+  .completion-header nav{flex-wrap:wrap}
+  .completion-footer div{flex-wrap:wrap}
+  .account-facts div{align-items:flex-start;flex-direction:column;gap:5px}
+  .account-facts strong{text-align:left}
+}
+
+@media(max-width:560px){
+  :where(.app-content,.auth-page,.business-page,.completion-page) :where(input,textarea,select){font-size:16px!important}
+  .app-content{padding-inline:16px!important}
+  .bottom-nav{left:8px!important;right:8px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;border-radius:19px!important}
+  .bottom-nav>a,.bottom-nav-more summary{font-size:8px!important}
+
+  .button,.pc-v6-button{
+    min-height:44px;
+    max-width:100%;
+    white-space:normal;
+    text-align:center;
+  }
+  .app-section{margin-top:30px}
+  .app-section-head h2{font-size:clamp(27px,8vw,36px)}
+  .claim-message,.preview-banner{padding:12px!important}
+
+  .pc-v9-head-proof{gap:6px!important}
+  .pc-v9-head-proof span{width:100%;justify-content:flex-start}
+  .pc-v9-hud article{min-height:74px!important}
+  .pc-v9-progress-card{padding:21px!important;border-radius:22px!important}
+  .pc-v9-progress-card>a{position:static!important;margin-top:18px;max-width:100%}
+
+  .wallet-balance-card{grid-template-columns:1fr!important;gap:12px!important}
+  .wallet-big-icon{width:48px!important;height:48px!important}
+  .wallet-balance-card strong{font-size:clamp(38px,13vw,52px)!important}
+  .wallet-balance-card .payout-pack-label{grid-column:auto}
+  .transaction-row b{font-size:11px}
+
+  .referral-box{align-items:stretch;flex-direction:column;padding:12px!important;gap:10px}
+  .referral-box code{white-space:normal!important;overflow-wrap:anywhere}
+  .referral-box button{width:100%;min-height:42px}
+
+  .admin-kpi-grid,.admin-secondary-grid,.readiness-list{grid-template-columns:1fr!important}
+  .admin-panel,.readiness-panel{padding:18px!important}
+  .admin-decision-card>strong{font-size:clamp(32px,11vw,42px)!important}
+
+  .auth-trust{gap:6px!important}
+  .auth-trust span{font-size:9px!important}
+  .auth-circuit-visual{display:none!important}
+
+  .pc-v6-hero{min-height:660px!important}
+  .pc-v6-hero-copy h1{font-size:clamp(48px,15vw,64px)!important}
+  .pc-v6-actions{flex-direction:column!important;align-items:stretch!important}
+  .pc-v6-actions .pc-v6-button{width:100%}
+  .pc-v6-section{padding-block:76px!important}
+  .pc-v6-section-intro h2{font-size:clamp(42px,12vw,58px)!important}
+
+  .business-flow>div,.business-principles article,.business-value-grid article{min-height:0!important}
+  .completion-hero h1{font-size:clamp(38px,11vw,52px)!important}
+  .completion-card{padding:20px!important}
+}
+
+@media(hover:none),(pointer:coarse){
+  :where(.pc-v9-progress-card,.pc-v9-share-strip,.pc-v9-proof-link,.pc-luxe-turbo-section,.app-nav a,.button):hover{
+    transform:none!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto!important}
+  *,*::before,*::after{
+    scroll-behavior:auto!important;
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+  }
+}
