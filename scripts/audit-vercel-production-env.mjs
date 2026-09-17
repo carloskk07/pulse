@@ -40,6 +40,13 @@ export function classifyGroup(values, keys) {
   return "PRESENT";
 }
 
+export function classifyBuildVisibleGroup(values, keys) {
+  const states = keys.map((key) => classifyValue(values.get(key)));
+  if (states.includes("MISSING")) return "MISSING";
+  if (states.includes("SENSITIVE_MANAGED")) return "BUILD_VALUE_UNAVAILABLE";
+  return "PRESENT";
+}
+
 function runSelfTest() {
   const fixture = parseEnv(`\nPUBLIC=value\nSECRET=[SENSITIVE]\nQUOTED="hello"\nEMPTY=\n`);
   const assertions = [
@@ -48,8 +55,11 @@ function runSelfTest() {
     [classifyValue(fixture.get("EMPTY")), "MISSING", "empty value"],
     [classifyValue(fixture.get("UNKNOWN")), "MISSING", "missing value"],
     [classifyGroup(fixture, ["PUBLIC", "QUOTED"]), "PRESENT", "plain group"],
-    [classifyGroup(fixture, ["PUBLIC", "SECRET"]), "SENSITIVE_MANAGED", "managed-sensitive group"],
-    [classifyGroup(fixture, ["PUBLIC", "UNKNOWN"]), "MISSING", "missing group"],
+    [classifyGroup(fixture, ["PUBLIC", "SECRET"]), "SENSITIVE_MANAGED", "managed-sensitive server group"],
+    [classifyGroup(fixture, ["PUBLIC", "UNKNOWN"]), "MISSING", "missing server group"],
+    [classifyBuildVisibleGroup(fixture, ["PUBLIC", "QUOTED"]), "PRESENT", "build-visible group"],
+    [classifyBuildVisibleGroup(fixture, ["PUBLIC", "SECRET"]), "BUILD_VALUE_UNAVAILABLE", "sensitive build-visible group"],
+    [classifyBuildVisibleGroup(fixture, ["PUBLIC", "UNKNOWN"]), "MISSING", "missing build-visible group"],
   ];
 
   for (const [actual, expected, label] of assertions) {
@@ -60,14 +70,16 @@ function runSelfTest() {
 
 function audit(envPath) {
   const values = parseEnv(readFileSync(envPath, "utf8"));
+  const siteState = classifyBuildVisibleGroup(values, ["NEXT_PUBLIC_SITE_URL"]);
   const siteValue = String(values.get("NEXT_PUBLIC_SITE_URL") ?? "").trim().replace(/\/+$/, "");
 
   const checks = [
-    ["public-site", siteValue === CANONICAL_SITE ? "PRESENT" : "MISSING"],
-    ["supabase-auth", classifyGroup(values, ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"])],
+    ["public-site", siteState === "PRESENT" && siteValue === CANONICAL_SITE ? "PRESENT" : siteState === "BUILD_VALUE_UNAVAILABLE" ? "BUILD_VALUE_UNAVAILABLE" : "MISSING"],
+    ["supabase-public", classifyBuildVisibleGroup(values, ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"])],
+    ["turnstile-public", classifyBuildVisibleGroup(values, ["NEXT_PUBLIC_TURNSTILE_SITE_KEY"])],
     ["service-role", classifyGroup(values, ["SUPABASE_SERVICE_ROLE_KEY"])],
     ["admin-allowlist", classifyGroup(values, ["ADMIN_EMAILS"])],
-    ["turnstile", classifyGroup(values, ["TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY"])],
+    ["turnstile-secret", classifyGroup(values, ["TURNSTILE_SECRET_KEY"])],
     ["faucetpay", classifyGroup(values, [
       "FAUCETPAY_SCOPED_KEY",
       "FAUCETPAY_PAYOUT_CURRENCY",
@@ -89,14 +101,19 @@ function audit(envPath) {
   for (const [id, state] of checks) console.log(`Release config ${id}: ${state}`);
   console.log(`Release config legal-operator: ${legalDisplay}`);
 
-  const missing = checks.filter(([, state]) => state === "MISSING").map(([id]) => id);
+  const blocking = checks.filter(([, state]) => state === "MISSING" || state === "BUILD_VALUE_UNAVAILABLE");
+  const missing = blocking.filter(([, state]) => state === "MISSING").map(([id]) => id);
+  const buildUnavailable = blocking.filter(([, state]) => state === "BUILD_VALUE_UNAVAILABLE").map(([id]) => id);
   const managedSensitive = checks.filter(([, state]) => state === "SENSITIVE_MANAGED").map(([id]) => id);
 
   if (missing.length) {
-    console.log(`::warning title=Pulsercuit release configuration::Missing required technical release configuration groups: ${missing.join(", ")}. Values are intentionally never printed.`);
+    console.log(`::error title=Pulsercuit release configuration::Missing required technical release configuration groups: ${missing.join(", ")}. Values are intentionally never printed.`);
+  }
+  if (buildUnavailable.length) {
+    console.log(`::error title=Pulsercuit public build configuration::Client-visible configuration is marked sensitive and cannot be embedded into the prebuilt browser bundle: ${buildUnavailable.join(", ")}. Store these NEXT_PUBLIC values as runner-readable production variables.`);
   }
   if (managedSensitive.length) {
-    console.log(`::notice title=Pulsercuit managed sensitive configuration::Sensitive groups are configured in Vercel but their values are intentionally unavailable to the prebuilt runner: ${managedSensitive.join(", ")}. Runtime readiness is the authoritative post-deploy proof.`);
+    console.log(`::notice title=Pulsercuit managed sensitive configuration::Server-only sensitive groups are configured in Vercel but their values are intentionally unavailable to the prebuilt runner: ${managedSensitive.join(", ")}. Runtime readiness is the authoritative post-deploy proof.`);
   }
   if (legalState === "MISSING") {
     console.log("::notice title=Pulsercuit deferred legal configuration::Legal operator identity remains explicitly deferred and does not satisfy public-launch legal approval.");
@@ -112,13 +129,13 @@ function audit(envPath) {
       ...checks.map(([id, state]) => `| ${id} | **${state}** |`),
       `| legal-operator | **${legalDisplay}** |`,
       "",
-      "PRESENT means the runner could inspect a non-empty value. SENSITIVE_MANAGED means Vercel confirmed the variable exists but intentionally returned only its sensitive placeholder. MISSING means no usable configuration entry was observed. Runtime readiness remains authoritative for server-secret usability after deployment.",
+      "PRESENT means the runner could inspect a non-empty value. SENSITIVE_MANAGED is accepted only for server-side secrets whose values Vercel intentionally withholds from the prebuilt runner. BUILD_VALUE_UNAVAILABLE means a client-visible NEXT_PUBLIC value is hidden from the build and blocks deployment. MISSING also blocks deployment. Runtime readiness remains authoritative for server-secret usability after deployment.",
       "",
     ];
     appendFileSync(summaryPath, `${rows.join("\n")}\n`, "utf8");
   }
 
-  if (missing.length) process.exitCode = 1;
+  if (blocking.length) process.exitCode = 1;
 }
 
 if (process.argv.includes("--self-test")) {
