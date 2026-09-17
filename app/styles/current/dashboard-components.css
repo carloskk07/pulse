@@ -1,0 +1,74 @@
+/* Dashboard status ribbon: still used by the V9 dashboard markup. */
+.pc-dashboard-ribbon{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 30px;
+}
+.pc-dashboard-ribbon article{
+  min-width:0;
+  padding:18px 20px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:20px;
+  background:rgba(255,255,255,.018);
+}
+.pc-dashboard-ribbon small{
+  display:block;
+  margin-bottom:9px;
+  color:#818b9a;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.pc-dashboard-ribbon strong{font-size:15px;letter-spacing:-.02em}
+.pc-dashboard-ribbon span{display:block;margin-top:5px;color:#818b9a;font-size:10px}
+.pc-dashboard-ribbon .live strong{color:var(--pulse-v3-lime,#cfff67)}
+.pc-dashboard-ribbon .cyan strong{color:var(--pulse-v3-cyan,#71ebff)}
+.pc-dashboard-ribbon .violet strong{color:#b8a9ff}
+.pc-dashboard-ribbon .warm strong{color:#ffd87d}
+
+/* Dashboard rhythm card: live markup predates V9 but remains part of the
+   current factual Momentum block. */
+.pc-momentum-card{
+  position:relative;
+  overflow:hidden;
+  padding:28px;
+  border:1px solid rgba(255,255,255,.065);
+  border-radius:28px;
+  background:
+    radial-gradient(circle at 90% 10%,rgba(166,144,255,.08),transparent 30%),
+    linear-gradient(150deg,rgba(255,255,255,.026),rgba(255,255,255,.007));
+}
+.pc-momentum-card:after{
+  content:"";
+  position:absolute;
+  right:-65px;
+  bottom:-75px;
+  width:190px;
+  height:190px;
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:50%;
+  box-shadow:0 0 0 36px rgba(255,255,255,.01),0 0 0 72px rgba(255,255,255,.006);
+  pointer-events:none;
+}
+.pc-momentum-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.pc-momentum-top strong{font-size:34px;letter-spacing:-.06em}
+.pc-momentum-top span{color:#818b9a;font-size:10px}
+.pc-milestone-track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:28px}
+.pc-milestone-track span{
+  padding:11px 8px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:14px;
+  background:rgba(255,255,255,.012);
+  color:#818b9a;
+  font-size:10px;
+  text-align:center;
+}
+.pc-milestone-track span.done{
+  border-color:var(--pulse-v3-lime,#cfff67);
+  background:var(--pulse-v3-lime,#cfff67);
+  color:#0a0f11;
+  font-weight:850;
+  box-shadow:0 0 24px rgba(207,255,103,.12);
+}
