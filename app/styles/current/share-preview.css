@@ -1,0 +1,13 @@
+/* Share page preview: current Invite markup still uses these semantic blocks. */
+.pc-share-preview{display:grid;grid-template-columns:1.25fr .75fr;gap:12px;margin-top:18px}
+.pc-share-card{
+  min-width:0;
+  padding:26px;
+  border:1px solid rgba(207,255,103,.1);
+  border-radius:26px;
+  background:linear-gradient(145deg,rgba(207,255,103,.06),rgba(255,255,255,.012));
+}
+.pc-share-card small{color:#818b9a;font-size:10px;letter-spacing:.15em;text-transform:uppercase}
+.pc-share-card h3{margin:32px 0 10px;font-size:29px;line-height:.98;letter-spacing:-.055em}
+.pc-share-card h3 em{color:var(--pulse-v3-lime,#cfff67);font-style:normal}
+.pc-share-card p{color:#818b9a;font-size:11px;line-height:1.6}
