@@ -18,8 +18,10 @@ const manifest = read("app/globals.css");
 const theme = read("app/styles/theme.css");
 const pulseExperience = read("app/styles/pulse-experience.css");
 const momentum = read("app/styles/momentum.css");
+const luxe = read("app/styles/luxe.css");
 const pulseExperienceImport = '@import "./styles/pulse-experience.css";';
 const momentumImport = '@import "./styles/momentum.css";';
+const luxeImport = '@import "./styles/luxe.css";';
 const themeImport = '@import "./styles/theme.css";';
 const touchImport = '@import "./styles/pulsercuit-v11-touch-foundation.css";';
 const authorityImport = '@import "./styles/pulsercuit-v11-layout-authority.css";';
@@ -33,7 +35,7 @@ if (layout.includes('import "./styles/')) {
   throw new Error("Root layout must not load visual layers directly; globals.css is the single cascade entry point.");
 }
 
-for (const item of [pulseExperienceImport, momentumImport, themeImport, currentImport, touchImport, authorityImport]) {
+for (const item of [pulseExperienceImport, momentumImport, luxeImport, themeImport, currentImport, touchImport, authorityImport]) {
   if (!manifest.includes(item)) throw new Error(`Canonical manifest must load ${item}.`);
 }
 if (manifest.lastIndexOf(currentImport) > manifest.lastIndexOf(v10AuditImport)) {
@@ -59,6 +61,8 @@ const retired = [
   "app/styles/pulsercuit-v4-1.css",
   "app/styles/pulsercuit-v4-2.css",
   "app/styles/pulsercuit-v5.css",
+  "app/styles/pulsercuit-v5-1.css",
+  "app/styles/pulsercuit-v5-1-surfaces.css",
   "app/styles/pulsercuit-v7-fixes.css",
   "app/styles/pulsercuit-v7-audit.css",
   "app/styles/pulsercuit-v7-universe.css",
@@ -72,8 +76,12 @@ for (const path of retired) {
 const v43 = manifest.indexOf('@import "./styles/pulse-v4-3.css";');
 const pulseExperienceIndex = manifest.indexOf(pulseExperienceImport);
 const momentumIndex = manifest.indexOf(momentumImport);
+const luxeIndex = manifest.indexOf(luxeImport);
 if (v43 < 0 || pulseExperienceIndex < 0 || momentumIndex < 0 || v43 < pulseExperienceIndex || v43 < momentumIndex) {
   throw new Error("Current Pulse and Momentum experiences must load before retained V4.3 feature systems.");
+}
+if (luxeIndex < v43) {
+  throw new Error("Luxe finish must load after V4.3 component foundations.");
 }
 const v9 = manifest.indexOf('@import "./styles/pulse-dashboard-v9.css";');
 const currentTheme = manifest.indexOf(themeImport);
@@ -95,6 +103,11 @@ for (const forbidden of [".app-frame{", ".app-sidebar{", ".auth-page{", ".proof-
 for (const forbidden of [".app-frame{", ".app-sidebar{", ".auth-page{", ".proof-page{", ".bottom-nav{", ".pc-scene-strip{"]) {
   if (momentum.includes(forbidden)) {
     throw new Error(`Momentum experience must not own unrelated historical surface: ${forbidden}`);
+  }
+}
+for (const forbidden of ["body{", ".app-frame{", ".app-sidebar{", ".app-nav ", ".bottom-nav{", ".pc-luxe-marketing", ".pc-luxe-hero{", ".pc-luxe-claim-handoff"]) {
+  if (luxe.includes(forbidden)) {
+    throw new Error(`Luxe finish must not reclaim a retired global/superseded surface: ${forbidden}`);
   }
 }
 
@@ -124,6 +137,18 @@ requireText("app/styles/momentum.css", [
   ".pc-weekly-card,.pc-retention-callout{",
   ".pc-achievement-grid{",
   ".pc-progress-cta{",
+]);
+requireText("app/styles/luxe.css", [
+  "/* Current Luxe product finish.",
+  "--luxe-gold:#efd08a",
+  ".pc-luxe-dashboard-head h1{",
+  ".pc-luxe-pulse-chamber{",
+  ".pc-luxe-momentum-head h1{",
+  ".pc-luxe-share-studio{",
+  ".pc-luxe-invite-hero{",
+  ".pc-luxe-vault-balance{",
+  ".pc-luxe-best-turbo{",
+  ".pc-luxe-auth-card{",
 ]);
 requireText("app/styles/auth.css", [
   "/* Product-rail visual belongs to authentication",
