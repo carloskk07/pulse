@@ -28,8 +28,7 @@
 @import "./styles/pulse-v4-3.css";
 @import "./styles/pulse-v4-3-retention.css";
 @import "./styles/pulse-v4-3-postclaim.css";
-@import "./styles/pulsercuit-v5-1.css";
-@import "./styles/pulsercuit-v5-1-surfaces.css";
+@import "./styles/luxe.css";
 
 /* Current public homepage system — intentionally scoped to .pc-v6 */
 @import "./styles/pulsercuit-v6.css";
