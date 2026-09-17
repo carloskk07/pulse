@@ -14,6 +14,18 @@
 }
 .turnstile-field>div{max-width:100%!important}
 
+/* Feedback is a design-system state, not page-specific decoration. Historical
+   dark surfaces had success + neutral only, which made hard failures visually
+   indistinguishable from ordinary waiting states. */
+.claim-message.error{
+  color:#ffb2b7!important;
+  background:rgba(255,93,103,.08)!important;
+  border-color:rgba(255,93,103,.22)!important;
+}
+.claim-message[role="alert"]{box-shadow:inset 3px 0 0 rgba(255,101,112,.7)}
+.claim-message[role="status"]{box-shadow:inset 3px 0 0 rgba(255,255,255,.08)}
+.claim-message.success[role="status"]{box-shadow:inset 3px 0 0 rgba(85,234,139,.55)}
+
 /* Light completion/support surfaces must not inherit dark-app microcopy,
    browser-native dark controls or dark status colors. */
 .completion-page{color-scheme:light}
@@ -60,6 +72,49 @@
 }
 .completion-page .turnstile-shell:is(.is-error,.is-expired,.is-blocked) .turnstile-status{color:#842c33!important}
 .completion-page .turnstile-retry{color:#385c18!important}
+
+/* Interactive geometry must not depend on whether a control originated in an
+   old compact desktop layer. Keep true actions touch-safe without turning
+   editorial links into oversized buttons. */
+:where(
+  .direct-row-action,
+  .direct-inline-action,
+  .inline-action,
+  .icon-button,
+  .pc-share-rhythm,
+  .pc-v8-text-action,
+  .pc-v8-head-link,
+  .pc-v8-reminder-form button,
+  .referral-actions button,
+  .sidebar-signout
+){min-height:44px!important;display:inline-flex;align-items:center}
+.icon-button{min-width:44px!important;justify-content:center}
+.direct-row-action{padding-block:10px!important}
+.direct-inline-action{padding-block:9px!important}
+.referral-actions button{padding-block:10px!important}
+.sidebar-signout{padding-block:8px!important}
+
+/* Editorial navigation is still navigation. Header/footer links and FAQ
+   summaries get a reliable pointer/touch target while retaining their light,
+   text-led appearance. */
+.completion-header nav a,
+.completion-footer a{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  padding-block:9px;
+}
+.faq-list summary{
+  min-height:44px;
+  padding-block:10px;
+}
+
+/* Public navigation needs a semantic current-page state on standalone routes
+   such as Proof, rather than relying on memory of where the user clicked. */
+.pc-v6-nav a[aria-current="page"]{
+  color:#fff2bd!important;
+  box-shadow:inset 0 -1px 0 rgba(230,189,93,.62);
+}
 
 /* Operational tables: mobile must never hide evidence. Older generations
    collapsed columns with display:none; V10 uses horizontal data surfaces
@@ -159,7 +214,6 @@
   font-size:max(10px,.625rem)!important;
   line-height:1.4;
 }
-.sidebar-signout{min-height:34px;display:inline-flex;align-items:center}
 .sidebar-tools a.active{opacity:1!important;color:#fff2bd!important;font-weight:800}
 .bottom-nav .bottom-nav-menu>a.active{
   background:rgba(230,189,93,.1)!important;
@@ -186,6 +240,19 @@
   /* V10 hardening made navigation touch-safe; this pass raises the mobile
      label floor without changing the six-target geometry. */
   .bottom-nav>a,.bottom-nav-more summary{font-size:10px!important}
+}
+
+@media(max-width:850px){
+  /* Auth is a task surface before it is a marketing surface on a phone/tablet.
+     Preserve semantic source order (H1 first), but place the actionable card
+     first visually; the copy column has no focusable controls, so keyboard
+     focus still lands in the visually first card. */
+  .auth-shell{grid-template-areas:"card" "copy"!important}
+  .auth-card{grid-area:card!important}
+  .auth-copy{grid-area:copy!important}
+  .auth-circuit-visual{display:none!important}
+  .auth-copy{padding-top:8px}
+  .auth-copy h1{margin-top:12px!important}
 }
 
 @media(max-width:760px){
@@ -239,7 +306,7 @@
     padding-block:14px;
   }
   .completion-page .completion-header nav{width:100%;justify-content:flex-start}
-  .completion-page .completion-header nav a{min-height:40px;display:inline-flex;align-items:center}
+  .completion-page .completion-header nav a{min-height:44px;display:inline-flex;align-items:center}
   .turnstile-status{min-width:0}
   .turnstile-status>span:not(.turnstile-status-dot){min-width:0;overflow-wrap:anywhere}
 
