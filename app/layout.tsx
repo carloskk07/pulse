@@ -19,6 +19,8 @@ import "./styles/pulsercuit-v7-fixes.css";
 import "./styles/pulsercuit-v7-audit.css";
 import "./styles/pulsercuit-v10-visual-hardening.css";
 import "./styles/pulsercuit-v10-sitewide-audit.css";
+import "./styles/pulsercuit-v11-touch-foundation.css";
+import "./styles/pulsercuit-v11-layout-authority.css";
 
 export const metadata: Metadata = {
   metadataBase: getCanonicalSiteUrl(),

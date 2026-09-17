@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 
-export function SiteHeader() {
+export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
   return (
-    <header className="site-header pc-v6-header">
-      <div className="pc-v6-shell pc-v6-header-inner">
+    <header className={`site-header pc-v6-header ${overlay ? "is-overlay" : "is-flow"}`}>
+      <div className="shell pc-v6-shell pc-v6-header-inner">
         <PulsercuitBrand />
         <nav className="pc-v6-nav" aria-label="Primary navigation">
           <Link href="/#how">Pulse</Link>
