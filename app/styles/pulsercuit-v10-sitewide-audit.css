@@ -1,0 +1,155 @@
+/* Pulsercuit V10 — site-wide audit corrections.
+   Companion to the V10 hardening authority. Presentation-only: no reward,
+   ledger, treasury, payout, auth or provider semantics are changed. */
+
+/* Human-verification surfaces: never clip the provider widget. The React
+   component selects compact mode when the actual container is below 300px. */
+.turnstile-shell{min-width:0;width:100%}
+.turnstile-field{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow:visible!important;
+  align-items:flex-start;
+}
+.turnstile-field>div{max-width:100%!important}
+
+/* Light completion/support surfaces must not inherit dark-app microcopy or
+   dark status colors. These values keep small labels and state messages
+   readable against the native warm-white completion palette. */
+.completion-page :where(.section-kicker,.app-eyebrow){color:#566159!important}
+.completion-page .claim-message{
+  color:#38443b!important;
+  background:#f4f7f3!important;
+  border-color:#d6ded6!important;
+}
+.completion-page .claim-message.success{
+  color:#245a35!important;
+  background:#eaf7ed!important;
+  border-color:#bedcc6!important;
+}
+.completion-page .claim-message.neutral{
+  color:#455249!important;
+  background:#f1f4f1!important;
+  border-color:#d9dfda!important;
+}
+.completion-page .claim-message.error{
+  color:#842c33!important;
+  background:#fff0f0!important;
+  border-color:#e5c0c3!important;
+}
+.completion-page .status-pill{
+  color:#435048!important;
+  background:#eef2ee!important;
+  border:1px solid #d7ded8!important;
+}
+.completion-page .empty-ledger{color:#566158!important}
+.completion-page .turnstile-shell{
+  background:#fafcf9!important;
+  border-color:#dce3dc!important;
+}
+.completion-page .turnstile-status{color:#566158!important}
+.completion-page .turnstile-shell.is-verified{
+  background:#eef8f0!important;
+  border-color:#bddcc4!important;
+}
+.completion-page .turnstile-shell.is-verified .turnstile-status{color:#2d633c!important}
+.completion-page .turnstile-shell:is(.is-error,.is-expired,.is-blocked){
+  background:#fff2f2!important;
+  border-color:#e6c1c4!important;
+}
+.completion-page .turnstile-shell:is(.is-error,.is-expired,.is-blocked) .turnstile-status{color:#842c33!important}
+.completion-page .turnstile-retry{color:#385c18!important}
+
+/* Operational tables: mobile must never hide evidence. Older generations
+   collapsed columns with display:none; V10 uses horizontal data surfaces
+   instead, preserving the complete row for operators. */
+.admin-provider-table:not(.direct-campaign-table){
+  max-width:100%;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+}
+.admin-provider-table:not(.direct-campaign-table) .admin-provider-row{
+  min-width:640px!important;
+  grid-template-columns:minmax(180px,1.3fr) repeat(3,minmax(100px,1fr))!important;
+}
+.admin-provider-table:not(.direct-campaign-table) .admin-provider-row>span:nth-child(3),
+.admin-provider-table:not(.direct-campaign-table) .admin-provider-row>span:nth-child(4){display:block!important}
+
+.direct-campaign-table{
+  max-width:100%;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+}
+.direct-campaign-table .admin-provider-row{
+  min-width:820px!important;
+  grid-template-columns:minmax(180px,1.2fr) repeat(4,minmax(100px,.7fr))!important;
+}
+.direct-campaign-table .admin-provider-row>*:nth-child(4),
+.direct-campaign-table .admin-provider-row>*:nth-child(5){display:block!important}
+
+.business-lead-table{
+  display:block!important;
+  max-width:100%;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+}
+.business-lead-row,
+.business-lead-row.header{
+  display:grid!important;
+  min-width:860px!important;
+  grid-template-columns:minmax(220px,1.35fr) minmax(110px,.65fr) minmax(110px,.65fr) minmax(180px,1fr) minmax(100px,.55fr)!important;
+}
+.business-lead-row>*:nth-child(2),
+.business-lead-row>*:nth-child(3),
+.business-lead-row>*:nth-child(4),
+.business-lead-row>*:nth-child(5){display:block!important}
+.business-lead-row.header>*{display:block!important}
+
+/* Scrollable operational surfaces should advertise that more content exists
+   without leaking overflow to the page itself. */
+.admin-provider-table,
+.business-lead-table{
+  padding-bottom:4px;
+}
+.admin-provider-table::-webkit-scrollbar,
+.business-lead-table::-webkit-scrollbar{height:8px}
+.admin-provider-table::-webkit-scrollbar-thumb,
+.business-lead-table::-webkit-scrollbar-thumb{
+  border-radius:999px;
+  background:rgba(239,215,151,.18);
+}
+
+/* Public/business identity: prevent old footer copy from visually competing
+   with the canonical Pulsercuit brand after migrations. */
+.business-page .footer strong,
+.integration-page .footer strong{letter-spacing:-.025em}
+
+@media(max-width:760px){
+  .completion-page .completion-header nav{flex-wrap:wrap;justify-content:flex-end}
+  .completion-page .completion-header{gap:14px}
+  .completion-page .claim-message{font-size:12px!important}
+
+  .admin-provider-table:not(.direct-campaign-table) .admin-provider-row{min-width:620px!important}
+  .direct-campaign-table .admin-provider-row{min-width:780px!important}
+  .business-lead-row,.business-lead-row.header{min-width:820px!important}
+}
+
+@media(max-width:420px){
+  .completion-page .completion-header{
+    align-items:flex-start;
+    flex-direction:column;
+    padding-block:14px;
+  }
+  .completion-page .completion-header nav{width:100%;justify-content:flex-start}
+  .completion-page .completion-header nav a{min-height:40px;display:inline-flex;align-items:center}
+  .turnstile-status{min-width:0}
+  .turnstile-status>span:not(.turnstile-status-dot){min-width:0;overflow-wrap:anywhere}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .turnstile-shell{transition:none!important}
+}
