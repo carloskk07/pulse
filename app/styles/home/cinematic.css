@@ -210,9 +210,10 @@
 .pc-v6-footer{border-top-color:rgba(242,207,114,.1);background:#010202}
 
 /* Application skin receives subtler luxury cues, without changing layout semantics. */
-.app-frame{background:radial-gradient(circle at 82% 0%,rgba(242,207,114,.035),transparent 26%),radial-gradient(circle at 42% 18%,rgba(171,255,93,.018),transparent 22%),#020404!important}
-.balance-chip,.wallet-balance-card,.pc-progress-hero,.drop-card,.withdrawal-panel,.transaction-card,.trust-card,.invite-hero-card,.pc-share-studio,.pc-next-circuit,.pc-missions-card,.pc-signal-card,.pc-momentum-card,.invite-card,.progress-card{box-shadow:0 24px 80px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.025)!important}
-.hourly-pulse-card,.pc-luxe-pulse-chamber{box-shadow:0 52px 150px rgba(0,0,0,.48),0 0 80px rgba(180,255,83,.035),inset 0 1px 0 rgba(255,255,255,.04)!important}
+
+.balance-chip,
+.invite-hero-card{box-shadow:0 24px 80px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.025)!important}
+.pc-luxe-pulse-chamber{box-shadow:0 52px 150px rgba(0,0,0,.48),0 0 80px rgba(180,255,83,.035),inset 0 1px 0 rgba(255,255,255,.04)!important}
 
 @media(max-width:1240px){
   .pc-v6-pillars:before,.pc-v6-chamber-section:before,.pc-v6-momentum-section:before,.pc-v6-share:before,.pc-v6-vault-section:before{left:28px}

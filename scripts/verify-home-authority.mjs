@@ -54,6 +54,167 @@ for (const [relative, path, marker, selector] of fragments) {
   }
 }
 
+
+function splitSelectorList(header) {
+  const selectors = [];
+  let start = 0;
+  let parentheses = 0;
+  let brackets = 0;
+  let quote = null;
+
+  for (let index = 0; index < header.length; index += 1) {
+    const char = header[index];
+    if (quote) {
+      if (char === "\\") index += 1;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (char === "(") parentheses += 1;
+    else if (char === ")") parentheses = Math.max(0, parentheses - 1);
+    else if (char === "[") brackets += 1;
+    else if (char === "]") brackets = Math.max(0, brackets - 1);
+    else if (char === "," && parentheses === 0 && brackets === 0) {
+      selectors.push(header.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+
+  selectors.push(header.slice(start).trim());
+  return selectors.filter(Boolean);
+}
+
+function topLevelSelectors(css) {
+  const selectors = new Set();
+  let index = 0;
+
+  function skipWhitespaceAndComments() {
+    while (index < css.length) {
+      if (/\s/.test(css[index])) {
+        index += 1;
+        continue;
+      }
+      if (css.startsWith("/*", index)) {
+        const end = css.indexOf("*/", index + 2);
+        index = end === -1 ? css.length : end + 2;
+        continue;
+      }
+      break;
+    }
+  }
+
+  while (index < css.length) {
+    skipWhitespaceAndComments();
+    if (index >= css.length) break;
+
+    const headerStart = index;
+    let quote = null;
+    let parentheses = 0;
+    let brackets = 0;
+    while (index < css.length) {
+      const char = css[index];
+      if (quote) {
+        if (char === "\\") index += 2;
+        else {
+          if (char === quote) quote = null;
+          index += 1;
+        }
+        continue;
+      }
+      if (char === "'" || char === '"') {
+        quote = char;
+        index += 1;
+        continue;
+      }
+      if (css.startsWith("/*", index)) {
+        const end = css.indexOf("*/", index + 2);
+        index = end === -1 ? css.length : end + 2;
+        continue;
+      }
+      if (char === "(") parentheses += 1;
+      else if (char === ")") parentheses = Math.max(0, parentheses - 1);
+      else if (char === "[") brackets += 1;
+      else if (char === "]") brackets = Math.max(0, brackets - 1);
+      else if (parentheses === 0 && brackets === 0 && (char === "{" || char === ";")) break;
+      index += 1;
+    }
+
+    if (index >= css.length) break;
+    if (css[index] === ";") {
+      index += 1;
+      continue;
+    }
+
+    const header = css.slice(headerStart, index).trim();
+    const open = index;
+    let depth = 1;
+    quote = null;
+    index += 1;
+    while (index < css.length && depth > 0) {
+      const char = css[index];
+      if (quote) {
+        if (char === "\\") index += 2;
+        else {
+          if (char === quote) quote = null;
+          index += 1;
+        }
+        continue;
+      }
+      if (char === "'" || char === '"') {
+        quote = char;
+        index += 1;
+        continue;
+      }
+      if (css.startsWith("/*", index)) {
+        const end = css.indexOf("*/", index + 2);
+        index = end === -1 ? css.length : end + 2;
+        continue;
+      }
+      if (char === "{") depth += 1;
+      else if (char === "}") depth -= 1;
+      index += 1;
+    }
+
+    if (!header.startsWith("@") && open >= 0) {
+      for (const selector of splitSelectorList(header)) selectors.add(selector);
+    }
+  }
+
+  return selectors;
+}
+
+function forbidTopLevelSelectors(path, forbidden) {
+  const selectors = topLevelSelectors(read(path));
+  for (const selector of forbidden) {
+    if (selectors.has(selector)) {
+      throw new Error(`Provably shadowed global selector returned to Home authority: ${path} -> ${selector}`);
+    }
+  }
+}
+
+forbidTopLevelSelectors("app/styles/home/foundation.css", [
+  "html", "body", ".app-sidebar", ".app-nav a.active", ".avatar", ".app-eyebrow",
+  ".wallet-balance-card", ".pc-progress-hero", ".drop-card", ".withdrawal-panel",
+  ".transaction-card", ".trust-card", ".pc-share-studio", ".pc-next-circuit",
+  ".pc-missions-card", ".pc-signal-card", ".pc-momentum-card", ".invite-card",
+  ".progress-card", ".button-light", ".pc-v5-primary", ".hourly-pulse-card", ".pc-identity-card",
+]);
+forbidTopLevelSelectors("app/styles/home/cinematic.css", [
+  ".app-frame", ".wallet-balance-card", ".pc-progress-hero", ".drop-card", ".withdrawal-panel",
+  ".transaction-card", ".trust-card", ".pc-share-studio", ".pc-next-circuit",
+  ".pc-missions-card", ".pc-signal-card", ".pc-momentum-card", ".invite-card",
+  ".progress-card", ".hourly-pulse-card",
+]);
+forbidTopLevelSelectors("app/styles/home/material.css", [
+  ".app-sidebar", ".wallet-balance-card", ".pc-progress-hero", ".drop-card", ".withdrawal-panel",
+  ".transaction-card", ".trust-card", ".pc-share-studio", ".pc-next-circuit",
+  ".pc-missions-card", ".pc-signal-card", ".pc-momentum-card", ".invite-card",
+  ".progress-card", ".hourly-pulse-card",
+]);
+
 if (!home.includes("one authority controls the fragment order") && !home.includes("single") && !home.includes("Canonical Home visual authority")) {
   throw new Error("home.css must document its canonical ordering responsibility.");
 }

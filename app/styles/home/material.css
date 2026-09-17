@@ -191,16 +191,14 @@
 }
 
 /* Signed-in surfaces inherit the same physical language. */
-.app-sidebar{
-  background:linear-gradient(180deg,#070a08,#020303 72%)!important;
-  box-shadow:22px 0 70px rgba(0,0,0,.24),inset -1px 0 0 rgba(240,203,106,.05)!important;
-}
-.balance-chip,.wallet-balance-card,.pc-progress-hero,.drop-card,.withdrawal-panel,.transaction-card,.trust-card,.invite-hero-card,.pc-share-studio,.pc-next-circuit,.pc-missions-card,.pc-signal-card,.pc-momentum-card,.invite-card,.progress-card{
+
+.balance-chip,
+.invite-hero-card{
   border-color:rgba(235,214,153,.105)!important;
   background:linear-gradient(145deg,rgba(15,19,16,.96),rgba(5,7,6,.98))!important;
   box-shadow:0 28px 90px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.03)!important;
 }
-.hourly-pulse-card,.pc-luxe-pulse-chamber{
+.pc-luxe-pulse-chamber{
   border-color:rgba(232,214,160,.16)!important;
   background:radial-gradient(circle at 70% 43%,rgba(181,255,76,.11),transparent 23%),linear-gradient(145deg,#111713,#050806 72%)!important;
   box-shadow:0 58px 160px rgba(0,0,0,.52),0 0 100px rgba(180,255,83,.035),inset 0 1px 0 rgba(255,255,255,.045)!important;
