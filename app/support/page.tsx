@@ -1,11 +1,14 @@
+import type { Viewport } from "next";
 import Link from "next/link";
 import { Brand } from "@/components/brand";
+import { FeedbackMessage } from "@/components/feedback-message";
 import { TurnstileField } from "@/components/turnstile-field";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupportCase } from "./actions";
 
 export const metadata = { title: "Help & Support" };
 export const dynamic = "force-dynamic";
+export const viewport: Viewport = { themeColor: "#f5f7f4", colorScheme: "light" };
 
 type Props = { searchParams: Promise<{ state?: string; case?: string; category?: string }> };
 
@@ -17,6 +20,7 @@ const messages: Record<string, string> = {
   unavailable: "Support intake is temporarily unavailable. No request was recorded.",
 };
 
+const errorStates = new Set(["invalid", "invalid-email", "verification-failed", "unavailable"]);
 const categories = new Set(["earning", "withdrawal", "account", "privacy", "other"]);
 
 export default async function SupportPage({ searchParams }: Props) {
@@ -35,7 +39,7 @@ export default async function SupportPage({ searchParams }: Props) {
     <section className="completion-hero shell"><span className="section-kicker">Pulsercuit help center</span><h1>Support with a traceable protocol.</h1><p>Pulse, payout, account and privacy requests stay tied to a case so they can be checked against real product evidence.</p></section>
     <section className="completion-grid shell">
       <div className="completion-card support-form-card"><span className="app-eyebrow">Open a case</span><h2>Tell us what happened.</h2>
-        {params.state ? <div className={`claim-message ${params.state === "created" ? "success" : "neutral"}`}>{messages[params.state] ?? "Support status updated."}{params.case ? ` Protocol: ${params.case.toUpperCase()}` : ""}</div> : null}
+        {params.state ? <FeedbackMessage tone={params.state === "created" ? "success" : errorStates.has(params.state) ? "error" : "neutral"}>{messages[params.state] ?? "Support status updated."}{params.case ? ` Protocol: ${params.case.toUpperCase()}` : ""}</FeedbackMessage> : null}
         <form action={createSupportCase} className="completion-form">
           {!user ? <label>Email<input name="email" type="email" required autoComplete="email" placeholder="you@example.com" /></label> : <div className="completion-identity">Signed in as <strong>{user.email}</strong></div>}
           <label>Category<select name="category" defaultValue={defaultCategory} required><option value="earning">Pulse / missing reward</option><option value="withdrawal">Withdrawal / payout</option><option value="account">Account / access</option><option value="privacy">Privacy & data</option><option value="other">Other</option></select></label>
