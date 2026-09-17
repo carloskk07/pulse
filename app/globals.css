@@ -22,10 +22,9 @@
 @import "./styles/completion.css";
 @import "./styles/pulse-core.css";
 
-/* Current Pulse experience and live application feature systems */
+/* Current product experiences */
 @import "./styles/pulse-experience.css";
-@import "./styles/pulsercuit-v4-1.css";
-@import "./styles/pulsercuit-v4-2.css";
+@import "./styles/momentum.css";
 @import "./styles/pulse-v4-3.css";
 @import "./styles/pulse-v4-3-retention.css";
 @import "./styles/pulse-v4-3-postclaim.css";
