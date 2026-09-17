@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "verify:legal": "node scripts/verify-legal-policy-bundle.mjs",
-    "verify:safety": "node scripts/verify-release-safety.mjs && node scripts/verify-request-origin-contract.mjs && node scripts/verify-visual-contract.mjs"
+    "verify:safety": "node scripts/verify-release-safety.mjs && node scripts/verify-request-origin-contract.mjs && node scripts/audit-vercel-production-env.mjs --self-test && node scripts/verify-visual-contract.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
