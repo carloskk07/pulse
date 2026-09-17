@@ -44,6 +44,20 @@ function turnstileAuthError(verification: Awaited<ReturnType<typeof verifyTurnst
   return "verification-failed";
 }
 
+async function requestIp() {
+  const requestHeaders = await headers();
+  return requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
+}
+
+async function requireTurnstile(formData: FormData, expectedAction: string) {
+  const verification = await verifyTurnstile(
+    String(formData.get("cf-turnstile-response") ?? ""),
+    await requestIp(),
+    { expectedAction },
+  );
+  return verification;
+}
+
 export async function signIn(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const next = safeNext(formData.get("next"));
@@ -52,6 +66,9 @@ export async function signIn(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!email || !password) redirect(authError("missing-credentials", next, ref));
+  const verification = await requireTurnstile(formData, "signin");
+  if (!verification.success) redirect(authError(turnstileAuthError(verification), next, ref));
+  await recordReleaseEvidence("turnstile");
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     const code = "code" in error ? String(error.code ?? "") : "";
@@ -72,9 +89,7 @@ export async function signUp(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!email || !validNewPassword(password)) redirect(authError("invalid-signup", next, ref));
-  const requestHeaders = await headers();
-  const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "signup" });
+  const verification = await requireTurnstile(formData, "signup");
   if (!verification.success) redirect(authError(turnstileAuthError(verification), next, ref));
   await recordReleaseEvidence("turnstile");
   const callback = new URL("/auth/callback", getCanonicalSiteUrl());
@@ -98,9 +113,7 @@ export async function requestPasswordReset(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   if (!email) redirect("/auth/recover?error=missing-email");
 
-  const requestHeaders = await headers();
-  const ip = requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "password_recovery" });
+  const verification = await requireTurnstile(formData, "password_recovery");
   if (!verification.success) redirect(`/auth/recover?error=${encodeURIComponent(turnstileAuthError(verification))}`);
   await recordReleaseEvidence("turnstile");
 

@@ -36,9 +36,10 @@ export function TurnstileField({ action }: { action: string }) {
   const [token, setToken] = useState("");
 
   const renderWidget = useCallback(() => {
+    if (widgetIdRef.current) return true;
     const api = window.turnstile;
     const container = containerRef.current;
-    if (!siteKey || !api || !container || widgetIdRef.current) return;
+    if (!siteKey || !api || !container) return false;
 
     try {
       widgetIdRef.current = api.render(container, {
@@ -75,8 +76,10 @@ export function TurnstileField({ action }: { action: string }) {
         },
       });
       setStatus("waiting");
+      return true;
     } catch {
       setStatus("error");
+      return false;
     }
   }, [action, siteKey]);
 
@@ -87,13 +90,24 @@ export function TurnstileField({ action }: { action: string }) {
       return;
     }
 
-    if (window.turnstile) renderWidget();
+    if (renderWidget()) return;
+
+    // Multiple TurnstileField instances share one deduplicated Next.js Script.
+    // Each instance independently observes when the global API becomes ready;
+    // relying only on one Script onLoad can leave later widgets unrendered.
+    const interval = window.setInterval(() => {
+      if (renderWidget()) window.clearInterval(interval);
+    }, 100);
 
     const timeout = window.setTimeout(() => {
-      if (!window.turnstile && !tokenRef.current) setStatus("blocked");
+      window.clearInterval(interval);
+      if (!widgetIdRef.current && !tokenRef.current) setStatus("blocked");
     }, 8_000);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
   }, [renderWidget, siteKey]);
 
   useEffect(() => {
