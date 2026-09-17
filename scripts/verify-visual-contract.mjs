@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 function read(path) {
   return readFileSync(path, "utf8");
@@ -13,13 +14,32 @@ function requireText(path, fragments) {
   }
 }
 
-function rejectText(path, fragments) {
-  const value = read(path);
-  for (const fragment of fragments) {
-    if (value.includes(fragment)) {
-      throw new Error(`${path} contains forbidden legacy visual copy: ${fragment}`);
-    }
+function uiFiles(root) {
+  const files = [];
+  for (const name of readdirSync(root)) {
+    const path = join(root, name);
+    const stat = statSync(path);
+    if (stat.isDirectory()) files.push(...uiFiles(path));
+    else if (/\.(tsx|ts|jsx|js)$/.test(name)) files.push(path);
   }
+  return files;
+}
+
+function channel(value) {
+  const normalized = value / 255;
+  return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+}
+
+function luminance(hex) {
+  const value = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((index) => channel(Number.parseInt(value.slice(index, index + 2), 16)));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(foreground, background) {
+  const a = luminance(foreground);
+  const b = luminance(background);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
 const layout = read("app/layout.tsx");
@@ -74,6 +94,17 @@ requireText("app/styles/pulsercuit-v10-sitewide-audit.css", [
   "@media(max-width:420px)",
 ]);
 
+const contrastPairs = [
+  ["completion microcopy", "#566159", "#f5f7f4"],
+  ["completion success", "#245a35", "#eaf7ed"],
+  ["completion neutral", "#455249", "#f1f4f1"],
+  ["completion error", "#842c33", "#fff0f0"],
+];
+for (const [label, foreground, background] of contrastPairs) {
+  const ratio = contrast(foreground, background);
+  if (ratio < 4.5) throw new Error(`${label} contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1.`);
+}
+
 requireText("components/turnstile-field.tsx", [
   'type TurnstileTheme = "dark" | "light" | "auto";',
   'theme = "dark"',
@@ -86,12 +117,16 @@ requireText("app/support/page.tsx", [
   '<TurnstileField action="support" theme="light" />',
 ]);
 
+const legacyBrandHits = [...uiFiles("app"), ...uiFiles("components")].filter((path) => read(path).includes("Reward Pulse"));
+if (legacyBrandHits.length) {
+  throw new Error(`Legacy Reward Pulse UI copy remains in: ${legacyBrandHits.join(", ")}`);
+}
+
 for (const path of [
   "app/business/page.tsx",
   "app/business/integration/page.tsx",
   "app/r/[handle]/page.tsx",
 ]) {
-  rejectText(path, ["Reward Pulse"]);
   requireText(path, ["Pulsercuit"]);
 }
 
