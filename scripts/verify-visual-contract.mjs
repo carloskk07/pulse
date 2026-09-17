@@ -13,13 +13,29 @@ function requireText(path, fragments) {
   }
 }
 
+function rejectText(path, fragments) {
+  const value = read(path);
+  for (const fragment of fragments) {
+    if (value.includes(fragment)) {
+      throw new Error(`${path} contains forbidden legacy visual copy: ${fragment}`);
+    }
+  }
+}
+
 const layout = read("app/layout.tsx");
-const importName = './styles/pulsercuit-v10-visual-hardening.css';
-if (!layout.includes(importName)) {
+const hardeningImport = './styles/pulsercuit-v10-visual-hardening.css';
+const auditImport = './styles/pulsercuit-v10-sitewide-audit.css';
+if (!layout.includes(hardeningImport)) {
   throw new Error("Root layout must load the V10 visual hardening authority.");
 }
-if (layout.lastIndexOf(importName) < layout.lastIndexOf("pulsercuit-v7-audit.css")) {
+if (!layout.includes(auditImport)) {
+  throw new Error("Root layout must load the V10 site-wide audit corrections.");
+}
+if (layout.lastIndexOf(hardeningImport) < layout.lastIndexOf("pulsercuit-v7-audit.css")) {
   throw new Error("V10 visual hardening must remain after legacy visual layers.");
+}
+if (layout.lastIndexOf(auditImport) < layout.lastIndexOf(hardeningImport)) {
+  throw new Error("V10 site-wide audit corrections must remain the final visual authority.");
 }
 
 requireText("app/styles/pulsercuit-v10-visual-hardening.css", [
@@ -43,5 +59,39 @@ requireText("app/styles/pulsercuit-v10-visual-hardening.css", [
   ":focus-visible",
   "@media(prefers-reduced-motion:reduce)",
 ]);
+
+requireText("app/styles/pulsercuit-v10-sitewide-audit.css", [
+  "/* Pulsercuit V10 — site-wide audit corrections.",
+  ".completion-page .claim-message.success",
+  ".completion-page .status-pill",
+  ".direct-campaign-table .admin-provider-row",
+  ".business-lead-table{",
+  "overflow-x:auto!important",
+  ".business-lead-row.header",
+  ".turnstile-field{",
+  "overflow:visible!important",
+  "@media(max-width:420px)",
+]);
+
+requireText("components/turnstile-field.tsx", [
+  'type TurnstileTheme = "dark" | "light" | "auto";',
+  'theme = "dark"',
+  'const size = availableWidth > 0 && availableWidth < 300 ? "compact" : "flexible";',
+  "theme,",
+  "size,",
+]);
+
+requireText("app/support/page.tsx", [
+  '<TurnstileField action="support" theme="light" />',
+]);
+
+for (const path of [
+  "app/business/page.tsx",
+  "app/business/integration/page.tsx",
+  "app/r/[handle]/page.tsx",
+]) {
+  rejectText(path, ["Reward Pulse"]);
+  requireText(path, ["Pulsercuit"]);
+}
 
 console.log("Visual hardening contract PASS");
