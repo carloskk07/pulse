@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 const page = readFileSync("app/auth/page.tsx", "utf8");
 const actions = readFileSync("app/auth/actions.ts", "utf8");
+const turnstileField = readFileSync("components/turnstile-field.tsx", "utf8");
 
 const requiredPageFragments = [
   '<TurnstileField action="signin" />',
@@ -16,12 +17,23 @@ const requiredActionFragments = [
   'await recordReleaseEvidence("turnstile");',
 ];
 
+const requiredMultiWidgetFragments = [
+  "if (widgetIdRef.current) return true;",
+  "const interval = window.setInterval(() => {",
+  "if (renderWidget()) window.clearInterval(interval);",
+  "if (!widgetIdRef.current && !tokenRef.current) setStatus(\"blocked\");",
+];
+
 for (const fragment of requiredPageFragments) {
   if (!page.includes(fragment)) throw new Error(`Auth page is missing required human-verification gate: ${fragment}`);
 }
 
 for (const fragment of requiredActionFragments) {
   if (!actions.includes(fragment)) throw new Error(`Auth actions are missing required human-verification contract: ${fragment}`);
+}
+
+for (const fragment of requiredMultiWidgetFragments) {
+  if (!turnstileField.includes(fragment)) throw new Error(`Turnstile field is missing multi-widget loader contract: ${fragment}`);
 }
 
 const signInStart = actions.indexOf("export async function signIn");
