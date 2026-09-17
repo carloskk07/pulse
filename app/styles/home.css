@@ -1,0 +1,9 @@
+/* Canonical Home visual authority.
+   The six former V6 generations are preserved as semantic fragments in their
+   exact historical cascade order. This file alone owns that order. */
+@import "./home/foundation.css";
+@import "./home/usability.css";
+@import "./home/reference.css";
+@import "./home/cinematic.css";
+@import "./home/material.css";
+@import "./home/sensory.css";

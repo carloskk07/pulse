@@ -30,13 +30,8 @@
 @import "./styles/pulse-v4-3-postclaim.css";
 @import "./styles/luxe.css";
 
-/* Current public homepage system — intentionally scoped to .pc-v6 */
-@import "./styles/pulsercuit-v6.css";
-@import "./styles/pulsercuit-v6-fixes.css";
-@import "./styles/pulsercuit-v6-reference.css";
-@import "./styles/pulsercuit-v6-ultra.css";
-@import "./styles/pulsercuit-v6-material.css";
-@import "./styles/pulsercuit-v6-sensory.css";
+/* Current public homepage system — one authority controls the fragment order. */
+@import "./styles/home.css";
 
 /* Current unversioned theme, then page-specific latest systems */
 @import "./styles/theme.css";
