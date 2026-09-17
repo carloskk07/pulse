@@ -26,7 +26,7 @@ export default function HomePage() {
     <main className="pc-v6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <PulsercuitSensoryLayer />
-      <SiteHeader />
+      <SiteHeader overlay />
 
       <section className="pc-v6-hero">
         <div className="pc-v6-hero-bg" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-hero" /></div>
