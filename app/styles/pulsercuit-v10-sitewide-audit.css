@@ -283,6 +283,78 @@
   .auth-trust span{font-size:10px!important}
 }
 
+/* Fourth-pass release audit: fix root cascade collisions instead of stacking
+   more one-off cosmetics. These scoped tokens only affect dark product/public
+   surfaces and preserve the native light palette used by completion pages. */
+:where(.app-frame,.auth-page,.business-page,.integration-page,.referral-landing,.proof-page,.pc-v6){
+  --muted-2:#818b9a;
+  --pulse-muted-2:#818b9a;
+}
+
+/* Auth and referral inherited overflow:hidden from their original cinematic
+   layouts. That can crop forms/fine print in landscape, short viewports and
+   when a mobile keyboard reduces the visual viewport. Keep horizontal art
+   clipped without turning the page into a vertical clipping container. */
+.auth-page,
+.referral-landing{overflow-x:clip!important;overflow-y:visible!important}
+
+/* Account intentionally reuses the light completion cards inside the dark app
+   shell. Establish the light color context locally so headings and actions do
+   not inherit dark-shell colors onto a white card. */
+.app-frame .account-grid .completion-card{
+  color-scheme:light;
+  color:#101511!important;
+}
+.app-frame .account-grid .completion-card :where(h2,strong){color:#101511!important}
+.app-frame .account-grid .completion-card .app-eyebrow{color:#566159!important}
+.app-frame .account-grid .account-facts small{color:#59645c!important}
+.app-frame .account-grid .inline-action{color:#385c18!important}
+.app-frame .account-grid .button-secondary{
+  color:#f7f8fa!important;
+  background:#11151d!important;
+  border-color:#303740!important;
+}
+.app-frame .account-grid input::placeholder{color:#667168!important;opacity:1!important}
+
+/* Functional secondary copy: several legacy explicit colors remained below
+   AA contrast even after their font sizes were raised. */
+.sidebar-user small,
+.sidebar-signout,
+.withdrawal-form>small,
+.referral-landing .referral-funnel>small{color:#818b9a!important}
+.balance-chip small{color:#8b94a5!important}
+.pc-v6-live span{color:#818b83!important}
+
+/* Referral and integration are conversion/instruction surfaces, so metadata
+   must not fall back to decorative 8–9px sizing. */
+.referral-landing .referral-funnel>small{font-size:11px!important;line-height:1.55!important}
+.referral-stats :where(span,small){
+  font-size:max(10px,.625rem)!important;
+  color:#818b9a!important;
+  line-height:1.4;
+}
+.integration-path-grid article>span,
+.direct-status,
+.direct-campaign-title small,
+.business-lead-row.header,
+.prospect-form>label>span,
+.prospect-signal-fieldset legend,
+.admin-badge{
+  font-size:max(10px,.625rem)!important;
+  line-height:1.4;
+}
+
+/* Desktop can be dense; touch layouts cannot. Make small text actions meet a
+   reliable interaction target without making the desktop UI feel oversized. */
+.pc-v6-header .pc-v6-button.compact{min-height:44px}
+.completion-header nav a,
+.completion-footer a{min-height:40px;display:inline-flex;align-items:center}
+
+@media(max-width:760px){
+  :where(.inline-action,.app-section-head>a){min-height:44px;align-items:center}
+  .integration-code{font-size:11px!important;line-height:1.7}
+}
+
 @media(prefers-reduced-motion:reduce){
   .turnstile-shell{transition:none!important}
 }
