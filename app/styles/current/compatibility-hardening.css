@@ -1,0 +1,12 @@
+/* Small hardenings migrated from the retired V7 fix layer. */
+.pc-v6-ranks article:nth-child(3):before{display:none!important}
+.pc-share-studio,.pc-share-studio-placeholder{scroll-margin-top:84px}
+.pc-v6::before{-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,.28) 72%,rgba(0,0,0,.64))}
+.app-frame:after{-webkit-mask-image:linear-gradient(180deg,#000,transparent 74%)}
+.pc-luxe-pulse-stage:before{-webkit-mask-image:radial-gradient(ellipse at 75% 45%,#000 0 36%,transparent 72%)}
+.pc-luxe-momentum-hero:before,.pc-luxe-rhythm-track:before{-webkit-mask-image:linear-gradient(90deg,transparent,#000 20%,#000 85%,transparent)}
+.pc-luxe-vault-balance:before{-webkit-mask-image:linear-gradient(90deg,transparent,#000 32%)}
+
+@media(hover:none),(pointer:coarse){
+  .pc-v6-social-card:hover,.pc-v6-pillar-grid article:hover,.button:not(:disabled):hover,.icon-button:hover{transform:none!important}
+}
