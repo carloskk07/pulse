@@ -1,8 +1,8 @@
 /* Pulsercuit current theme.
    Unversioned visual language for the live product. This file owns color,
    materials and cinematic treatment only; geometry remains under the final
-   layout authorities. Public rules are opt-in by page class — never inferred
-   through broad main:not(...) selectors. */
+   layout authorities. Public rules are opt-in by explicit page class and never
+   inferred through exclusion-based global selectors. */
 
 :root{
   --pc7-bg:#020303;
