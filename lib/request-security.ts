@@ -12,5 +12,6 @@ export function isTrustedSameOriginMutation(request: NextRequest) {
 
   const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
   if (!fetchSite) return false;
+  if (fetchSite !== "same-origin" && fetchSite !== "none") return false;
   return fetchSite === "same-origin" || fetchSite === "none";
 }
