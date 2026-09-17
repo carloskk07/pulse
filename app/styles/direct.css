@@ -12,7 +12,7 @@
 .direct-row-action:hover{transform:translateY(-1px);background:rgba(105,232,255,.11)}
 .direct-row-action svg{width:12px;height:12px}
 
-.direct-campaign-table .admin-provider-row{grid-template-columns:minmax(180px,1.2fr) .7fr .7fr .7fr .7fr}
+
 .direct-campaign-title{display:flex;flex-direction:column;gap:3px}
 .direct-campaign-title small{color:var(--pulse-muted-2);font-size:9px;text-transform:uppercase;letter-spacing:.09em}
 .direct-status{font-size:9px;text-transform:uppercase;letter-spacing:.09em;font-weight:850}

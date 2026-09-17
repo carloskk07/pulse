@@ -191,6 +191,23 @@ function parseBaseRules(css) {
 }
 
 const candidateFiles = [
+  "app/styles/core.css",
+  "app/styles/marketing.css",
+  "app/styles/social-proof.css",
+  "app/styles/product.css",
+  "app/styles/referral.css",
+  "app/styles/auth.css",
+  "app/styles/functional.css",
+  "app/styles/admin.css",
+  "app/styles/visual-system.css",
+  "app/styles/opportunity-intelligence.css",
+  "app/styles/direct.css",
+  "app/styles/business.css",
+  "app/styles/admin-business.css",
+  "app/styles/prospects.css",
+  "app/styles/business-integration.css",
+  "app/styles/completion.css",
+  "app/styles/pulse-core.css",
   "app/styles/pulse-experience.css",
   "app/styles/momentum.css",
   "app/styles/share-studio.css",
