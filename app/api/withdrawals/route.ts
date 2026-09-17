@@ -8,6 +8,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { FaucetPayApiError, FaucetPayProvider, getFaucetPayPackConfig } from "@/providers/faucetpay";
+import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
 
 export const runtime = "nodejs";
 
@@ -95,6 +96,17 @@ async function matchesCurrentPayoutAuthority(
   if (config.amountCredits !== Number(reserved.amount_credits)) return false;
   if (config.amountSmallestUnits !== Number(reserved.payout_amount_units)) return false;
   return hasCurrentFaucetPayReadProof(admin);
+}
+
+async function hasLivePayoutPreflight(config: ReturnType<typeof getFaucetPayPackConfig>) {
+  if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return false;
+  const live = await getFaucetPayReadOnlyPreflight();
+  return live.state === "READ_ONLY_VERIFIED"
+    && live.asset === config.asset
+    && live.configuredPackCredits === config.amountCredits
+    && live.configuredPackUnits === config.amountSmallestUnits
+    && typeof live.balanceSmallestUnits === "number"
+    && live.balanceSmallestUnits >= config.amountSmallestUnits;
 }
 
 async function executeReservedPayout(
@@ -200,6 +212,14 @@ export async function POST(request: NextRequest) {
       );
       if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
       if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
+      if (!(await hasLivePayoutPreflight(config))) return walletRedirect(request, "provider-temporary");
+
+      try {
+        await new FaucetPayProvider().validateDestination(active.destination, active.asset);
+      } catch (error) {
+        if (error instanceof FaucetPayApiError && error.retryable) return walletRedirect(request, "provider-temporary");
+        return walletRedirect(request, "invalid-destination");
+      }
     }
 
     const reserved: ReservedWithdrawal = {
@@ -218,6 +238,7 @@ export async function POST(request: NextRequest) {
   const config = getFaucetPayPackConfig();
   if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
   if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
+  if (!(await hasLivePayoutPreflight(config))) return walletRedirect(request, "provider-temporary");
 
   const destination = String(formData.get("destination") ?? "").trim();
   if (!destination || destination.length > 200) return walletRedirect(request, "invalid-destination");
