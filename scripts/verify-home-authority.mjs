@@ -196,7 +196,8 @@ function forbidTopLevelSelectors(path, forbidden) {
 }
 
 forbidTopLevelSelectors("app/styles/home/foundation.css", [
-  "html", "body", ".app-sidebar", ".app-nav a.active", ".avatar", ".app-eyebrow",
+  "html", "body", ".app-frame", ".app-sidebar", ".app-nav a", ".app-nav a.active",
+  ".app-page-head h1", ".avatar", ".app-eyebrow",
   ".wallet-balance-card", ".pc-progress-hero", ".drop-card", ".withdrawal-panel",
   ".transaction-card", ".trust-card", ".pc-share-studio", ".pc-next-circuit",
   ".pc-missions-card", ".pc-signal-card", ".pc-momentum-card", ".invite-card",
@@ -214,6 +215,17 @@ forbidTopLevelSelectors("app/styles/home/material.css", [
   ".pc-missions-card", ".pc-signal-card", ".pc-momentum-card", ".invite-card",
   ".progress-card", ".hourly-pulse-card",
 ]);
+
+const theme = read("app/styles/theme.css");
+for (const marker of [
+  "color:var(--pc6-ivory);",
+  ".app-nav a{position:relative;border:1px solid transparent;border-radius:8px!important;color:#8f9791!important;",
+  '.app-page-head h1{font-family:Georgia,"Times New Roman",serif!important;font-weight:500!important}',
+]) {
+  if (!theme.includes(marker)) {
+    throw new Error(`Current theme lost migrated application ownership: ${marker}`);
+  }
+}
 
 if (!home.includes("one authority controls the fragment order") && !home.includes("single") && !home.includes("Canonical Home visual authority")) {
   throw new Error("home.css must document its canonical ordering responsibility.");
