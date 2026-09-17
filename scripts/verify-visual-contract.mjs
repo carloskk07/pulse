@@ -42,20 +42,27 @@ function contrast(foreground, background) {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
-const layout = read("app/layout.tsx");
-const hardeningImport = './styles/pulsercuit-v10-visual-hardening.css';
-const auditImport = './styles/pulsercuit-v10-sitewide-audit.css';
-if (!layout.includes(hardeningImport)) {
-  throw new Error("Root layout must load the V10 visual hardening authority.");
+const manifest = read("app/globals.css");
+const hardeningImport = '@import "./styles/pulsercuit-v10-visual-hardening.css";';
+const auditImport = '@import "./styles/pulsercuit-v10-sitewide-audit.css";';
+const currentImport = '@import "./styles/current.css";';
+const touchImport = '@import "./styles/pulsercuit-v11-touch-foundation.css";';
+const authorityImport = '@import "./styles/pulsercuit-v11-layout-authority.css";';
+
+for (const item of [currentImport, hardeningImport, auditImport, touchImport, authorityImport]) {
+  if (!manifest.includes(item)) throw new Error(`Canonical CSS manifest must load ${item}.`);
 }
-if (!layout.includes(auditImport)) {
-  throw new Error("Root layout must load the V10 site-wide audit corrections.");
+if (manifest.lastIndexOf(hardeningImport) < manifest.lastIndexOf(currentImport)) {
+  throw new Error("V10 visual hardening must remain after extracted current rules.");
 }
-if (layout.lastIndexOf(hardeningImport) < layout.lastIndexOf("pulsercuit-v7-audit.css")) {
-  throw new Error("V10 visual hardening must remain after legacy visual layers.");
+if (manifest.lastIndexOf(auditImport) < manifest.lastIndexOf(hardeningImport)) {
+  throw new Error("V10 site-wide audit corrections must remain after visual hardening.");
 }
-if (layout.lastIndexOf(auditImport) < layout.lastIndexOf(hardeningImport)) {
-  throw new Error("V10 site-wide audit corrections must remain the final visual authority.");
+if (manifest.lastIndexOf(touchImport) < manifest.lastIndexOf(auditImport)) {
+  throw new Error("V11 touch foundation must remain after V10 audit corrections.");
+}
+if (manifest.lastIndexOf(authorityImport) < manifest.lastIndexOf(touchImport)) {
+  throw new Error("V11 layout authority must remain the final visual authority.");
 }
 
 requireText("app/styles/pulsercuit-v10-visual-hardening.css", [
