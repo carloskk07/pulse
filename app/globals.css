@@ -41,8 +41,8 @@
 @import "./styles/pulsercuit-v6-material.css";
 @import "./styles/pulsercuit-v6-sensory.css";
 
-/* Current cinematic application theme, then page-specific latest systems */
-@import "./styles/pulsercuit-v7-universe.css";
+/* Current unversioned theme, then page-specific latest systems */
+@import "./styles/theme.css";
 @import "./styles/pulse-dashboard-v9.css";
 @import "./styles/pulse-dashboard-v9-1.css";
 @import "./styles/current.css";

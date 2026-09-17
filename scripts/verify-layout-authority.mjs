@@ -15,6 +15,8 @@ function requireText(path, fragments) {
 
 const layout = read("app/layout.tsx");
 const manifest = read("app/globals.css");
+const theme = read("app/styles/theme.css");
+const themeImport = '@import "./styles/theme.css";';
 const touchImport = '@import "./styles/pulsercuit-v11-touch-foundation.css";';
 const authorityImport = '@import "./styles/pulsercuit-v11-layout-authority.css";';
 const v10AuditImport = '@import "./styles/pulsercuit-v10-sitewide-audit.css";';
@@ -27,7 +29,7 @@ if (layout.includes('import "./styles/')) {
   throw new Error("Root layout must not load visual layers directly; globals.css is the single cascade entry point.");
 }
 
-for (const item of [currentImport, touchImport, authorityImport]) {
+for (const item of [themeImport, currentImport, touchImport, authorityImport]) {
   if (!manifest.includes(item)) throw new Error(`Canonical manifest must load ${item}.`);
 }
 if (manifest.lastIndexOf(currentImport) > manifest.lastIndexOf(v10AuditImport)) {
@@ -51,6 +53,7 @@ const retired = [
   "app/styles/pulsercuit-v5.css",
   "app/styles/pulsercuit-v7-fixes.css",
   "app/styles/pulsercuit-v7-audit.css",
+  "app/styles/pulsercuit-v7-universe.css",
 ];
 for (const path of retired) {
   if (existsSync(path)) throw new Error(`Retired global visual generation returned: ${path}`);
@@ -59,10 +62,29 @@ for (const path of retired) {
 }
 
 const v9 = manifest.indexOf('@import "./styles/pulse-dashboard-v9.css";');
-const v7 = manifest.indexOf('@import "./styles/pulsercuit-v7-universe.css";');
-if (v9 < 0 || v7 < 0 || v9 < v7) {
-  throw new Error("Dashboard V9 must load after the retained cinematic application theme, never before it.");
+const currentTheme = manifest.indexOf(themeImport);
+if (v9 < 0 || currentTheme < 0 || v9 < currentTheme) {
+  throw new Error("Dashboard V9 must load after the current unversioned theme, never before it.");
 }
+if (theme.includes("main:not(")) {
+  throw new Error("Current theme must use explicit page scopes; broad main:not(...) selectors are forbidden.");
+}
+if (theme.includes(".completion-page")) {
+  throw new Error("Dark current theme must not target the light completion/legal surface family.");
+}
+
+requireText("app/styles/theme.css", [
+  "/* Pulsercuit current theme.",
+  "--pc7-gold:#e6bd5d",
+  ".app-frame{",
+  ".app-sidebar{",
+  ".app-content :where(.balance-chip",
+  ".pc-luxe-pulse-stage:before",
+  ".pc-luxe-momentum-hero:before",
+  ".pc-luxe-vault-balance:before",
+  ":where(.proof-page,.business-page,.integration-page,.referral-landing){",
+  ".business-page :where(input,textarea,select)",
+]);
 
 requireText("app/styles/current.css", [
   "current presentation bridge",

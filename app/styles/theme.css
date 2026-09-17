@@ -1,6 +1,8 @@
-/* Pulsercuit V7 Universe — global cinematic system.
-   Presentation only. No reward, auth, payout, ledger, treasury, provider,
-   proof or readiness semantics are modified here. */
+/* Pulsercuit current theme.
+   Unversioned visual language for the live product. This file owns color,
+   materials and cinematic treatment only; geometry remains under the final
+   layout authorities. Public rules are opt-in by explicit page class and never
+   inferred through exclusion-based global selectors. */
 
 :root{
   --pc7-bg:#020303;
@@ -29,17 +31,14 @@ body{
 }
 ::selection{background:rgba(230,189,93,.28);color:#fff7dd}
 
-/* Homepage: bring the shipped V6 structure closer to the approved key art. */
+/* Home: cinematic finish on the already-scoped V6 structure. */
 .pc-v6{
   background:
     radial-gradient(circle at 78% 5%,rgba(226,177,65,.055),transparent 22%),
     linear-gradient(180deg,#020303,#050706 60%,#020303)!important;
 }
 .pc-v6-hero{min-height:650px!important;border-bottom:1px solid rgba(232,195,100,.12)}
-.pc-v6-hero-bg{
-  filter:saturate(.92) contrast(1.12) brightness(.9);
-  transform:scale(1.02);
-}
+.pc-v6-hero-bg{filter:saturate(.92) contrast(1.12) brightness(.9);transform:scale(1.02)}
 .pc-v6-hero-copy{padding-top:42px!important}
 .pc-v6-hero-copy h1{
   font-size:clamp(76px,8.2vw,132px)!important;
@@ -49,9 +48,11 @@ body{
 }
 .pc-v6-hero-copy h1 em{
   background:linear-gradient(180deg,#fff4bc 0%,#edcb6c 45%,#aa7428 100%)!important;
-  -webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  color:transparent!important;
 }
-.pc-v6-hero-copy>p{font-size:17px!important;max-width:560px!important;color:#cec7b5!important}
+.pc-v6-hero-copy>p{max-width:560px!important;color:#cec7b5!important;font-size:17px!important}
 .pc-v6-button.primary{
   color:#171005!important;
   background:linear-gradient(180deg,#fff0aa,#deb650 62%,#a97627)!important;
@@ -74,22 +75,20 @@ body{
 .pc-v6-space-cut{opacity:.26!important}
 .pc-v6-final{min-height:410px!important;background:linear-gradient(180deg,rgba(2,3,3,.28),#020303 94%),url('/v6/final-valley-scene.svg') center/cover no-repeat!important}
 
-/* Shared typography */
+/* Shared dark-product typography. Light completion/legal pages are excluded. */
 .app-page-head h1,.auth-copy h1,.auth-card h2,.app-section-head h2,
-.withdrawal-panel h2,.transaction-card h2,.trust-card h3,
-.pc-progress-head h1,.pc-luxe-turbo-head h1,
-main:not(.pc-v6):not(.app-content) h1,
-main:not(.pc-v6):not(.app-content) h2{text-wrap:balance}
+.withdrawal-panel h2,.transaction-card h2,.trust-card h3,.pc-progress-head h1,.pc-luxe-turbo-head h1,
+.proof-page h1,.proof-page h2,.business-page h1,.business-page h2,.integration-page h1,.integration-page h2,.referral-landing h1,.referral-landing h2{text-wrap:balance}
 .app-page-head h1,.pc-progress-head h1,.pc-luxe-turbo-head h1{
+  color:#fff9e9;
   font-size:clamp(48px,5vw,78px)!important;
   line-height:.91!important;
   letter-spacing:-.07em!important;
-  color:#fff9e9;
   text-shadow:0 16px 55px rgba(0,0,0,.52);
 }
 .app-eyebrow,.pulse-line,.section-kicker{color:var(--pc7-gold)!important;letter-spacing:.18em!important;text-transform:uppercase}
 
-/* Signed-in application becomes one continuous cinematic world. */
+/* Signed-in product world. V11 remains authoritative for layout geometry. */
 .app-frame{
   position:relative;
   isolation:isolate;
@@ -100,15 +99,24 @@ main:not(.pc-v6):not(.app-content) h2{text-wrap:balance}
     linear-gradient(180deg,#030504,#070a08 52%,#030403)!important;
 }
 .app-frame:before{
-  content:"";position:fixed;z-index:-2;inset:0 0 0 230px;pointer-events:none;
+  content:"";
+  position:fixed;
+  z-index:-2;
+  inset:0 0 0 230px;
+  pointer-events:none;
   background:
     linear-gradient(180deg,rgba(2,3,3,.28),rgba(2,3,3,.86) 48%,#020303 100%),
     linear-gradient(90deg,rgba(2,3,3,.78),transparent 34%,rgba(2,3,3,.38)),
     url('/v6/final-valley-scene.svg') center top/cover no-repeat;
-  opacity:.44;filter:saturate(.86) contrast(1.12) brightness(.72);
+  opacity:.44;
+  filter:saturate(.86) contrast(1.12) brightness(.72);
 }
 .app-frame:after{
-  content:"";position:fixed;z-index:-1;inset:0;pointer-events:none;
+  content:"";
+  position:fixed;
+  z-index:-1;
+  inset:0;
+  pointer-events:none;
   background:radial-gradient(circle at 76% 18%,rgba(243,199,89,.055),transparent 24%),repeating-linear-gradient(90deg,transparent 0 79px,rgba(245,220,153,.012) 80px);
   mask-image:linear-gradient(180deg,#000,transparent 74%);
 }
@@ -127,9 +135,9 @@ main:not(.pc-v6):not(.app-content) h2{text-wrap:balance}
 .app-content:before{content:"";position:absolute;pointer-events:none;z-index:-1;inset:0;background:linear-gradient(180deg,rgba(2,3,3,.2),rgba(2,3,3,.68) 520px,rgba(2,3,3,.88))}
 .app-page-head{position:relative;padding-top:18px;padding-bottom:22px}
 .app-page-head:after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,var(--pc7-gold),rgba(230,189,93,.12) 34%,transparent 78%)}
-.app-page-head p{color:#a6aaa4!important;max-width:720px}
+.app-page-head p{max-width:720px;color:#a6aaa4!important}
 
-/* Universal premium surfaces across dashboard, progress, earn, wallet, invite and admin. */
+/* Shared premium product surfaces. */
 .app-content :where(.balance-chip,.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.quick-win-card,.reward-row,.pc-progress-hero,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.pc-dashboard-ribbon,.first-reward-guide,.pulse-proof-link,.pc-luxe-share-strip,.hourly-pulse-card,.daily-pulse-card,.admin-card,.admin-panel,.admin-table,.support-card,.account-card){
   border-color:rgba(235,205,132,.12)!important;
   background:linear-gradient(130deg,rgba(255,255,255,.026),transparent 18%),radial-gradient(circle at 88% 0,rgba(230,189,93,.055),transparent 26%),linear-gradient(155deg,rgba(15,19,16,.94),rgba(5,7,6,.97))!important;
@@ -140,28 +148,31 @@ main:not(.pc-v6):not(.app-content) h2{text-wrap:balance}
 .app-content :where(.balance-chip,.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.quick-win-card,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.hourly-pulse-card)::after{content:"";position:absolute;pointer-events:none;left:7%;right:7%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,235,170,.46),rgba(147,104,37,.28),transparent);opacity:.58}
 .app-content :where(.wallet-balance-card,.pc-progress-hero,.hourly-pulse-card,.pc-luxe-pulse-chamber){background:radial-gradient(circle at 70% 40%,rgba(216,255,114,.105),transparent 22%),radial-gradient(circle at 92% 0,rgba(236,196,96,.085),transparent 28%),linear-gradient(145deg,#111713,#050806 72%)!important;border-color:rgba(236,208,135,.18)!important;box-shadow:0 58px 160px rgba(0,0,0,.52),0 0 95px rgba(212,255,100,.025),inset 0 1px 0 rgba(255,255,255,.05)!important}
 
-/* Dashboard visual heart. */
+/* Product-specific scenic motifs. */
 .pc-luxe-pulse-stage{position:relative}
 .pc-luxe-pulse-stage:before{content:"";position:absolute;pointer-events:none;inset:-30px -30px -22px;z-index:-1;opacity:.26;background:url('/v6/hero-orb-scene.svg') 78% 46%/780px auto no-repeat;filter:saturate(.85) contrast(1.12) brightness(.74);mask-image:radial-gradient(ellipse at 75% 45%,#000 0 36%,transparent 72%)}
 .pc-luxe-pulse-chamber{min-height:430px!important}
-.pc-luxe-pulse-copy h2{font-size:clamp(44px,4.4vw,70px)!important;line-height:.92!important;letter-spacing:-.067em!important;max-width:700px}
+.pc-luxe-pulse-copy h2{max-width:700px;font-size:clamp(44px,4.4vw,70px)!important;line-height:.92!important;letter-spacing:-.067em!important}
 .pc-luxe-core-panel{filter:drop-shadow(0 28px 42px rgba(0,0,0,.48))}
-
-/* Momentum illuminated-road language. */
 .pc-luxe-momentum-hero,.pc-luxe-rhythm-track{position:relative}
 .pc-luxe-momentum-hero:before,.pc-luxe-rhythm-track:before{content:"";position:absolute;pointer-events:none;inset:0;background:url('/v6/momentum-road-scene.svg') center 64%/cover no-repeat;opacity:.16;filter:saturate(.9) brightness(.7) contrast(1.12);mask-image:linear-gradient(90deg,transparent,#000 20%,#000 85%,transparent)}
-.pc-luxe-momentum-hero>* ,.pc-luxe-rhythm-track>*{position:relative;z-index:1}
-
-/* Vault machined-safe language. */
+.pc-luxe-momentum-hero>*,.pc-luxe-rhythm-track>*{position:relative;z-index:1}
 .pc-luxe-vault-balance,.pc-luxe-vault-action,.pc-luxe-vault-grid{position:relative}
 .pc-luxe-vault-balance:before{content:"";position:absolute;pointer-events:none;inset:0 0 0 46%;background:url('/v6/vault-safe-scene.svg') center/cover no-repeat;opacity:.25;filter:saturate(.86) contrast(1.14) brightness(.7);mask-image:linear-gradient(90deg,transparent,#000 32%)}
 .pc-luxe-vault-balance>*{position:relative;z-index:1}
 
-/* Forms */
-.app-content :where(input,textarea,select),.auth-page :where(input,textarea,select),main:not(.pc-v6):not(.app-content) :where(input,textarea,select){color:#f6f0df!important;background:linear-gradient(180deg,rgba(18,22,19,.86),rgba(5,7,6,.92))!important;border-color:rgba(229,202,132,.13)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important}
-.app-content :where(input,textarea,select):focus,.auth-page :where(input,textarea,select):focus,main:not(.pc-v6):not(.app-content) :where(input,textarea,select):focus{outline:none!important;border-color:rgba(235,197,101,.42)!important;box-shadow:0 0 0 3px rgba(235,197,101,.055),0 0 30px rgba(235,197,101,.035)!important}
-
-/* Physical controls */
+/* Forms and physical controls. Dark pages opt in explicitly. */
+.app-content :where(input,textarea,select),.auth-page :where(input,textarea,select),.business-page :where(input,textarea,select),.referral-landing :where(input,textarea,select){
+  color:#f6f0df!important;
+  background:linear-gradient(180deg,rgba(18,22,19,.86),rgba(5,7,6,.92))!important;
+  border-color:rgba(229,202,132,.13)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.app-content :where(input,textarea,select):focus,.auth-page :where(input,textarea,select):focus,.business-page :where(input,textarea,select):focus,.referral-landing :where(input,textarea,select):focus{
+  outline:none!important;
+  border-color:rgba(235,197,101,.42)!important;
+  box-shadow:0 0 0 3px rgba(235,197,101,.055),0 0 30px rgba(235,197,101,.035)!important;
+}
 .button,.pc-v5-primary,.pulse-claim-button{border-color:rgba(239,212,143,.2)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 12px 30px rgba(0,0,0,.2)}
 .button-light,.pc-v5-primary,.pulse-claim-button:not(:disabled){color:#171005!important;background:linear-gradient(180deg,#fff0aa,#dfb750 62%,#aa7828)!important;border-color:#f0d17a!important;box-shadow:0 14px 36px rgba(194,139,37,.23),inset 0 1px 0 rgba(255,255,255,.82),inset 0 -1px 0 rgba(83,52,10,.42)!important}
 .button-ghost,.button-secondary{color:#f2e4bb!important;background:linear-gradient(180deg,rgba(18,22,19,.78),rgba(4,6,5,.83))!important;border-color:rgba(235,203,127,.16)!important}
@@ -175,36 +186,46 @@ main:not(.pc-v6):not(.app-content) h2{text-wrap:balance}
 .pc-luxe-auth-copy h1 em{background:linear-gradient(180deg,#fff1b1,#d8ab45 68%,#8e6123)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
 .auth-circuit-core{box-shadow:0 0 70px rgba(231,190,82,.18)!important}
 
-/* Public/proof/business/legal/support pages inherit the same world. */
-main:not(.pc-v6):not(.app-content):not(.auth-page){position:relative;isolation:isolate;min-height:100vh;background:linear-gradient(180deg,rgba(2,3,3,.74),rgba(2,3,3,.94) 58%,#020303),url('/v6/final-valley-scene.svg') center top/cover fixed no-repeat}
-main:not(.pc-v6):not(.app-content):not(.auth-page):before{content:"";position:fixed;pointer-events:none;z-index:-1;inset:0;background:radial-gradient(circle at 72% 8%,rgba(232,190,82,.08),transparent 24%)}
-main:not(.pc-v6):not(.app-content):not(.auth-page) :where(article,section>div[class*="card"],div[class*="panel"],div[class*="card"]){border-color:rgba(235,205,132,.11)!important}
+/* Explicit dark public worlds. New pages must opt in with one of these roots. */
+:where(.proof-page,.business-page,.integration-page,.referral-landing){
+  position:relative;
+  isolation:isolate;
+  min-height:100vh;
+  background:linear-gradient(180deg,rgba(2,3,3,.74),rgba(2,3,3,.94) 58%,#020303),url('/v6/final-valley-scene.svg') center top/cover fixed no-repeat;
+}
+:where(.proof-page,.business-page,.integration-page,.referral-landing)::before{
+  content:"";
+  position:fixed;
+  pointer-events:none;
+  z-index:-1;
+  inset:0;
+  background:radial-gradient(circle at 72% 8%,rgba(232,190,82,.08),transparent 24%);
+}
+:where(.proof-page,.business-page,.integration-page,.referral-landing) :where(article,section>div[class*="card"],div[class*="panel"],div[class*="card"]){border-color:rgba(235,205,132,.11)!important}
 
-/* Tables/admin/readiness/proof */
-.app-content table,main:not(.pc-v6):not(.app-content) table{border-collapse:separate!important;border-spacing:0!important;overflow:hidden;border:1px solid rgba(235,205,132,.1)!important;border-radius:18px;background:rgba(5,7,6,.72)!important;box-shadow:0 28px 80px rgba(0,0,0,.26)!important}
-.app-content th,main:not(.pc-v6):not(.app-content) th{color:#e8cf8f!important;background:rgba(232,190,82,.045)!important;border-color:rgba(235,205,132,.08)!important}
-.app-content td,main:not(.pc-v6):not(.app-content) td{border-color:rgba(255,255,255,.045)!important}
+/* Data surfaces and status feedback on dark pages only. */
+.app-content table,.proof-page table,.business-page table,.integration-page table,.referral-landing table{
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  overflow:hidden;
+  border:1px solid rgba(235,205,132,.1)!important;
+  border-radius:18px;
+  background:rgba(5,7,6,.72)!important;
+  box-shadow:0 28px 80px rgba(0,0,0,.26)!important;
+}
+.app-content th,.proof-page th,.business-page th,.integration-page th,.referral-landing th{color:#e8cf8f!important;background:rgba(232,190,82,.045)!important;border-color:rgba(235,205,132,.08)!important}
+.app-content td,.proof-page td,.business-page td,.integration-page td,.referral-landing td{border-color:rgba(255,255,255,.045)!important}
 .claim-message,.preview-banner,.auth-alert{border-color:rgba(235,205,132,.13)!important;background:linear-gradient(90deg,rgba(231,190,82,.055),rgba(5,7,6,.78))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important}
 .claim-message.success,.auth-alert.success{border-color:rgba(216,255,114,.16)!important;background:rgba(216,255,114,.035)!important}
 
-/* Mobile */
-@media(max-width:980px){
-  .app-frame:before{inset:0;opacity:.22;background-position:center top}
-  .app-frame:after{display:none}
-  .app-page-head h1,.pc-progress-head h1,.pc-luxe-turbo-head h1{font-size:clamp(42px,10vw,62px)!important}
-  .pc-luxe-pulse-stage:before{opacity:.14;background-size:620px auto;background-position:62% 50%}
-  .pc-luxe-vault-balance:before{inset:0;opacity:.1;mask-image:linear-gradient(180deg,transparent,#000 35%,#000)}
-  .pc-v6-hero{min-height:590px!important}
-  .pc-v6-hero-copy h1{font-size:clamp(58px,13vw,88px)!important}
-}
 @media(max-width:760px){
-  .app-frame:before{display:none}
   .app-content{background:linear-gradient(180deg,#050807,#020303)!important}
   .app-content :where(.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.hourly-pulse-card){backdrop-filter:none}
   .pc-luxe-auth-page{background:radial-gradient(circle at 50% 4%,rgba(230,189,82,.08),transparent 28%),linear-gradient(180deg,#050807,#020303)!important}
   .pc-luxe-auth-page:after{display:none}
-  main:not(.pc-v6):not(.app-content):not(.auth-page){background:linear-gradient(180deg,#050807,#020303)!important}
-  .pc-v6-hero{min-height:520px!important}
-  .pc-v6-hero-copy{padding-top:22px!important}
+  :where(.proof-page,.business-page,.integration-page,.referral-landing){background:linear-gradient(180deg,#050807,#020303)!important}
 }
-@media(prefers-reduced-motion:reduce){.app-frame *,.auth-page *{scroll-behavior:auto!important;animation:none!important;transition-duration:.01ms!important}}
+
+@media(prefers-reduced-motion:reduce){
+  .app-frame *,.auth-page *{scroll-behavior:auto!important;animation:none!important;transition-duration:.01ms!important}
+}
