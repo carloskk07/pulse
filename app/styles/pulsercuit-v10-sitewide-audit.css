@@ -166,6 +166,32 @@
   color:#fff2bd!important;
 }
 
+/* Third-pass design audit: small text must remain actual text, not decoration.
+   These values are intentionally explicit so contrast can be regression-tested. */
+.auth-card>small,
+.auth-divider,
+.auth-help-line{color:#838c99!important}
+.auth-trust span{font-size:max(10px,.625rem)!important}
+.completion-page .case-list small{color:#667168!important}
+
+.pc-luxe-quickwins :where(.quick-win-top span,.quick-win-top small,.quick-win-foot span){
+  font-size:max(10px,.625rem)!important;
+  line-height:1.4;
+}
+.pc-luxe-quickwins .quick-win-top small,
+.pc-luxe-quickwins .quick-win-foot span{color:#8b94a5!important}
+
+/* Business used overflow:hidden on the page itself. That creates a needless
+   scroll container and can disable the intended sticky pilot copy. Clip only
+   horizontal cinematic decoration; keep vertical flow native. */
+.business-page{overflow-x:clip!important;overflow-y:visible!important}
+.business-page .business-form-note{color:#8b94a5!important}
+.business-page .business-form input::placeholder,
+.business-page .business-form textarea::placeholder{
+  color:#7d8796!important;
+  opacity:1!important;
+}
+
 /* Ranked Turbo is a decision surface. Reward, time, health and confidence are
    equally part of the choice and therefore must remain available on tablet. */
 @media(max-width:1180px){
@@ -229,7 +255,8 @@
 }
 
 @media(max-width:560px){
-  .bottom-nav>a,.bottom-nav-more summary{font-size:9px!important}
+  /* Do not regress below the readability floor on the narrowest phones. */
+  .bottom-nav>a,.bottom-nav-more summary{font-size:10px!important}
 }
 
 @media(max-width:420px){
@@ -250,6 +277,10 @@
   .pc-v6-ranks article:last-child:nth-child(odd){grid-column:1/-1}
   .pc-v6-pillar-grid article,.pc-v6-social-card{min-height:0!important}
   .pc-v6-header .brand-word{font-size:13px!important}
+
+  /* The older V10 hardening layer dropped these chips back to 9px. Keep the
+     final authority consistent with the readable 10px floor. */
+  .auth-trust span{font-size:10px!important}
 }
 
 @media(prefers-reduced-motion:reduce){

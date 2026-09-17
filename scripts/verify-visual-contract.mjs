@@ -100,7 +100,20 @@ requireText("app/styles/pulsercuit-v10-sitewide-audit.css", [
   ".pc-v6-header .brand-word{display:inline-flex!important}",
   "grid-template-columns:repeat(2,minmax(0,1fr))!important",
   ".pc-v6-share-cards{grid-template-columns:1fr!important}",
+  ".auth-card>small,",
+  ".auth-divider,",
+  ".auth-help-line{color:#838c99!important}",
+  ".completion-page .case-list small{color:#667168!important}",
+  ".pc-luxe-quickwins :where(.quick-win-top span,.quick-win-top small,.quick-win-foot span)",
+  ".pc-luxe-quickwins .quick-win-foot span{color:#8b94a5!important}",
+  ".business-page{overflow-x:clip!important;overflow-y:visible!important}",
+  ".business-page .business-form-note{color:#8b94a5!important}",
+  ".business-page .business-form input::placeholder,",
+  "color:#7d8796!important",
+  "@media(max-width:560px){",
+  "Do not regress below the readability floor",
   "@media(max-width:420px)",
+  ".auth-trust span{font-size:10px!important}",
 ]);
 
 const contrastPairs = [
@@ -108,10 +121,21 @@ const contrastPairs = [
   ["completion success", "#245a35", "#eaf7ed"],
   ["completion neutral", "#455249", "#f1f4f1"],
   ["completion error", "#842c33", "#fff0f0"],
+  ["auth legal and helper copy", "#838c99", "#080a0f"],
+  ["completion case metadata", "#667168", "#ffffff"],
+  ["business form note", "#8b94a5", "#07090d"],
+  ["business form placeholder", "#7d8796", "#0a0e14"],
+  ["Turbo Quick Win metadata", "#8b94a5", "#07090d"],
 ];
 for (const [label, foreground, background] of contrastPairs) {
   const ratio = contrast(foreground, background);
   if (ratio < 4.5) throw new Error(`${label} contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1.`);
+}
+
+const auditCss = read("app/styles/pulsercuit-v10-sitewide-audit.css");
+const narrowNavContract = "@media(max-width:560px){\n  /* Do not regress below the readability floor on the narrowest phones. */\n  .bottom-nav>a,.bottom-nav-more summary{font-size:10px!important}\n}";
+if (!auditCss.includes(narrowNavContract)) {
+  throw new Error("Narrow-phone bottom navigation must preserve the 10px readability floor.");
 }
 
 requireText("components/turnstile-field.tsx", [
