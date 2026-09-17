@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "verify:legal": "node scripts/verify-legal-policy-bundle.mjs",
-    "verify:safety": "node scripts/verify-release-safety.mjs && node scripts/verify-visual-contract.mjs"
+    "verify:safety": "node scripts/verify-release-safety.mjs && node scripts/verify-request-origin-contract.mjs && node scripts/verify-visual-contract.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/react-dom": "^19.2.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.0.0",
     "typescript": "^5.9.0"
