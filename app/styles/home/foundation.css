@@ -124,12 +124,12 @@
 .pc-v6-footer{background:#010202;border-top:1px solid rgba(255,255,255,.045);padding:18px 0}.pc-v6-footer .pc-v6-shell{display:flex;align-items:center;gap:18px}.pc-v6-footer strong{font-size:12px}.pc-v6-footer span{font-size:8px;color:#747a75}.pc-v6-footer nav{margin-left:auto;display:flex;gap:18px}.pc-v6-footer nav a{font-size:8px;color:#8e938d}
 
 /* Application-wide V6 skin */
-.app-frame{background:radial-gradient(circle at 62% 7%,rgba(236,192,79,.045),transparent 24%),#020404!important;color:var(--pc6-ivory)}
 
-.app-nav a{border-radius:8px!important;color:#898f88!important}.app-nav a.active svg{color:var(--pc6-gold)!important}
+
+.app-nav a.active svg{color:var(--pc6-gold)!important}
 .sidebar-user{border-top-color:rgba(241,210,125,.08)!important}
 .app-content{background:transparent!important}
-.app-page-head h1{font-family:Georgia,"Times New Roman",serif!important;font-weight:500!important;letter-spacing:-.055em!important}
+
 .balance-chip,
 .invite-hero-card{border-color:rgba(241,210,125,.1)!important;background:linear-gradient(145deg,rgba(12,15,13,.96),rgba(5,7,6,.97))!important;box-shadow:var(--pc6-shadow)!important}
 .button{border-radius:11px!important}
