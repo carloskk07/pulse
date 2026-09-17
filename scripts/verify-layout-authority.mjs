@@ -191,7 +191,7 @@ requireText("app/styles/luxe.css", [
   ".pc-luxe-invite-hero{",
   ".pc-luxe-vault-balance{",
   ".pc-luxe-best-turbo{",
-  ".pc-luxe-auth-card{",
+  ".pc-luxe-auth-card h2{",
 ]);
 requireText("app/styles/dashboard-command-center.css", [
   "/* Pulsercuit Dashboard V9 — live command center */",
@@ -225,6 +225,8 @@ requireText("app/styles/theme.css", [
   ".pc-luxe-pulse-stage:before",
   ".pc-luxe-momentum-hero:before",
   ".pc-luxe-vault-balance:before",
+  ".pc-luxe-auth-card{",
+  ".pc-luxe-auth-copy h1 em{",
   ":where(.proof-page,.business-page,.integration-page,.referral-landing){",
   ".business-page :where(input,textarea,select)",
 ]);
