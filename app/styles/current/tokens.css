@@ -1,0 +1,13 @@
+/* Pulsercuit current presentation bridge.
+   This file contains only live selectors extracted from retired broad visual
+   generations. Keep it small: new page systems belong in their semantic file,
+   not in another numbered global skin. */
+
+/* A few current V4.1/V4.2 feature components still consume these token names.
+   Keep the tokens here instead of retaining the entire V4 skin. */
+:root{
+  --pc-lime:#cfff67;
+  --pc-cyan:#72f3ff;
+  --pc-violet:#a690ff;
+  --pc-warm:#ffd87d;
+}
