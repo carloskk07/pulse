@@ -79,6 +79,7 @@ body{
 .app-page-head h1,.auth-copy h1,.auth-card h2,.app-section-head h2,
 .withdrawal-panel h2,.transaction-card h2,.trust-card h3,.pc-progress-head h1,.pc-luxe-turbo-head h1,
 .proof-page h1,.proof-page h2,.business-page h1,.business-page h2,.integration-page h1,.integration-page h2,.referral-landing h1,.referral-landing h2{text-wrap:balance}
+.app-page-head h1{font-family:Georgia,"Times New Roman",serif!important;font-weight:500!important}
 .app-page-head h1,.pc-progress-head h1,.pc-luxe-turbo-head h1{
   color:#fff9e9;
   font-size:clamp(48px,5vw,78px)!important;
@@ -93,6 +94,7 @@ body{
   position:relative;
   isolation:isolate;
   min-height:100vh;
+  color:var(--pc6-ivory);
   background:
     radial-gradient(circle at 74% 0,rgba(221,173,69,.09),transparent 27%),
     radial-gradient(circle at 34% 36%,rgba(216,255,114,.018),transparent 28%),
@@ -126,7 +128,7 @@ body{
   box-shadow:28px 0 90px rgba(0,0,0,.35),inset -1px 0 0 rgba(255,255,255,.012)!important;
   backdrop-filter:blur(26px);
 }
-.app-nav a{position:relative;border:1px solid transparent;color:#8f9791!important;transition:transform .28s ease,color .28s ease,border-color .28s ease,background .28s ease,box-shadow .28s ease}
+.app-nav a{position:relative;border:1px solid transparent;border-radius:8px!important;color:#8f9791!important;transition:transform .28s ease,color .28s ease,border-color .28s ease,background .28s ease,box-shadow .28s ease}
 .app-nav a:hover{color:#f6e8bb!important;transform:translateX(3px);border-color:rgba(231,193,98,.08);background:linear-gradient(90deg,rgba(231,193,98,.055),transparent)!important}
 .app-nav a.active{color:#fff2bd!important;border-color:rgba(236,201,111,.16)!important;background:linear-gradient(90deg,rgba(236,201,111,.12),rgba(236,201,111,.02))!important;box-shadow:inset 2px 0 0 var(--pc7-gold),0 12px 28px rgba(0,0,0,.16)!important}
 .sidebar-user{border-top:1px solid rgba(236,204,125,.08)!important}
