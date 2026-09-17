@@ -160,6 +160,11 @@
   line-height:1.4;
 }
 .sidebar-signout{min-height:34px;display:inline-flex;align-items:center}
+.sidebar-tools a.active{opacity:1!important;color:#fff2bd!important;font-weight:800}
+.bottom-nav .bottom-nav-menu>a.active{
+  background:rgba(230,189,93,.1)!important;
+  color:#fff2bd!important;
+}
 
 /* Ranked Turbo is a decision surface. Reward, time, health and confidence are
    equally part of the choice and therefore must remain available on tablet. */
