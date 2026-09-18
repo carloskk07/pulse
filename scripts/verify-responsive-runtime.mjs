@@ -47,9 +47,11 @@ async function waitForDevToolsPort() {
 
 async function waitForPageTarget(port) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
-    const page = targets.find((target) => target.type === "page" && target.webSocketDebuggerUrl);
-    if (page) return page.webSocketDebuggerUrl;
+    try {
+      const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
+      const page = targets.find((target) => target.type === "page" && target.webSocketDebuggerUrl);
+      if (page) return page.webSocketDebuggerUrl;
+    } catch {}
     await sleep(50);
   }
   throw new Error("Chrome page target did not become available.");
