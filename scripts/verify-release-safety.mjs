@@ -62,7 +62,12 @@ requireText("app/auth/actions.ts", ["isPasswordRecoveryContext(recoveryContext)"
 requireText("app/auth/update-password/page.tsx", ["isPasswordRecoveryContext", "const recoveryContext = cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value", "isPasswordRecoveryContext(recoveryContext)"]);
 requireText("app/api/pulse/claim/route.ts", ["isTrustedSameOriginMutation(request)", "claim_hourly_pulse", "pilot_restricted", "revalidateRewardViews", '["/dashboard", "/dashboard/claimed", "/wallet", "/progress"]', "revalidatePath(path)"]);
 requireText("lib/reward-state.ts", ["maximumFractionDigits: 3", "minimumFractionDigits: 2"]);
-requireText("app/wallet/page.tsx", ["hasCurrentFaucetPaySendScopeProof", "sendScopeProofReady", "Send authority proof required"]);
+requireText("lib/current-user-context.ts", ['import { cache } from "react"', "getCurrentUserContext", "createSupabaseServerClient", "supabase.auth.getUser"]);
+requireText("lib/experience-presentation.ts", ["getUserNextAction", "getWalletPresentation", "getOperatorNextAction", '"Withdrawals are temporarily unavailable."', '"Complete FaucetPay connection."']);
+requireText("app/dashboard/page.tsx", ["getUserNextAction", "nextAction", "Waiting for next Pulse", "getCurrentUserContext"]);
+requireText("app/admin/page.tsx", ["getOperatorNextAction", "One blocker at a time.", "Growth systems", "getProductLaunchReadiness"]);
+requireText("app/admin/advanced/page.tsx", ["/admin/product", "/admin/retention", "/admin/leads", "/admin/prospects"]);
+requireText("app/wallet/page.tsx", ["getWalletPresentation", "hasCurrentFaucetPaySendScopeProof", "sendScopeProofReady", "canWithdraw", "TurnstileField", "This continues the same protected payment request. It cannot create a second payout."]);
 requireText("app/api/return-reminder/route.ts", ["export async function POST", "isTrustedSameOriginMutation(request)", "getCanonicalSiteUrl", "new URL(reminderId ? \"/return\" : \"/dashboard\", getCanonicalSiteUrl())"]);
 forbidText("app/api/return-reminder/route.ts", ["export async function GET"]);
 requireText("app/api/direct/start/route.ts", ["isTrustedSameOriginMutation(request)", 'admin.rpc("start_direct_campaign_session"', 'target.protocol !== "https:"']);
@@ -70,11 +75,11 @@ forbidText("app/api/direct/start/route.ts", ['request.headers.get("origin")']);
 requireText("app/api/direct/callback/route.ts", ["invalid_occurred_at", 'admin.rpc("settle_direct_campaign_completion"', 'p_occurred_at: occurredAt.toISOString()']);
 requireText("components/next-circuit-panel.tsx", ['action="/api/return-reminder"', 'method="post"', 'type="submit"']);
 requireText("app/api/business/leads/route.ts", ["POSITIVE_INTEGER_RE", "url.username || url.password"]);
-requireText("app/auth/page.tsx", ["safeAuthNext(params.next)"]);
+requireText("app/auth/page.tsx", ["safeAuthNext(params.next)", 'params.mode === "signup"', "authModeHref", '<TurnstileField action="signin" />', '<TurnstileField action="signup" />']);
 requireText("components/circuit-share-studio.tsx", ["copyTextToClipboard", "isNativeShareAbort"]);
 requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "UUID_RE", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
 requireText("app/admin/support/actions.ts", ["UUID_RE.test(id)"]);
-requireText("components/app-shell.tsx", ["/admin/leads", "/admin/prospects", "/admin/retention"]);
+requireText("components/app-shell.tsx", ['label: "Invite"', '/admin/faucetpay', 'label: "Payments"', '/admin/support', '/admin/advanced']);
 requireText("app/styles/current/compatibility-hardening.css", [".pc-v6-ranks article:nth-child(3):before{display:none!important}"]);
 requireText("app/styles/home/cinematic.css", ['content:"PULSECIRCUIT / 01"']);
 
