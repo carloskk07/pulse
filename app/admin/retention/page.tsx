@@ -27,7 +27,7 @@ export default async function RetentionAdminPage() {
   const funnel = await getRetentionFunnel(30);
 
   return (
-    <AppShell active="admin">
+    <AppShell active="retention">
       <div className="admin-head">
         <div>
           <span className="app-eyebrow">Private retention evidence</span>
