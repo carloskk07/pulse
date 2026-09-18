@@ -18,15 +18,118 @@ jobs:
   capture:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.2
+          package-manager-cache: false
+
+      - name: Locate Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(
+            command -v google-chrome             || command -v google-chrome-stable             || command -v chromium             || command -v chromium-browser             || true
+          )"
+          if [ -z "$chrome" ]; then
+            echo "No Chrome/Chromium executable is available on this runner."
+            exit 1
+          fi
+          echo "CHROME_BIN=$chrome" >> "$GITHUB_ENV"
+          "$chrome" --version
+
+      - name: Build no-service layout preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build
+
+          nohup npm start -- -p 3100 -H 127.0.0.1 > "$RUNNER_TEMP/visual-preview.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/visual-preview.pid"
+
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl --fail --silent --show-error http://127.0.0.1:3100/progress > /dev/null; then
+              echo "Local no-service preview ready."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          cat "$RUNNER_TEMP/visual-preview.log"
+          echo "Local no-service preview did not become ready."
+          exit 1
+
+      - name: Capture canonical app layouts in no-service preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p visual-smoke/local-preview/desktop visual-smoke/local-preview/mobile
+
+          routes=(
+            "dashboard|/dashboard"
+            "momentum|/progress"
+            "turbo|/earn"
+            "vault|/wallet"
+            "share|/invite"
+          )
+
+          check_direct() {
+            local base="$1"
+            local route="$2"
+            local result status effective
+            result="$(curl --location --silent --show-error --output /dev/null --write-out '%{http_code}|%{url_effective}' "$base$route")"
+            status="${result%%|*}"
+            effective="${result#*|}"
+            if [ "$status" != "200" ]; then
+              echo "Route $route returned HTTP $status"
+              exit 1
+            fi
+            node - "$effective" "$route" <<'NODE'
+          const effective = new URL(process.argv[2]);
+          const expectedPath = process.argv[3];
+          if (effective.pathname !== expectedPath) {
+            throw new Error(`Expected ${expectedPath}, reached ${effective.pathname}`);
+          }
+          NODE
+            echo "local-preview requested=$route effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
+          }
+
+          capture() {
+            local profile="$1"
+            local size="$2"
+            for entry in "${routes[@]}"; do
+              local name="${entry%%|*}"
+              local route="${entry#*|}"
+              local output="visual-smoke/local-preview/$profile/${name}.png"
+              "$CHROME_BIN"                 --headless=new                 --no-sandbox                 --disable-gpu                 --hide-scrollbars                 --disable-dev-shm-usage                 --force-device-scale-factor=1                 --run-all-compositor-stages-before-draw                 --virtual-time-budget=3500                 --window-size="$size"                 --screenshot="$output"                 "http://127.0.0.1:3100$route"
+              test -s "$output"
+            done
+          }
+
+          : > visual-smoke/manifest.txt
+          echo "git_sha=$GITHUB_SHA" >> visual-smoke/manifest.txt
+          echo "captured_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> visual-smoke/manifest.txt
+          echo "local_preview=no_external_service_authority" >> visual-smoke/manifest.txt
+          echo >> visual-smoke/manifest.txt
+
+          for entry in "${routes[@]}"; do
+            check_direct "http://127.0.0.1:3100" "${entry#*|}"
+          done
+
+          capture desktop 1440,900
+          capture mobile 390,844
 
       - name: Verify exact canonical production release
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+          for attempt in $(seq 1 30); do
             release_file="$(mktemp)"
             if curl --fail --silent --show-error               --header 'Cache-Control: no-cache'               --output "$release_file"               "https://pulsercuit.pro/release.json?sha=$GITHUB_SHA"               && node - "$release_file" <<'NODE'
           const fs = require("node:fs");
@@ -47,82 +150,141 @@ jobs:
           echo "Canonical production did not converge to $GITHUB_SHA."
           exit 1
 
-      - name: Locate Chrome
+      - name: Validate production route identity
         shell: bash
         run: |
           set -euo pipefail
-          chrome="$(
-            command -v google-chrome             || command -v google-chrome-stable             || command -v chromium             || command -v chromium-browser             || true
-          )"
-          if [ -z "$chrome" ]; then
-            echo "No Chrome/Chromium executable is available on this runner."
-            exit 1
-          fi
-          echo "CHROME_BIN=$chrome" >> "$GITHUB_ENV"
-          "$chrome" --version
 
-      - name: Capture desktop and mobile production views
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p visual-smoke/desktop visual-smoke/mobile
-
-          routes=(
+          direct_routes=(
             "home|/"
             "proof|/proof"
             "business|/business"
             "business-integration|/business/integration"
             "auth|/auth"
             "support|/support"
-            "dashboard|/dashboard"
             "momentum|/progress"
+          )
+
+          protected_routes=(
+            "dashboard|/dashboard"
             "turbo|/earn"
             "vault|/wallet"
             "share|/invite"
           )
 
-          : > visual-smoke/manifest.txt
-          echo "git_sha=$GITHUB_SHA" >> visual-smoke/manifest.txt
-          echo "captured_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> visual-smoke/manifest.txt
-          echo >> visual-smoke/manifest.txt
-
-          for entry in "${routes[@]}"; do
-            name="${entry%%|*}"
-            route="${entry#*|}"
-            url="https://pulsercuit.pro${route}"
-            status="$(curl --location --silent --show-error --output /dev/null --write-out '%{http_code}' "$url")"
+          check_direct() {
+            local route="$1"
+            local result status effective
+            result="$(curl --location --silent --show-error --output /dev/null --write-out '%{http_code}|%{url_effective}' "https://pulsercuit.pro$route")"
+            status="${result%%|*}"
+            effective="${result#*|}"
             if [ "$status" != "200" ]; then
               echo "Route $route returned HTTP $status"
               exit 1
             fi
-            echo "$name $route HTTP $status" >> visual-smoke/manifest.txt
-          done
-
-          capture() {
-            local profile="$1"
-            local size="$2"
-            local directory="visual-smoke/$profile"
-
-            for entry in "${routes[@]}"; do
-              local name="${entry%%|*}"
-              local route="${entry#*|}"
-              local url="https://pulsercuit.pro${route}"
-              local output="$directory/${name}.png"
-
-              "$CHROME_BIN"                 --headless=new                 --no-sandbox                 --disable-gpu                 --hide-scrollbars                 --disable-dev-shm-usage                 --force-device-scale-factor=1                 --run-all-compositor-stages-before-draw                 --virtual-time-budget=5000                 --window-size="$size"                 --screenshot="$output"                 "$url"
-
-              test -s "$output"
-            done
+            node - "$effective" "$route" <<'NODE'
+          const effective = new URL(process.argv[2]);
+          const expectedPath = process.argv[3];
+          if (effective.hostname !== "pulsercuit.pro" || effective.pathname !== expectedPath) {
+            throw new Error(`Direct route drift: expected ${expectedPath}, reached ${effective.href}`);
+          }
+          NODE
+            echo "production-direct requested=$route effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
           }
 
-          capture desktop 1440,900
-          capture mobile 390,844
+          check_protected() {
+            local route="$1"
+            local result status effective
+            result="$(curl --location --silent --show-error --output /dev/null --write-out '%{http_code}|%{url_effective}' "https://pulsercuit.pro$route")"
+            status="${result%%|*}"
+            effective="${result#*|}"
+            if [ "$status" != "200" ]; then
+              echo "Protected route $route returned HTTP $status"
+              exit 1
+            fi
+            node - "$effective" "$route" <<'NODE'
+          const effective = new URL(process.argv[2]);
+          const requested = process.argv[3];
+          if (
+            effective.hostname !== "pulsercuit.pro"
+            || effective.pathname !== "/auth"
+            || effective.searchParams.get("next") !== requested
+          ) {
+            throw new Error(`Protected route contract drift: requested ${requested}, reached ${effective.href}`);
+          }
+          NODE
+            echo "production-auth-redirect requested=$route effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
+          }
+
+          echo >> visual-smoke/manifest.txt
+          for entry in "${direct_routes[@]}"; do
+            check_direct "${entry#*|}"
+          done
+          for entry in "${protected_routes[@]}"; do
+            check_protected "${entry#*|}"
+          done
+
+      - name: Capture production direct views and auth redirects
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p             visual-smoke/production/direct/desktop             visual-smoke/production/direct/mobile             visual-smoke/production/auth-redirect/desktop             visual-smoke/production/auth-redirect/mobile
+
+          direct_routes=(
+            "home|/"
+            "proof|/proof"
+            "business|/business"
+            "business-integration|/business/integration"
+            "auth|/auth"
+            "support|/support"
+            "momentum|/progress"
+          )
+
+          protected_routes=(
+            "dashboard|/dashboard"
+            "turbo|/earn"
+            "vault|/wallet"
+            "share|/invite"
+          )
+
+          capture_group() {
+            local group="$1"
+            local profile="$2"
+            local size="$3"
+            local route_blob="$4"
+            local name route output
+
+            while IFS='|' read -r name route; do
+              [ -n "$name" ] || continue
+              output="visual-smoke/production/$group/$profile/${name}.png"
+              "$CHROME_BIN"                 --headless=new                 --no-sandbox                 --disable-gpu                 --hide-scrollbars                 --disable-dev-shm-usage                 --force-device-scale-factor=1                 --run-all-compositor-stages-before-draw                 --virtual-time-budget=3500                 --window-size="$size"                 --screenshot="$output"                 "https://pulsercuit.pro$route"
+              test -s "$output"
+            done <<< "$route_blob"
+          }
+
+          direct_blob="$(printf '%s\n' "${direct_routes[@]}")"
+          protected_blob="$(printf '%s\n' "${protected_routes[@]}")"
+
+          capture_group direct desktop 1440,900 "$direct_blob"
+          capture_group direct mobile 390,844 "$direct_blob"
+          capture_group auth-redirect desktop 1440,900 "$protected_blob"
+          capture_group auth-redirect mobile 390,844 "$protected_blob"
 
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
-          echo "Captured $(find visual-smoke -type f -name '*.png' | wc -l) screenshots."
-          test "$(find visual-smoke -type f -name '*.png' | wc -l)" -eq 22
+          count="$(find visual-smoke -type f -name '*.png' | wc -l)"
+          echo "Captured $count screenshots."
+          test "$count" -eq 32
+
+      - name: Stop local preview
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/visual-preview.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/visual-preview.pid")" 2>/dev/null || true
+          fi
 
       - name: Upload visual evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pulsercuit-visual-smoke-${{ github.sha }}
