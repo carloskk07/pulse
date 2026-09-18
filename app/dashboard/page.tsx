@@ -7,7 +7,7 @@ import { TurnstileField } from "@/components/turnstile-field";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getUserNextAction } from "@/lib/experience-presentation";
 import { formatUsdFromCredits, getRewardSnapshot, trustLabel } from "@/lib/reward-state";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
@@ -28,8 +28,8 @@ const claimCopy: Record<string, string> = {
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const [state, params, supabase] = await Promise.all([getRewardSnapshot(), searchParams, createSupabaseServerClient()]);
-  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const [state, params, userContext] = await Promise.all([getRewardSnapshot(), searchParams, getCurrentUserContext()]);
+  const { user } = userContext;
   const liveTurboRoute = user && isAyetConfigured() ? buildAyetOfferwallUrl(user.id) : null;
   const payout = getFaucetPayPackConfig();
   const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
