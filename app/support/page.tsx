@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { TurnstileField } from "@/components/turnstile-field";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 import { createSupportCase } from "./actions";
 
 export const metadata = { title: "Help & Support" };
@@ -22,8 +22,7 @@ const categories = new Set(["earning", "withdrawal", "account", "privacy", "othe
 export default async function SupportPage({ searchParams }: Props) {
   const params = await searchParams;
   const defaultCategory = params.category && categories.has(params.category) ? params.category : "earning";
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const { supabase, user } = await getCurrentUserContext();
   let cases: Array<{ id: string; category: string; subject: string; status: string; created_at: string }> = [];
   if (user && supabase) {
     const { data } = await supabase.from("support_cases").select("id,category,subject,status,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(8);
