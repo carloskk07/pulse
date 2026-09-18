@@ -137,6 +137,12 @@ requireText("app/styles/sitewide-audit.css", [
   ".integration-code{font-size:11px!important;line-height:1.7}",
 ]);
 
+requireText("app/styles/theme.css", [
+  ".app-content .wallet-balance-card{color:var(--pc7-text)!important}",
+  ".app-content .wallet-balance-card>div:nth-child(2)>span{color:var(--pc7-lime)!important}",
+  ".app-content .wallet-balance-card small{color:var(--pc7-muted)!important}",
+]);
+
 const contrastPairs = [
   ["completion microcopy", "#566159", "#f5f7f4"],
   ["completion success", "#245a35", "#eaf7ed"],
@@ -152,6 +158,9 @@ const contrastPairs = [
   ["account light-card metadata", "#59645c", "#ffffff"],
   ["public chamber live detail", "#818b83", "#0e1312"],
   ["dark balance metadata", "#8b94a5", "#12161f"],
+  ["Vault primary value", "#f7f2e6", "#111713"],
+  ["Vault available label", "#d9ff72", "#111713"],
+  ["Vault balance metadata", "#9b9d95", "#111713"],
 ];
 for (const [label, foreground, background] of contrastPairs) {
   const ratio = contrast(foreground, background);
