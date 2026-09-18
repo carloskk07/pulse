@@ -1,7 +1,7 @@
 import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getFaucetPayPackConfig } from "@/providers/faucetpay";
+import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
 export type ProductReadinessCheck = {
   id: string;
@@ -22,6 +22,7 @@ const PRODUCT_SETUP_CHECK_IDS = new Set([
   "auth",
   "turnstile-config",
   "payout-pack",
+  "send-authority-config",
   "database",
   "hourly-pulse-config",
   "treasury",
@@ -49,6 +50,7 @@ function validTimestampOrder(first: unknown, second: unknown) {
 export async function getProductReadiness(): Promise<ProductReadiness> {
   const checks: ProductReadinessCheck[] = [];
   const payout = getFaucetPayPackConfig();
+  const sendAuthority = getFaucetPaySendAuthorityConfig();
 
   checks.push({
     id: "auth",
@@ -67,6 +69,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     label: "Real payout route",
     pass: payout.ready,
     detail: payout.ready ? `${payout.asset} payout pack is fully configured.` : "FaucetPay key, exact payout units and display pack must all be configured.",
+  });
+  checks.push({
+    id: "send-authority-config",
+    label: "FaucetPay send authority configuration",
+    pass: sendAuthority.ready,
+    detail: sendAuthority.ready
+      ? `Read/send credentials are separated and the expected provider daily cap is ${sendAuthority.dailyLimitUsd?.toLocaleString("en-US")} USD.`
+      : "Configure distinct read/send credentials and FAUCETPAY_SEND_DAILY_LIMIT_USD before any payout authority can be attested.",
   });
 
   const admin = createSupabaseAdminClient();
