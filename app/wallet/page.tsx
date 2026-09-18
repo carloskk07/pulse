@@ -4,7 +4,7 @@ import { TurnstileField } from "@/components/turnstile-field";
 import { getWalletPresentation } from "@/lib/experience-presentation";
 import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from "@/lib/faucetpay-authority";
 import { formatUsdFromCredits, getLedgerItems, getRewardSnapshot } from "@/lib/reward-state";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Vault" };
@@ -55,11 +55,11 @@ function maskDestination(value: string) {
 }
 
 export default async function WalletPage({ searchParams }: Props) {
-  const [state, rows, params, supabase, readProofReady, sendScopeProofReady] = await Promise.all([
+  const [state, rows, params, userContext, readProofReady, sendScopeProofReady] = await Promise.all([
     getRewardSnapshot(),
     getLedgerItems(),
     searchParams,
-    createSupabaseServerClient(),
+    getCurrentUserContext(),
     hasCurrentFaucetPayReadProof(),
     hasCurrentFaucetPaySendScopeProof(),
   ]);
@@ -69,9 +69,8 @@ export default async function WalletPage({ searchParams }: Props) {
   const serviceReady = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   let activeWithdrawal: ActiveWithdrawal | null = null;
-  if (supabase && state.signedIn) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+  const { supabase, user } = userContext;
+  if (supabase && user && state.signedIn) {
       const { data } = await supabase
         .from("withdrawals")
         .select("id,status,destination,asset,amount_credits,payout_amount_units,created_at")
@@ -81,7 +80,6 @@ export default async function WalletPage({ searchParams }: Props) {
         .limit(1)
         .maybeSingle();
       activeWithdrawal = data as ActiveWithdrawal | null;
-    }
   }
 
   const activePackMatches = Boolean(
