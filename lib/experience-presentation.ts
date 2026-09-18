@@ -151,7 +151,7 @@ export function getWalletPresentation(input: {
         ? `${input.formattedMissingAmount} remains to reach the current withdrawal target.`
         : "Your current payout target will appear automatically.",
       buttonLabel: input.formattedMissingAmount ? `${input.formattedMissingAmount} to go` : "Keep earning",
-      destinationEnabled: true,
+      destinationEnabled: false,
       submitEnabled: false,
     };
   }
