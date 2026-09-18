@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { Check, Users } from "@/components/icons";
 import { CopyReferralLink } from "@/components/copy-referral-link";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
 export const metadata = { title: "Invite" };
@@ -21,8 +21,7 @@ function configuredSiteUrl() {
 }
 
 export default async function InvitePage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const { supabase, user } = await getCurrentUserContext();
   let referralCode: string | null = null;
   let pending = 0;
   let rewarded = 0;
