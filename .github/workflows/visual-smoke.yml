@@ -109,6 +109,7 @@ jobs:
           capture() {
             local profile="$1"
             local size="$2"
+            mkdir -p "visual-smoke/local-preview/$profile"
             for entry in "${routes[@]}"; do
               local name="${entry%%|*}"
               local route="${entry#*|}"
@@ -130,6 +131,14 @@ jobs:
 
           capture desktop 1440,900
           capture mobile 390,844
+
+          # Breakpoint sentinels: exact max-width boundary and first pixel outside it.
+          capture bp-560 560,900
+          capture bp-561 561,900
+          capture bp-760 760,1024
+          capture bp-761 761,1024
+          capture bp-1120 1120,800
+          capture bp-1121 1121,800
 
       - name: Verify exact canonical production release
         shell: bash
@@ -279,7 +288,8 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
-          test "$count" -eq 32
+          # 40 local-preview PNGs (5 routes × 8 viewports) + 22 production PNGs.
+          test "$count" -eq 62
 
       - name: Stop local preview
         if: always()
