@@ -119,7 +119,7 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
         <span className={statusTone(probe.state)}>{probe.state.replaceAll("_", " ")}</span>
       </div>
 
-      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
+      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "send-scope-recorded" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
 
       <section className="admin-panel">
         <div className="app-section-head">
@@ -236,8 +236,8 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
 
       <section className="admin-decision-card">
         <span className="app-eyebrow">Decision</span>
-        <h2>{verified && readEvidenceCurrent ? "Read-only payout proof is closed and current." : "Financial send remains blocked."}</h2>
-        <p>{verified && readEvidenceCurrent ? "The nominal USD value, internal credits and provider units are consistent and fingerprint-bound. A separate send-scoped key, controlled Treasury-backed claim, controlled real withdrawal and exact payout→receipt proof chain are still required before PRODUCT_READY." : verified ? "The live rail passes, but the operator must explicitly record the current fingerprint before this gate is closed." : "Do not configure or exercise a payout send path until the live preflight reaches READ_ONLY_VERIFIED and its current fingerprint is recorded."}</p>
+        <h2>{verified && readEvidenceCurrent && sendScopeEvidenceCurrent ? "Read rail and least-privilege send authority are proven." : "Financial send remains blocked."}</h2>
+        <p>{verified && readEvidenceCurrent && sendScopeEvidenceCurrent ? "The read rail, payout economics, provider units and send-only operator attestation are fingerprint-bound. A controlled real withdrawal and exact payout→receipt proof chain are still required before PRODUCT_READY." : verified && readEvidenceCurrent ? "Read-only proof is closed, but send-key least privilege still needs explicit provider-dashboard attestation." : verified ? "The live rail passes, but the operator must explicitly record the current read fingerprint before send authority can advance." : "Do not exercise a payout send path until the live preflight reaches READ_ONLY_VERIFIED and its current fingerprint is recorded."}</p>
         <Link className="button button-secondary" href="/admin">Back to operations</Link>
       </section>
     </AppShell>
