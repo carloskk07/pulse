@@ -93,6 +93,7 @@ export function getWalletPresentation(input: {
   availableCredits: number;
   readProofReady: boolean;
   sendScopeProofReady: boolean;
+  payoutPilotAllowed: boolean;
   activeWithdrawalStatus: "requested" | "held" | "submitted" | null;
   recoveryAuthorityReady: boolean;
   formattedMissingAmount: string | null;
@@ -127,6 +128,17 @@ export function getWalletPresentation(input: {
       title: "Sign in to use your Vault.",
       detail: "Your live balance and withdrawal eligibility appear after sign-in.",
       buttonLabel: "Sign in required",
+      destinationEnabled: false,
+      submitEnabled: false,
+    };
+  }
+
+  if (!input.payoutPilotAllowed) {
+    return {
+      eyebrow: "Controlled launch",
+      title: "Withdrawals are limited during the payout pilot.",
+      detail: "Your balance stays intact while the first real payment path is proven on the authorized pilot account.",
+      buttonLabel: "Pilot access only",
       destinationEnabled: false,
       submitEnabled: false,
     };

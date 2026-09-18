@@ -5,6 +5,7 @@ import { getWalletPresentation } from "@/lib/experience-presentation";
 import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from "@/lib/faucetpay-authority";
 import { formatUsdFromCredits, getLedgerItems, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
+import { hasWithdrawalPilotAccess } from "@/lib/withdrawal-pilot";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Vault" };
@@ -31,6 +32,7 @@ const withdrawalCopy: Record<string, string> = {
   "verification-failed": "Verification failed. Try again.",
   "verification-not-configured": "Withdrawal verification is temporarily unavailable.",
   "payout-not-configured": "Withdrawals are temporarily unavailable. Your balance is safe.",
+  "pilot-restricted": "Withdrawals are limited to the controlled launch account while the payout path is being proven.",
   "service-not-configured": "The payout service is temporarily unavailable.",
   "reserve-failed": "The payment could not continue safely. No duplicate payout was created.",
   failed: "The payout failed and the reserved credits were restored.",
@@ -70,6 +72,7 @@ export default async function WalletPage({ searchParams }: Props) {
 
   let activeWithdrawal: ActiveWithdrawal | null = null;
   const { supabase, user } = userContext;
+  const withdrawalPilotAllowed = user ? await hasWithdrawalPilotAccess(user.id) : false;
   if (supabase && user && state.signedIn) {
       const { data } = await supabase
         .from("withdrawals")
@@ -92,6 +95,7 @@ export default async function WalletPage({ searchParams }: Props) {
   const recoveryAuthorityReady = Boolean(
     activeWithdrawal
     && activeWithdrawal.status !== "held"
+    && withdrawalPilotAllowed
     && turnstileReady
     && serviceReady
     && process.env.FAUCETPAY_SCOPED_KEY?.trim()
@@ -101,6 +105,7 @@ export default async function WalletPage({ searchParams }: Props) {
   const canWithdraw = Boolean(
     !activeWithdrawal
     && state.signedIn
+    && withdrawalPilotAllowed
     && payout.ready
     && payoutCredits
     && readProofReady
@@ -118,6 +123,7 @@ export default async function WalletPage({ searchParams }: Props) {
     availableCredits: state.availableCredits,
     readProofReady,
     sendScopeProofReady,
+    payoutPilotAllowed: withdrawalPilotAllowed,
     activeWithdrawalStatus: activeWithdrawal?.status ?? null,
     recoveryAuthorityReady,
     formattedMissingAmount: missingCredits !== null && missingCredits > 0 ? formatUsdFromCredits(missingCredits) : null,
