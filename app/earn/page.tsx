@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getRewardEntryChannels } from "@/providers/registry";
 
@@ -34,13 +34,13 @@ function evidenceLabel(item: RankedOpportunity) {
 }
 
 export default async function EarnPage({ searchParams }: Props) {
-  const [state, supabase, ranked, params] = await Promise.all([
+  const [state, userContext, ranked, params] = await Promise.all([
     getRewardSnapshot(),
-    createSupabaseServerClient(),
+    getCurrentUserContext(),
     getRankedOpportunities(24),
     searchParams,
   ]);
-  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const { user } = userContext;
   const channels = user ? getRewardEntryChannels(user.id) : [];
   const primaryChannel = channels[0] ?? null;
   const best = ranked[0] ?? null;
