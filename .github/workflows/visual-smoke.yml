@@ -107,6 +107,58 @@ jobs:
             echo "local-preview requested=$route effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
           }
 
+          capture_one() {
+            local output="$1"
+            local size="$2"
+            local url="$3"
+            local label="$4"
+
+            for attempt in 1 2; do
+              local profile_dir
+              profile_dir="$(mktemp -d "$RUNNER_TEMP/visual-chrome.XXXXXX")"
+              rm -f "$output"
+              echo "capture-start label=$label attempt=$attempt size=$size url=$url" | tee -a visual-smoke/manifest.txt
+
+              if timeout --signal=TERM --kill-after=5s 25s "$CHROME_BIN" \
+                --headless=new \
+                --no-sandbox \
+                --disable-gpu \
+                --hide-scrollbars \
+                --disable-dev-shm-usage \
+                --disable-background-networking \
+                --disable-component-update \
+                --disable-domain-reliability \
+                --disable-sync \
+                --metrics-recording-only \
+                --no-first-run \
+                --no-default-browser-check \
+                --disable-features=MediaRouter,OptimizationHints,Translate \
+                --force-device-scale-factor=1 \
+                --run-all-compositor-stages-before-draw \
+                --virtual-time-budget=3500 \
+                --window-size="$size" \
+                --user-data-dir="$profile_dir" \
+                --screenshot="$output" \
+                "$url"; then
+                rm -rf "$profile_dir"
+                if test -s "$output"; then
+                  echo "capture-pass label=$label attempt=$attempt" | tee -a visual-smoke/manifest.txt
+                  return 0
+                fi
+              else
+                status=$?
+                rm -rf "$profile_dir"
+                echo "capture-attempt-failed label=$label attempt=$attempt exit=$status" | tee -a visual-smoke/manifest.txt
+              fi
+
+              rm -rf "$profile_dir"
+              sleep 1
+            done
+
+            echo "Capture failed twice: $label ($size) $url"
+            return 1
+          }
+
           capture() {
             local profile="$1"
             local size="$2"
@@ -115,8 +167,7 @@ jobs:
               local name="${entry%%|*}"
               local route="${entry#*|}"
               local output="visual-smoke/local-preview/$profile/${name}.png"
-              "$CHROME_BIN"                 --headless=new                 --no-sandbox                 --disable-gpu                 --hide-scrollbars                 --disable-dev-shm-usage                 --force-device-scale-factor=1                 --run-all-compositor-stages-before-draw                 --virtual-time-budget=3500                 --window-size="$size"                 --screenshot="$output"                 "http://127.0.0.1:3100$route"
-              test -s "$output"
+              capture_one "$output" "$size" "http://127.0.0.1:3100$route" "local-preview/$profile/$name"
             done
           }
 
@@ -269,6 +320,58 @@ jobs:
             "share|/invite"
           )
 
+          capture_one() {
+            local output="$1"
+            local size="$2"
+            local url="$3"
+            local label="$4"
+
+            for attempt in 1 2; do
+              local profile_dir
+              profile_dir="$(mktemp -d "$RUNNER_TEMP/visual-chrome.XXXXXX")"
+              rm -f "$output"
+              echo "capture-start label=$label attempt=$attempt size=$size url=$url" | tee -a visual-smoke/manifest.txt
+
+              if timeout --signal=TERM --kill-after=5s 25s "$CHROME_BIN" \
+                --headless=new \
+                --no-sandbox \
+                --disable-gpu \
+                --hide-scrollbars \
+                --disable-dev-shm-usage \
+                --disable-background-networking \
+                --disable-component-update \
+                --disable-domain-reliability \
+                --disable-sync \
+                --metrics-recording-only \
+                --no-first-run \
+                --no-default-browser-check \
+                --disable-features=MediaRouter,OptimizationHints,Translate \
+                --force-device-scale-factor=1 \
+                --run-all-compositor-stages-before-draw \
+                --virtual-time-budget=3500 \
+                --window-size="$size" \
+                --user-data-dir="$profile_dir" \
+                --screenshot="$output" \
+                "$url"; then
+                rm -rf "$profile_dir"
+                if test -s "$output"; then
+                  echo "capture-pass label=$label attempt=$attempt" | tee -a visual-smoke/manifest.txt
+                  return 0
+                fi
+              else
+                status=$?
+                rm -rf "$profile_dir"
+                echo "capture-attempt-failed label=$label attempt=$attempt exit=$status" | tee -a visual-smoke/manifest.txt
+              fi
+
+              rm -rf "$profile_dir"
+              sleep 1
+            done
+
+            echo "Capture failed twice: $label ($size) $url"
+            return 1
+          }
+
           capture_group() {
             local group="$1"
             local profile="$2"
@@ -279,8 +382,7 @@ jobs:
             while IFS='|' read -r name route; do
               [ -n "$name" ] || continue
               output="visual-smoke/production/$group/$profile/${name}.png"
-              "$CHROME_BIN"                 --headless=new                 --no-sandbox                 --disable-gpu                 --hide-scrollbars                 --disable-dev-shm-usage                 --force-device-scale-factor=1                 --run-all-compositor-stages-before-draw                 --virtual-time-budget=3500                 --window-size="$size"                 --screenshot="$output"                 "https://pulsercuit.pro$route"
-              test -s "$output"
+              capture_one "$output" "$size" "https://pulsercuit.pro$route" "production/$group/$profile/$name"
             done <<< "$route_blob"
           }
 
