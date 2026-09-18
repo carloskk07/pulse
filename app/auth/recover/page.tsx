@@ -32,13 +32,13 @@ export default async function RecoverPage({ searchParams }: Props) {
       <section className="auth-shell shell">
         <div className="auth-copy">
           <span className="section-kicker">Account security</span>
-          <h1>Recover access.<br /><em>Keep your circuit.</em></h1>
-          <p>Use the email attached to your Pulsercuit account. Recovery never asks for your balance, wallet address or payout details.</p>
-          <div className="auth-trust"><span>Single-use recovery</span><span>Short-lived reset context</span><span>No account enumeration</span></div>
+          <h1>Recover your account.<br /><em>Keep your progress.</em></h1>
+          <p>Enter the email used for your Pulsercuit account. If recovery is available, you will receive the next step by email.</p>
+          <div className="auth-trust"><span>Secure reset</span><span>Short-lived link</span><span>Same response for every email</span></div>
         </div>
 
         <div className="auth-card">
-          <div><span className="app-eyebrow">Password recovery</span><h2>Send a secure reset link</h2><p>If the address is eligible for recovery, Supabase will send the next step by email.</p></div>
+          <div><span className="app-eyebrow">Password recovery</span><h2>Send a secure reset link</h2><p>If the account can be recovered, a secure reset link will be sent by email.</p></div>
           {params.error ? <div className="auth-alert error">{errorCopy[params.error] ?? "Recovery could not continue. Request a new link."}</div> : null}
           {params.message === "check-email" ? <div className="auth-alert success">If an account can be recovered for that address, a reset email is on its way. Check spam or junk folders too.</div> : null}
 
