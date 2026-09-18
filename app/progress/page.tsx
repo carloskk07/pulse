@@ -21,11 +21,7 @@ function trendCopy(trend: "starting" | "rising" | "steady" | "cooling") {
 }
 
 export default async function ProgressPage() {
-  const [state, weekly] = await Promise.all([
-    getRewardSnapshot(),
-    getWeeklyPulseSummary(),
-  ]);
-
+  const [state, weekly] = await Promise.all([getRewardSnapshot(), getWeeklyPulseSummary()]);
   const signal = getCircuitProgress({
     hourlyClaimCount: state.hourlyClaimCount,
     streakDays: state.streakDays,
@@ -39,7 +35,6 @@ export default async function ProgressPage() {
     signal: signal.signal,
   });
   const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
-  const unlocked = unlockedAchievements.length;
   const strongestAchievement = unlockedAchievements.at(-1)?.title ?? null;
   const nextAchievement = getNextCircuitAchievement(achievements);
   const shareReady = state.signedIn && !state.preview;
@@ -50,55 +45,38 @@ export default async function ProgressPage() {
       <div className="app-page-head pc-progress-head pc-luxe-momentum-head">
         <div>
           <span className="app-eyebrow">Momentum</span>
-          <h1>Your history is becoming status.</h1>
-          <p>Raise your Signal. Hold your rhythm. Unlock marks worth sharing.</p>
+          <h1>Know your rank. Know the next mark.</h1>
+          <p>Progress comes from real Pulse history. The details stay available without competing with your next move.</p>
         </div>
-        <Link className="button pc-v5-primary" href={shareEntryHref}>{shareReady ? "Create share card" : state.signedIn ? "View share status" : "Enter the circuit"}</Link>
+        <Link className="button pc-v5-primary" href={shareEntryHref}>{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
       </div>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
         <article className="pc-identity-card pc-luxe-prestige-card">
           <div className="pc-luxe-prestige-halo" aria-hidden="true" />
-          <div className="pc-identity-top"><span><Spark /> Circuit rank</span><b>{state.preview ? "Preview" : signal.stage}</b></div>
+          <div className="pc-identity-top"><span><Spark /> Current rank</span><b>{state.preview ? "Preview" : signal.stage}</b></div>
           <div className="pc-luxe-rank-name">{state.preview ? "—" : signal.stage}</div>
           <div className="pc-identity-score"><strong>{state.preview ? "—" : signal.signal}</strong><span>/100</span></div>
-          <div className="pc-identity-meta"><span><small>Rhythm</small><strong>{state.preview ? "—" : `${state.streakDays}d`}</strong></span><span><small>Trust</small><strong>{state.preview ? "—" : trust}</strong></span><span><small>Pulses</small><strong>{state.preview ? "—" : state.hourlyClaimCount}</strong></span></div>
+          <div className="pc-identity-meta">
+            <span><small>Rhythm</small><strong>{state.preview ? "—" : state.streakDays + "d"}</strong></span>
+            <span><small>Pulses</small><strong>{state.preview ? "—" : state.hourlyClaimCount}</strong></span>
+            <span><small>Next mark</small><strong>{state.preview ? "—" : nextAchievement?.title ?? "Current set complete"}</strong></span>
+          </div>
         </article>
 
-        <div className="pc-weekly-stack">
-          <article className="pc-weekly-card pc-luxe-weekly-card">
-            <div className="pc-card-label"><Trend /> Last 7 days</div>
-            <div className="pc-weekly-numbers"><span><strong>{weekly.available ? weekly.claims7d : "—"}</strong><small>Pulses</small></span><span><strong>{weekly.available ? weekly.activeDays7d : "—"}</strong><small>active days</small></span><span><strong>{weekly.available ? weekly.previousClaims7d : "—"}</strong><small>prior 7d</small></span></div>
-            <p>{weekly.available ? trendCopy(weekly.trend) : "Live history reveals your first weekly pattern."}</p>
-          </article>
-          <article className="pc-retention-callout pc-luxe-retention-callout"><Shield /><div><strong>Status, not pressure.</strong><p>Every rank comes from real product history.</p></div></article>
-        </div>
+        <NextCircuitPanel
+          claimIntervalMinutes={state.claimIntervalMinutes}
+          claimReady={state.claimReady}
+          nextAchievement={nextAchievement}
+          nextClaimAt={state.nextClaimAt}
+          nextStageAt={signal.nextStageAt}
+          preview={state.preview}
+          pulseFundingReady={state.pulseFundingReady}
+          signal={signal.signal}
+          signalStage={signal.stage}
+          signedIn={state.signedIn}
+        />
       </section>
-
-      <section className="pc-luxe-rank-road" aria-label="Circuit rank progression">
-        <div><span className="app-eyebrow">Prestige path</span><h2>Five ranks. No shortcuts.</h2></div>
-        <div className="pc-luxe-rank-track">
-          {ranks.map((rank, index) => {
-            const activeIndex = Math.max(0, ranks.indexOf(signal.stage as (typeof ranks)[number]));
-            const reached = !state.preview && index <= activeIndex;
-            const current = !state.preview && rank === signal.stage;
-            return <span className={`${reached ? "reached" : ""} ${current ? "current" : ""}`} key={rank}><i>{index + 1}</i><strong>{rank}</strong></span>;
-          })}
-        </div>
-      </section>
-
-      <NextCircuitPanel
-        claimIntervalMinutes={state.claimIntervalMinutes}
-        claimReady={state.claimReady}
-        nextAchievement={nextAchievement}
-        nextClaimAt={state.nextClaimAt}
-        nextStageAt={signal.nextStageAt}
-        preview={state.preview}
-        pulseFundingReady={state.pulseFundingReady}
-        signal={signal.signal}
-        signalStage={signal.stage}
-        signedIn={state.signedIn}
-      />
 
       {shareReady ? (
         <CircuitShareStudio
@@ -111,30 +89,52 @@ export default async function ProgressPage() {
       ) : (
         <section className="pc-progress-cta pc-luxe-momentum-cta pc-share-studio-placeholder" id="circuit-moments" aria-labelledby="share-studio-placeholder-title">
           <div>
-            <span className="app-eyebrow">Share studio</span>
-            <h2 id="share-studio-placeholder-title">{state.signedIn ? "Live history is required before a verified card can be created." : "Sign in to create a card from verified history."}</h2>
-            <p>{state.signedIn ? "The studio stays locked while this session is in preview, so it cannot turn unavailable data into a public claim." : "Your public card can use rank, rhythm and milestone history after the account is authenticated."}</p>
+            <span className="app-eyebrow">Share progress</span>
+            <h2 id="share-studio-placeholder-title">{state.signedIn ? "Live history is required before a verified card can be created." : "Sign in to share verified progress."}</h2>
+            <p>Public cards never invent balance or activity.</p>
           </div>
-          <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"}>{state.signedIn ? "Return to Pulse" : "Enter the circuit"} <ArrowUpRight /></Link>
+          <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"}>{state.signedIn ? "Return to Pulse" : "Sign in"} <ArrowUpRight /></Link>
         </section>
       )}
 
-      <section className="app-section pc-luxe-seals-section">
-        <div className="app-section-head"><div><span className="app-eyebrow">Milestone seals</span><h2>{state.preview ? "Real history unlocks the collection." : `${unlocked} / ${achievements.length} unlocked`}</h2></div></div>
+      <details className="admin-panel pc-luxe-seals-section">
+        <summary><strong>Progress details</strong> · ranks, weekly history, Trust and milestone seals</summary>
+
+        <div className="pc-weekly-stack">
+          <article className="pc-weekly-card pc-luxe-weekly-card">
+            <div className="pc-card-label"><Trend /> Last 7 days</div>
+            <div className="pc-weekly-numbers">
+              <span><strong>{weekly.available ? weekly.claims7d : "—"}</strong><small>Pulses</small></span>
+              <span><strong>{weekly.available ? weekly.activeDays7d : "—"}</strong><small>active days</small></span>
+              <span><strong>{weekly.available ? weekly.previousClaims7d : "—"}</strong><small>prior 7d</small></span>
+            </div>
+            <p>{weekly.available ? trendCopy(weekly.trend) : "Live history reveals your first weekly pattern."}</p>
+          </article>
+          <article className="pc-retention-callout pc-luxe-retention-callout"><Shield /><div><strong>Trust</strong><p>{state.preview ? "Live after sign-in." : trust + " · level " + state.trustLevel + "/5"}</p></div></article>
+        </div>
+
+        <section className="pc-luxe-rank-road" aria-label="Circuit rank progression">
+          <div><span className="app-eyebrow">Rank path</span><h2>Five ranks. No shortcuts.</h2></div>
+          <div className="pc-luxe-rank-track">
+            {ranks.map((rank, index) => {
+              const activeIndex = Math.max(0, ranks.indexOf(signal.stage as (typeof ranks)[number]));
+              const reached = !state.preview && index <= activeIndex;
+              const current = !state.preview && rank === signal.stage;
+              return <span className={(reached ? "reached " : "") + (current ? "current" : "")} key={rank}><i>{index + 1}</i><strong>{rank}</strong></span>;
+            })}
+          </div>
+        </section>
+
+        <div className="app-section-head"><div><span className="app-eyebrow">Milestone seals</span><h2>{state.preview ? "Real history unlocks the collection." : unlockedAchievements.length + " / " + achievements.length + " unlocked"}</h2></div></div>
         <div className="pc-achievement-grid pc-luxe-seal-grid">
           {achievements.map((achievement) => (
-            <article className={`pc-achievement pc-luxe-seal ${achievement.unlocked && !state.preview ? "unlocked" : "locked"} tone-${achievement.tone}`} key={achievement.id}>
+            <article className={"pc-achievement pc-luxe-seal " + (achievement.unlocked && !state.preview ? "unlocked " : "locked ") + "tone-" + achievement.tone} key={achievement.id}>
               <div className="pc-achievement-mark">{achievement.unlocked && !state.preview ? <Check /> : <span />}</div>
               <div><small>{achievement.unlocked && !state.preview ? "Unlocked" : "Locked"}</small><h3>{achievement.title}</h3><p>{achievement.description}</p></div>
             </article>
           ))}
         </div>
-      </section>
-
-      <section className="pc-progress-cta pc-luxe-momentum-cta">
-        <div><span className="app-eyebrow">Next move</span><h2>Keep the climb alive.</h2><p>One funded Pulse moves the circuit further than cosmetic activity ever could.</p></div>
-        <Link className="button button-lg pc-v5-primary" href="/dashboard">Return to Pulse <ArrowUpRight /></Link>
-      </section>
+      </details>
     </AppShell>
   );
 }
