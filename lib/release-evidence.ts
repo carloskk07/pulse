@@ -71,8 +71,9 @@ function configuredValues(kind: ReleaseEvidenceKind) {
       process.env.FAUCETPAY_PAYOUT_CREDITS,
       process.env.FAUCETPAY_PAYOUT_UNITS,
       process.env.FAUCETPAY_PAYOUT_LABEL,
+      process.env.FAUCETPAY_SEND_DAILY_LIMIT_USD,
       "scope:send-only",
-      "daily-cap:operator-verified",
+      "daily-cap:exact-value-operator-verified",
     ];
   }
   if (kind === "supabase_auth_hardening") {
