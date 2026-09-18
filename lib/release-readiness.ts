@@ -3,7 +3,7 @@ import { getLegalOperatorIdentity } from "@/lib/legal-release";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { CANONICAL_SITE_ORIGIN, isCanonicalProductionSiteUrl } from "@/lib/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getFaucetPayPackConfig } from "@/providers/faucetpay";
+import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
 export const RELEASE_SCHEMA_VERSION = 39;
@@ -114,6 +114,16 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
 
   const faucetPay = getFaucetPayPackConfig();
   checks.push(check("faucetpay", "FaucetPay payout pack", faucetPay.ready ? "pass" : "fail", faucetPay.ready ? "Scoped payout key and fixed payout pack are configured." : "Configure the scoped key, payout currency, credits, exact provider units and display label."));
+
+  const faucetPaySendAuthority = getFaucetPaySendAuthorityConfig();
+  checks.push(check(
+    "faucetpay-send-authority-config",
+    "FaucetPay send authority configuration",
+    faucetPaySendAuthority.ready ? "pass" : "fail",
+    faucetPaySendAuthority.ready
+      ? `Read/send credentials are separated and the expected provider daily cap is ${faucetPaySendAuthority.dailyLimitUsd?.toLocaleString("en-US")} USD.`
+      : "Configure distinct read/send credentials and FAUCETPAY_SEND_DAILY_LIMIT_USD before attesting send authority.",
+  ));
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
