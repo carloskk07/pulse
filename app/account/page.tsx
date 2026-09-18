@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 import { updateHandle } from "./actions";
 
 export const metadata = { title: "Account" };
@@ -19,10 +19,8 @@ const copy: Record<string, string> = {
 
 export default async function AccountPage({ searchParams }: Props) {
   const params = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) redirect("/auth?next=/account");
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/account");
+  const { supabase, user } = await getCurrentUserContext();
+  if (!supabase || !user) redirect("/auth?next=/account");
 
   const admin = createSupabaseAdminClient();
   const { data: profile } = admin
