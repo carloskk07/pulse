@@ -6,6 +6,7 @@ import { getFaucetPayTestPlan } from "@/lib/faucetpay-test-plan";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
 import { confirmFaucetPayReceipt, confirmFaucetPaySendScope, reconcileFaucetPayPayoutProof, verifyAndRecordFaucetPayReadProof } from "./actions";
 
@@ -74,6 +75,8 @@ const proofCopy: Record<string, string> = {
   "receipt-recorded": "Actual destination receipt was explicitly confirmed and fingerprint-bound to the same exact paid FaucetPay withdrawal as the provider payout proof.",
   "send-scope-confirmation-required": "No send-scope proof was recorded. Explicit confirmation of send-only scope and a provider-side daily payout cap is required.",
   "send-scope-key-separation-failed": "Read and send credentials are missing or identical. Least-privilege send authority remains blocked.",
+  "send-scope-daily-limit-required": "The expected FaucetPay send-key daily USD cap is not configured. No attestation was recorded.",
+  "send-scope-daily-limit-changed": "The expected daily cap changed after this cockpit view was rendered. Refresh and verify the exact current value before attesting.",
   "send-scope-pack-not-ready": "The payout pack is incomplete. Send-scope evidence cannot be bound to an incomplete payout authority.",
   "send-scope-read-proof-required": "Current read-only FaucetPay proof is missing or stale. Re-verify the read rail before attesting send authority.",
   "send-scope-record-failed": "The send-scope attestation could not be fingerprint-bound. Payout authority remains unproven.",
@@ -100,9 +103,9 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
   const proofValue = proofResult.data?.value;
   const readEvidenceCurrent = !proofResult.error && releaseEvidenceMatches(proofValue, "faucetpay_read");
   const sendScopeEvidenceCurrent = !proofResult.error && releaseEvidenceMatches(proofValue, "faucetpay_send_scope");
-  const readKey = process.env.FAUCETPAY_READ_KEY?.trim() ?? "";
-  const sendKey = process.env.FAUCETPAY_SCOPED_KEY?.trim() ?? "";
-  const sendKeySeparated = Boolean(readKey && sendKey && readKey !== sendKey);
+  const sendAuthority = getFaucetPaySendAuthorityConfig();
+  const readKeyPresent = Boolean(process.env.FAUCETPAY_READ_KEY?.trim());
+  const sendKeyPresent = Boolean(process.env.FAUCETPAY_SCOPED_KEY?.trim());
   const receiptState = admin
     ? await getFaucetPayReceiptProofState(admin, proofValue)
     : { withdrawal: null, payoutWithdrawal: null, boundWithdrawal: null, payoutProofCurrent: false, receiptProofCurrent: false };
@@ -163,9 +166,10 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
         </div>
         <p className="admin-panel-note">FaucetPay v2 scopes are assigned in the provider dashboard and are not exposed by a documented scope-introspection endpoint. This gate therefore requires an explicit operator attestation, while the server independently proves that the configured read and send credentials are distinct. No payout call is made by this proof.</p>
         <div className="admin-secondary-grid">
-          <article><span>Read credential</span><strong>{readKey ? "CONFIGURED" : "MISSING"}</strong></article>
-          <article><span>Send credential</span><strong>{sendKey ? "CONFIGURED" : "MISSING"}</strong></article>
-          <article><span>Credential separation</span><strong>{sendKeySeparated ? "PASS" : "FAIL"}</strong><small>Read and send secrets must not be identical.</small></article>
+          <article><span>Read credential</span><strong>{readKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
+          <article><span>Send credential</span><strong>{sendKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
+          <article><span>Credential separation</span><strong>{sendAuthority.credentialsSeparated ? "PASS" : "FAIL"}</strong><small>Read and send secrets must not be identical.</small></article>
+          <article><span>Expected daily cap</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "MISSING"}</strong><small>FAUCETPAY_SEND_DAILY_LIMIT_USD</small></article>
           <article><span>Read proof dependency</span><strong>{readEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
           <article><span>Send-scope fingerprint</span><strong>{sendScopeEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
         </div>
@@ -173,9 +177,10 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
           <p className="admin-panel-note"><strong>Current attestation is bound to this exact send credential and payout pack.</strong> Rotating the key or changing asset, credits, units or label automatically makes it stale.</p>
         ) : (
           <form action={confirmFaucetPaySendScope}>
+            <input type="hidden" name="expected_daily_limit_usd" value={sendAuthority.dailyLimitUsd ?? ""} />
             <label className="admin-panel-note"><input type="checkbox" name="scope_confirmation" value="SEND_ONLY_CONFIRMED" required /> I verified in FaucetPay → Scoped API keys that this exact credential has <strong>send</strong> scope only and does not include read, manage or admin.</label>
-            <label className="admin-panel-note"><input type="checkbox" name="daily_cap_confirmation" value="DAILY_CAP_CONFIRMED" required /> I verified that a conservative provider-side daily USD payout cap is configured for this send key.</label>
-            <button className="button" type="submit" disabled={!sendKeySeparated || !readEvidenceCurrent}>Record send-scope proof</button>
+            <label className="admin-panel-note"><input type="checkbox" name="daily_cap_confirmation" value="DAILY_CAP_CONFIRMED" required /> I verified that this exact send key has a provider-side daily payout cap of <strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "the configured value"}</strong>, matching the current Pulsercuit expectation.</label>
+            <button className="button" type="submit" disabled={!sendAuthority.ready || !readEvidenceCurrent}>Record send-scope proof</button>
           </form>
         )}
       </section>
