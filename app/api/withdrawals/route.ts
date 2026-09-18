@@ -7,6 +7,7 @@ import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { hasWithdrawalPilotAccess } from "@/lib/withdrawal-pilot";
 import { FaucetPayApiError, FaucetPayProvider, getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
 
@@ -137,6 +138,7 @@ async function executeReservedPayout(
     return walletRedirect(request, "paid");
   }
   if (dispatch.status === "held") return walletRedirect(request, "held");
+  if (dispatch.status === "pilot_restricted") return walletRedirect(request, "pilot-restricted");
   if (dispatch.status === "failed" || dispatch.status === "cancelled") return walletRedirect(request, "failed");
   if (dispatch.status !== "submitted" || dispatch.dispatch !== true) return walletRedirect(request, "processing");
 
@@ -189,6 +191,7 @@ export async function POST(request: NextRequest) {
   const admin = createSupabaseAdminClient();
   if (!admin) return walletRedirect(request, "service-not-configured");
   await recordReleaseEvidence("turnstile");
+  if (!(await hasWithdrawalPilotAccess(user.id, admin))) return walletRedirect(request, "pilot-restricted");
 
   const { data: activeData, error: activeError } = await admin
     .from("withdrawals")
@@ -271,6 +274,7 @@ export async function POST(request: NextRequest) {
   const reserved = (data ?? {}) as ReservedWithdrawal;
   if (reserved.status === "insufficient") return walletRedirect(request, "insufficient");
   if (reserved.status === "held") return walletRedirect(request, "held");
+  if (reserved.status === "pilot_restricted") return walletRedirect(request, "pilot-restricted");
 
   return executeReservedPayout(request, admin, provider, user.id, reserved, ip, reserved.status === "active");
 }
