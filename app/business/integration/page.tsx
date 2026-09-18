@@ -64,9 +64,9 @@ export default function BusinessIntegrationPage() {
       </section>
 
       <section className="section shell integration-section">
-        <div className="section-heading narrow"><span className="section-kicker">04 · Atomic settlement</span><h2>The reward moves only after proof.</h2></div>
+        <div className="section-heading narrow"><span className="section-kicker">04 · Settlement</span><h2>Settle only after the event is verified.</h2></div>
         <div className="integration-flow">
-          <div><small>1</small><strong>Validate</strong><span>Campaign, secret, session, expiry and event identity</span></div><i>→</i><div><small>2</small><strong>Consume</strong><span>Reserved advertiser budget becomes settled spend</span></div><i>→</i><div><small>3</small><strong>Credit</strong><span>User reward enters the authoritative Pulse ledger</span></div>
+          <div><small>1</small><strong>Validate</strong><span>Campaign, secret, session, expiry and event identity</span></div><i>→</i><div><small>2</small><strong>Consume</strong><span>Reserved budget becomes verified spend</span></div><i>→</i><div><small>3</small><strong>Credit</strong><span>User reward enters the verified account balance</span></div>
         </div>
       </section>
 
