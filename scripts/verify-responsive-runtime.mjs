@@ -1,0 +1,240 @@
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const chrome = process.env.CHROME_BIN;
+const baseUrl = process.env.RESPONSIVE_BASE_URL ?? "http://127.0.0.1:3100";
+
+if (!chrome) {
+  throw new Error("CHROME_BIN is required for responsive runtime verification.");
+}
+
+const routes = [
+  ["dashboard", "/dashboard"],
+  ["momentum", "/progress"],
+  ["turbo", "/earn"],
+  ["vault", "/wallet"],
+  ["share", "/invite"],
+];
+
+const viewports = [
+  ["mobile", 390, 844],
+  ["bp-560", 560, 900],
+  ["bp-561", 561, 900],
+  ["bp-760", 760, 1024],
+  ["bp-761", 761, 1024],
+  ["bp-1120", 1120, 800],
+  ["bp-1121", 1121, 800],
+  ["desktop", 1440, 900],
+];
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const profileDir = await mkdtemp(join(tmpdir(), "pulsercuit-responsive-"));
+let browser = null;
+
+async function waitForDevToolsPort() {
+  const file = join(profileDir, "DevToolsActivePort");
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      const [port] = (await readFile(file, "utf8")).trim().split(/\r?\n/);
+      if (port) return Number(port);
+    } catch {}
+    await sleep(50);
+  }
+  throw new Error("Chrome DevToolsActivePort was not created.");
+}
+
+async function waitForPageTarget(port) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
+      const page = targets.find((target) => target.type === "page" && target.webSocketDebuggerUrl);
+      if (page) return page.webSocketDebuggerUrl;
+    } catch {}
+    await sleep(50);
+  }
+  throw new Error("Chrome page target did not become available.");
+}
+
+function createRpc(webSocketUrl) {
+  const socket = new WebSocket(webSocketUrl);
+  let id = 0;
+  const pending = new Map();
+
+  const opened = new Promise((resolve, reject) => {
+    socket.addEventListener("open", resolve, { once: true });
+    socket.addEventListener("error", reject, { once: true });
+  });
+
+  socket.addEventListener("message", (event) => {
+    const message = JSON.parse(String(event.data));
+    if (!message.id) return;
+    const waiter = pending.get(message.id);
+    if (!waiter) return;
+    pending.delete(message.id);
+    if (message.error) waiter.reject(new Error(`${message.error.code}: ${message.error.message}`));
+    else waiter.resolve(message.result);
+  });
+
+  function send(method, params = {}) {
+    const messageId = ++id;
+    return new Promise((resolve, reject) => {
+      pending.set(messageId, { resolve, reject });
+      socket.send(JSON.stringify({ id: messageId, method, params }));
+    });
+  }
+
+  return { socket, opened, send };
+}
+
+async function waitForDocument(send, expectedPath) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const result = await send("Runtime.evaluate", {
+      expression: `({ ready: document.readyState, path: location.pathname })`,
+      returnByValue: true,
+    });
+    const value = result.result?.value;
+    if (value?.ready === "complete" && value.path === expectedPath) {
+      await sleep(250);
+      return;
+    }
+    await sleep(50);
+  }
+  throw new Error(`Document did not settle on ${expectedPath}.`);
+}
+
+const runtimeProbe = `(() => {
+  const root = document.documentElement;
+  const body = document.body;
+  const sidebar = document.querySelector(".app-sidebar");
+  const bottomNav = document.querySelector(".bottom-nav");
+  const appContent = document.querySelector(".app-content");
+
+  const inspect = (element) => {
+    if (!element) return null;
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return {
+      display: style.display,
+      visibility: style.visibility,
+      position: style.position,
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+
+  return {
+    path: location.pathname,
+    innerWidth,
+    clientWidth: root.clientWidth,
+    scrollWidth: Math.max(root.scrollWidth, body?.scrollWidth ?? 0),
+    sidebar: inspect(sidebar),
+    bottomNav: inspect(bottomNav),
+    appContent: inspect(appContent),
+  };
+})()`;
+
+const failures = [];
+
+try {
+  browser = spawn(chrome, [
+    "--headless=new",
+    "--no-sandbox",
+    "--disable-gpu",
+    "--disable-dev-shm-usage",
+    "--hide-scrollbars",
+    "--remote-debugging-port=0",
+    `--user-data-dir=${profileDir}`,
+    "about:blank",
+  ], { stdio: "ignore" });
+
+  const port = await waitForDevToolsPort();
+  const webSocketUrl = await waitForPageTarget(port);
+  const { socket, opened, send } = createRpc(webSocketUrl);
+  await opened;
+
+  await send("Page.enable");
+  await send("Runtime.enable");
+
+  for (const [profile, width, height] of viewports) {
+    await send("Emulation.setDeviceMetricsOverride", {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: false,
+      screenWidth: width,
+      screenHeight: height,
+    });
+
+    for (const [routeName, route] of routes) {
+      await send("Page.navigate", { url: `${baseUrl}${route}` });
+      await waitForDocument(send, route);
+
+      const evaluated = await send("Runtime.evaluate", {
+        expression: runtimeProbe,
+        returnByValue: true,
+      });
+      const state = evaluated.result?.value;
+
+      if (!state) {
+        failures.push(`${profile} ${routeName}: runtime probe returned no value`);
+        continue;
+      }
+
+      const tolerance = 1;
+      if (state.scrollWidth > state.clientWidth + tolerance) {
+        failures.push(
+          `${profile} ${routeName}: horizontal overflow scrollWidth=${state.scrollWidth}, clientWidth=${state.clientWidth}`,
+        );
+      }
+
+      const compactShell = width <= 1120;
+      if (compactShell) {
+        if (!state.sidebar || state.sidebar.display !== "none") {
+          failures.push(`${profile} ${routeName}: sidebar must be hidden at ${width}px`);
+        }
+        if (!state.bottomNav || state.bottomNav.display === "none" || state.bottomNav.width <= 0) {
+          failures.push(`${profile} ${routeName}: bottom nav must be visible at ${width}px`);
+        } else if (
+          state.bottomNav.left < -tolerance
+          || state.bottomNav.right > state.innerWidth + tolerance
+        ) {
+          failures.push(
+            `${profile} ${routeName}: bottom nav escapes viewport [${state.bottomNav.left}, ${state.bottomNav.right}] vs ${state.innerWidth}`,
+          );
+        }
+      } else {
+        if (!state.sidebar || state.sidebar.display === "none" || state.sidebar.width <= 0) {
+          failures.push(`${profile} ${routeName}: sidebar must be visible at ${width}px`);
+        }
+        if (state.bottomNav && state.bottomNav.display !== "none" && state.bottomNav.width > 0) {
+          failures.push(`${profile} ${routeName}: bottom nav must be hidden at ${width}px`);
+        }
+      }
+
+      if (!state.appContent || state.appContent.width <= 0) {
+        failures.push(`${profile} ${routeName}: app content has no measurable width`);
+      }
+
+      console.log(
+        `RESPONSIVE_PASS candidate profile=${profile} route=${routeName} width=${width} scroll=${state.scrollWidth}/${state.clientWidth} sidebar=${state.sidebar?.display ?? "missing"} bottom=${state.bottomNav?.display ?? "missing"}`,
+      );
+    }
+  }
+
+  socket.close();
+} finally {
+  if (browser && !browser.killed) browser.kill("SIGTERM");
+  await rm(profileDir, { recursive: true, force: true });
+}
+
+if (failures.length) {
+  console.error("Responsive runtime contract FAIL");
+  for (const failure of failures) console.error(`- ${failure}`);
+  process.exit(1);
+}
+
+console.log(`Responsive runtime contract PASS: ${routes.length * viewports.length} route/viewport probes`);

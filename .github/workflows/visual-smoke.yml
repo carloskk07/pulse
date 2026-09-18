@@ -12,6 +12,7 @@ on:
       - "components/**"
       - "public/**"
       - "proxy.ts"
+      - "scripts/verify-responsive-runtime.mjs"
 
 permissions:
   contents: read
@@ -139,6 +140,12 @@ jobs:
           capture bp-761 761,1024
           capture bp-1120 1120,800
           capture bp-1121 1121,800
+
+      - name: Verify responsive runtime geometry
+        shell: bash
+        env:
+          RESPONSIVE_BASE_URL: http://127.0.0.1:3100
+        run: node scripts/verify-responsive-runtime.mjs
 
       - name: Verify exact canonical production release
         shell: bash
