@@ -3,7 +3,7 @@ import { getLegalOperatorIdentity } from "@/lib/legal-release";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { CANONICAL_SITE_ORIGIN, isCanonicalProductionSiteUrl } from "@/lib/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getFaucetPayPackConfig } from "@/providers/faucetpay";
+import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
 export const RELEASE_SCHEMA_VERSION = 39;
@@ -115,6 +115,16 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   const faucetPay = getFaucetPayPackConfig();
   checks.push(check("faucetpay", "FaucetPay payout pack", faucetPay.ready ? "pass" : "fail", faucetPay.ready ? "Scoped payout key and fixed payout pack are configured." : "Configure the scoped key, payout currency, credits, exact provider units and display label."));
 
+  const faucetPaySendAuthority = getFaucetPaySendAuthorityConfig();
+  checks.push(check(
+    "faucetpay-send-authority-config",
+    "FaucetPay send authority configuration",
+    faucetPaySendAuthority.ready ? "pass" : "fail",
+    faucetPaySendAuthority.ready
+      ? `Read/send credentials are separated and the expected provider daily cap is ${faucetPaySendAuthority.dailyLimitUsd?.toLocaleString("en-US")} USD.`
+      : "Configure distinct read/send credentials and FAUCETPAY_SEND_DAILY_LIMIT_USD before attesting send authority.",
+  ));
+
   const admin = createSupabaseAdminClient();
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
@@ -125,6 +135,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
     checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence cannot be verified until database authority is available.", true));
+    checks.push(check("faucetpay-send-scope-proof", "FaucetPay send-key least privilege", "pending", "Send-key scope attestation cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-payout-proof", "Exact FaucetPay provider payout", "pending", "Provider payout evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-receipt-proof", "Actual payout receipt", "pending", "Destination receipt evidence cannot be verified until database authority is available.", true));
     checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification, payout and actual-receipt evidence is still required after setup.", true));
@@ -263,6 +274,17 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         true,
       ));
 
+      const faucetPaySendScopeProof = !proofError && releaseEvidenceMatches(proofValue, "faucetpay_send_scope");
+      checks.push(check(
+        "faucetpay-send-scope-proof",
+        "FaucetPay send-key least privilege",
+        faucetPaySendScopeProof ? "pass" : "pending",
+        faucetPaySendScopeProof
+          ? "The current send credential and payout pack have fingerprint-bound operator evidence for send-only scope and a provider-side daily payout cap."
+          : "Verify the current FaucetPay key in the provider dashboard as send-only, confirm a daily payout cap, and record the fingerprint-bound attestation in the private cockpit.",
+        true,
+      ));
+
       const receiptState = await getFaucetPayReceiptProofState(admin, proofValue);
       checks.push(check(
         "faucetpay-payout-proof",
@@ -301,9 +323,10 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
 
       const turnstileProof = !proofError && releaseEvidenceMatches(proofValue, "turnstile");
       const faucetPayProof = receiptState.payoutProofCurrent;
-      const proofComplete = turnstileProof && faucetPayProof && receiptState.receiptProofCurrent;
+      const proofComplete = turnstileProof && faucetPaySendScopeProof && faucetPayProof && receiptState.receiptProofCurrent;
       const missing = [
         !turnstileProof ? "Turnstile" : null,
+        !faucetPaySendScopeProof ? "send-only FaucetPay key + daily cap attestation" : null,
         !faucetPayProof ? "exact FaucetPay provider payout" : null,
         !receiptState.receiptProofCurrent ? "same-withdrawal actual payout receipt" : null,
       ].filter(Boolean).join(", ");
@@ -322,6 +345,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       checks.push(check("supabase-auth-hardening", "Supabase Auth leaked-password protection", "pending", "Managed Auth hardening evidence is still required after database recovery.", true));
       checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence is still required after database recovery.", true));
+      checks.push(check("faucetpay-send-scope-proof", "FaucetPay send-key least privilege", "pending", "Send-key least-privilege evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-payout-proof", "Exact FaucetPay provider payout", "pending", "Provider payout evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-receipt-proof", "Actual payout receipt", "pending", "Destination receipt evidence is still required after database recovery.", true));
       checks.push(check("external-proof", "Core external smoke evidence", "pending", "Core human-verification, payout and actual-receipt evidence is still required after database recovery.", true));

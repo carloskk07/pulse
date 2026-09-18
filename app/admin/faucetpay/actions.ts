@@ -6,9 +6,10 @@ import {
   recordFaucetPayPayoutProof,
   recordFaucetPayReceiptProof,
 } from "@/lib/faucetpay-receipt-proof";
-import { recordReleaseEvidence } from "@/lib/release-evidence";
+import { recordReleaseEvidence, releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
 
 function adminEmails() {
@@ -39,6 +40,48 @@ export async function verifyAndRecordFaucetPayReadProof() {
 
   const recorded = await recordReleaseEvidence("faucetpay_read");
   redirect(resultUrl(recorded ? "recorded" : "record-failed"));
+}
+
+export async function confirmFaucetPaySendScope(formData: FormData) {
+  await requireAdmin();
+
+  if (
+    String(formData.get("scope_confirmation") ?? "") !== "SEND_ONLY_CONFIRMED"
+    || String(formData.get("daily_cap_confirmation") ?? "") !== "DAILY_CAP_CONFIRMED"
+  ) {
+    redirect(resultUrl("send-scope-confirmation-required"));
+  }
+
+  const sendAuthority = getFaucetPaySendAuthorityConfig();
+  if (!sendAuthority.credentialsSeparated) {
+    redirect(resultUrl("send-scope-key-separation-failed"));
+  }
+  if (!sendAuthority.dailyLimitUsd) {
+    redirect(resultUrl("send-scope-daily-limit-required"));
+  }
+  const confirmedDailyLimit = Number(formData.get("expected_daily_limit_usd"));
+  if (!Number.isFinite(confirmedDailyLimit) || confirmedDailyLimit !== sendAuthority.dailyLimitUsd) {
+    redirect(resultUrl("send-scope-daily-limit-changed"));
+  }
+
+  const payout = getFaucetPayPackConfig();
+  if (!payout.ready) redirect(resultUrl("send-scope-pack-not-ready"));
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect(resultUrl("auth-unavailable"));
+
+  const { data: proofRow, error } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", "release_external_proof")
+    .maybeSingle();
+
+  if (error || !releaseEvidenceMatches(proofRow?.value, "faucetpay_read")) {
+    redirect(resultUrl("send-scope-read-proof-required"));
+  }
+
+  const recorded = await recordReleaseEvidence("faucetpay_send_scope");
+  redirect(resultUrl(recorded ? "send-scope-recorded" : "send-scope-record-failed"));
 }
 
 export async function reconcileFaucetPayPayoutProof(formData: FormData) {

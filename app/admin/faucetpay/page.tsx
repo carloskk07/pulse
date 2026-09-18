@@ -6,8 +6,9 @@ import { getFaucetPayTestPlan } from "@/lib/faucetpay-test-plan";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
-import { confirmFaucetPayReceipt, reconcileFaucetPayPayoutProof, verifyAndRecordFaucetPayReadProof } from "./actions";
+import { confirmFaucetPayReceipt, confirmFaucetPaySendScope, reconcileFaucetPayPayoutProof, verifyAndRecordFaucetPayReadProof } from "./actions";
 
 export const metadata = { title: "FaucetPay preflight" };
 export const dynamic = "force-dynamic";
@@ -72,6 +73,14 @@ const proofCopy: Record<string, string> = {
   "receipt-payout-changed": "The payout authority changed after this cockpit view was rendered. No receipt proof was recorded; refresh and verify the exact payout again.",
   "receipt-record-failed": "The exact payout-bound withdrawal is eligible, but destination-receipt evidence could not be recorded. PRODUCT_READY remains blocked.",
   "receipt-recorded": "Actual destination receipt was explicitly confirmed and fingerprint-bound to the same exact paid FaucetPay withdrawal as the provider payout proof.",
+  "send-scope-confirmation-required": "No send-scope proof was recorded. Explicit confirmation of send-only scope and a provider-side daily payout cap is required.",
+  "send-scope-key-separation-failed": "Read and send credentials are missing or identical. Least-privilege send authority remains blocked.",
+  "send-scope-daily-limit-required": "The expected FaucetPay send-key daily USD cap is not configured. No attestation was recorded.",
+  "send-scope-daily-limit-changed": "The expected daily cap changed after this cockpit view was rendered. Refresh and verify the exact current value before attesting.",
+  "send-scope-pack-not-ready": "The payout pack is incomplete. Send-scope evidence cannot be bound to an incomplete payout authority.",
+  "send-scope-read-proof-required": "Current read-only FaucetPay proof is missing or stale. Re-verify the read rail before attesting send authority.",
+  "send-scope-record-failed": "The send-scope attestation could not be fingerprint-bound. Payout authority remains unproven.",
+  "send-scope-recorded": "Send-only scope and provider-side daily cap were explicitly attested and fingerprint-bound to the current send credential and payout pack.",
 };
 
 export default async function FaucetPayPreflightPage({ searchParams }: Props) {
@@ -93,6 +102,10 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
     : { data: null, error: null };
   const proofValue = proofResult.data?.value;
   const readEvidenceCurrent = !proofResult.error && releaseEvidenceMatches(proofValue, "faucetpay_read");
+  const sendScopeEvidenceCurrent = !proofResult.error && releaseEvidenceMatches(proofValue, "faucetpay_send_scope");
+  const sendAuthority = getFaucetPaySendAuthorityConfig();
+  const readKeyPresent = Boolean(process.env.FAUCETPAY_READ_KEY?.trim());
+  const sendKeyPresent = Boolean(process.env.FAUCETPAY_SCOPED_KEY?.trim());
   const receiptState = admin
     ? await getFaucetPayReceiptProofState(admin, proofValue)
     : { withdrawal: null, payoutWithdrawal: null, boundWithdrawal: null, payoutProofCurrent: false, receiptProofCurrent: false };
@@ -109,7 +122,7 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
         <span className={statusTone(probe.state)}>{probe.state.replaceAll("_", " ")}</span>
       </div>
 
-      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
+      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "send-scope-recorded" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
 
       <section className="admin-panel">
         <div className="app-section-head">
@@ -144,6 +157,32 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
             <button className="button" type="submit">{readEvidenceCurrent ? "Re-verify & refresh proof" : "Verify live rail & record proof"}</button>
           </form>
         ) : <p className="admin-panel-note"><strong>Proof recording is disabled.</strong> The server must first prove the asset, credit economics and provider-unit scale from current configuration and live FaucetPay data.</p>}
+      </section>
+
+      <section className="admin-panel">
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">Least-privilege send authority</span><h2>Send key scope attestation</h2></div>
+          <span className={`admin-badge ${sendScopeEvidenceCurrent ? "" : "proof"}`}>{sendScopeEvidenceCurrent ? "CURRENT" : "EXTERNAL CONFIRMATION REQUIRED"}</span>
+        </div>
+        <p className="admin-panel-note">FaucetPay v2 scopes are assigned in the provider dashboard and are not exposed by a documented scope-introspection endpoint. This gate therefore requires an explicit operator attestation, while the server independently proves that the configured read and send credentials are distinct. No payout call is made by this proof.</p>
+        <div className="admin-secondary-grid">
+          <article><span>Read credential</span><strong>{readKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
+          <article><span>Send credential</span><strong>{sendKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
+          <article><span>Credential separation</span><strong>{sendAuthority.credentialsSeparated ? "PASS" : "FAIL"}</strong><small>Read and send secrets must not be identical.</small></article>
+          <article><span>Expected daily cap</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "MISSING"}</strong><small>FAUCETPAY_SEND_DAILY_LIMIT_USD</small></article>
+          <article><span>Read proof dependency</span><strong>{readEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
+          <article><span>Send-scope fingerprint</span><strong>{sendScopeEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
+        </div>
+        {sendScopeEvidenceCurrent ? (
+          <p className="admin-panel-note"><strong>Current attestation is bound to this exact send credential and payout pack.</strong> Rotating the key or changing asset, credits, units or label automatically makes it stale.</p>
+        ) : (
+          <form action={confirmFaucetPaySendScope}>
+            <input type="hidden" name="expected_daily_limit_usd" value={sendAuthority.dailyLimitUsd ?? ""} />
+            <label className="admin-panel-note"><input type="checkbox" name="scope_confirmation" value="SEND_ONLY_CONFIRMED" required /> I verified in FaucetPay → Scoped API keys that this exact credential has <strong>send</strong> scope only and does not include read, manage or admin.</label>
+            <label className="admin-panel-note"><input type="checkbox" name="daily_cap_confirmation" value="DAILY_CAP_CONFIRMED" required /> I verified that this exact send key has a provider-side daily payout cap of <strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "the configured value"}</strong>, matching the current Pulsercuit expectation.</label>
+            <button className="button" type="submit" disabled={!sendAuthority.ready || !readEvidenceCurrent}>Record send-scope proof</button>
+          </form>
+        )}
       </section>
 
       <section className="admin-panel">
@@ -202,8 +241,8 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
 
       <section className="admin-decision-card">
         <span className="app-eyebrow">Decision</span>
-        <h2>{verified && readEvidenceCurrent ? "Read-only payout proof is closed and current." : "Financial send remains blocked."}</h2>
-        <p>{verified && readEvidenceCurrent ? "The nominal USD value, internal credits and provider units are consistent and fingerprint-bound. A separate send-scoped key, controlled Treasury-backed claim, controlled real withdrawal and exact payout→receipt proof chain are still required before PRODUCT_READY." : verified ? "The live rail passes, but the operator must explicitly record the current fingerprint before this gate is closed." : "Do not configure or exercise a payout send path until the live preflight reaches READ_ONLY_VERIFIED and its current fingerprint is recorded."}</p>
+        <h2>{verified && readEvidenceCurrent && sendScopeEvidenceCurrent ? "Read rail and least-privilege send authority are proven." : "Financial send remains blocked."}</h2>
+        <p>{verified && readEvidenceCurrent && sendScopeEvidenceCurrent ? "The read rail, payout economics, provider units and send-only operator attestation are fingerprint-bound. A controlled real withdrawal and exact payout→receipt proof chain are still required before PRODUCT_READY." : verified && readEvidenceCurrent ? "Read-only proof is closed, but send-key least privilege still needs explicit provider-dashboard attestation." : verified ? "The live rail passes, but the operator must explicitly record the current read fingerprint before send authority can advance." : "Do not exercise a payout send path until the live preflight reaches READ_ONLY_VERIFIED and its current fingerprint is recorded."}</p>
         <Link className="button button-secondary" href="/admin">Back to operations</Link>
       </section>
     </AppShell>

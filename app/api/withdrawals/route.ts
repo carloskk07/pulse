@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
+import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from "@/lib/faucetpay-authority";
 import { recordFaucetPayPayoutProofById } from "@/lib/faucetpay-receipt-proof";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { isTrustedSameOriginMutation } from "@/lib/request-security";
@@ -95,7 +95,11 @@ async function matchesCurrentPayoutAuthority(
   if (config.asset !== reserved.asset) return false;
   if (config.amountCredits !== Number(reserved.amount_credits)) return false;
   if (config.amountSmallestUnits !== Number(reserved.payout_amount_units)) return false;
-  return hasCurrentFaucetPayReadProof(admin);
+  const [readProof, sendScopeProof] = await Promise.all([
+    hasCurrentFaucetPayReadProof(admin),
+    hasCurrentFaucetPaySendScopeProof(admin),
+  ]);
+  return readProof && sendScopeProof;
 }
 
 async function hasLivePayoutPreflight(config: ReturnType<typeof getFaucetPayPackConfig>) {
@@ -201,6 +205,7 @@ export async function POST(request: NextRequest) {
   if (active) {
     if (active.status === "held") return walletRedirect(request, "held");
     if (!process.env.FAUCETPAY_SCOPED_KEY?.trim()) return walletRedirect(request, "payout-not-configured");
+    if (!(await hasCurrentFaucetPaySendScopeProof(admin))) return walletRedirect(request, "payout-not-configured");
 
     if (active.status === "requested") {
       const config = getFaucetPayPackConfig();
@@ -238,6 +243,7 @@ export async function POST(request: NextRequest) {
   const config = getFaucetPayPackConfig();
   if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
   if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
+  if (!(await hasCurrentFaucetPaySendScopeProof(admin))) return walletRedirect(request, "payout-not-configured");
   if (!(await hasLivePayoutPreflight(config))) return walletRedirect(request, "provider-temporary");
 
   const destination = String(formData.get("destination") ?? "").trim();
