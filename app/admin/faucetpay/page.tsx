@@ -8,9 +8,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
-import { confirmFaucetPayReceipt, confirmFaucetPaySendScope, reconcileFaucetPayPayoutProof, verifyAndRecordFaucetPayReadProof } from "./actions";
+import { completeFaucetPayConnection, confirmFaucetPayReceipt, reconcileFaucetPayPayoutProof } from "./actions";
 
-export const metadata = { title: "FaucetPay preflight" };
+export const metadata = { title: "FaucetPay connection" };
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ proof?: string }> };
@@ -81,6 +81,8 @@ const proofCopy: Record<string, string> = {
   "send-scope-read-proof-required": "Current read-only FaucetPay proof is missing or stale. Re-verify the read rail before attesting send authority.",
   "send-scope-record-failed": "The send-scope attestation could not be fingerprint-bound. Payout authority remains unproven.",
   "send-scope-recorded": "Send-only scope and provider-side daily cap were explicitly attested and fingerprint-bound to the current send credential and payout pack.",
+  "connection-confirmation-required": "Nothing changed. Confirm the single FaucetPay setup statement before completing the connection.",
+  "connection-complete": "FaucetPay connection is complete. Read verification and least-privilege send proof are current; no payout was sent.",
 };
 
 export default async function FaucetPayPreflightPage({ searchParams }: Props) {
@@ -115,14 +117,14 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
     <AppShell active="faucetpay-admin">
       <div className="admin-head">
         <div>
-          <span className="app-eyebrow">Private operations · financial preflight</span>
-          <h1>FaucetPay read-only proof</h1>
-          <p>Prove the live asset, internal-credit economics and provider smallest-unit contract before any send authority or Treasury-backed withdrawal is enabled.</p>
+          <span className="app-eyebrow">Private operations · protected connection</span>
+          <h1>Connect FaucetPay</h1>
+          <p>One operator confirmation on the provider side; PulseCircuit handles the technical verification and evidence automatically.</p>
         </div>
         <span className={statusTone(probe.state)}>{probe.state.replaceAll("_", " ")}</span>
       </div>
 
-      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "send-scope-recorded" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The read-only proof state was not changed."}</div> : null}
+      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "send-scope-recorded" || params.proof === "connection-complete" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The FaucetPay connection state was not changed."}</div> : null}
 
       <section className="admin-panel">
         <div className="app-section-head">
@@ -152,37 +154,39 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
           <article><span>Send key</span><strong>Not inspected</strong></article>
         </div>
         <p className="admin-panel-note">{probe.detail}</p>
-        {verified ? (
-          <form action={verifyAndRecordFaucetPayReadProof}>
-            <button className="button" type="submit">{readEvidenceCurrent ? "Re-verify & refresh proof" : "Verify live rail & record proof"}</button>
-          </form>
-        ) : <p className="admin-panel-note"><strong>Proof recording is disabled.</strong> The server must first prove the asset, credit economics and provider-unit scale from current configuration and live FaucetPay data.</p>}
+        {verified
+          ? <p className="admin-panel-note"><strong>Automatic check ready.</strong> Read-only evidence is verified as part of the single connection action; no separate proof step is required.</p>
+          : <p className="admin-panel-note"><strong>Automatic check needs attention.</strong> PulseCircuit will not complete the connection until the live read-only rail proves the configured asset, economics and provider units.</p>}
       </section>
 
       <section className="admin-panel">
         <div className="app-section-head">
-          <div><span className="app-eyebrow">Least-privilege send authority</span><h2>Send key scope attestation</h2></div>
-          <span className={`admin-badge ${sendScopeEvidenceCurrent ? "" : "proof"}`}>{sendScopeEvidenceCurrent ? "CURRENT" : "EXTERNAL CONFIRMATION REQUIRED"}</span>
+          <div><span className="app-eyebrow">FaucetPay</span><h2>{readEvidenceCurrent && sendScopeEvidenceCurrent ? "Connection complete" : "One final confirmation"}</h2></div>
+          <span className={`admin-badge ${readEvidenceCurrent && sendScopeEvidenceCurrent ? "" : "proof"}`}>{readEvidenceCurrent && sendScopeEvidenceCurrent ? "CONNECTED" : "ACTION REQUIRED"}</span>
         </div>
-        <p className="admin-panel-note">FaucetPay v2 scopes are assigned in the provider dashboard and are not exposed by a documented scope-introspection endpoint. This gate therefore requires an explicit operator attestation, while the server independently proves that the configured read and send credentials are distinct. No payout call is made by this proof.</p>
+        <p className="admin-panel-note">{readEvidenceCurrent && sendScopeEvidenceCurrent
+          ? "The protected FaucetPay connection is current. PulseCircuit will invalidate this proof automatically if the bound payout configuration changes."
+          : "PulseCircuit already handles the live read check, credential separation, payout-pack validation, daily-cap policy and evidence recording. You only confirm the provider-side settings that FaucetPay does not expose through its API."}</p>
         <div className="admin-secondary-grid">
-          <article><span>Read credential</span><strong>{readKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
-          <article><span>Send credential</span><strong>{sendKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
-          <article><span>Credential separation</span><strong>{sendAuthority.credentialsSeparated ? "PASS" : "FAIL"}</strong><small>Read and send secrets must not be identical.</small></article>
-          <article><span>Expected daily cap</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "MISSING"}</strong><small>{sendAuthority.dailyLimitSource === "configured_override" ? "Explicit override" : sendAuthority.dailyLimitSource === "one_pack_default" ? "Default: one payout pack/day" : "Unavailable"}</small></article>
-          <article><span>Read proof dependency</span><strong>{readEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
-          <article><span>Send-scope fingerprint</span><strong>{sendScopeEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
+          <article><span>Automatic verification</span><strong>{verified ? "READY" : "NEEDS ATTENTION"}</strong><small>No payout call.</small></article>
+          <article><span>Credential isolation</span><strong>{sendAuthority.credentialsSeparated ? "PROTECTED" : "NEEDS ATTENTION"}</strong><small>Read and payment credentials remain separate.</small></article>
+          <article><span>Daily protection</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "UNAVAILABLE"}</strong><small>{sendAuthority.dailyLimitSource === "configured_override" ? "Explicit override" : sendAuthority.dailyLimitSource === "one_pack_default" ? "Automatic: one payout pack/day" : "Waiting for payout pack"}</small></article>
         </div>
-        {sendScopeEvidenceCurrent ? (
-          <p className="admin-panel-note"><strong>Current attestation is bound to this exact send credential, payout pack and daily-cap policy.</strong> Rotating the key, changing the pack or changing the cap policy/value automatically makes it stale.</p>
+        {readEvidenceCurrent && sendScopeEvidenceCurrent ? (
+          <p className="admin-panel-note"><strong>Nothing else to configure here.</strong> A real controlled withdrawal and exact destination receipt remain separate launch gates.</p>
         ) : (
-          <form action={confirmFaucetPaySendScope}>
+          <form action={completeFaucetPayConnection}>
             <input type="hidden" name="expected_daily_limit_usd" value={sendAuthority.dailyLimitUsd ?? ""} />
-            <label className="admin-panel-note"><input type="checkbox" name="scope_confirmation" value="SEND_ONLY_CONFIRMED" required /> I verified in FaucetPay → Scoped API keys that this exact credential has <strong>send</strong> scope only and does not include read, manage or admin.</label>
-            <label className="admin-panel-note"><input type="checkbox" name="daily_cap_confirmation" value="DAILY_CAP_CONFIRMED" required /> I verified that this exact send key has a provider-side daily payout cap of <strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "the current expected value"}</strong>, matching the current Pulsercuit {sendAuthority.dailyLimitSource === "configured_override" ? "override" : "one-pack/day safety policy"}.</label>
-            <button className="button" type="submit" disabled={!sendAuthority.ready || !readEvidenceCurrent}>Record send-scope proof</button>
+            <label className="admin-panel-note"><input type="checkbox" name="setup_confirmation" value="FAUCETPAY_SEND_SETUP_CONFIRMED" required /> I checked in FaucetPay that the PulseCircuit payment key has <strong>Send only</strong> permission and a daily payout cap of <strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "the amount shown above"}</strong>.</label>
+            <button className="button" type="submit" disabled={!verified || !sendAuthority.ready}>Complete FaucetPay connection</button>
+            <p className="admin-panel-note">This single action automatically refreshes the read-only proof when needed and records the protected send-authority proof. It never calls the FaucetPay payout endpoint.</p>
           </form>
         )}
+        <details className="admin-panel-note">
+          <summary>Technical details</summary>
+          <p>Read credential: <strong>{readKeyPresent ? "configured" : "missing"}</strong> · Send credential: <strong>{sendKeyPresent ? "configured" : "missing"}</strong> · Read proof: <strong>{readEvidenceCurrent ? "current" : "missing/stale"}</strong> · Send proof: <strong>{sendScopeEvidenceCurrent ? "current" : "missing/stale"}</strong>.</p>
+          <p>FaucetPay does not expose a documented scope-introspection endpoint, so provider-side Send-only permission and daily cap still require one human confirmation. All other checks are server-enforced and fail closed.</p>
+        </details>
       </section>
 
       <section className="admin-panel">
