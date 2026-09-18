@@ -150,6 +150,12 @@ body{
 .app-content :where(.balance-chip,.wallet-balance-card,.withdrawal-panel,.transaction-card,.trust-card,.progress-card,.invite-card,.drop-card,.quick-win-card,.pc-identity-card,.pc-signal-card,.pc-missions-card,.pc-momentum-card,.pc-share-studio,.pc-next-circuit,.hourly-pulse-card)::after{content:"";position:absolute;pointer-events:none;left:7%;right:7%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,235,170,.46),rgba(147,104,37,.28),transparent);opacity:.58}
 .app-content :where(.wallet-balance-card,.pc-progress-hero,.hourly-pulse-card,.pc-luxe-pulse-chamber){background:radial-gradient(circle at 70% 40%,rgba(216,255,114,.105),transparent 22%),radial-gradient(circle at 92% 0,rgba(236,196,96,.085),transparent 28%),linear-gradient(145deg,#111713,#050806 72%)!important;border-color:rgba(236,208,135,.18)!important;box-shadow:0 58px 160px rgba(0,0,0,.52),0 0 95px rgba(212,255,100,.025),inset 0 1px 0 rgba(255,255,255,.05)!important}
 
+/* Vault balance card moved from a legacy light/lime surface to the dark product material.
+   Reclaim text ownership here so legacy product.css colors cannot become unreadable. */
+.app-content .wallet-balance-card{color:var(--pc7-text)!important}
+.app-content .wallet-balance-card>div:nth-child(2)>span{color:var(--pc7-lime)!important}
+.app-content .wallet-balance-card small{color:var(--pc7-muted)!important}
+
 /* Product-specific scenic motifs. */
 .pc-luxe-pulse-stage{position:relative}
 .pc-luxe-pulse-stage:before{content:"";position:absolute;pointer-events:none;inset:-30px -30px -22px;z-index:-1;opacity:.26;background:url('/v6/hero-orb-scene.svg') 78% 46%/780px auto no-repeat;filter:saturate(.85) contrast(1.12) brightness(.74);mask-image:radial-gradient(ellipse at 75% 45%,#000 0 36%,transparent 72%)}
