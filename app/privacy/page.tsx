@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default function PrivacyPage() {
   return <main className="completion-page">
     <header className="completion-header shell"><PulsercuitBrand /><nav><Link href="/support">Help</Link><Link href="/terms">Terms</Link></nav></header>
-    <section className="completion-hero shell"><span className="section-kicker">Privacy</span><h1>Clear data practices.</h1><p>Pulsercuit uses account, security, reward and payout data to operate the service, prevent abuse and keep financial events traceable.</p></section>
+    <section className="completion-hero shell"><span className="section-kicker">Privacy</span><h1>Clear data practices.</h1><p>Pulsercuit uses only the data needed to operate accounts, rewards, payouts, security and support.</p></section><section className="completion-card shell"><span className="app-eyebrow">Quick summary</span><h2>What matters first.</h2><p>We use account and activity data to run the service, protect rewards and process payouts. Service providers receive only what is needed for their role. Privacy requests can be opened through Help and tracked as a case.</p></section>
     <article className="policy-body shell">
       <LegalOperatorDisclosure />
       <h2>What we process</h2><p>We may process account identifiers, authentication and session records, profile information, reward and ledger events, payout status and destination references, referral activity, security and anti-abuse signals, support requests, device or network information and technical logs needed to operate and protect the service.</p>
@@ -19,7 +19,7 @@ export default function PrivacyPage() {
       <h2>Security</h2><p>Pulsercuit uses access controls, server-side authority for sensitive writes, row-level database restrictions and verification controls to reduce unauthorized access or manipulation. No internet service can promise absolute security, so security measures are reviewed as the product evolves.</p>
       <h2>Automated ranking</h2><p>Pulsercuit may automatically rank opportunities using factors such as freshness, expected value, evidence quality and operational health. Ranking changes what is shown first; it does not by itself create a reward or move your balance. Where applicable, you may request information or review concerning an automated decision that affects your interests.</p>
       <h2>Your rights</h2><p>Depending on applicable law, you may request confirmation of processing, access, correction, information about sharing, portability, objection, anonymization, blocking or deletion, revocation of consent where consent is the legal basis, and review or explanation of qualifying automated decisions. Some requests can be limited by legal retention or other lawful obligations.</p>
-      <h2>Privacy requests</h2><p>Use the <Link href="/support?category=privacy">Help Center privacy channel</Link>. The request receives a protocol so you can retain evidence of the request and its status.</p>
+      <h2>Privacy requests</h2><p>Use the <Link href="/support?category=privacy">Help Center privacy channel</Link>. The request receives a reference so you can track its status.</p>
     </article>
     <footer className="completion-footer shell"><span>Pulsercuit</span><div><Link href="/support">Support</Link><Link href="/rewards-policy">Rewards</Link><Link href="/terms">Terms</Link></div></footer>
   </main>;
