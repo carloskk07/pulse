@@ -42,6 +42,54 @@ export async function verifyAndRecordFaucetPayReadProof() {
   redirect(resultUrl(recorded ? "recorded" : "record-failed"));
 }
 
+export async function completeFaucetPayConnection(formData: FormData) {
+  await requireAdmin();
+
+  if (String(formData.get("setup_confirmation") ?? "") !== "FAUCETPAY_SEND_SETUP_CONFIRMED") {
+    redirect(resultUrl("connection-confirmation-required"));
+  }
+
+  const probe = await getFaucetPayReadOnlyPreflight();
+  if (probe.state !== "READ_ONLY_VERIFIED") {
+    redirect(resultUrl(probe.state.toLowerCase()));
+  }
+
+  const sendAuthority = getFaucetPaySendAuthorityConfig();
+  if (!sendAuthority.credentialsSeparated) {
+    redirect(resultUrl("send-scope-key-separation-failed"));
+  }
+  if (!sendAuthority.dailyLimitUsd) {
+    redirect(resultUrl("send-scope-daily-limit-required"));
+  }
+
+  const confirmedDailyLimit = Number(formData.get("expected_daily_limit_usd"));
+  if (!Number.isFinite(confirmedDailyLimit) || confirmedDailyLimit !== sendAuthority.dailyLimitUsd) {
+    redirect(resultUrl("send-scope-daily-limit-changed"));
+  }
+
+  const payout = getFaucetPayPackConfig();
+  if (!payout.ready) redirect(resultUrl("send-scope-pack-not-ready"));
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect(resultUrl("auth-unavailable"));
+
+  const { data: proofRow, error } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", "release_external_proof")
+    .maybeSingle();
+
+  if (error) redirect(resultUrl("record-failed"));
+
+  if (!releaseEvidenceMatches(proofRow?.value, "faucetpay_read")) {
+    const readRecorded = await recordReleaseEvidence("faucetpay_read");
+    if (!readRecorded) redirect(resultUrl("record-failed"));
+  }
+
+  const sendRecorded = await recordReleaseEvidence("faucetpay_send_scope");
+  redirect(resultUrl(sendRecorded ? "connection-complete" : "send-scope-record-failed"));
+}
+
 export async function confirmFaucetPaySendScope(formData: FormData) {
   await requireAdmin();
 
