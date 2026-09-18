@@ -140,7 +140,7 @@ requireText("app/styles/sitewide-audit.css", [
 requireText("app/styles/theme.css", [
   ".app-content .wallet-balance-card{color:var(--pc7-text)!important}",
   ".app-content .wallet-balance-card>div:nth-child(2)>span{color:var(--pc7-lime)!important}",
-  ".app-content .wallet-balance-card small{color:var(--pc7-muted)!important}",
+  ".app-content .wallet-balance-card>div:nth-child(2)>small{color:var(--pc7-muted)!important}",
 ]);
 
 const contrastPairs = [
