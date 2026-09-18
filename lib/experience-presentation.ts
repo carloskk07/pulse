@@ -20,6 +20,17 @@ export function getUserNextAction(input: {
   claimReady: boolean;
   nextClaimAt: string | null;
 }): UserNextAction {
+  if (input.preview) {
+    return {
+      kind: "standby",
+      eyebrow: "Live state",
+      title: "Pulse is temporarily unavailable.",
+      detail: "No financial state is simulated while the live reward service is unavailable.",
+      actionLabel: "Live service unavailable",
+      href: "/dashboard",
+    };
+  }
+
   if (!input.signedIn) {
     return {
       kind: "sign_in",
