@@ -154,7 +154,7 @@ body{
    Reclaim text ownership here so legacy product.css colors cannot become unreadable. */
 .app-content .wallet-balance-card{color:var(--pc7-text)!important}
 .app-content .wallet-balance-card>div:nth-child(2)>span{color:var(--pc7-lime)!important}
-.app-content .wallet-balance-card small{color:var(--pc7-muted)!important}
+.app-content .wallet-balance-card>div:nth-child(2)>small{color:var(--pc7-muted)!important}
 
 /* Product-specific scenic motifs. */
 .pc-luxe-pulse-stage{position:relative}
