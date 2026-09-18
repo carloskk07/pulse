@@ -8,6 +8,7 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const FAUCETPAY_READ_PROOF_SCHEMA = "faucetpay-read-proof-v2";
+const FAUCETPAY_SEND_SCOPE_PROOF_SCHEMA = "faucetpay-send-scope-proof-v1";
 const SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "supabase-auth-hardening-proof-v1";
 const PASSWORD_RECOVERY_PROOF_SCHEMA = "password-recovery-proof-v1";
 const LEGAL_POLICY_REVIEW_PROOF_SCHEMA = "legal-policy-review-proof-v1";
@@ -18,6 +19,7 @@ export type ReleaseEvidenceKind =
   | "ayet_transport"
   | "ayet_callback"
   | "faucetpay_read"
+  | "faucetpay_send_scope"
   | "faucetpay_payout"
   | "supabase_auth_hardening"
   | "password_recovery"
@@ -59,6 +61,18 @@ function configuredValues(kind: ReleaseEvidenceKind) {
       process.env.FAUCETPAY_PAYOUT_CREDITS,
       process.env.FAUCETPAY_PAYOUT_UNITS,
       process.env.FAUCETPAY_PAYOUT_LABEL,
+    ];
+  }
+  if (kind === "faucetpay_send_scope") {
+    return [
+      FAUCETPAY_SEND_SCOPE_PROOF_SCHEMA,
+      process.env.FAUCETPAY_SCOPED_KEY,
+      process.env.FAUCETPAY_PAYOUT_CURRENCY ?? "USDT",
+      process.env.FAUCETPAY_PAYOUT_CREDITS,
+      process.env.FAUCETPAY_PAYOUT_UNITS,
+      process.env.FAUCETPAY_PAYOUT_LABEL,
+      "scope:send-only",
+      "daily-cap:operator-verified",
     ];
   }
   if (kind === "supabase_auth_hardening") {
