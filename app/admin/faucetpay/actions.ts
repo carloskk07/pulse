@@ -30,26 +30,16 @@ async function requireAdmin() {
   return user;
 }
 
-export async function verifyAndRecordFaucetPayReadProof() {
+export async function completeFaucetPayConnection(formData: FormData) {
   await requireAdmin();
+
+  if (String(formData.get("setup_confirmation") ?? "") !== "FAUCETPAY_SEND_SETUP_CONFIRMED") {
+    redirect(resultUrl("connection-confirmation-required"));
+  }
 
   const probe = await getFaucetPayReadOnlyPreflight();
   if (probe.state !== "READ_ONLY_VERIFIED") {
     redirect(resultUrl(probe.state.toLowerCase()));
-  }
-
-  const recorded = await recordReleaseEvidence("faucetpay_read");
-  redirect(resultUrl(recorded ? "recorded" : "record-failed"));
-}
-
-export async function confirmFaucetPaySendScope(formData: FormData) {
-  await requireAdmin();
-
-  if (
-    String(formData.get("scope_confirmation") ?? "") !== "SEND_ONLY_CONFIRMED"
-    || String(formData.get("daily_cap_confirmation") ?? "") !== "DAILY_CAP_CONFIRMED"
-  ) {
-    redirect(resultUrl("send-scope-confirmation-required"));
   }
 
   const sendAuthority = getFaucetPaySendAuthorityConfig();
@@ -59,6 +49,7 @@ export async function confirmFaucetPaySendScope(formData: FormData) {
   if (!sendAuthority.dailyLimitUsd) {
     redirect(resultUrl("send-scope-daily-limit-required"));
   }
+
   const confirmedDailyLimit = Number(formData.get("expected_daily_limit_usd"));
   if (!Number.isFinite(confirmedDailyLimit) || confirmedDailyLimit !== sendAuthority.dailyLimitUsd) {
     redirect(resultUrl("send-scope-daily-limit-changed"));
@@ -76,12 +67,15 @@ export async function confirmFaucetPaySendScope(formData: FormData) {
     .eq("key", "release_external_proof")
     .maybeSingle();
 
-  if (error || !releaseEvidenceMatches(proofRow?.value, "faucetpay_read")) {
-    redirect(resultUrl("send-scope-read-proof-required"));
+  if (error) redirect(resultUrl("record-failed"));
+
+  if (!releaseEvidenceMatches(proofRow?.value, "faucetpay_read")) {
+    const readRecorded = await recordReleaseEvidence("faucetpay_read");
+    if (!readRecorded) redirect(resultUrl("record-failed"));
   }
 
-  const recorded = await recordReleaseEvidence("faucetpay_send_scope");
-  redirect(resultUrl(recorded ? "send-scope-recorded" : "send-scope-record-failed"));
+  const sendRecorded = await recordReleaseEvidence("faucetpay_send_scope");
+  redirect(resultUrl(sendRecorded ? "connection-complete" : "send-scope-record-failed"));
 }
 
 export async function reconcileFaucetPayPayoutProof(formData: FormData) {
