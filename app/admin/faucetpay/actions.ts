@@ -9,7 +9,7 @@ import {
 import { recordReleaseEvidence, releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getFaucetPayPackConfig } from "@/providers/faucetpay";
+import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
 
 function adminEmails() {
@@ -52,10 +52,16 @@ export async function confirmFaucetPaySendScope(formData: FormData) {
     redirect(resultUrl("send-scope-confirmation-required"));
   }
 
-  const readKey = process.env.FAUCETPAY_READ_KEY?.trim() ?? "";
-  const sendKey = process.env.FAUCETPAY_SCOPED_KEY?.trim() ?? "";
-  if (!readKey || !sendKey || readKey === sendKey) {
+  const sendAuthority = getFaucetPaySendAuthorityConfig();
+  if (!sendAuthority.credentialsSeparated) {
     redirect(resultUrl("send-scope-key-separation-failed"));
+  }
+  if (!sendAuthority.dailyLimitUsd) {
+    redirect(resultUrl("send-scope-daily-limit-required"));
+  }
+  const confirmedDailyLimit = Number(formData.get("expected_daily_limit_usd"));
+  if (!Number.isFinite(confirmedDailyLimit) || confirmedDailyLimit !== sendAuthority.dailyLimitUsd) {
+    redirect(resultUrl("send-scope-daily-limit-changed"));
   }
 
   const payout = getFaucetPayPackConfig();
