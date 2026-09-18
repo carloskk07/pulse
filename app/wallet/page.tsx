@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
-import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
+import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from "@/lib/faucetpay-authority";
 import { formatUsdFromCredits, getLedgerItems, getRewardSnapshot } from "@/lib/reward-state";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -49,12 +49,13 @@ function maskDestination(value: string) {
 }
 
 export default async function WalletPage({ searchParams }: Props) {
-  const [state, rows, params, supabase, readProofReady] = await Promise.all([
+  const [state, rows, params, supabase, readProofReady, sendScopeProofReady] = await Promise.all([
     getRewardSnapshot(),
     getLedgerItems(),
     searchParams,
     createSupabaseServerClient(),
     hasCurrentFaucetPayReadProof(),
+    hasCurrentFaucetPaySendScopeProof(),
   ]);
   const payout = getFaucetPayPackConfig();
   const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
@@ -90,6 +91,7 @@ export default async function WalletPage({ searchParams }: Props) {
     && turnstileReady
     && serviceReady
     && process.env.FAUCETPAY_SCOPED_KEY?.trim()
+    && sendScopeProofReady
     && (activeWithdrawal.status === "submitted" || (readProofReady && activePackMatches)),
   );
   const canWithdraw = Boolean(
@@ -98,6 +100,7 @@ export default async function WalletPage({ searchParams }: Props) {
     && payout.ready
     && payoutCredits
     && readProofReady
+    && sendScopeProofReady
     && turnstileReady
     && serviceReady
     && state.availableCredits >= payoutCredits,
@@ -136,9 +139,9 @@ export default async function WalletPage({ searchParams }: Props) {
           <>
             <div><span className="app-eyebrow">Release value</span><h2>Withdraw when every proof agrees.</h2><p>Balance, pack and provider proof must all line up before credits can be reserved.</p></div>
             <form action="/api/withdrawals" method="post" className="withdrawal-form">
-              <label>FaucetPay destination<input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" disabled={!state.signedIn || !payout.ready || !readProofReady} /></label>
+              <label>FaucetPay destination<input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" disabled={!state.signedIn || !payout.ready || !readProofReady || !sendScopeProofReady} /></label>
               <TurnstileField action="withdrawal" />
-              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : !payoutCredits || state.preview ? "Payout target not active" : !readProofReady ? "Payout proof in progress" : missingCredits && missingCredits > 0 ? `${formatUsdFromCredits(missingCredits)} to go` : "Withdrawal unavailable"}</button>
+              <button className="button button-light button-lg" type="submit" disabled={!canWithdraw}>{canWithdraw ? `Withdraw ${payout.display}` : !payoutCredits || state.preview ? "Payout target not active" : !readProofReady ? "Payout proof in progress" : !sendScopeProofReady ? "Send authority proof required" : missingCredits && missingCredits > 0 ? `${formatUsdFromCredits(missingCredits)} to go` : "Withdrawal unavailable"}</button>
               <small>Destination validation is read-only. Send authority is isolated to the final payout call.</small>
             </form>
           </>
