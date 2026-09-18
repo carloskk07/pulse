@@ -173,6 +173,10 @@ if (!auditCss.includes(narrowNavContract)) {
   throw new Error("Narrow-phone bottom navigation must preserve the 10px readability floor.");
 }
 
+requireText("app/earn/page.tsx", [
+  '<div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>',
+]);
+
 requireText("components/turnstile-field.tsx", [
   'type TurnstileTheme = "dark" | "light" | "auto";',
   'theme = "dark"',
