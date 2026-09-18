@@ -27,8 +27,8 @@ export default async function ProofPage() {
       <SiteHeader />
       <section className="proof-hero shell">
         <span className="section-kicker">Pulsercuit Proof</span>
-        <h1>Only what actually happened.</h1>
-        <p>These numbers come from the authoritative production database. Pulsercuit does not create sample users, simulated payouts or synthetic activity to make this page look busy.</p>
+        <h1>Live numbers. No demo activity.</h1>
+        <p>Claims, rewards and completed payouts come from live production events. If nothing happened, PulseCircuit shows zero.</p>
         <div className={`proof-status ${proof.available ? "live" : "offline"}`}>
           <Shield />
           <span>{proof.available ? "Production proof online" : "Production proof unavailable"}</span>
@@ -37,21 +37,21 @@ export default async function ProofPage() {
       </section>
 
       <section className="proof-grid shell" aria-label="Pulsercuit proof metrics">
-        <article><small>Claims · 24h</small><strong>{proof.available ? proof.claims24h.toLocaleString("en-US") : "—"}</strong><span>treasury-backed Pulses</span></article>
-        <article><small>Unique people · 24h</small><strong>{proof.available ? proof.uniqueUsers24h.toLocaleString("en-US") : "—"}</strong><span>accounts with a valid claim</span></article>
-        <article><small>Credited · 24h</small><strong>{proof.available ? formatUsdFromCredits(proof.credited24hCredits) : "—"}</strong><span>ledger rewards, not cash-out claims</span></article>
-        <article><small>Credited · all time</small><strong>{proof.available ? formatUsdFromCredits(proof.creditedAllTimeCredits) : "—"}</strong><span>Pulse rewards recorded</span></article>
-        <article><small>Verified Turbos · 24h</small><strong>{proof.available ? proof.confirmedTurbos24h.toLocaleString("en-US") : "—"}</strong><span>confirmed monetization events</span></article>
+        <article><small>Pulse claims · 24h</small><strong>{proof.available ? proof.claims24h.toLocaleString("en-US") : "—"}</strong><span>funded Pulses</span></article>
+        <article><small>People · 24h</small><strong>{proof.available ? proof.uniqueUsers24h.toLocaleString("en-US") : "—"}</strong><span>people with a valid Pulse</span></article>
+        <article><small>Rewards credited · 24h</small><strong>{proof.available ? formatUsdFromCredits(proof.credited24hCredits) : "—"}</strong><span>added to account balances</span></article>
+        <article><small>Rewards credited · all time</small><strong>{proof.available ? formatUsdFromCredits(proof.creditedAllTimeCredits) : "—"}</strong><span>recorded reward value</span></article>
+        <article><small>Verified extras · 24h</small><strong>{proof.available ? proof.confirmedTurbos24h.toLocaleString("en-US") : "—"}</strong><span>confirmed extra-reward events</span></article>
         <article><small>Paid withdrawals</small><strong>{proof.available ? proof.paidWithdrawalsAllTime.toLocaleString("en-US") : "—"}</strong><span>{proof.available ? `${formatUsdFromCredits(proof.paidWithdrawalCreditsAllTime)} completed` : "authoritative payout evidence"}</span></article>
       </section>
 
-      <section className="proof-principles shell">
+      <details className="proof-principles shell"><summary><strong>How PulseCircuit proof works</strong></summary>
         <article><Spark /><div><h2>Credited is not paid.</h2><p>Pulsercuit distinguishes rewards added to the internal ledger from withdrawals completed by the payout provider.</p></div></article>
         <article><Check /><div><h2>Zero is a valid number.</h2><p>If no Turbo conversion or paid withdrawal exists yet, the page shows zero instead of manufacturing social proof.</p></div></article>
         <article><Shield /><div><h2>Financial state stays server-authoritative.</h2><p>Claims, conversions and withdrawals are counted from trusted database events, never from browser counters.</p></div></article>
-      </section>
+      </details>
 
-      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Return. Claim the base Pulse. Turbo only when you choose.</h2></div><Link className="button" href="/auth?next=/dashboard">Open your Pulse <ArrowUpRight /></Link></section>
+      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Claim the base Pulse. Use extras only when they are useful.</h2></div><Link className="button" href="/auth?next=/dashboard">Open your Pulse <ArrowUpRight /></Link></section>
     </main>
   );
 }
