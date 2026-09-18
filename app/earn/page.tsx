@@ -56,7 +56,7 @@ export default async function EarnPage({ searchParams }: Props) {
 
   return (
     <AppShell active="earn">
-      <div className="app-page-head pc-luxe-turbo-head"><div><span className="app-eyebrow">Turbo</span><h1>More, when it is worth it.</h1><p>Optional opportunities ranked by value, time and evidence.</p></div><div className="balance-chip"><small>Vault</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div></div>
+      <div className="app-page-head pc-luxe-turbo-head"><div><span className="app-eyebrow">Turbo</span><h1>More, when it is worth it.</h1><p>Optional opportunities ranked by value, time and evidence.</p></div><div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div></div>
 
       {params.direct ? <div className="claim-message neutral">{directCopy[params.direct] ?? "Turbo state changed before start."}</div> : null}
 
