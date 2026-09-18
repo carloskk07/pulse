@@ -1,3 +1,4 @@
+import { CREDITS_PER_USD } from "@/lib/credits";
 import type { PayoutProvider, PayoutRequest } from "./contracts";
 import { validateFaucetPayDestinationReadOnly } from "./faucetpay-read";
 
@@ -34,13 +35,22 @@ function positiveNumber(value: string | undefined) {
 export function getFaucetPaySendAuthorityConfig() {
   const readKey = process.env.FAUCETPAY_READ_KEY?.trim() ?? "";
   const sendKey = process.env.FAUCETPAY_SCOPED_KEY?.trim() ?? "";
-  const dailyLimitUsd = positiveNumber(process.env.FAUCETPAY_SEND_DAILY_LIMIT_USD);
+  const payout = getFaucetPayPackConfig();
+  const configuredDailyLimitUsd = positiveNumber(process.env.FAUCETPAY_SEND_DAILY_LIMIT_USD);
+  const onePackDailyLimitUsd = payout.amountCredits ? payout.amountCredits / CREDITS_PER_USD : null;
+  const dailyLimitUsd = configuredDailyLimitUsd ?? onePackDailyLimitUsd;
+  const dailyLimitSource = configuredDailyLimitUsd
+    ? "configured_override"
+    : onePackDailyLimitUsd
+      ? "one_pack_default"
+      : "unavailable";
   const credentialsSeparated = Boolean(readKey && sendKey && readKey !== sendKey);
 
   return {
     dailyLimitUsd,
+    dailyLimitSource,
     credentialsSeparated,
-    ready: Boolean(credentialsSeparated && dailyLimitUsd),
+    ready: Boolean(credentialsSeparated && payout.ready && dailyLimitUsd),
   };
 }
 

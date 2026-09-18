@@ -6,9 +6,10 @@ import {
   getLegalPolicyBundleIdentity,
 } from "@/lib/legal-release";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
 const FAUCETPAY_READ_PROOF_SCHEMA = "faucetpay-read-proof-v2";
-const FAUCETPAY_SEND_SCOPE_PROOF_SCHEMA = "faucetpay-send-scope-proof-v1";
+const FAUCETPAY_SEND_SCOPE_PROOF_SCHEMA = "faucetpay-send-scope-proof-v2";
 const SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "supabase-auth-hardening-proof-v1";
 const PASSWORD_RECOVERY_PROOF_SCHEMA = "password-recovery-proof-v1";
 const LEGAL_POLICY_REVIEW_PROOF_SCHEMA = "legal-policy-review-proof-v1";
@@ -64,6 +65,7 @@ function configuredValues(kind: ReleaseEvidenceKind) {
     ];
   }
   if (kind === "faucetpay_send_scope") {
+    const sendAuthority = getFaucetPaySendAuthorityConfig();
     return [
       FAUCETPAY_SEND_SCOPE_PROOF_SCHEMA,
       process.env.FAUCETPAY_SCOPED_KEY,
@@ -71,7 +73,8 @@ function configuredValues(kind: ReleaseEvidenceKind) {
       process.env.FAUCETPAY_PAYOUT_CREDITS,
       process.env.FAUCETPAY_PAYOUT_UNITS,
       process.env.FAUCETPAY_PAYOUT_LABEL,
-      process.env.FAUCETPAY_SEND_DAILY_LIMIT_USD,
+      String(sendAuthority.dailyLimitUsd ?? ""),
+      sendAuthority.dailyLimitSource,
       "scope:send-only",
       "daily-cap:exact-value-operator-verified",
     ];

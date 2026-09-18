@@ -121,8 +121,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     "FaucetPay send authority configuration",
     faucetPaySendAuthority.ready ? "pass" : "fail",
     faucetPaySendAuthority.ready
-      ? `Read/send credentials are separated and the expected provider daily cap is ${faucetPaySendAuthority.dailyLimitUsd?.toLocaleString("en-US")} USD.`
-      : "Configure distinct read/send credentials and FAUCETPAY_SEND_DAILY_LIMIT_USD before attesting send authority.",
+      ? `Read/send credentials are separated and the expected provider daily cap is ${faucetPaySendAuthority.dailyLimitUsd?.toLocaleString("en-US")} USD (${faucetPaySendAuthority.dailyLimitSource === "configured_override" ? "explicit override" : "one payout pack/day safety policy"}).`
+      : "Configure distinct read/send credentials and a valid payout pack before attesting send authority.",
   ));
 
   const admin = createSupabaseAdminClient();

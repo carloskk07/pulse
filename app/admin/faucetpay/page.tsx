@@ -75,7 +75,7 @@ const proofCopy: Record<string, string> = {
   "receipt-recorded": "Actual destination receipt was explicitly confirmed and fingerprint-bound to the same exact paid FaucetPay withdrawal as the provider payout proof.",
   "send-scope-confirmation-required": "No send-scope proof was recorded. Explicit confirmation of send-only scope and a provider-side daily payout cap is required.",
   "send-scope-key-separation-failed": "Read and send credentials are missing or identical. Least-privilege send authority remains blocked.",
-  "send-scope-daily-limit-required": "The expected FaucetPay send-key daily USD cap is not configured. No attestation was recorded.",
+  "send-scope-daily-limit-required": "The expected FaucetPay send-key daily USD cap could not be derived from the payout pack or an explicit override. No attestation was recorded.",
   "send-scope-daily-limit-changed": "The expected daily cap changed after this cockpit view was rendered. Refresh and verify the exact current value before attesting.",
   "send-scope-pack-not-ready": "The payout pack is incomplete. Send-scope evidence cannot be bound to an incomplete payout authority.",
   "send-scope-read-proof-required": "Current read-only FaucetPay proof is missing or stale. Re-verify the read rail before attesting send authority.",
@@ -169,17 +169,17 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
           <article><span>Read credential</span><strong>{readKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
           <article><span>Send credential</span><strong>{sendKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
           <article><span>Credential separation</span><strong>{sendAuthority.credentialsSeparated ? "PASS" : "FAIL"}</strong><small>Read and send secrets must not be identical.</small></article>
-          <article><span>Expected daily cap</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "MISSING"}</strong><small>FAUCETPAY_SEND_DAILY_LIMIT_USD</small></article>
+          <article><span>Expected daily cap</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "MISSING"}</strong><small>{sendAuthority.dailyLimitSource === "configured_override" ? "Explicit override" : sendAuthority.dailyLimitSource === "one_pack_default" ? "Default: one payout pack/day" : "Unavailable"}</small></article>
           <article><span>Read proof dependency</span><strong>{readEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
           <article><span>Send-scope fingerprint</span><strong>{sendScopeEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
         </div>
         {sendScopeEvidenceCurrent ? (
-          <p className="admin-panel-note"><strong>Current attestation is bound to this exact send credential and payout pack.</strong> Rotating the key or changing asset, credits, units or label automatically makes it stale.</p>
+          <p className="admin-panel-note"><strong>Current attestation is bound to this exact send credential, payout pack and daily-cap policy.</strong> Rotating the key, changing the pack or changing the cap policy/value automatically makes it stale.</p>
         ) : (
           <form action={confirmFaucetPaySendScope}>
             <input type="hidden" name="expected_daily_limit_usd" value={sendAuthority.dailyLimitUsd ?? ""} />
             <label className="admin-panel-note"><input type="checkbox" name="scope_confirmation" value="SEND_ONLY_CONFIRMED" required /> I verified in FaucetPay → Scoped API keys that this exact credential has <strong>send</strong> scope only and does not include read, manage or admin.</label>
-            <label className="admin-panel-note"><input type="checkbox" name="daily_cap_confirmation" value="DAILY_CAP_CONFIRMED" required /> I verified that this exact send key has a provider-side daily payout cap of <strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "the configured value"}</strong>, matching the current Pulsercuit expectation.</label>
+            <label className="admin-panel-note"><input type="checkbox" name="daily_cap_confirmation" value="DAILY_CAP_CONFIRMED" required /> I verified that this exact send key has a provider-side daily payout cap of <strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "the current expected value"}</strong>, matching the current Pulsercuit {sendAuthority.dailyLimitSource === "configured_override" ? "override" : "one-pack/day safety policy"}.</label>
             <button className="button" type="submit" disabled={!sendAuthority.ready || !readEvidenceCurrent}>Record send-scope proof</button>
           </form>
         )}
