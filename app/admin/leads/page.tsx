@@ -41,7 +41,7 @@ export default async function BusinessLeadsPage() {
   const leads = await getBusinessLeadSnapshot();
 
   return (
-    <AppShell active="leads">
+    <AppShell active="advanced">
       <div className="admin-head"><div><span className="app-eyebrow">Pulse for Business</span><h1>Advertiser pipeline</h1><p>Real inbound interest only. A lead is not a campaign, funding commitment or revenue until it passes operator review.</p></div><span className={`admin-badge ${leads.newCount > 0 ? "proof" : "setup"}`}>{leads.newCount} NEW</span></div>
 
       <section className="admin-secondary-grid">
