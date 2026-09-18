@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 import { Bolt, Home, Shield, Trend, Users, Wallet } from "./icons";
 
@@ -30,8 +30,7 @@ function isAdminEmail(email: string | null | undefined) {
 }
 
 export async function AppShell({ children, active }: { children: React.ReactNode; active: string }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const { supabase, user } = await getCurrentUserContext();
   let label = "Demo member";
 
   if (user && supabase) {
