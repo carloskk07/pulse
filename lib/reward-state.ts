@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 
 export type RewardSnapshot = {
   preview: boolean;
@@ -84,10 +84,8 @@ export function trustLabel(level: number) {
 }
 
 export async function getRewardSnapshot(): Promise<RewardSnapshot> {
-  const supabase = await createSupabaseServerClient();
+  const { supabase, user } = await getCurrentUserContext();
   if (!supabase) return disconnectedSnapshot;
-
-  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ...disconnectedSnapshot, preview: false };
 
   const admin = createSupabaseAdminClient();
@@ -151,11 +149,8 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
 }
 
 export async function getLedgerItems(): Promise<LedgerItem[]> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return [];
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+  const { supabase, user } = await getCurrentUserContext();
+  if (!supabase || !user) return [];
 
   const { data } = await supabase
     .from("ledger_entries")
