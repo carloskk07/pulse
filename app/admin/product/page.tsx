@@ -22,7 +22,7 @@ export default async function ProductReadinessPage() {
   const release = readiness.release;
 
   return (
-    <AppShell active="product">
+    <AppShell active="advanced">
       <div className="admin-head">
         <div>
           <span className="app-eyebrow">Consumer product + launch gate</span>
