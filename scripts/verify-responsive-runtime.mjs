@@ -126,11 +126,19 @@ const runtimeProbe = `(() => {
     };
   };
 
+  const originalX = scrollX;
+  window.scrollTo(100000, scrollY);
+  const maxScrollX = scrollX;
+  window.scrollTo(originalX, scrollY);
+
   return {
     path: location.pathname,
     innerWidth,
     clientWidth: root.clientWidth,
     scrollWidth: Math.max(root.scrollWidth, body?.scrollWidth ?? 0),
+    maxScrollX,
+    htmlOverflowX: getComputedStyle(root).overflowX,
+    bodyOverflowX: body ? getComputedStyle(body).overflowX : null,
     sidebar: inspect(sidebar),
     bottomNav: inspect(bottomNav),
     appContent: inspect(appContent),
@@ -185,9 +193,22 @@ try {
       }
 
       const tolerance = 1;
-      if (state.scrollWidth > state.clientWidth + tolerance) {
+      const rawOverflow = state.scrollWidth - state.clientWidth;
+      if (state.maxScrollX > tolerance) {
         failures.push(
-          `${profile} ${routeName}: horizontal overflow scrollWidth=${state.scrollWidth}, clientWidth=${state.clientWidth}`,
+          `${profile} ${routeName}: horizontal scrolling is possible maxScrollX=${state.maxScrollX}, rawOverflow=${rawOverflow}`,
+        );
+      }
+
+      if (
+        state.appContent
+        && (
+          state.appContent.left < -tolerance
+          || state.appContent.right > state.innerWidth + tolerance
+        )
+      ) {
+        failures.push(
+          `${profile} ${routeName}: app content escapes viewport [${state.appContent.left}, ${state.appContent.right}] vs ${state.innerWidth}`,
         );
       }
 
@@ -220,15 +241,25 @@ try {
       }
 
       console.log(
-        `RESPONSIVE_PASS candidate profile=${profile} route=${routeName} width=${width} scroll=${state.scrollWidth}/${state.clientWidth} sidebar=${state.sidebar?.display ?? "missing"} bottom=${state.bottomNav?.display ?? "missing"}`,
+        `RESPONSIVE_PROBE profile=${profile} route=${routeName} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} overflow=${state.htmlOverflowX}/${state.bodyOverflowX} sidebar=${state.sidebar?.display ?? "missing"} bottom=${state.bottomNav?.display ?? "missing"}`,
       );
     }
   }
 
   socket.close();
 } finally {
-  if (browser && !browser.killed) browser.kill("SIGTERM");
-  await rm(profileDir, { recursive: true, force: true });
+  if (browser && browser.exitCode === null) {
+    browser.kill("SIGTERM");
+    for (let attempt = 0; attempt < 40 && browser.exitCode === null; attempt += 1) {
+      await sleep(50);
+    }
+  }
+
+  try {
+    await rm(profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  } catch (error) {
+    console.warn(`Responsive probe cleanup warning: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 if (failures.length) {
