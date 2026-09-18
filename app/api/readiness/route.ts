@@ -1,6 +1,6 @@
 import { getCurrentReleaseReadiness } from "@/lib/current-release-readiness";
 import { getHourlyPilotReadiness } from "@/lib/hourly-pilot-readiness";
-import { getProductReadiness } from "@/lib/product-readiness";
+import { getProductReadiness, hasProductSetupBlocker } from "@/lib/product-readiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,8 @@ export async function GET() {
   ]);
 
   const ready = release.ready && product.ready && hourlyPilot.ok;
-  const readiness = release.state === "SETUP_REQUIRED" || !hourlyPilot.ok
+  const productSetupBlocked = hasProductSetupBlocker(product);
+  const readiness = release.state === "SETUP_REQUIRED" || !hourlyPilot.ok || productSetupBlocked
     ? "SETUP_REQUIRED"
     : ready
       ? "READY"

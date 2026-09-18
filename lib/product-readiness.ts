@@ -18,6 +18,19 @@ export type ProductReadiness = {
   paidWithdrawals: number;
 };
 
+const PRODUCT_SETUP_CHECK_IDS = new Set([
+  "auth",
+  "turnstile-config",
+  "payout-pack",
+  "database",
+  "hourly-pulse-config",
+  "treasury",
+]);
+
+export function hasProductSetupBlocker(readiness: ProductReadiness) {
+  return readiness.checks.some((item) => PRODUCT_SETUP_CHECK_IDS.has(item.id) && !item.pass);
+}
+
 function configured(...keys: string[]) {
   return keys.every((key) => Boolean(process.env[key]?.trim()));
 }
