@@ -14,12 +14,9 @@ const links = [
 
 const adminLinks = [
   { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
-  { id: "product", href: "/admin/product", label: "Product", Icon: Shield },
-  { id: "faucetpay-admin", href: "/admin/faucetpay", label: "FaucetPay", Icon: Wallet },
-  { id: "support-admin", href: "/admin/support", label: "Support Ops", Icon: Users },
-  { id: "leads", href: "/admin/leads", label: "Leads", Icon: Users },
-  { id: "prospects", href: "/admin/prospects", label: "Prospects", Icon: Trend },
-  { id: "retention", href: "/admin/retention", label: "Retention", Icon: Trend },
+  { id: "faucetpay-admin", href: "/admin/faucetpay", label: "Payments", Icon: Wallet },
+  { id: "support-admin", href: "/admin/support", label: "Support", Icon: Users },
+  { id: "advanced", href: "/admin/advanced", label: "Advanced", Icon: Shield },
 ];
 
 function initials(value: string) {
