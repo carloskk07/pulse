@@ -26,6 +26,24 @@ function positiveInteger(value: string | undefined) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function positiveNumber(value: string | undefined) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function getFaucetPaySendAuthorityConfig() {
+  const readKey = process.env.FAUCETPAY_READ_KEY?.trim() ?? "";
+  const sendKey = process.env.FAUCETPAY_SCOPED_KEY?.trim() ?? "";
+  const dailyLimitUsd = positiveNumber(process.env.FAUCETPAY_SEND_DAILY_LIMIT_USD);
+  const credentialsSeparated = Boolean(readKey && sendKey && readKey !== sendKey);
+
+  return {
+    dailyLimitUsd,
+    credentialsSeparated,
+    ready: Boolean(credentialsSeparated && dailyLimitUsd),
+  };
+}
+
 export function getFaucetPayPackConfig() {
   const asset = (process.env.FAUCETPAY_PAYOUT_CURRENCY ?? "USDT").trim().toUpperCase();
   const amountCredits = positiveInteger(process.env.FAUCETPAY_PAYOUT_CREDITS);
