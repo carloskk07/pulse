@@ -1,0 +1,132 @@
+name: Visual Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/visual-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulsercuit-visual-smoke
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Verify exact canonical production release
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            release_file="$(mktemp)"
+            if curl --fail --silent --show-error               --header 'Cache-Control: no-cache'               --output "$release_file"               "https://pulsercuit.pro/release.json?sha=$GITHUB_SHA"               && node - "$release_file" <<'NODE'
+          const fs = require("node:fs");
+          const release = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const expectedSha = process.env.GITHUB_SHA;
+
+          if (release.service !== "pulsercuit" || release.git_sha !== expectedSha) {
+            throw new Error(`Canonical release mismatch: expected ${expectedSha}, received ${release.git_sha}`);
+          }
+          console.log(`Visual smoke canonical release PASS: ${release.git_sha}`);
+          NODE
+            then
+              exit 0
+            fi
+            rm -f "$release_file"
+            sleep 6
+          done
+          echo "Canonical production did not converge to $GITHUB_SHA."
+          exit 1
+
+      - name: Locate Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(
+            command -v google-chrome             || command -v google-chrome-stable             || command -v chromium             || command -v chromium-browser             || true
+          )"
+          if [ -z "$chrome" ]; then
+            echo "No Chrome/Chromium executable is available on this runner."
+            exit 1
+          fi
+          echo "CHROME_BIN=$chrome" >> "$GITHUB_ENV"
+          "$chrome" --version
+
+      - name: Capture desktop and mobile production views
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p visual-smoke/desktop visual-smoke/mobile
+
+          routes=(
+            "home|/"
+            "proof|/proof"
+            "business|/business"
+            "business-integration|/business/integration"
+            "auth|/auth"
+            "support|/support"
+            "dashboard|/dashboard"
+            "momentum|/progress"
+            "turbo|/earn"
+            "vault|/wallet"
+            "share|/invite"
+          )
+
+          : > visual-smoke/manifest.txt
+          echo "git_sha=$GITHUB_SHA" >> visual-smoke/manifest.txt
+          echo "captured_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> visual-smoke/manifest.txt
+          echo >> visual-smoke/manifest.txt
+
+          for entry in "${routes[@]}"; do
+            name="${entry%%|*}"
+            route="${entry#*|}"
+            url="https://pulsercuit.pro${route}"
+            status="$(curl --location --silent --show-error --output /dev/null --write-out '%{http_code}' "$url")"
+            if [ "$status" != "200" ]; then
+              echo "Route $route returned HTTP $status"
+              exit 1
+            fi
+            echo "$name $route HTTP $status" >> visual-smoke/manifest.txt
+          done
+
+          capture() {
+            local profile="$1"
+            local size="$2"
+            local directory="visual-smoke/$profile"
+
+            for entry in "${routes[@]}"; do
+              local name="${entry%%|*}"
+              local route="${entry#*|}"
+              local url="https://pulsercuit.pro${route}"
+              local output="$directory/${name}.png"
+
+              "$CHROME_BIN"                 --headless=new                 --no-sandbox                 --disable-gpu                 --hide-scrollbars                 --disable-dev-shm-usage                 --force-device-scale-factor=1                 --run-all-compositor-stages-before-draw                 --virtual-time-budget=5000                 --window-size="$size"                 --screenshot="$output"                 "$url"
+
+              test -s "$output"
+            done
+          }
+
+          capture desktop 1440,900
+          capture mobile 390,844
+
+          find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
+          echo "Captured $(find visual-smoke -type f -name '*.png' | wc -l) screenshots."
+          test "$(find visual-smoke -type f -name '*.png' | wc -l)" -eq 22
+
+      - name: Upload visual evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pulsercuit-visual-smoke-${{ github.sha }}
+          path: visual-smoke
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
