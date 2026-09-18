@@ -159,7 +159,11 @@ export async function updateRecoveredPassword(formData: FormData) {
     maxAge: 0,
   });
 
-  redirect("/dashboard?security=password-updated");
+  // A recovery session proves control of the email link, not that the new
+  // password can authenticate independently. End the recovery session and
+  // require one normal password sign-in; signIn() will finalize the proof.
+  await supabase.auth.signOut();
+  redirect("/auth?message=password-updated&next=/dashboard");
 }
 
 export async function signOut() {

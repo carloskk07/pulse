@@ -73,6 +73,7 @@ export default async function AuthPage({ searchParams }: Props) {
           {ref ? <div className="auth-alert success">Invite attached. Qualification still requires verified activity.</div> : null}
           {params.error ? <div className="auth-alert error">{errorCopy[params.error] ?? "Something went wrong."}</div> : null}
           {params.message === "check-email" ? <div className="auth-alert success">Check your email to confirm the account.</div> : null}
+          {params.message === "password-updated" ? <div className="auth-alert success">Password updated. Sign in with your new password to finish account recovery.</div> : null}
 
           {signingUp ? (
             <form action={signUp} className="auth-form">
