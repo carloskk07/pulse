@@ -26,10 +26,10 @@ export default async function ReferralLanding({ params }: Props) {
       <section className="referral-funnel shell">
         <div className="referral-proof"><Users /><span>Verified invite</span></div>
         <h1><em>{inviter}</em> invited you to make your spare minutes count.</h1>
-        <p>Join free. Your referral is linked once, and both sides unlock a bonus only after your first provider-confirmed earning conversion.</p>
+        <p>Join free. Your referral is linked once, and any bonus is released only after the current verified activity rule is satisfied.</p>
         <div className="referral-benefits"><span><Check /> No deposit required</span><span><Check /> One inviter per account</span><span><Check /> No bonus for empty signups</span></div>
-        <Link className="button button-lg" href={`/auth?ref=${encodeURIComponent(code)}&next=${encodeURIComponent("/dashboard")}`}>Accept verified invite <ArrowUpRight /></Link>
-        <small>The invite cannot be self-applied or changed after binding. Provider chargeback of the qualifying conversion reverses the referral bonuses as well.</small>
+        <Link className="button button-lg" href={`/auth?ref=${encodeURIComponent(code)}&next=${encodeURIComponent("/dashboard")}`}>Accept invite <ArrowUpRight /></Link>
+        <small>The invite cannot be self-applied or changed after binding. If the qualifying activity is later reversed, any linked referral bonus is reversed as well.</small>
       </section>
     </main>
   );

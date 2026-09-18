@@ -37,13 +37,13 @@ export default async function UpdatePasswordPage({ searchParams }: Props) {
       <section className="auth-shell shell">
         <div className="auth-copy">
           <span className="section-kicker">Verified recovery</span>
-          <h1>Choose a new key.<br /><em>Keep the same circuit.</em></h1>
-          <p>Your recovery link created a short-lived authenticated context. It expires quickly and is used only to replace this account password.</p>
-          <div className="auth-trust"><span>Recovery verified</span><span>12+ character minimum</span><span>Context expires automatically</span></div>
+          <h1>Create a new password.<br /><em>Keep the same account.</em></h1>
+          <p>Your recovery link is valid for a limited time and can only be used to replace this account password.</p>
+          <div className="auth-trust"><span>Recovery verified</span><span>{MIN_PASSWORD_LENGTH}+ character minimum</span><span>Link expires automatically</span></div>
         </div>
 
         <div className="auth-card">
-          <div><span className="app-eyebrow">New password</span><h2>Secure this account</h2><p>Use a unique password you do not reuse on another service.</p></div>
+          <div><span className="app-eyebrow">New password</span><h2>Set a new password</h2><p>Use a unique password you do not reuse on another service.</p></div>
           {params.error ? <div className="auth-alert error">{errorCopy[params.error] ?? "Password recovery could not continue."}</div> : null}
 
           <form action={updateRecoveredPassword} className="auth-form">

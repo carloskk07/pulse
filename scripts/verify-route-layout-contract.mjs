@@ -22,12 +22,13 @@ const appShellRoutes = new Map([
   ["app/invite/page.tsx", "invite"],
   ["app/account/page.tsx", "account"],
   ["app/admin/page.tsx", "admin"],
-  ["app/admin/product/page.tsx", "product"],
+  ["app/admin/product/page.tsx", "advanced"],
   ["app/admin/faucetpay/page.tsx", "faucetpay-admin"],
   ["app/admin/support/page.tsx", "support-admin"],
-  ["app/admin/leads/page.tsx", "leads"],
-  ["app/admin/prospects/page.tsx", "prospects"],
-  ["app/admin/retention/page.tsx", "retention"],
+  ["app/admin/leads/page.tsx", "advanced"],
+  ["app/admin/prospects/page.tsx", "advanced"],
+  ["app/admin/retention/page.tsx", "advanced"],
+  ["app/admin/advanced/page.tsx", "advanced"],
 ]);
 
 for (const [path, active] of appShellRoutes) {
@@ -70,7 +71,7 @@ requireText("components/app-shell.tsx", [
   '{ id: "earn", href: "/earn"',
   '{ id: "wallet", href: "/wallet"',
   '{ id: "invite", href: "/invite"',
-  '{ id: "retention", href: "/admin/retention"',
+  '{ id: "advanced", href: "/admin/advanced"',
   'className="app-frame"',
   'className="app-sidebar"',
   'className="app-content"',

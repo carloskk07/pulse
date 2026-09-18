@@ -34,7 +34,7 @@ export default function HomePage() {
           <div className="pc-v6-hero-copy">
             <span className="pc-v6-kicker">Pulsercuit</span>
             <h1>Return. <em>Rise.</em> Repeat.</h1>
-            <p>A premium reward ritual built around Pulse, Momentum, Vault and Share.</p>
+            <p>Claim funded rewards, see real progress and withdraw through a protected payout path.</p>
             <div className="pc-v6-actions">
               <Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
               <Link className="pc-v6-button ghost" href="/proof">See live proof <span className="pc-v6-play">›</span></Link>
@@ -51,16 +51,16 @@ export default function HomePage() {
         <div className="pc-v6-mountain-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-mountain" /></div>
         <div className="pc-v6-shell pc-v6-section-grid">
           <div className="pc-v6-section-intro">
-            <span className="pc-v6-kicker">The four pillars</span>
-            <h2>A different<br />kind of reward<br />platform.</h2>
-            <p className="pc-v6-spaced">Same actions.<br />A brighter tomorrow.</p>
+            <span className="pc-v6-kicker">How it works</span>
+            <h2>One clear<br />reward<br />loop.</h2>
+            <p className="pc-v6-spaced">Claim. Return.<br />Build real progress.</p>
             <i className="pc-v6-gold-line" />
           </div>
           <div className="pc-v6-pillar-grid">
-            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Show up hourly.<br />Keep the rhythm.</p><Link href="/#how">Build habits <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb gold"><Trend /></div><h3>Momentum</h3><p>Turn time into<br />progress.</p><Link href="/progress">Climb higher <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb green"><Shield /></div><h3>Vault</h3><p>Track rewards.<br />See payout readiness.</p><Link href="/wallet">Open the Vault <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb amber"><Users /></div><h3>Share</h3><p>Spread the pulse.<br />Grow together.</p><Link href="/invite">Multiply impact <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Return when your<br />next Pulse opens.</p><Link href="/#how">Start with Pulse <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb gold"><Trend /></div><h3>Momentum</h3><p>See rank and<br />the next milestone.</p><Link href="/progress">See progress <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb green"><Shield /></div><h3>Vault</h3><p>See your balance.<br />Withdraw when eligible.</p><Link href="/wallet">Open Vault <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb amber"><Users /></div><h3>Invite</h3><p>Invite real people.<br />Reward real activity.</p><Link href="/invite">Invite someone <ArrowUpRight /></Link></article>
           </div>
         </div>
       </section>
@@ -69,9 +69,9 @@ export default function HomePage() {
         <div className="pc-v6-shell pc-v6-chamber-grid">
           <div className="pc-v6-section-intro compact">
             <span className="pc-v6-kicker">The core experience</span>
-            <h2>Pulse<br />Chamber</h2>
-            <p className="pc-v6-spaced">Real history.<br />Funded rewards only.<br />One focused loop.</p>
-            <Link className="pc-v6-outline-link" href="/dashboard">Explore the dashboard <ArrowUpRight /></Link>
+            <h2>Your<br />Pulse</h2>
+            <p className="pc-v6-spaced">One funded reward.<br />One live timer.<br />One next action.</p>
+            <Link className="pc-v6-outline-link" href="/dashboard">See the live experience <ArrowUpRight /></Link>
           </div>
 
           <div className="pc-v6-chamber-stage">
@@ -108,8 +108,8 @@ export default function HomePage() {
           <div className="pc-v6-section-intro compact">
             <span className="pc-v6-kicker">Your journey</span>
             <h2>Momentum<br />Lives Here</h2>
-            <p className="pc-v6-spaced">Higher ranks.<br />Bigger possibilities.</p>
-            <Link className="pc-v6-outline-link" href="/progress">View all ranks <ArrowUpRight /></Link>
+            <p className="pc-v6-spaced">Rank, rhythm and<br />your next milestone.</p>
+            <Link className="pc-v6-outline-link" href="/progress">See Momentum <ArrowUpRight /></Link>
           </div>
           <div className="pc-v6-ranks">
             {ranks.map((rank) => <article key={rank.id}><div className={`pc-v6-rank-art rank-${rank.id}`} /><strong>{rank.name}</strong><span>{rank.note}</span></article>)}
@@ -123,7 +123,7 @@ export default function HomePage() {
           <div className="pc-v6-section-intro compact">
             <span className="pc-v6-kicker">Share Studio</span>
             <h2>Moments<br />Move People</h2>
-            <p>Your progress can<br />inspire the next one.</p>
+            <p>Share verified progress<br />without sharing balance.</p>
             <Link className="pc-v6-outline-link" href="/progress#circuit-moments">Create your card <ArrowUpRight /></Link>
           </div>
           <div className="pc-v6-share-cards">
@@ -132,7 +132,7 @@ export default function HomePage() {
             <article className="pc-v6-social-card lime"><small>Pulsercuit</small><strong>PROOF</strong><span>Real state.<br />No invented activity.</span></article>
             <article className="pc-v6-social-card eclipse"><small>Pulsercuit</small><strong>Still showing up.</strong><span>Return. Rise. Repeat.</span></article>
           </div>
-          <div className="pc-v6-share-side"><span className="pc-v6-spaced">Be a signal<br />not noise</span><div className="pc-v6-social-icons"><i>𝕏</i><i>◎</i><i>◉</i><i>◫</i><i>↗</i></div><Link className="pc-v6-outline-link" href="/invite">Share the pulse <ArrowUpRight /></Link></div>
+          <div className="pc-v6-share-side"><span className="pc-v6-spaced">Be a signal<br />not noise</span><div className="pc-v6-social-icons"><i>𝕏</i><i>◎</i><i>◉</i><i>◫</i><i>↗</i></div><Link className="pc-v6-outline-link" href="/invite">Share progress <ArrowUpRight /></Link></div>
         </div>
       </section>
 
@@ -142,14 +142,14 @@ export default function HomePage() {
           <div className="pc-v6-section-intro compact">
             <span className="pc-v6-kicker">The Vault</span>
             <h2>Your Effort<br />Deserves More</h2>
-            <p>Track authoritative rewards.<br />Follow a verified payout path.</p>
+            <p>See available value.<br />Withdraw only when eligible.</p>
             <Link className="pc-v6-outline-link" href="/wallet">Open your vault <ArrowUpRight /></Link>
           </div>
           <div className="pc-v6-vault-art"><div className="pc-v6-sprite pc-v6-sprite-vault" /><span>Build today<br />progress<br />tomorrow</span></div>
           <div className="pc-v6-vault-benefits">
-            <div><span>◇</span><p><strong>Ledger-backed rewards</strong><small>Only authoritative credits appear as value.</small></p></div>
-            <div><span className="lime">✓</span><p><strong>Verified payout path</strong><small>Provider and financial gates must be proven first.</small></p></div>
-            <div><span>≋</span><p><strong>Your request</strong><small>Request withdrawal only when your account is eligible.</small></p></div>
+            <div><span>◇</span><p><strong>Ledger-backed rewards</strong><small>Only verified rewards appear in your balance.</small></p></div>
+            <div><span className="lime">✓</span><p><strong>Verified payout path</strong><small>Payments stay unavailable until the protected path is ready.</small></p></div>
+            <div><span>≋</span><p><strong>Your request</strong><small>One withdrawal request at a time when your account is eligible.</small></p></div>
           </div>
         </div>
       </section>

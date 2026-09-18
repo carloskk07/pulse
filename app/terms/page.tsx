@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default function TermsPage() {
   return <main className="completion-page">
     <header className="completion-header shell"><PulsercuitBrand /><nav><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link></nav></header>
-    <section className="completion-hero shell"><span className="section-kicker">Terms of use</span><h1>Simple rules for a reward circuit.</h1><p>Use Pulsercuit as a real person, follow provider rules and treat ledger-confirmed events as the source of truth for rewards.</p></section>
+    <section className="completion-hero shell"><span className="section-kicker">Terms of use</span><h1>Simple rules for a reward circuit.</h1><p>Use Pulsercuit legitimately, keep your account secure and treat verified account history as the source of truth for rewards.</p></section><section className="completion-card shell"><span className="app-eyebrow">Quick summary</span><h2>Use one real account. Earn only from verified activity.</h2><p>Features and third-party availability can change. Rewards can be reversed when the qualifying event is reversed or invalid. Support is available for reward, payout and account questions.</p></section>
     <article className="policy-body shell">
       <LegalOperatorDisclosure />
       <h2>Using the service</h2><p>You may use Pulsercuit only for legitimate activity and only if you can lawfully use the service and the connected reward or payout providers in your location. One person should not operate duplicate accounts to obtain repeated rewards.</p>

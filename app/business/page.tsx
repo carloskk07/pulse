@@ -30,12 +30,12 @@ export default async function BusinessPage({ searchParams }: Props) {
         <div className="business-hero-copy">
           <div className="eyebrow"><span className="live-dot" /> Pulse for Business</div>
           <h1>Pay for <em>verified actions.</em> Not promises.</h1>
-          <p>Pulse Direct turns advertiser budget into protected Reward Drops. Fund a clear outcome, define how it is verified, and pay only when the agreed action is confirmed.</p>
+          <p>Define one measurable outcome, prefund a bounded pilot, and pay only after the agreed result is verified.</p>
           <div className="hero-actions">
             <Link className="button button-lg" href="#pilot">Plan a pilot <ArrowUpRight /></Link>
             <Link className="button button-ghost button-lg" href="#model">See how it works</Link>
           </div>
-          <div className="trust-strip"><span><Check /> Prefunded campaigns</span><span><Shield /> Atomic settlement</span><span><Check /> No impression billing</span></div>
+          <div className="trust-strip"><span><Check /> Prefunded</span><span><Shield /> Server-verified</span><span><Check /> No impression billing</span></div>
         </div>
 
         <div className="business-console" aria-label="Illustrative campaign economics">
@@ -58,24 +58,24 @@ export default async function BusinessPage({ searchParams }: Props) {
       </section>
 
       <section className="section shell business-value-section">
-        <div className="section-heading split-heading"><div><span className="section-kicker">Why Pulse Direct</span><h2>A cleaner path from budget to behavior.</h2></div><p>Providers remain useful as backfill. Direct campaigns are where Pulse can give advertisers clearer economics and users stronger reward authority.</p></div>
+        <div className="section-heading split-heading"><div><span className="section-kicker">Why verified-action pricing</span><h2>A clearer path from budget to a verified result.</h2></div><p>A direct pilot is designed around one measurable outcome instead of generic traffic.</p></div>
         <div className="business-value-grid">
           <article><div className="step-icon"><Trend /></div><h3>Outcome-priced</h3><p>Design the pilot around a measurable action instead of buying generic traffic and hoping it converts.</p></article>
-          <article><div className="step-icon"><Shield /></div><h3>Pulse Protected</h3><p>Eligible direct Drops reserve funded campaign capacity before the user is sent to the advertiser experience.</p></article>
+          <article><div className="step-icon"><Shield /></div><h3>Funded before start</h3><p>Eligible starts reserve funded campaign capacity before the user is sent to the advertiser experience.</p></article>
           <article><div className="step-icon"><Check /></div><h3>Operator-controlled pilot</h3><p>Early campaigns are reviewed manually. No public self-service spend, no arbitrary pixel and no silent rule changes.</p></article>
         </div>
       </section>
 
       <section className="section shell business-flow-section">
-        <div className="section-heading narrow"><span className="section-kicker">The operating model</span><h2>Four steps. One accountable transaction.</h2></div>
+        <div className="section-heading narrow"><span className="section-kicker">The operating model</span><h2>Four steps. One verified outcome.</h2></div>
         <div className="business-flow">
           <div><small>01</small><strong>Campaign</strong><span>Objective, geography, cap and verification rule</span></div>
           <i>→</i>
           <div><small>02</small><strong>Funding</strong><span>Advertiser budget verified before launch</span></div>
           <i>→</i>
-          <div><small>03</small><strong>Protected start</strong><span>Capacity reserved for a pseudonymous session</span></div>
+          <div><small>03</small><strong>Funded start</strong><span>Capacity reserved for a pseudonymous session</span></div>
           <i>→</i>
-          <div><small>04</small><strong>Verified result</strong><span>User reward + advertiser spend settle atomically</span></div>
+          <div><small>04</small><strong>Verified result</strong><span>Verified result releases the agreed settlement</span></div>
         </div>
       </section>
 
@@ -106,7 +106,7 @@ export default async function BusinessPage({ searchParams }: Props) {
         </form>
       </section>
 
-      <section className="final-cta shell business-final-cta"><div><span className="section-kicker">Prefer the user side?</span><h2>See what a protected Drop feels like.</h2><p>The same marketplace that protects advertiser budget is designed to make reward authority visible to the user.</p></div><Link className="button button-lg button-dark" href="/dashboard">Open Pulse <ArrowUpRight /></Link></section>
+      <section className="final-cta shell business-final-cta"><div><span className="section-kicker">Prefer the user side?</span><h2>See the user-side reward flow.</h2><p>The same marketplace that protects advertiser budget is designed to make reward authority visible to the user.</p></div><Link className="button button-lg button-dark" href="/dashboard">Open Pulse <ArrowUpRight /></Link></section>
 
       <footer className="footer shell"><div><strong>Pulsercuit</strong><span>© 2026. Pay for verified actions.</span></div><div><Link href="/">For users</Link><Link href="#model">Model</Link><Link href="#pilot">Pilot</Link></div></footer>
     </main>

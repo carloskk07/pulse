@@ -51,7 +51,7 @@ export default async function AdvertiserProspectsPage({ searchParams }: Props) {
   const highFit = prospects.filter((item) => item.fitScore >= 80 && !["rejected", "closed"].includes(item.status)).length;
 
   return (
-    <AppShell active="prospects">
+    <AppShell active="advanced">
       <div className="admin-head"><div><span className="app-eyebrow">Outbound acquisition</span><h1>Advertiser prospects</h1><p>Company-level research only. Score fit first, then contact a small number of strong candidates with a specific pilot hypothesis.</p></div><span className={`admin-badge ${highFit > 0 ? "proof" : "setup"}`}>{highFit} HIGH FIT</span></div>
       {params.state ? <div className={`claim-message ${params.state === "saved" || params.state === "updated" ? "success" : "neutral"}`}>{stateCopy[params.state] ?? "Prospect state updated."}</div> : null}
 

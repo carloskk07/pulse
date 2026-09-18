@@ -112,143 +112,167 @@ export default async function FaucetPayPreflightPage({ searchParams }: Props) {
     ? await getFaucetPayReceiptProofState(admin, proofValue)
     : { withdrawal: null, payoutWithdrawal: null, boundWithdrawal: null, payoutProofCurrent: false, receiptProofCurrent: false };
   const settlementWithdrawal = receiptState.payoutWithdrawal ?? receiptState.withdrawal;
+  const connectionReady = readEvidenceCurrent && sendScopeEvidenceCurrent;
+  const stage = !connectionReady
+    ? "connection"
+    : !settlementWithdrawal
+      ? "controlled-test"
+      : !receiptState.payoutProofCurrent
+        ? "reconcile"
+        : !receiptState.receiptProofCurrent
+          ? "receipt"
+          : "complete";
 
   return (
     <AppShell active="faucetpay-admin">
       <div className="admin-head">
         <div>
-          <span className="app-eyebrow">Private operations · protected connection</span>
-          <h1>Connect FaucetPay</h1>
-          <p>One operator confirmation on the provider side; PulseCircuit handles the technical verification and evidence automatically.</p>
+          <span className="app-eyebrow">Payments</span>
+          <h1>FaucetPay setup, one stage at a time.</h1>
+          <p>Only the action needed now stays open. Technical evidence remains available below without competing with the workflow.</p>
         </div>
-        <span className={statusTone(probe.state)}>{probe.state.replaceAll("_", " ")}</span>
+        <span className={`admin-badge ${stage === "complete" ? "" : stage === "connection" ? "setup" : "proof"}`}>
+          {stage === "complete" ? "PATH VERIFIED" : stage === "connection" ? "CONNECT" : "NEXT STEP"}
+        </span>
       </div>
 
-      {params.proof ? <div className={`preview-banner ${params.proof === "recorded" || params.proof === "send-scope-recorded" || params.proof === "connection-complete" || params.proof === "receipt-recorded" || params.proof === "payout-proof-reconciled" ? "success" : ""}`}>{proofCopy[params.proof] ?? "The FaucetPay connection state was not changed."}</div> : null}
-
-      <section className="admin-panel">
-        <div className="app-section-head">
-          <div><span className="app-eyebrow">Safety invariant</span><h2>No payout endpoint is used here.</h2></div>
+      {params.proof ? (
+        <div className={`preview-banner ${["recorded", "send-scope-recorded", "connection-complete", "receipt-recorded", "payout-proof-reconciled"].includes(params.proof) ? "success" : ""}`}>
+          {proofCopy[params.proof] ?? "The FaucetPay state was not changed."}
         </div>
-        <p className="admin-panel-note">This cockpit uses only the FaucetPay v2 <code>read</code> scope and calls <code>/currencies</code> and <code>/balance</code>. It accepts only nominal USD settlement assets (USDT/USDC) while no price oracle is authorized. Missing economic parity or ambiguous provider units remain blocking instead of being guessed.</p>
+      ) : null}
+
+      <section className="admin-secondary-grid" aria-label="FaucetPay verification stages">
+        <article>
+          <span>1 · Connection</span>
+          <strong>{connectionReady ? "COMPLETE" : "CURRENT"}</strong>
+          <small>Protected read + send authority</small>
+        </article>
+        <article>
+          <span>2 · Controlled payout</span>
+          <strong>{settlementWithdrawal ? "COMPLETE" : connectionReady ? "NEXT" : "LOCKED"}</strong>
+          <small>One real bounded payment</small>
+        </article>
+        <article>
+          <span>3 · Receipt</span>
+          <strong>{receiptState.receiptProofCurrent ? "COMPLETE" : settlementWithdrawal && receiptState.payoutProofCurrent ? "NEXT" : "LOCKED"}</strong>
+          <small>Same payment observed at destination</small>
+        </article>
       </section>
 
-      <section className="admin-kpi-grid">
-        <article className={`admin-kpi ${probe.readKeyPresent ? "positive" : "danger"}`}><span>Read-only key</span><strong>{probe.readKeyPresent ? "Configured" : "Missing"}</strong><small>FAUCETPAY_READ_KEY · read scope only</small></article>
-        <article className="admin-kpi"><span>Payout asset</span><strong>{probe.asset}</strong><small>{probe.assetSupported === null ? "Not queried" : probe.assetSupported ? "Confirmed live" : "Not confirmed"}</small></article>
-        <article className={`admin-kpi ${probe.inferredUnitScale ? "positive" : "danger"}`}><span>Inferred unit scale</span><strong>{integer(probe.inferredUnitScale)}</strong><small>{probe.inferredDecimals === null ? "Unresolved" : `${probe.inferredDecimals} decimal places`}</small></article>
-        <article className={`admin-kpi ${readEvidenceCurrent ? "positive" : "danger"}`}><span>Fingerprint proof</span><strong>{readEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong><small>Verifier schema + read key + exact payout pack</small></article>
-      </section>
-
-      <section className="admin-panel">
-        <div className="app-section-head"><div><span className="app-eyebrow">Live evidence</span><h2>Economic + unit contract</h2></div></div>
-        <div className="admin-secondary-grid">
-          <article><span>Configured internal credits</span><strong>{integer(probe.configuredPackCredits)}</strong></article>
-          <article><span>Expected internal credits</span><strong>{integer(probe.expectedPackCredits)}</strong></article>
-          <article><span>Credits match label</span><strong>{probe.packMatchesCredits === null ? "UNPROVEN" : probe.packMatchesCredits ? "YES" : "NO"}</strong></article>
-          <article><span>Configured pack units</span><strong>{integer(probe.configuredPackUnits)}</strong></article>
-          <article><span>Expected pack units</span><strong>{integer(probe.expectedPackUnits)}</strong></article>
-          <article><span>Units match live scale</span><strong>{probe.packMatchesScale === null ? "UNPROVEN" : probe.packMatchesScale ? "YES" : "NO"}</strong></article>
-          <article><span>Live balance · smallest units</span><strong>{integer(probe.balanceSmallestUnits)}</strong></article>
-          <article><span>Live balance · decimal</span><strong>{probe.balanceDisplay === null ? "—" : probe.balanceDisplay.toLocaleString("en-US", { maximumFractionDigits: 12 })}</strong></article>
-          <article><span>Send key</span><strong>Not inspected</strong></article>
-        </div>
-        <p className="admin-panel-note">{probe.detail}</p>
-        {verified
-          ? <p className="admin-panel-note"><strong>Automatic check ready.</strong> Read-only evidence is verified as part of the single connection action; no separate proof step is required.</p>
-          : <p className="admin-panel-note"><strong>Automatic check needs attention.</strong> PulseCircuit will not complete the connection until the live read-only rail proves the configured asset, economics and provider units.</p>}
-      </section>
-
-      <section className="admin-panel">
-        <div className="app-section-head">
-          <div><span className="app-eyebrow">FaucetPay</span><h2>{readEvidenceCurrent && sendScopeEvidenceCurrent ? "Connection complete" : "One final confirmation"}</h2></div>
-          <span className={`admin-badge ${readEvidenceCurrent && sendScopeEvidenceCurrent ? "" : "proof"}`}>{readEvidenceCurrent && sendScopeEvidenceCurrent ? "CONNECTED" : "ACTION REQUIRED"}</span>
-        </div>
-        <p className="admin-panel-note">{readEvidenceCurrent && sendScopeEvidenceCurrent
-          ? "The protected FaucetPay connection is current. PulseCircuit will invalidate this proof automatically if the bound payout configuration changes."
-          : "PulseCircuit already handles the live read check, credential separation, payout-pack validation, daily-cap policy and evidence recording. You only confirm the provider-side settings that FaucetPay does not expose through its API."}</p>
-        <div className="admin-secondary-grid">
-          <article><span>Automatic verification</span><strong>{verified ? "READY" : "NEEDS ATTENTION"}</strong><small>No payout call.</small></article>
-          <article><span>Credential isolation</span><strong>{sendAuthority.credentialsSeparated ? "PROTECTED" : "NEEDS ATTENTION"}</strong><small>Read and payment credentials remain separate.</small></article>
-          <article><span>Daily protection</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "UNAVAILABLE"}</strong><small>{sendAuthority.dailyLimitSource === "configured_override" ? "Explicit override" : sendAuthority.dailyLimitSource === "one_pack_default" ? "Automatic: one payout pack/day" : "Waiting for payout pack"}</small></article>
-        </div>
-        {readEvidenceCurrent && sendScopeEvidenceCurrent ? (
-          <p className="admin-panel-note"><strong>Nothing else to configure here.</strong> A real controlled withdrawal and exact destination receipt remain separate launch gates.</p>
-        ) : (
+      {stage === "connection" ? (
+        <section className="admin-panel">
+          <div className="app-section-head">
+            <div><span className="app-eyebrow">Current action</span><h2>Complete the FaucetPay connection.</h2></div>
+            <span className="admin-badge proof">ONE CONFIRMATION</span>
+          </div>
+          <p className="admin-panel-note">PulseCircuit automatically checks the live read rail, payout pack, credential separation and daily protection. You only confirm the provider-side setting that FaucetPay does not expose through its API.</p>
+          <div className="admin-secondary-grid">
+            <article><span>Automatic verification</span><strong>{verified ? "READY" : "NEEDS ATTENTION"}</strong><small>No payout call.</small></article>
+            <article><span>Credential isolation</span><strong>{sendAuthority.credentialsSeparated ? "PROTECTED" : "NEEDS ATTENTION"}</strong><small>Read and payment credentials remain separate.</small></article>
+            <article><span>Daily protection</span><strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "UNAVAILABLE"}</strong><small>{sendAuthority.dailyLimitSource === "configured_override" ? "Explicit override" : sendAuthority.dailyLimitSource === "one_pack_default" ? "Automatic: one payout pack/day" : "Waiting for payout pack"}</small></article>
+          </div>
           <form action={completeFaucetPayConnection}>
             <input type="hidden" name="expected_daily_limit_usd" value={sendAuthority.dailyLimitUsd ?? ""} />
-            <label className="admin-panel-note"><input type="checkbox" name="setup_confirmation" value="FAUCETPAY_SEND_SETUP_CONFIRMED" required /> I checked in FaucetPay that the PulseCircuit payment key has <strong>Send only</strong> permission and a daily payout cap of <strong>{sendAuthority.dailyLimitUsd ? usd(sendAuthority.dailyLimitUsd) : "the amount shown above"}</strong>.</label>
+            <label className="admin-panel-note"><input type="checkbox" name="setup_confirmation" value="FAUCETPAY_SEND_SETUP_CONFIRMED" required /> I checked in FaucetPay that the PulseCircuit payment key has <strong>Send only</strong> permission and the exact daily cap shown above.</label>
             <button className="button" type="submit" disabled={!verified || !sendAuthority.ready}>Complete FaucetPay connection</button>
-            <p className="admin-panel-note">This single action automatically refreshes the read-only proof when needed and records the protected send-authority proof. It never calls the FaucetPay payout endpoint.</p>
+            <p className="admin-panel-note">It never calls the FaucetPay payout endpoint.</p>
           </form>
-        )}
-        <details className="admin-panel-note">
-          <summary>Technical details</summary>
-          <p>Read credential: <strong>{readKeyPresent ? "configured" : "missing"}</strong> · Send credential: <strong>{sendKeyPresent ? "configured" : "missing"}</strong> · Read proof: <strong>{readEvidenceCurrent ? "current" : "missing/stale"}</strong> · Send proof: <strong>{sendScopeEvidenceCurrent ? "current" : "missing/stale"}</strong>.</p>
-          <p>FaucetPay does not expose a documented scope-introspection endpoint, so provider-side Send-only permission and daily cap still require one human confirmation. All other checks are server-enforced and fail closed.</p>
-        </details>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="admin-panel">
-        <div className="app-section-head">
-          <div><span className="app-eyebrow">Final settlement truth</span><h2>Exact payout → actual destination receipt</h2></div>
-          <span className={`admin-badge ${receiptState.receiptProofCurrent ? "" : settlementWithdrawal && receiptState.payoutProofCurrent ? "proof" : "setup"}`}>{receiptState.receiptProofCurrent ? "RECEIPT PROVEN" : settlementWithdrawal ? "AWAITING RECEIPT" : "NO PAID WITHDRAWAL"}</span>
-        </div>
-        <p className="admin-panel-note">A FaucetPay success response proves provider-side payout acceptance, not that the destination actually received spendable funds. The provider payout proof and receipt proof must now resolve to the same exact paid withdrawal. PRODUCT_READY remains blocked until that payout is observed at the destination and explicitly confirmed here.</p>
-        {settlementWithdrawal ? (
+      {stage === "controlled-test" ? (
+        <section className="admin-panel">
+          <div className="app-section-head">
+            <div><span className="app-eyebrow">Current action</span><h2>Prepare one controlled payout test.</h2></div>
+            <span className="admin-badge proof">NO MONEY MOVED HERE</span>
+          </div>
+          <p className="admin-panel-note">The connection is proven. The next financial step is deliberately separate: review the smallest approved test and only fund it after explicit operator authorization.</p>
+          <div className="admin-secondary-grid">
+            <article><span>Configured payout</span><strong>{integer(plan.payoutCredits)} credits</strong><small>{usd(plan.payoutUsd)}</small></article>
+            <article><span>Current Treasury available</span><strong>{integer(plan.currentTreasuryAvailableCredits)} credits</strong></article>
+            <article><span>Funding needed from zero</span><strong>{integer(plan.treasuryDeficitCredits)} credits</strong><small>This is planning, not approval.</small></article>
+          </div>
+          <p className="admin-panel-note"><strong>Next financial action requires explicit approval.</strong> This page does not fund Treasury, reserve credits or send a payout.</p>
+          <Link className="button button-secondary" href="/admin">Back to Ops</Link>
+        </section>
+      ) : null}
+
+      {stage === "reconcile" && settlementWithdrawal ? (
+        <section className="admin-panel">
+          <div className="app-section-head">
+            <div><span className="app-eyebrow">Current action</span><h2>Bind proof to the payment that already happened.</h2></div>
+            <span className="admin-badge proof">SAFE RECONCILIATION</span>
+          </div>
           <div className="admin-secondary-grid">
             <article><span>Paid withdrawal</span><strong>{settlementWithdrawal.id.slice(0, 8)}…</strong></article>
-            <article><span>Provider</span><strong>FaucetPay</strong></article>
             <article><span>Asset</span><strong>{settlementWithdrawal.asset}</strong></article>
-            <article><span>Credits settled</span><strong>{integer(settlementWithdrawal.amount_credits)}</strong></article>
-            <article><span>Provider units</span><strong>{integer(settlementWithdrawal.payout_amount_units)}</strong></article>
-            <article><span>Provider payout proof</span><strong>{receiptState.payoutProofCurrent ? "CURRENT · EXACT WITHDRAWAL" : "MISSING / STALE"}</strong></article>
+            <article><span>Provider payout proof</span><strong>MISSING / STALE</strong><small>Must resolve to the EXACT WITHDRAWAL.</small></article>
           </div>
-        ) : null}
-        {settlementWithdrawal && !receiptState.payoutProofCurrent ? (
           <form action={reconcileFaucetPayPayoutProof}>
             <input type="hidden" name="withdrawal_id" value={settlementWithdrawal.id} />
-            <p className="admin-panel-note">Rebuild provider payout proof from this exact persisted <code>paid</code> withdrawal. This reconciliation does not call FaucetPay and cannot resend funds.</p>
-            <button className="button" type="submit">Reconcile provider payout proof</button>
+            <p className="admin-panel-note">This rebuilds proof from the persisted paid withdrawal. It does not call FaucetPay and cannot resend funds.</p>
+            <button className="button" type="submit">Reconcile payment proof</button>
           </form>
-        ) : null}
-        {!receiptState.receiptProofCurrent && receiptState.payoutWithdrawal && receiptState.payoutProofCurrent ? (
+        </section>
+      ) : null}
+
+      {stage === "receipt" && receiptState.payoutWithdrawal ? (
+        <section className="admin-panel">
+          <div className="app-section-head">
+            <div><span className="app-eyebrow">Current action</span><h2>Confirm the destination actually received the payment.</h2></div>
+            <span className="admin-badge proof">FINAL PAYMENT PROOF</span>
+          </div>
+          <div className="admin-secondary-grid">
+            <article><span>Paid withdrawal</span><strong>{receiptState.payoutWithdrawal.id.slice(0, 8)}…</strong></article>
+            <article><span>Asset</span><strong>{receiptState.payoutWithdrawal.asset}</strong></article>
+            <article><span>Provider proof</span><strong>CURRENT · EXACT WITHDRAWAL</strong></article>
+          </div>
           <form action={confirmFaucetPayReceipt}>
             <input type="hidden" name="withdrawal_id" value={receiptState.payoutWithdrawal.id} />
             <label className="admin-panel-note"><input type="checkbox" name="receipt_confirmation" value="RECEIVED" required /> I personally verified that this exact controlled payout is visible as received at the configured destination.</label>
             <button className="button" type="submit">Confirm actual receipt</button>
           </form>
-        ) : null}
-        {receiptState.receiptProofCurrent ? <p className="admin-panel-note"><strong>Current payout → receipt evidence chain is exact and fingerprint-bound.</strong> It becomes stale if the payout configuration or bound paid withdrawal changes.</p> : null}
-      </section>
+        </section>
+      ) : null}
 
-      <section className="admin-panel">
+      {stage === "complete" ? (
+        <section className="admin-decision-card">
+          <span className="app-eyebrow">Payment path</span>
+          <h2>Connection, payout and receipt are proven.</h2>
+          <p>The protected FaucetPay path is bound to real evidence. Any relevant configuration change makes the corresponding proof stale automatically.</p>
+          <Link className="button button-secondary" href="/admin">Back to Ops</Link>
+        </section>
+      ) : null}
+
+      <details className="admin-panel">
+        <summary><strong>Advanced diagnostics</strong> · economic, unit and planning evidence</summary>
         <div className="app-section-head">
-          <div><span className="app-eyebrow">Read-only planning</span><h2>Controlled payout test feasibility</h2></div>
-          <span className={`admin-badge ${plan.feasibility === "SAME_DAY" ? "" : plan.feasibility === "MULTI_DAY" ? "proof" : "setup"}`}>{feasibilityLabel(plan.feasibility)}</span>
+          <div><span className="app-eyebrow">Live evidence</span><h2>Technical details</h2></div>
+          <span className={statusTone(probe.state)}>{probe.state.replaceAll("_", " ")}</span>
         </div>
         <div className="admin-secondary-grid">
-          <article><span>Candidate payout pack</span><strong>{integer(plan.payoutCredits)} credits</strong><small>{usd(plan.payoutUsd)}</small></article>
-          <article><span>Hourly Pulse reward</span><strong>{integer(plan.pulseRewardCredits)} credits</strong><small>{plan.pulseIntervalMinutes === null ? "Interval unavailable" : `Every ${plan.pulseIntervalMinutes} rolling minutes · Treasury ${plan.treasuryCode ?? "—"}`}</small></article>
+          <article><span>Read credential</span><strong>{readKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
+          <article><span>Send credential</span><strong>{sendKeyPresent ? "CONFIGURED" : "MISSING"}</strong></article>
+          <article><span>Read proof</span><strong>{readEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
+          <article><span>Send proof</span><strong>{sendScopeEvidenceCurrent ? "CURRENT" : "MISSING / STALE"}</strong></article>
+          <article><span>Payout asset</span><strong>{probe.asset}</strong></article>
+          <article><span>Unit scale</span><strong>{integer(probe.inferredUnitScale)}</strong></article>
+          <article><span>Configured credits</span><strong>{integer(probe.configuredPackCredits)}</strong></article>
+          <article><span>Expected credits</span><strong>{integer(probe.expectedPackCredits)}</strong></article>
+          <article><span>Configured provider units</span><strong>{integer(probe.configuredPackUnits)}</strong></article>
+          <article><span>Expected provider units</span><strong>{integer(probe.expectedPackUnits)}</strong></article>
+          <article><span>Live balance · units</span><strong>{integer(probe.balanceSmallestUnits)}</strong></article>
+          <article><span>Test feasibility</span><strong>{feasibilityLabel(plan.feasibility)}</strong></article>
           <article><span>Claims from zero</span><strong>{integer(plan.claimsFromZero)}</strong></article>
-          <article><span>Theoretical minimum elapsed</span><strong>{duration(plan.minimumElapsedMinutes)}</strong><small>First claim immediately eligible; all later claims at the earliest valid rolling interval.</small></article>
-          <article><span>Total Treasury credits needed</span><strong>{integer(plan.treasuryCreditsRequired)}</strong><small>{plan.treasuryOvershootCredits && plan.treasuryOvershootCredits > 0 ? `${plan.treasuryOvershootCredits} credit(s) above the exact pack because claims are indivisible` : "No claim-size overshoot"}</small></article>
-          <article><span>Fastest UTC-day claims</span><strong>{integer(plan.fastestDayClaimCount)}</strong><small>Arithmetic maximum for this isolated test path under the configured interval.</small></article>
-          <article><span>Minimum daily budget</span><strong>{integer(plan.minimumDailyBudgetCredits)}</strong><small>Current: {integer(plan.currentDailyBudgetCredits)} · deficit {integer(plan.dailyBudgetDeficitCredits)}</small></article>
-          <article><span>Minimum user/day cap</span><strong>{integer(plan.minimumUserDailyCapCredits)}</strong><small>Current: {integer(plan.currentUserDailyCapCredits)} · deficit {integer(plan.userDailyCapDeficitCredits)}</small></article>
-          <article><span>Current Treasury available</span><strong>{integer(plan.currentTreasuryAvailableCredits)}</strong><small>{plan.treasuryEnabled === null ? "State unavailable" : `${plan.treasuryEnabled ? "enabled" : "disabled"} · kill switch ${plan.treasuryKillSwitch ? "ON" : "OFF"}`}</small></article>
-          <article><span>Total funding deficit</span><strong>{integer(plan.treasuryDeficitCredits)}</strong></article>
+          <article><span>Theoretical minimum</span><strong>{duration(plan.minimumElapsedMinutes)}</strong></article>
+          <article><span>Treasury required</span><strong>{integer(plan.treasuryCreditsRequired)} credits</strong></article>
+          <article><span>Treasury deficit</span><strong>{integer(plan.treasuryDeficitCredits)} credits</strong></article>
         </div>
+        <p className="admin-panel-note">{probe.detail}</p>
         <p className="admin-panel-note">{plan.detail}</p>
-        <p className="admin-panel-note"><strong>Advisory only.</strong> This planner does not modify the payout pack, fund Treasury, change budgets or caps, mint credits, open the kill switch or call FaucetPay. A provider minimum is not inferred from this arithmetic.</p>
-      </section>
-
-      <section className="admin-decision-card">
-        <span className="app-eyebrow">Decision</span>
-        <h2>{verified && readEvidenceCurrent && sendScopeEvidenceCurrent ? "Read rail and least-privilege send authority are proven." : "Financial send remains blocked."}</h2>
-        <p>{verified && readEvidenceCurrent && sendScopeEvidenceCurrent ? "The read rail, payout economics, provider units and send-only operator attestation are fingerprint-bound. A controlled real withdrawal and exact payout→receipt proof chain are still required before PRODUCT_READY." : verified && readEvidenceCurrent ? "Read-only proof is closed, but send-key least privilege still needs explicit provider-dashboard attestation." : verified ? "The live rail passes, but the operator must explicitly record the current read fingerprint before send authority can advance." : "Do not exercise a payout send path until the live preflight reaches READ_ONLY_VERIFIED and its current fingerprint is recorded."}</p>
-        <Link className="button button-secondary" href="/admin">Back to operations</Link>
-      </section>
+        <p className="admin-panel-note"><strong>Diagnostics are read-only.</strong> They do not fund Treasury, change budgets, mint credits, open a kill switch or send a payout.</p>
+      </details>
     </AppShell>
   );
 }
