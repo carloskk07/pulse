@@ -74,6 +74,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
     checks.push({ id: "auth-hardening-proof", label: "Supabase Auth leaked-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
     checks.push({ id: "password-recovery-proof", label: "Hosted password recovery proof", pass: false, detail: "Real recovery evidence cannot be verified without trusted database authority." });
+    checks.push({ id: "faucetpay-send-scope-proof", label: "FaucetPay send-key least privilege", pass: false, detail: "Send-key scope evidence cannot be verified without trusted database authority." });
     checks.push({ id: "base-loop-continuity", label: "Same-account base loop", pass: false, detail: "The authoritative same-account Pulse → Wallet → payout chain cannot be verified without trusted database authority." });
     checks.push({ id: "payout-receipt-proof", label: "Actual payout receipt", pass: false, detail: "Destination receipt cannot be verified without trusted database authority." });
     return {
@@ -129,6 +130,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const passwordRecoveryProof = !proofResult.error && releaseEvidenceMatches(proof, "password_recovery");
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
   const faucetPayReadProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_read");
+  const faucetPaySendScopeProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_send_scope");
   const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
   const receiptState = await getFaucetPayReceiptProofState(admin, proof);
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
@@ -271,6 +273,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     detail: faucetPayReadProof
       ? "Current FaucetPay asset and payout pack have fingerprint-bound live read-only unit evidence."
       : "The live FaucetPay read-only preflight must prove and record the exact unit scale before payout authority can be considered ready.",
+  });
+  checks.push({
+    id: "faucetpay-send-scope-proof",
+    label: "FaucetPay send-key least privilege",
+    pass: faucetPaySendScopeProof,
+    detail: faucetPaySendScopeProof
+      ? "The current send credential and payout pack have fingerprint-bound operator evidence for send-only scope and a provider-side daily payout cap."
+      : "Confirm the current send key is send-only with a daily cap in FaucetPay, then record the attestation in the private cockpit.",
   });
   checks.push({
     id: "pulse-proof",
