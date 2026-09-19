@@ -46,13 +46,33 @@ forbidText("lib/release-readiness.ts", [
   'admin.rpc("release_hourly_pulse_scale_contract")',
   'admin.rpc("release_user_balance_materialization_contract")',
 ]);
-requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 50", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0050_release_runtime_contract_snapshot.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
+requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 51", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0051_controlled_technical_readiness_snapshot.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
 requireText("lib/product-launch-readiness.ts", ["getCurrentReleaseReadiness", "releaseBlockers", "governanceAdvisories", "publicProductBlockers", "publicAccessBlockers", "publicExpansionBlockers", 'new Set(["public-access", "public-fair-share"])', "technicalReady", "publicLaunchReady", "product.publicReady"]);
 requireText("lib/product-readiness.ts", ["PRODUCT_SETUP_CHECK_IDS", '"payout-pack-authority"', "getCanonicalFaucetPayPackAuthority", '"send-authority-config"', '"hourly-pulse-config"', '"public-access"', '"public-fair-share"', '"treasury"', "getFaucetPaySendAuthorityConfig", "deriveTreasuryDailyFundingState", '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proof, "faucetpay_send_scope")', "hasProductSetupBlocker", "!item.pass", "dailyBudgetCredits >= rewardCredits", "maxUserDailyCredits >= rewardCredits", "maxUserDailyCredits * 2 <= dailyBudgetCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.gte("created_at", utcTodayStartIso)', '.in("status", ["reserved", "consumed"])', "dailyFundingState.dailyCommittedCredits", "dailyFundingState.remainingDailyBudgetCredits", "dailyFundingState.availableCredits >= remainingDailyBudget", "current UTC day's remaining", "config?.pilot_mode === false", "does not block technical readiness", "publicReady", "publicBlockers", 'new Set(["public-access", "public-fair-share"])']);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
 forbidText("lib/product-readiness.ts", ["availableTreasury >= rewardCredits", "availableTreasury >= dailyBudgetCredits", "covering at least one full"]);
 requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36", 'admin.rpc("release_hourly_pulse_pilot_contract")', "schemaVersion >= HOURLY_PILOT_SCHEMA_VERSION"]);
-requireText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker", "productSetupBlocked", "hourlyPilot.ok", 'service: "pulsercuit"', 'scope: "controlled-technical"', '"PULSECIRCUIT_READINESS_BLOCKERS"', "releaseBlockingIds", "productBlockingIds", 'new Set(["public-access", "public-fair-share"])', "READINESS_CACHE_TTL_MS = 3_000", "cachedReadiness", "readinessInFlight", 'source: "coalesced"', '"X-Pulse-Readiness-Cache"', '"Cache-Control": "no-store"']);
+requireText("app/api/readiness/route.ts", ["getControlledTechnicalReadiness", 'service: "pulsercuit"', 'scope: "controlled-technical"', '"PULSECIRCUIT_READINESS_BLOCKERS"', "blockingIds", "READINESS_CACHE_TTL_MS = 3_000", "cachedReadiness", "readinessInFlight", 'source: "coalesced"', '"X-Pulse-Readiness-Cache"', '"Cache-Control": "no-store"']);
+forbidText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getProductReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker"]);
+requireText("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("controlled_technical_readiness_snapshot")',
+  "CONTROLLED_READINESS_SCHEMA_VERSION = 51",
+  'CONTROLLED_READINESS_SCHEMA_MIGRATION = "0051_controlled_technical_readiness_snapshot.sql"',
+  "runtimeContractsPass",
+  'releaseEvidenceMatches(proof, "supabase_auth_hardening")',
+  'releaseEvidenceMatches(proof, "password_recovery")',
+  'releaseEvidenceMatches(proof, "turnstile")',
+  'releaseEvidenceMatches(proof, "faucetpay_read")',
+  'releaseEvidenceMatches(proof, "faucetpay_send_scope")',
+  "faucetPayPayoutEvidenceMatches",
+  "faucetPayReceiptEvidenceMatches",
+  "deriveTreasuryDailyFundingState",
+  "payout-pack-authority",
+  "base-loop-continuity",
+  'state: "SETUP_REQUIRED"',
+  'state: "READY_FOR_EXTERNAL_PROOF"',
+  'state: "READY"'
+]);
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
 requireText("app/api/release-schema/route.ts", ['.from("app_config")', '.eq("key", "release_schema")', '"Cache-Control": "no-store"', 'schema_version: schemaVersion', 'schema_migration: schemaMigration', 'service: "pulsercuit"', 'available: true']);
 forbidText("app/api/release-schema/route.ts", ["process.env", "release_external_proof", "faucetpay", "treasury", "profiles", "withdrawals", "ledger_entries"]);
@@ -227,6 +247,25 @@ requireText("supabase/migrations/0050_release_runtime_contract_snapshot.sql", [
   "grant execute on function public.release_runtime_contract_snapshot()",
   "to service_role",
   "version', 50"
+]);
+requireText("supabase/migrations/0051_controlled_technical_readiness_snapshot.sql", [
+  "create or replace function public.controlled_technical_readiness_snapshot()",
+  "returns jsonb",
+  "security invoker",
+  "release_runtime_contract_snapshot()",
+  "faucetpay_payout_pack_authority",
+  "daily_claim_credits",
+  "daily_reservation_credits",
+  "payout_withdrawal",
+  "receipt_withdrawal",
+  "chain_claim",
+  "chain_claim_ledger",
+  "chain_withdrawal_ledger",
+  "'snapshot_authority'",
+  "not has_function_privilege(",
+  "grant execute on function public.controlled_technical_readiness_snapshot()",
+  "to service_role",
+  "version', 51"
 ]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 {
