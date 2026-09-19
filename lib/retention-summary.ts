@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 
 export type WeeklyPulseSummary = {
   available: boolean;
@@ -25,11 +25,8 @@ function dayKey(value: string) {
 }
 
 export async function getWeeklyPulseSummary(): Promise<WeeklyPulseSummary> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return EMPTY;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return EMPTY;
+  const { supabase, user } = await getCurrentUserContext();
+  if (!supabase || !user) return EMPTY;
 
   const now = Date.now();
   const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
