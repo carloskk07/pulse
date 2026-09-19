@@ -1,0 +1,154 @@
+name: Protected Route Capacity Probe
+
+on:
+  push:
+    branches:
+      - perf/protected-route-post-jwks
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulsercuit-protected-route-capacity
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.2
+          package-manager-cache: false
+
+      - name: Prove canonical production is this main
+        shell: bash
+        env:
+          GITHUB_API_TOKEN: ${{ github.token }}
+        run: |
+          main_file="$RUNNER_TEMP/main.json"
+          release_file="$RUNNER_TEMP/release.json"
+
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GITHUB_API_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            --output "$main_file" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/main"
+
+          curl --fail --silent --show-error \
+            --header "Cache-Control: no-cache" \
+            --output "$release_file" \
+            "https://pulsercuit.pro/release.json?protected-probe=$GITHUB_RUN_ID"
+
+          node - "$main_file" "$release_file" <<'NODE'
+          const fs = require("node:fs");
+          const main = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const release = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          if (release.service !== "pulsercuit" || release.git_sha !== main.sha) {
+            throw new Error(`Production/main mismatch: main=${main.sha} production=${release.git_sha}`);
+          }
+          if (main.sha !== "3257848bc9f1ce0aec05890f497de4b5eeaa8dc9") {
+            throw new Error(`Unexpected main moved during probe setup: ${main.sha}`);
+          }
+          console.log(`Protected-route target verified: ${main.sha}`);
+          NODE
+
+      - name: Run protected dashboard bursts
+        run: |
+          node <<'NODE'
+          const https = require("node:https");
+          const { performance } = require("node:perf_hooks");
+
+          const agent = new https.Agent({
+            keepAlive: true,
+            maxSockets: 1200,
+            maxFreeSockets: 256,
+            timeout: 15000,
+          });
+
+          function percentile(values, pct) {
+            const sorted = [...values].sort((a,b)=>a-b);
+            return sorted[Math.min(sorted.length-1, Math.max(0, Math.ceil((pct/100)*sorted.length)-1))];
+          }
+
+          function requestOne(n) {
+            return new Promise((resolve) => {
+              const start = performance.now();
+              const req = https.request(
+                "https://pulsercuit.pro/dashboard?protected-probe=" + process.env.GITHUB_RUN_ID + "&n=" + n,
+                {
+                  method: "GET",
+                  agent,
+                  headers: {
+                    "user-agent": "pulsercuit-protected-route-capacity/1.0",
+                    "cache-control": "no-cache",
+                    accept: "text/html,*/*",
+                  },
+                },
+                (res) => {
+                  res.resume();
+                  res.on("end", () => {
+                    const location = String(res.headers.location ?? "");
+                    const redirectedToAuth =
+                      [302,303,307,308].includes(res.statusCode ?? 0)
+                      && location.includes("/auth")
+                      && location.includes("next=");
+                    resolve({
+                      ok: redirectedToAuth,
+                      status: res.statusCode ?? 0,
+                      location,
+                      ms: performance.now()-start,
+                    });
+                  });
+                },
+              );
+              req.setTimeout(15000, () => req.destroy(new Error("request_timeout")));
+              req.on("error", (error) => resolve({
+                ok:false,status:0,location:"",ms:performance.now()-start,error:error.message
+              }));
+              req.end();
+            });
+          }
+
+          (async()=>{
+            const stages=[100,250,500,1000];
+            let serial=0;
+            for(const concurrency of stages){
+              const start=performance.now();
+              const results=await Promise.all(Array.from({length:concurrency},()=>requestOne(++serial)));
+              const duration=performance.now()-start;
+              const latency=results.map(r=>r.ms);
+              const successes=results.filter(r=>r.ok).length;
+              const failures=concurrency-successes;
+              const statuses={};
+              for(const r of results) statuses[r.status]=(statuses[r.status]??0)+1;
+              const result={
+                type:"protected_dashboard_stage",
+                concurrency,
+                successes,
+                failures,
+                errorRate:failures/concurrency,
+                durationMs:Number(duration.toFixed(1)),
+                throughputRps:Number((successes/(duration/1000)).toFixed(1)),
+                p50Ms:Number(percentile(latency,50).toFixed(1)),
+                p95Ms:Number(percentile(latency,95).toFixed(1)),
+                p99Ms:Number(percentile(latency,99).toFixed(1)),
+                maxMs:Number(Math.max(...latency).toFixed(1)),
+                statuses,
+              };
+              console.log(JSON.stringify(result));
+              if(result.errorRate>0.01) throw new Error("Protected-route error rate exceeded 1%.");
+              if(result.p95Ms>3000) throw new Error("Protected-route p95 exceeded 3000ms.");
+              await new Promise(r=>setTimeout(r,3000));
+            }
+
+            const health=await fetch("https://pulsercuit.pro/api/health",{headers:{"cache-control":"no-cache"}});
+            if(!health.ok) throw new Error("Post-probe health failed: HTTP "+health.status);
+            console.log(JSON.stringify({type:"post_health",status:health.status,ok:true}));
+          })().catch(error=>{
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
