@@ -28,7 +28,7 @@ if (existsSync("lib/mock-data.ts")) {
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha", 'body.scope !== "controlled-technical"', "Controlled technical status"]);
-requireText("lib/release-readiness.ts", ['admin.rpc(\n        "release_runtime_contract_snapshot"', "runtimeSnapshot.snapshot_authority === true", "runtimeSnapshot.economics_ok === true", "runtimeSnapshot.referral_ok === true", "runtimeSnapshot.authenticated_read_scope === true", "runtimeSnapshot.withdrawal_settlement === true", "runtimeSnapshot.treasury_backing === true", "runtimeSnapshot.hourly_scale === true", "runtimeSnapshot.user_balance_materialization === true", "runtimeSnapshot.reward_snapshot === true", "runtimeSnapshot.wallet_snapshot === true", "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
+requireText("lib/release-readiness.ts", ['admin.rpc(\n        "release_runtime_contract_snapshot"', "runtimeSnapshot.snapshot_authority === true", "runtimeSnapshot.economics_ok === true", "runtimeSnapshot.referral_ok === true", "runtimeSnapshot.authenticated_read_scope === true", "runtimeSnapshot.withdrawal_settlement === true", "runtimeSnapshot.treasury_backing === true", "runtimeSnapshot.hourly_scale === true", "runtimeSnapshot.user_balance_materialization === true", "runtimeSnapshot.reward_snapshot === true", "runtimeSnapshot.wallet_snapshot === true", "runtimeSnapshot.invite_snapshot === true", "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
 forbidText("lib/release-readiness.ts", [
   'admin.rpc("release_authenticated_read_scope_contract")',
   'admin.rpc("release_withdrawal_read_contract")',
@@ -46,7 +46,7 @@ forbidText("lib/release-readiness.ts", [
   'admin.rpc("release_hourly_pulse_scale_contract")',
   'admin.rpc("release_user_balance_materialization_contract")',
 ]);
-requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 54", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0054_wallet_snapshot_compaction.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
+requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 55", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0055_invite_snapshot_compaction.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
 requireText("lib/product-launch-readiness.ts", ["getCurrentReleaseReadiness", "releaseBlockers", "governanceAdvisories", "publicProductBlockers", "publicAccessBlockers", "publicExpansionBlockers", 'new Set(["public-access", "public-fair-share"])', "technicalReady", "publicLaunchReady", "product.publicReady"]);
 requireText("lib/product-readiness.ts", ["PRODUCT_SETUP_CHECK_IDS", '"payout-pack-authority"', "getCanonicalFaucetPayPackAuthority", '"send-authority-config"', '"hourly-pulse-config"', '"public-access"', '"public-fair-share"', '"treasury"', "getFaucetPaySendAuthorityConfig", "deriveTreasuryDailyFundingState", '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proof, "faucetpay_send_scope")', "hasProductSetupBlocker", "!item.pass", "dailyBudgetCredits >= rewardCredits", "maxUserDailyCredits >= rewardCredits", "maxUserDailyCredits * 2 <= dailyBudgetCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.gte("created_at", utcTodayStartIso)', '.in("status", ["reserved", "consumed"])', "dailyFundingState.dailyCommittedCredits", "dailyFundingState.remainingDailyBudgetCredits", "dailyFundingState.availableCredits >= remainingDailyBudget", "current UTC day's remaining", "config?.pilot_mode === false", "does not block technical readiness", "publicReady", "publicBlockers", 'new Set(["public-access", "public-fair-share"])']);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
@@ -56,8 +56,8 @@ requireText("app/api/readiness/route.ts", ["getControlledTechnicalReadiness", 's
 forbidText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getProductReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker"]);
 requireText("lib/controlled-technical-readiness.ts", [
   'admin.rpc("controlled_technical_readiness_snapshot")',
-  "CONTROLLED_READINESS_SCHEMA_VERSION = 54",
-  'CONTROLLED_READINESS_SCHEMA_MIGRATION = "0054_wallet_snapshot_compaction.sql"',
+  "CONTROLLED_READINESS_SCHEMA_VERSION = 55",
+  'CONTROLLED_READINESS_SCHEMA_MIGRATION = "0055_invite_snapshot_compaction.sql"',
   "snapshot.authority_runtime_lock === true",
   "releaseAuthority.contracts_passed === true",
   "numberValue(releaseAuthority.schema_version) === CONTROLLED_READINESS_SCHEMA_VERSION",
@@ -404,6 +404,50 @@ forbidText("app/wallet/page.tsx", [
   "hasWithdrawalPilotAccess",
   '.from("withdrawals")'
 ]);
+requireText("supabase/migrations/0055_invite_snapshot_compaction.sql", [
+  "create or replace function public.current_user_invite_state()",
+  "security invoker",
+  "auth.uid()",
+  "from public.referrals",
+  "from public.ledger_entries",
+  "grant execute on function public.current_user_invite_state()",
+  "to authenticated",
+  "create or replace function public.current_invite_runtime_state()",
+  "referral_reward",
+  "grant execute on function public.current_invite_runtime_state()",
+  "to service_role",
+  "create or replace function public.release_invite_snapshot_contract()",
+  "'invite_snapshot', public.release_invite_snapshot_contract()",
+  "v55 release authority refused",
+  "schema_version = 55",
+  "0055_invite_snapshot_compaction.sql",
+  "version', 55"
+]);
+forbidText("supabase/migrations/0055_invite_snapshot_compaction.sql", [
+  "security definer",
+  "grant execute on function public.current_user_invite_state()\n  to anon",
+  "grant execute on function public.current_invite_runtime_state()\n  to authenticated"
+]);
+requireText("lib/invite-state.ts", [
+  "getInviteState",
+  'supabase.rpc("current_user_invite_state")',
+  'admin.rpc("current_invite_runtime_state")',
+  "rawUser.user_id",
+  "runtime.referral_reward",
+  "inviter_credits",
+  "invitee_credits"
+]);
+requireText("app/invite/page.tsx", ["getInviteState", "signedIn", "referralCode", "referralCredits", "inviterBonus", "inviteeBonus"]);
+forbidText("app/invite/page.tsx", [
+  "createSupabaseAdminClient",
+  "getCurrentUserContext",
+  '.from("profiles")',
+  '.from("referrals")',
+  '.from("ledger_entries")',
+  '.from("app_config")'
+]);
+requireText("lib/pulse-receipt.ts", ["getCurrentUserContext", '.from("pulse_claims")', "RECENT_CLAIM_WINDOW_MS"]);
+forbidText("lib/pulse-receipt.ts", ["supabase.auth.getUser", "createSupabaseServerClient"]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 {
   const source = read(".github/workflows/vercel-prebuilt.yml");
