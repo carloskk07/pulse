@@ -126,14 +126,52 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const availableTreasury = Number(treasury?.funded_credits ?? 0) - Number(treasury?.reserved_credits ?? 0) - Number(treasury?.spent_credits ?? 0);
   const dailyBudgetCredits = Number(treasury?.daily_budget_credits ?? 0);
   const maxUserDailyCredits = Number(treasury?.max_user_daily_credits ?? 0);
-  const treasuryReady = !treasuryResult.error && Boolean(
+
+  const utcTodayStart = new Date();
+  utcTodayStart.setUTCHours(0, 0, 0, 0);
+  const utcTodayStartIso = utcTodayStart.toISOString();
+  let dailyClaimCredits = 0;
+  let dailyReservationCredits = 0;
+  let dailyBudgetStateKnown = false;
+
+  if (treasury?.id) {
+    const [dailyClaimsResult, dailyReservationsResult] = await Promise.all([
+      admin
+        .from("pulse_claims")
+        .select("reward_credits")
+        .eq("treasury_id", treasury.id)
+        .gte("created_at", utcTodayStartIso),
+      admin
+        .from("treasury_reservations")
+        .select("amount_credits")
+        .eq("treasury_id", treasury.id)
+        .gte("created_at", utcTodayStartIso)
+        .in("status", ["reserved", "consumed"]),
+    ]);
+
+    if (!dailyClaimsResult.error && !dailyReservationsResult.error) {
+      dailyClaimCredits = (dailyClaimsResult.data ?? []).reduce(
+        (total, row) => total + Number(row.reward_credits ?? 0),
+        0,
+      );
+      dailyReservationCredits = (dailyReservationsResult.data ?? []).reduce(
+        (total, row) => total + Number(row.amount_credits ?? 0),
+        0,
+      );
+      dailyBudgetStateKnown = true;
+    }
+  }
+
+  const dailyBudgetUsed = dailyClaimCredits + dailyReservationCredits;
+  const remainingDailyBudget = Math.max(dailyBudgetCredits - dailyBudgetUsed, 0);
+  const treasuryReady = !treasuryResult.error && dailyBudgetStateKnown && Boolean(
     treasury &&
     treasury.enabled === true &&
     treasury.kill_switch === false &&
     rewardCredits > 0 &&
     dailyBudgetCredits >= rewardCredits &&
     maxUserDailyCredits >= rewardCredits &&
-    availableTreasury >= dailyBudgetCredits
+    availableTreasury >= remainingDailyBudget
   );
 
   const latestClaim = latestPulseClaimResult.data;
@@ -288,8 +326,8 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     label: "Funded reward treasury",
     pass: treasuryReady,
     detail: treasuryReady
-      ? `${availableTreasury} funded credit(s) remain behind Treasury ${treasuryCode}, covering at least one full ${dailyBudgetCredits}-credit daily budget.`
-      : `Treasury ${treasuryCode || "(unconfigured)"} must be enabled with kill switch open, daily/user limits large enough for one reward, and available real funding covering at least one full daily budget (available ${availableTreasury}, daily budget ${dailyBudgetCredits}).`,
+      ? `${availableTreasury} funded credit(s) remain behind Treasury ${treasuryCode}, covering the current UTC day's remaining ${remainingDailyBudget}-credit budget after ${dailyBudgetUsed}/${dailyBudgetCredits} credit(s) were already committed.`
+      : `Treasury ${treasuryCode || "(unconfigured)"} must be enabled with kill switch open, daily/user limits large enough for one reward, and available real funding covering the current UTC day's remaining budget (available ${availableTreasury}, remaining ${remainingDailyBudget}, used ${dailyBudgetUsed}/${dailyBudgetCredits}).`,
   });
   checks.push({
     id: "turnstile-proof",
