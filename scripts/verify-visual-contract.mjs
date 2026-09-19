@@ -153,6 +153,10 @@ requireText("app/styles/visual-audit.css", [
   ".pc-v8-orbit-ring{",
   ".pc-v8-reward-line small,",
   ".pc-v8 .pc-v8-return-core>p{",
+  ".system-state-page{",
+  ".system-state-shell{",
+  ".system-state-visual{",
+  ".system-state-progress{",
 ]);
 
 requireText(".github/workflows/visual-smoke.yml", [
@@ -160,7 +164,8 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"terms|/terms"',
   '"rewards-policy|/rewards-policy"',
   '"auth-recover|/auth/recover"',
-  'test "$count" -eq 70',
+  '"/__visual-smoke-not-found__"',
+  'test "$count" -eq 72',
 ]);
 
 requireText("app/styles/theme.css", [
@@ -189,6 +194,8 @@ const contrastPairs = [
   ["Vault available label", "#d9ff72", "#111713"],
   ["Vault balance metadata", "#9b9d95", "#111713"],
   ["post-claim readable metadata", "#89948f", "#090d0d"],
+  ["system state secondary copy", "#aeb6b0", "#050706"],
+  ["system state metadata", "#89948f", "#050706"],
 ];
 for (const [label, foreground, background] of contrastPairs) {
   const ratio = contrast(foreground, background);
@@ -200,6 +207,31 @@ const narrowNavContract = "@media(max-width:560px){\n  /* Do not regress below t
 if (!auditCss.includes(narrowNavContract)) {
   throw new Error("Narrow-phone bottom navigation must preserve the 10px readability floor.");
 }
+
+
+requireText("app/not-found.tsx", [
+  'className="system-state-page"',
+  'className="system-state-visual"',
+  "Return home",
+]);
+requireText("app/loading.tsx", [
+  'className="system-state-page"',
+  'className="system-state-progress"',
+  "Syncing your circuit.",
+]);
+requireText("app/error.tsx", [
+  'className="system-state-page"',
+  'className="system-state-visual is-error"',
+  "Try again",
+]);
+requireText("app/admin/loading.tsx", [
+  'className="system-state-page system-state-admin"',
+  "Loading operator truth.",
+]);
+requireText("app/admin/error.tsx", [
+  'className="system-state-page system-state-admin"',
+  "Retry safely",
+]);
 
 requireText("app/dashboard/claimed/page.tsx", [
   'className="pc-v8-vault-orbit"',
