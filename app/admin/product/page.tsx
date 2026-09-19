@@ -150,7 +150,7 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
           <div>
             <span className="app-eyebrow">Public/global governance</span>
             <h2>{readiness.publicLaunchReady ? "Public expansion gates are complete." : "Public expansion stays separate from the controlled faucet."}</h2>
-            <p>Pilot isolation, operator identity, qualified legal review and international-transfer review remain explicit before broad public/global expansion, but they do not make the controlled technical service unhealthy.</p>
+            <p>Pilot isolation, a bounded per-account share of the daily faucet budget, operator identity, qualified legal review and international-transfer review remain explicit before broad public/global expansion. They do not make the controlled technical service unhealthy.</p>
           </div>
           <div className="readiness-counts"><span>{readiness.publicExpansionBlockers.length} open</span></div>
         </div>
