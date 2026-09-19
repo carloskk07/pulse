@@ -24,8 +24,9 @@ export async function GET() {
     const releaseBlockingIds = release.checks
       .filter((item) => item.blocking && item.status !== "pass")
       .map((item) => item.id);
+    const publicOnlyProductIds = new Set(["public-access", "public-fair-share"]);
     const productBlockingIds = product.checks
-      .filter((item) => item.id !== "public-access" && !item.pass)
+      .filter((item) => !publicOnlyProductIds.has(item.id) && !item.pass)
       .map((item) => item.id);
 
     console.info("PULSECIRCUIT_READINESS_BLOCKERS", JSON.stringify({
