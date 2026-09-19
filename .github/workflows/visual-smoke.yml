@@ -301,6 +301,23 @@ jobs:
             check_protected "${entry#*|}"
           done
 
+          not_found_path="/__visual-smoke-not-found__"
+          result="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}|%{url_effective}' "https://pulsercuit.pro$not_found_path")"
+          status="${result%%|*}"
+          effective="${result#*|}"
+          if [ "$status" != "404" ]; then
+            echo "Expected 404 for $not_found_path, received HTTP $status"
+            exit 1
+          fi
+          node - "$effective" "$not_found_path" <<'NODE'
+          const effective = new URL(process.argv[2]);
+          const expectedPath = process.argv[3];
+          if (effective.hostname !== "pulsercuit.pro" || effective.pathname !== expectedPath) {
+            throw new Error(`404 route drift: expected ${expectedPath}, reached ${effective.href}`);
+          }
+          NODE
+          echo "production-not-found requested=$not_found_path effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
+
       - name: Capture production direct views and auth redirects
         shell: bash
         run: |
@@ -396,17 +413,20 @@ jobs:
 
           direct_blob="$(printf '%s\n' "${direct_routes[@]}")"
           protected_blob="$(printf '%s\n' "${protected_routes[@]}")"
+          not_found_blob="not-found|/__visual-smoke-not-found__"
 
           capture_group direct desktop 1440,900 "$direct_blob"
           capture_group direct mobile 390,844 "$direct_blob"
           capture_group auth-redirect desktop 1440,900 "$protected_blob"
           capture_group auth-redirect mobile 390,844 "$protected_blob"
+          capture_group direct desktop 1440,900 "$not_found_blob"
+          capture_group direct mobile 390,844 "$not_found_blob"
 
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
-          # 40 local-preview PNGs (5 routes × 8 viewports) + 30 production PNGs.
-          test "$count" -eq 70
+          # 40 local-preview PNGs (5 routes × 8 viewports) + 32 production PNGs.
+          test "$count" -eq 72
 
       - name: Stop local preview
         if: always()
