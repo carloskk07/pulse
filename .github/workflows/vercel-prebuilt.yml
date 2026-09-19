@@ -61,6 +61,26 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: node scripts/verify-deploy-provenance.mjs workflow_dispatch "$GITHUB_SHA" "$RUNNER_TEMP/not-required.json"
 
+      - name: Require production database schema authority
+        shell: bash
+        run: |
+          for attempt in $(seq 1 20); do
+            body_file="$(mktemp)"
+            status="$(curl --silent --show-error --header 'Cache-Control: no-cache' --output "$body_file" --write-out '%{http_code}' https://pulsercuit.pro/api/release-schema || true)"
+
+            if node scripts/verify-production-schema-gate.mjs "$status" "$body_file"; then
+              rm -f "$body_file"
+              exit 0
+            fi
+
+            rm -f "$body_file"
+            echo "Production database schema has not converged to this release contract (attempt $attempt/20)."
+            sleep 6
+          done
+
+          echo "Production deploy rejected: database schema authority does not match the release contract."
+          exit 1
+
       - name: Require deployment credential
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
