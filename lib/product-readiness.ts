@@ -152,7 +152,6 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const turnstileProof = !proofResult.error && releaseEvidenceMatches(proof, "turnstile");
   const faucetPayReadProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_read");
   const faucetPaySendScopeProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_send_scope");
-  const payoutProof = !proofResult.error && releaseEvidenceMatches(proof, "faucetpay_payout");
   const receiptState = await getFaucetPayReceiptProofState(admin, proof);
   const confirmedMonetizationEvents = monetizationResult.error ? 0 : Number(monetizationResult.count ?? 0);
   const paidWithdrawals = withdrawalResult.error ? 0 : Number(withdrawalResult.count ?? 0);
@@ -333,10 +332,10 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   checks.push({
     id: "payout-proof",
     label: "Provider-side payout proof",
-    pass: payoutProof && paidWithdrawals > 0,
-    detail: payoutProof && paidWithdrawals > 0
-      ? `${paidWithdrawals} paid withdrawal(s) exist with current provider-side FaucetPay evidence.`
-      : "At least one controlled withdrawal must reach authoritative provider-side paid status through the configured payout route.",
+    pass: receiptState.payoutProofCurrent && paidWithdrawals > 0,
+    detail: receiptState.payoutProofCurrent && paidWithdrawals > 0
+      ? `${paidWithdrawals} paid withdrawal(s) exist and the current payout authority is fingerprint-bound to the exact paid FaucetPay withdrawal.`
+      : "At least one controlled withdrawal must reach authoritative provider-side paid status with current exact-withdrawal FaucetPay payout evidence.",
   });
   checks.push({
     id: "payout-receipt-proof",
