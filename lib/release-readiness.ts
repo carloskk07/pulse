@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 53;
-export const RELEASE_SCHEMA_MIGRATION = "0053_compact_reward_snapshot.sql";
+export const RELEASE_SCHEMA_VERSION = 54;
+export const RELEASE_SCHEMA_MIGRATION = "0054_wallet_snapshot_compaction.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -181,6 +181,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       const hourlyScaleOk = !runtimeSnapshotError && runtimeSnapshot.hourly_scale === true;
       const userBalanceMaterializationOk = !runtimeSnapshotError && runtimeSnapshot.user_balance_materialization === true;
       const rewardSnapshotOk = !runtimeSnapshotError && runtimeSnapshot.reward_snapshot === true;
+      const walletSnapshotOk = !runtimeSnapshotError && runtimeSnapshot.wallet_snapshot === true;
       const contractsOk = !runtimeSnapshotError
         && snapshotAuthorityOk
         && runtimeSnapshot.economics_ok === true
@@ -201,13 +202,14 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         && hourlyPilotOk
         && hourlyScaleOk
         && userBalanceMaterializationOk
-        && rewardSnapshotOk;
+        && rewardSnapshotOk
+        && walletSnapshotOk;
       checks.push(check(
         "runtime-contracts",
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "One authoritative snapshot proves economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement and pilot isolation, exact FaucetPay proof chaining, Treasury funding/backing, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound, Hourly Pulse pilot/scale, materialized balances and compact reward snapshots."
+          ? "One authoritative snapshot proves economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement and pilot isolation, exact FaucetPay proof chaining, Treasury funding/backing, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound, Hourly Pulse pilot/scale, materialized balances, compact reward snapshots and compact Wallet snapshots."
           : "One or more required runtime contracts are missing, have drifted or the consolidated snapshot authority is invalid.",
       ));
 

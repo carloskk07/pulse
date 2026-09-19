@@ -2,25 +2,13 @@ import { AppShell } from "@/components/app-shell";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { getWalletPresentation } from "@/lib/experience-presentation";
-import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from "@/lib/faucetpay-authority";
-import { formatUsdFromCredits, getLedgerItems, getRewardSnapshot } from "@/lib/reward-state";
-import { getCurrentUserContext } from "@/lib/current-user-context";
-import { hasWithdrawalPilotAccess } from "@/lib/withdrawal-pilot";
+import { formatUsdFromCredits } from "@/lib/reward-state";
+import { getWalletState } from "@/lib/wallet-state";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Vault" };
 
 type Props = { searchParams: Promise<{ withdraw?: string }> };
-type ActiveWithdrawal = {
-  id: string;
-  status: "requested" | "held" | "submitted";
-  destination: string;
-  asset: string;
-  amount_credits: number;
-  payout_amount_units: number | null;
-  created_at: string;
-};
-
 const withdrawalCopy: Record<string, string> = {
   paid: "Payment complete.",
   processing: "Your payout is processing safely.",
@@ -57,33 +45,22 @@ function maskDestination(value: string) {
 }
 
 export default async function WalletPage({ searchParams }: Props) {
-  const [state, rows, params, userContext, readProofReady, sendScopeProofReady] = await Promise.all([
-    getRewardSnapshot(),
-    getLedgerItems(),
+  const [wallet, params] = await Promise.all([
+    getWalletState(),
     searchParams,
-    getCurrentUserContext(),
-    hasCurrentFaucetPayReadProof(),
-    hasCurrentFaucetPaySendScopeProof(),
   ]);
+  const {
+    state,
+    rows,
+    activeWithdrawal,
+    withdrawalPilotAllowed,
+    readProofReady,
+    sendScopeProofReady,
+  } = wallet;
   const payout = getFaucetPayPackConfig();
   const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
   const turnstileReady = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
   const serviceReady = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
-
-  let activeWithdrawal: ActiveWithdrawal | null = null;
-  const { supabase, user } = userContext;
-  const withdrawalPilotAllowed = user ? await hasWithdrawalPilotAccess(user.id) : false;
-  if (supabase && user && state.signedIn) {
-      const { data } = await supabase
-        .from("withdrawals")
-        .select("id,status,destination,asset,amount_credits,payout_amount_units,created_at")
-        .eq("user_id", user.id)
-        .in("status", ["requested", "held", "submitted"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      activeWithdrawal = data as ActiveWithdrawal | null;
-  }
 
   const activePackMatches = Boolean(
     activeWithdrawal

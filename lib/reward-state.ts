@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUserContext } from "@/lib/current-user-context";
+import { getCurrentUserContext, type CurrentUserIdentity } from "@/lib/current-user-context";
 
 export type RewardSnapshot = {
   preview: boolean;
@@ -25,7 +25,7 @@ export type LedgerItem = {
   createdAt: string;
 };
 
-const disconnectedSnapshot: RewardSnapshot = {
+export const disconnectedSnapshot: RewardSnapshot = {
   preview: true,
   signedIn: false,
   userLabel: "Preview",
@@ -41,7 +41,7 @@ const disconnectedSnapshot: RewardSnapshot = {
   hourlyClaimCount: 0,
 };
 
-function objectValue(value: unknown) {
+export function objectValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
@@ -61,6 +61,20 @@ function labelForEntry(type: string) {
   return labels[type] ?? "Reward activity";
 }
 
+export function ledgerItemsFromRows(value: unknown): LedgerItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => {
+    const row = objectValue(entry);
+    return {
+      id: String(row.id ?? ""),
+      label: labelForEntry(String(row.entry_type ?? "")),
+      state: String(row.state ?? ""),
+      credits: Number(row.credits ?? 0),
+      createdAt: String(row.created_at ?? ""),
+    };
+  }).filter((entry) => Boolean(entry.id));
+}
+
 export function trustLabel(level: number) {
   if (level >= 5) return "Trusted";
   if (level >= 4) return "Established";
@@ -70,24 +84,14 @@ export function trustLabel(level: number) {
   return "Building";
 }
 
-export async function getRewardSnapshot(): Promise<RewardSnapshot> {
-  const { supabase, user } = await getCurrentUserContext();
-  if (!supabase) return disconnectedSnapshot;
-  if (!user) return { ...disconnectedSnapshot, preview: false };
-
-  const admin = createSupabaseAdminClient();
-  const [userSnapshotResult, runtimeResult] = await Promise.all([
-    supabase.rpc("current_user_reward_snapshot"),
-    admin
-      ? admin.rpc("current_pulse_runtime_state")
-      : Promise.resolve({ data: null, error: null }),
-  ]);
-
-  const rawUserSnapshot = objectValue(userSnapshotResult.data);
-  const userSnapshot = String(rawUserSnapshot.user_id ?? "") === user.id
-    ? rawUserSnapshot
-    : {};
-  const runtime = objectValue(runtimeResult.data);
+export function buildRewardSnapshotFromPayload(
+  user: CurrentUserIdentity,
+  rawUserSnapshot: unknown,
+  rawRuntime: unknown,
+): RewardSnapshot {
+  const candidate = objectValue(rawUserSnapshot);
+  const userSnapshot = String(candidate.user_id ?? "") === user.id ? candidate : {};
+  const runtime = objectValue(rawRuntime);
   const config = objectValue(runtime.hourly_pulse);
   const treasury = objectValue(runtime.treasury);
 
@@ -142,6 +146,26 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
   };
 }
 
+export async function getRewardSnapshot(): Promise<RewardSnapshot> {
+  const { supabase, user } = await getCurrentUserContext();
+  if (!supabase) return disconnectedSnapshot;
+  if (!user) return { ...disconnectedSnapshot, preview: false };
+
+  const admin = createSupabaseAdminClient();
+  const [userSnapshotResult, runtimeResult] = await Promise.all([
+    supabase.rpc("current_user_reward_snapshot"),
+    admin
+      ? admin.rpc("current_pulse_runtime_state")
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  return buildRewardSnapshotFromPayload(
+    user,
+    userSnapshotResult.data,
+    runtimeResult.data,
+  );
+}
+
 export async function getLedgerItems(): Promise<LedgerItem[]> {
   const { supabase, user } = await getCurrentUserContext();
   if (!supabase || !user) return [];
@@ -153,13 +177,7 @@ export async function getLedgerItems(): Promise<LedgerItem[]> {
     .order("created_at", { ascending: false })
     .limit(12);
 
-  return (data ?? []).map((entry) => ({
-    id: String(entry.id),
-    label: labelForEntry(String(entry.entry_type)),
-    state: String(entry.state),
-    credits: Number(entry.credits),
-    createdAt: String(entry.created_at),
-  }));
+  return ledgerItemsFromRows(data);
 }
 
 export function creditsToUsd(credits: number) {
