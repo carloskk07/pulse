@@ -25,6 +25,7 @@ const PRODUCT_SETUP_CHECK_IDS = new Set([
   "send-authority-config",
   "database",
   "hourly-pulse-config",
+  "public-access",
   "treasury",
 ]);
 
@@ -104,7 +105,12 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     admin.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "paid"),
   ]);
 
-  const config = pulseConfigResult.data?.value as { credits?: number | string; interval_minutes?: number | string; treasury_code?: string } | null | undefined;
+  const config = pulseConfigResult.data?.value as {
+    credits?: number | string;
+    interval_minutes?: number | string;
+    treasury_code?: string;
+    pilot_mode?: boolean;
+  } | null | undefined;
   const rewardCredits = Number(config?.credits ?? 0);
   const intervalMinutes = Number(config?.interval_minutes ?? 0);
   const treasuryCode = String(config?.treasury_code ?? "").trim();
@@ -265,6 +271,15 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     label: "Hourly Pulse contract",
     pass: pulseConfigured,
     detail: pulseConfigured ? `${rewardCredits} credit(s) every ${intervalMinutes} rolling minutes from Treasury ${treasuryCode}.` : "Hourly Pulse needs a positive deterministic reward, rolling interval and treasury binding.",
+  });
+  const publicPulseAccess = config?.pilot_mode === false;
+  checks.push({
+    id: "public-access",
+    label: "Public Hourly Pulse access",
+    pass: publicPulseAccess,
+    detail: publicPulseAccess
+      ? "Hourly Pulse and the shared withdrawal authority are intentionally open beyond the controlled pilot allowlist."
+      : "Controlled pilot mode is still active. Public launch cannot be promoted until pilot mode is intentionally disabled after launch funding and external release gates are closed.",
   });
   checks.push({
     id: "treasury",
