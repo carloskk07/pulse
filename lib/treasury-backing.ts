@@ -77,6 +77,13 @@ export async function ensureFreshTreasuryBacking(
   treasuryCode = "launch",
   admin = createSupabaseAdminClient(),
 ): Promise<TreasuryBackingStatus> {
+  if (!admin) return "backing_unavailable";
+
+  // A current observation is reusable only while the live application
+  // configuration still matches the fingerprint-bound FaucetPay read proof.
+  // This is a local/database authority check and does not call FaucetPay.
+  if (!(await hasCurrentFaucetPayReadProof(admin))) return "read_proof_required";
+
   const current = await getTreasuryBackingGuard(treasuryCode, admin);
   if (current === "backing_ready" || current === "backing_insufficient") return current;
   if (current !== "backing_refresh_required") return current;
