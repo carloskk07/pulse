@@ -28,14 +28,31 @@ if (existsSync("lib/mock-data.ts")) {
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha", 'body.scope !== "controlled-technical"', "Controlled technical status"]);
-requireText("lib/release-readiness.ts", ['admin.rpc("release_authenticated_read_scope_contract")', 'admin.rpc("release_withdrawal_read_contract")', 'admin.rpc("release_withdrawal_settlement_contract")', 'admin.rpc("release_withdrawal_pilot_contract")', 'admin.rpc("release_faucetpay_proof_chain_contract")', 'admin.rpc("release_reward_exchange_contract")', 'admin.rpc("release_treasury_funding_contract")', 'admin.rpc("release_treasury_backing_guard_contract")', 'admin.rpc("release_pulse_direct_contract")', 'admin.rpc("release_hourly_pulse_pilot_contract")', 'admin.rpc("release_hourly_pulse_scale_contract")', 'admin.rpc("release_user_balance_materialization_contract")', "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
-requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 49", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0049_user_balance_materialization.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
+requireText("lib/release-readiness.ts", ['admin.rpc(\n        "release_runtime_contract_snapshot"', "runtimeSnapshot.snapshot_authority === true", "runtimeSnapshot.economics_ok === true", "runtimeSnapshot.referral_ok === true", "runtimeSnapshot.authenticated_read_scope === true", "runtimeSnapshot.withdrawal_settlement === true", "runtimeSnapshot.treasury_backing === true", "runtimeSnapshot.hourly_scale === true", "runtimeSnapshot.user_balance_materialization === true", "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
+forbidText("lib/release-readiness.ts", [
+  'admin.rpc("release_authenticated_read_scope_contract")',
+  'admin.rpc("release_withdrawal_read_contract")',
+  'admin.rpc("release_withdrawal_settlement_contract")',
+  'admin.rpc("release_withdrawal_pilot_contract")',
+  'admin.rpc("release_faucetpay_proof_chain_contract")',
+  'admin.rpc("release_reward_exchange_contract")',
+  'admin.rpc("release_treasury_funding_contract")',
+  'admin.rpc("release_treasury_backing_guard_contract")',
+  'admin.rpc("release_opportunity_intelligence_contract")',
+  'admin.rpc("release_pulse_direct_contract")',
+  'admin.rpc("release_business_intake_contract")',
+  'admin.rpc("release_advertiser_outbound_contract")',
+  'admin.rpc("release_hourly_pulse_pilot_contract")',
+  'admin.rpc("release_hourly_pulse_scale_contract")',
+  'admin.rpc("release_user_balance_materialization_contract")',
+]);
+requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 50", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0050_release_runtime_contract_snapshot.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
 requireText("lib/product-launch-readiness.ts", ["getCurrentReleaseReadiness", "releaseBlockers", "governanceAdvisories", "publicProductBlockers", "publicAccessBlockers", "publicExpansionBlockers", 'new Set(["public-access", "public-fair-share"])', "technicalReady", "publicLaunchReady", "product.publicReady"]);
 requireText("lib/product-readiness.ts", ["PRODUCT_SETUP_CHECK_IDS", '"payout-pack-authority"', "getCanonicalFaucetPayPackAuthority", '"send-authority-config"', '"hourly-pulse-config"', '"public-access"', '"public-fair-share"', '"treasury"', "getFaucetPaySendAuthorityConfig", "deriveTreasuryDailyFundingState", '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proof, "faucetpay_send_scope")', "hasProductSetupBlocker", "!item.pass", "dailyBudgetCredits >= rewardCredits", "maxUserDailyCredits >= rewardCredits", "maxUserDailyCredits * 2 <= dailyBudgetCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.gte("created_at", utcTodayStartIso)', '.in("status", ["reserved", "consumed"])', "dailyFundingState.dailyCommittedCredits", "dailyFundingState.remainingDailyBudgetCredits", "dailyFundingState.availableCredits >= remainingDailyBudget", "current UTC day's remaining", "config?.pilot_mode === false", "does not block technical readiness", "publicReady", "publicBlockers", 'new Set(["public-access", "public-fair-share"])']);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
 forbidText("lib/product-readiness.ts", ["availableTreasury >= rewardCredits", "availableTreasury >= dailyBudgetCredits", "covering at least one full"]);
 requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36", 'admin.rpc("release_hourly_pulse_pilot_contract")', "schemaVersion >= HOURLY_PILOT_SCHEMA_VERSION"]);
-requireText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker", "productSetupBlocked", "hourlyPilot.ok", 'service: "pulsercuit"', 'scope: "controlled-technical"', '"PULSECIRCUIT_READINESS_BLOCKERS"', "releaseBlockingIds", "productBlockingIds", 'new Set(["public-access", "public-fair-share"])']);
+requireText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker", "productSetupBlocked", "hourlyPilot.ok", 'service: "pulsercuit"', 'scope: "controlled-technical"', '"PULSECIRCUIT_READINESS_BLOCKERS"', "releaseBlockingIds", "productBlockingIds", 'new Set(["public-access", "public-fair-share"])', "READINESS_CACHE_TTL_MS = 3_000", "cachedReadiness", "readinessInFlight", 'source: "coalesced"', '"X-Pulse-Readiness-Cache"', '"Cache-Control": "no-store"']);
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
 requireText("app/api/release-schema/route.ts", ['.from("app_config")', '.eq("key", "release_schema")', '"Cache-Control": "no-store"', 'schema_version: schemaVersion', 'schema_migration: schemaMigration', 'service: "pulsercuit"', 'available: true']);
 forbidText("app/api/release-schema/route.ts", ["process.env", "release_external_proof", "faucetpay", "treasury", "profiles", "withdrawals", "ledger_entries"]);
@@ -194,6 +211,23 @@ requireText("scripts/verify-deploy-provenance.mjs", ["requireMergedMainPrProvena
 requireText("scripts/verify-current-main-head.mjs", ["verifyCurrentMainHead", "is not the current main HEAD", "Current main HEAD contract PASS"]);
 forbidText("scripts/verify-deploy-provenance.mjs", ["Deploy provenance PASS: explicit workflow_dispatch invocation."]);
 forbidText(".github/workflows/vercel-prebuilt.yml", ["Allow explicit manual production deploy", "not-required.json"]);
+requireText("supabase/migrations/0050_release_runtime_contract_snapshot.sql", [
+  "create or replace function public.release_runtime_contract_snapshot()",
+  "returns jsonb",
+  "security invoker",
+  "admin_economics_snapshot",
+  "release_security_contract()",
+  "release_authenticated_read_scope_contract()",
+  "release_withdrawal_settlement_contract()",
+  "release_treasury_backing_guard_contract()",
+  "release_hourly_pulse_scale_contract()",
+  "release_user_balance_materialization_contract()",
+  "'snapshot_authority'",
+  "not has_function_privilege(",
+  "grant execute on function public.release_runtime_contract_snapshot()",
+  "to service_role",
+  "version', 50"
+]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 {
   const source = read(".github/workflows/vercel-prebuilt.yml");
