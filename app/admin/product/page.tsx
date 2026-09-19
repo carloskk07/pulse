@@ -70,7 +70,7 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
       <section className="admin-decision-card treasury-funding-card">
         <span className="app-eyebrow">Backed Treasury funding</span>
         <h2>{fundingNeeded ? "An exact Treasury top-up is required." : "Treasury backing covers the remaining UTC-day budget."}</h2>
-        <p>Funding is fail-closed. Pulsercuit tops up only the uncovered portion of today's remaining budget, then requires the live FaucetPay balance to cover current financial liabilities plus all Treasury capacity that would remain spendable after the top-up. This action never calls the payout endpoint.</p>
+        <p>Funding is fail-closed. Pulsercuit tops up only the uncovered portion of today&apos;s remaining budget, then requires the live FaucetPay balance to cover current financial liabilities plus all Treasury capacity that would remain spendable after the top-up. This action never calls the payout endpoint.</p>
         {launchTreasury ? (
           <div className="admin-secondary-grid treasury-funding-metrics">
             <article><span>Available</span><strong>{launchTreasury.availableCredits.toLocaleString("en-US")} P</strong></article>
