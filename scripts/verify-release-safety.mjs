@@ -114,7 +114,7 @@ requireText("lib/reward-state.ts", ["maximumFractionDigits: 3", "minimumFraction
 requireText("lib/withdrawal-pilot.ts", ["hasWithdrawalPilotAccess", 'admin.rpc("withdrawal_pilot_allowed"', "return !error && data === true"]);
 requireText("scripts/report-safe-payout-profile.mjs", ["FAUCETPAY_PAYOUT_CURRENCY", "FAUCETPAY_PAYOUT_CREDITS", "FAUCETPAY_PAYOUT_UNITS", "FAUCETPAY_PAYOUT_LABEL", "FAUCETPAY_SEND_DAILY_LIMIT_USD", "visible-pack-ready"]);
 requireText(".github/workflows/ci.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Reject direct pushes to main", "verify-deploy-provenance.mjs push", "Main integrity rejected:", "pull-requests: read"]);
-requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Require merged PR provenance for production deploy", 'verify-deploy-provenance.mjs "$GITHUB_EVENT_NAME"', "Require production database schema authority", "verify-production-schema-gate.mjs", "https://pulsercuit.pro/api/release-schema", "Production deploy rejected: database schema authority does not match the release contract."]);
+requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Require merged PR provenance for production deploy", 'verify-deploy-provenance.mjs "$GITHUB_EVENT_NAME"', "Require current main HEAD", 'verify-current-main-head.mjs "$GITHUB_SHA"', "Require production database schema authority", "verify-production-schema-gate.mjs", "https://pulsercuit.pro/api/release-schema", "Production deploy rejected: database schema authority does not match the release contract."]);
 {
   const source = read(".github/workflows/ci.yml");
   const mainGate = source.indexOf("Reject direct pushes to main");
@@ -125,16 +125,27 @@ requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(np
 }
 requireText("scripts/audit-production-dependencies.mjs", ["MAX_ATTEMPTS = 5", '"audit", "--omit=dev", "--audit-level=high"', "retryableInfrastructureFailure", "process.exit(status)", "attempt * 5000", "Security audit infrastructure remained unavailable"]);
 requireText("scripts/verify-deploy-provenance.mjs", ["requireMergedMainPrProvenance", 'eventName !== "push" && eventName !== "workflow_dispatch"', "accepted missing PR provenance", "Unsupported production deploy event"]);
+requireText("scripts/verify-current-main-head.mjs", ["verifyCurrentMainHead", "is not the current main HEAD", "Current main HEAD contract PASS"]);
 forbidText("scripts/verify-deploy-provenance.mjs", ["Deploy provenance PASS: explicit workflow_dispatch invocation."]);
 forbidText(".github/workflows/vercel-prebuilt.yml", ["Allow explicit manual production deploy", "not-required.json"]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 {
   const source = read(".github/workflows/vercel-prebuilt.yml");
+  const mainHeadGate = source.indexOf("Require current main HEAD");
   const schemaGate = source.indexOf("Require production database schema authority");
   const buildStep = source.indexOf("Build prebuilt Vercel output");
   const deployStep = source.indexOf("Deploy prebuilt output");
-  if (schemaGate < 0 || buildStep < 0 || deployStep < 0 || schemaGate > buildStep || schemaGate > deployStep) {
-    throw new Error("Production database schema authority must be proven before Vercel build/deploy.");
+  if (
+    mainHeadGate < 0
+    || schemaGate < 0
+    || buildStep < 0
+    || deployStep < 0
+    || mainHeadGate > buildStep
+    || mainHeadGate > deployStep
+    || schemaGate > buildStep
+    || schemaGate > deployStep
+  ) {
+    throw new Error("Current main HEAD and production database schema authority must be proven before Vercel build/deploy.");
   }
 }
 forbidText("scripts/audit-production-dependencies.mjs", ["process.exit(0); //", "audit-level=moderate"]);
