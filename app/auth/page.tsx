@@ -13,7 +13,9 @@ const errorCopy: Record<string, string> = {
   "service-not-configured": "Authentication is temporarily unavailable.",
   "missing-credentials": "Enter your email and password.",
   "invalid-credentials": "Email or password is incorrect.",
-  "password-upgrade-required": "This password no longer meets the security policy. Use password recovery to replace it safely.",
+  "password-upgrade-required": "This password is no longer accepted by the security policy. Use password recovery to replace it safely.",
+  "password-compromised": "This password appears in known breach data. Choose a unique password you have not used elsewhere.",
+  "password-security-unavailable": "Password safety verification is temporarily unavailable. Try again in a moment.",
   "invalid-signup": `Use a valid email and a password with at least ${MIN_PASSWORD_LENGTH} characters.`,
   "verification-not-configured": "Human verification is temporarily unavailable.",
   "verification-token-missing": "Verification did not finish. Wait a moment and try again.",
@@ -54,7 +56,7 @@ export default async function AuthPage({ searchParams }: Props) {
           <p>Pulse, progress and Vault follow the same account across devices.</p>
           <div className="auth-trust pc-v5-auth-trust">
             <span>Free to join</span>
-            <span>Funded rewards</span>
+            <span>Compromised passwords blocked</span>
             <span>Real history</span>
           </div>
         </div>
