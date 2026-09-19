@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/current-user-context";
 
 export type RecentPulseReceipt = {
   createdAt: string;
@@ -8,11 +8,8 @@ export type RecentPulseReceipt = {
 const RECENT_CLAIM_WINDOW_MS = 10 * 60_000;
 
 export async function getRecentPulseReceipt(): Promise<RecentPulseReceipt | null> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return null;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { supabase, user } = await getCurrentUserContext();
+  if (!supabase || !user) return null;
 
   const { data } = await supabase
     .from("pulse_claims")
