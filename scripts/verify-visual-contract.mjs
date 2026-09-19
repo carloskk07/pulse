@@ -149,13 +149,18 @@ requireText("app/styles/visual-audit.css", [
   ".app-frame .account-grid .completion-form input{",
   ".app-frame .account-grid .inline-action{color:#d9ff72!important}",
   ".app-frame .account-grid .button-secondary{",
+  ".pc-v8-vault-orbit{",
+  ".pc-v8-orbit-ring{",
+  ".pc-v8-reward-line small,",
+  ".pc-v8 .pc-v8-return-core>p{",
 ]);
 
 requireText(".github/workflows/visual-smoke.yml", [
   '"privacy|/privacy"',
   '"terms|/terms"',
   '"rewards-policy|/rewards-policy"',
-  'test "$count" -eq 68',
+  '"auth-recover|/auth/recover"',
+  'test "$count" -eq 70',
 ]);
 
 requireText("app/styles/theme.css", [
@@ -183,6 +188,7 @@ const contrastPairs = [
   ["Vault primary value", "#f7f2e6", "#111713"],
   ["Vault available label", "#d9ff72", "#111713"],
   ["Vault balance metadata", "#9b9d95", "#111713"],
+  ["post-claim readable metadata", "#89948f", "#090d0d"],
 ];
 for (const [label, foreground, background] of contrastPairs) {
   const ratio = contrast(foreground, background);
@@ -194,6 +200,15 @@ const narrowNavContract = "@media(max-width:560px){\n  /* Do not regress below t
 if (!auditCss.includes(narrowNavContract)) {
   throw new Error("Narrow-phone bottom navigation must preserve the 10px readability floor.");
 }
+
+requireText("app/dashboard/claimed/page.tsx", [
+  'className="pc-v8-vault-orbit"',
+  'className="pc-v8-orbit-ring"',
+  'className="pc-v8-orbit-core"',
+  'Vault updated',
+  'this Pulse',
+  'current rank',
+]);
 
 requireText("app/earn/page.tsx", [
   '<div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>',

@@ -219,6 +219,59 @@
 }
 .pc-luxe-turbo-aside>*{position:relative;z-index:1}
 
+/* Post-claim is a high-value confirmation surface. Its existing V8 CSS had
+   a complete second-column orbit treatment but the page no longer rendered it,
+   leaving half of the hero visually unused. Keep all factual labels readable
+   and give the updated Vault state the missing visual authority. */
+.pc-v8-vault-orbit{
+  position:relative;
+  z-index:2;
+}
+.pc-v8-orbit-ring{
+  background:
+    radial-gradient(circle at 50% 44%,rgba(217,255,114,.055),transparent 34%),
+    url('/v6/pulse-object-material.svg') center/84% auto no-repeat;
+}
+.pc-v8-orbit-core{
+  background:radial-gradient(circle at 48% 38%,rgba(207,255,103,.09),transparent 30%),rgba(4,7,6,.78)!important;
+  backdrop-filter:blur(2px);
+}
+.pc-v8-orbit-core strong{font-size:clamp(42px,5.2vw,68px)!important}
+.pc-v8-orbit-meta{
+  padding:11px 14px;
+  border:1px solid rgba(239,208,138,.09);
+  border-radius:999px;
+  background:rgba(3,5,4,.42);
+}
+.pc-v8 :where(
+  .pc-v8-reward-line small,
+  .pc-v8-proof-pills span,
+  .pc-v8-change-card small,
+  .pc-v8-change-card span,
+  .pc-v8-vault-numbers small,
+  .pc-v8-unlock-copy>small,
+  .pc-v8-unlock-state small,
+  .pc-v8-next-seal>small,
+  .pc-v8-next-seal>span,
+  .pc-v8-reminder-form small,
+  .pc-v8-share-panel small,
+  .pc-v8-proof-footer
+){
+  color:#89948f!important;
+  font-size:max(10px,.625rem)!important;
+  line-height:1.45!important;
+}
+.pc-v8 .pc-v8-reminder-form button,
+.pc-v8 .pc-v8-share-panel>div:last-child>a{
+  min-height:42px;
+  font-size:10px!important;
+}
+.pc-v8 .pc-v8-return-core>p{
+  color:#89948f!important;
+  font-size:12px!important;
+}
+.pc-v8 .pc-v8-text-action{font-size:12px!important}
+
 /* Account belongs to the authenticated product world. Earlier compatibility
    styling kept completion cards white, which made Account feel like a separate
    site. Keep the semantic completion markup but render it with the same dark

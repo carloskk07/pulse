@@ -234,6 +234,7 @@ jobs:
             "business|/business"
             "business-integration|/business/integration"
             "auth|/auth"
+            "auth-recover|/auth/recover"
             "support|/support"
             "privacy|/privacy"
             "terms|/terms"
@@ -312,6 +313,7 @@ jobs:
             "business|/business"
             "business-integration|/business/integration"
             "auth|/auth"
+            "auth-recover|/auth/recover"
             "support|/support"
             "privacy|/privacy"
             "terms|/terms"
@@ -403,8 +405,8 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
-          # 40 local-preview PNGs (5 routes × 8 viewports) + 28 production PNGs.
-          test "$count" -eq 68
+          # 40 local-preview PNGs (5 routes × 8 viewports) + 30 production PNGs.
+          test "$count" -eq 70
 
       - name: Stop local preview
         if: always()
