@@ -5,6 +5,7 @@ import { probePwnedPasswordProtection } from "@/lib/pwned-passwords";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getFaucetPayBalanceReadOnly } from "@/providers/faucetpay-read";
 
@@ -53,17 +54,19 @@ export async function fundLaunchTreasury(formData: FormData) {
   if (existingError) redirect("/admin/product?funding=database-unavailable");
   if (existingEvent) redirect("/admin/product?funding=already-funded");
 
+  const treasuryState = await getTreasuryDailyFundingState("launch");
+  if (!treasuryState || treasuryState.dailyBudgetCredits <= 0) {
+    redirect("/admin/product?funding=treasury-unavailable");
+  }
+  if (treasuryState.fundingGapCredits <= 0) {
+    redirect("/admin/product?funding=already-covered");
+  }
+
   const [
-    { data: treasury, error: treasuryError },
     { data: balances, error: balancesError },
     { data: activeWithdrawals, error: withdrawalsError },
     { data: activeReservations, error: reservationsError },
   ] = await Promise.all([
-    admin
-      .from("reward_treasuries")
-      .select("code,daily_budget_credits")
-      .eq("code", "launch")
-      .maybeSingle(),
     admin
       .from("user_balances")
       .select("available_credits,pending_credits"),
@@ -77,10 +80,6 @@ export async function fundLaunchTreasury(formData: FormData) {
       .eq("status", "reserved"),
   ]);
 
-  const dailyBudgetCredits = Number(treasury?.daily_budget_credits ?? 0);
-  if (treasuryError || !treasury || dailyBudgetCredits <= 0) {
-    redirect("/admin/product?funding=treasury-unavailable");
-  }
   if (
     balancesError || !Array.isArray(balances)
     || withdrawalsError || !Array.isArray(activeWithdrawals)
@@ -122,9 +121,14 @@ export async function fundLaunchTreasury(formData: FormData) {
     redirect("/admin/product?funding=backing-check-unavailable");
   }
 
-  const totalCreditsToBack = liabilityCredits + dailyBudgetCredits;
+  const totalCapacityAfterTopUp = treasuryState.availableCredits + treasuryState.fundingGapCredits;
+  const totalCreditsToBack = liabilityCredits + totalCapacityAfterTopUp;
   const requiredNumerator = totalCreditsToBack * payout.amountSmallestUnits;
-  if (!Number.isSafeInteger(requiredNumerator)) {
+  if (
+    !Number.isSafeInteger(totalCapacityAfterTopUp)
+    || !Number.isSafeInteger(totalCreditsToBack)
+    || !Number.isSafeInteger(requiredNumerator)
+  ) {
     redirect("/admin/product?funding=backing-check-unavailable");
   }
   const requiredUnits = Math.ceil(requiredNumerator / payout.amountCredits);
@@ -134,7 +138,7 @@ export async function fundLaunchTreasury(formData: FormData) {
 
   const { data, error } = await admin.rpc("fund_reward_treasury", {
     p_treasury_code: "launch",
-    p_amount_credits: dailyBudgetCredits,
+    p_amount_credits: treasuryState.fundingGapCredits,
     p_idempotency_key: idempotencyKey,
     p_backing_asset: payout.asset,
     p_backing_balance_units: balance.balanceSmallestUnits,
@@ -142,7 +146,7 @@ export async function fundLaunchTreasury(formData: FormData) {
     p_payout_pack_credits: payout.amountCredits,
     p_payout_pack_units: payout.amountSmallestUnits,
     p_actor_user_id: user.id,
-    p_reason: "Operator-confirmed one daily budget backed by live FaucetPay read balance",
+    p_reason: "Operator-confirmed exact UTC-day Treasury gap backed by live FaucetPay read balance",
   });
 
   if (error) redirect("/admin/product?funding=record-failed");
@@ -154,5 +158,7 @@ export async function fundLaunchTreasury(formData: FormData) {
   if (status === "already_funded") redirect("/admin/product?funding=already-funded");
   if (status === "insufficient_backing") redirect("/admin/product?funding=insufficient-backing");
   if (status === "liability_changed") redirect("/admin/product?funding=liability-changed");
+  if (status === "funding_gap_changed") redirect("/admin/product?funding=funding-gap-changed");
+  if (status === "already_sufficient") redirect("/admin/product?funding=already-covered");
   redirect("/admin/product?funding=record-failed");
 }
