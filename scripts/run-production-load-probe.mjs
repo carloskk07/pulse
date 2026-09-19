@@ -1,4 +1,4 @@
-// rerun after v51 one-query controlled readiness
+// rerun after v52 immutable release authority
 import https from "node:https";
 import { performance } from "node:perf_hooks";
 import { appendFileSync, writeFileSync } from "node:fs";
