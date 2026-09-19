@@ -59,7 +59,7 @@ requireText("lib/request-security.ts", ["isTrustedSameOriginMutation", 'request.
 requireText("lib/auth-security.ts", ["PASSWORD_RECOVERY_CONTEXT_LEGACY", "PASSWORD_RECOVERY_CONTEXT_PKCE", "PASSWORD_RECOVERY_CONTEXT_OTP", "isPasswordRecoveryContext", "PASSWORD_RECOVERY_CONTEXTS.has(value)"]);
 requireText("lib/pwned-passwords.ts", ['createHash("sha1")', '"https://api.pwnedpasswords.com/range/"', '"User-Agent"', '"Add-Padding": "true"', 'cache: "no-store"', '"new-password:fail-closed-on-unavailable"', '"existing-signin:fail-open-on-unavailable"', "probePwnedPasswordProtection"]);
 requireText("app/admin/product/actions.ts", ["verifyPasswordBreachProtection", "probePwnedPasswordProtection", 'recordReleaseEvidence("supabase_auth_hardening")']);
-requireText("app/admin/product/page.tsx", ["Password security without Pro", "Verify free breach protection", "governanceAdvisories", "publicLaunchReady"]);
+requireText("app/admin/product/page.tsx", ["Password security without Pro", "Verify free breach protection", "publicExpansionBlockers", "publicLaunchReady"]);
 requireText("lib/auth-recovery-proof.ts", ["beginPasswordRecoveryProofChallenge", "markPasswordRecoveryPasswordUpdated", "password_updated_at: null", '.is("password_updated_at", null)', '.select("user_id,password_updated_at,expires_at")', "!data.password_updated_at"]);
 requireText("app/auth/callback/route.ts", ["beginPasswordRecoveryProofChallenge", "hasRecentRecoverySend", 'beginPasswordRecoveryProofChallenge(user.id, "pkce")']);
 requireText("app/auth/confirm/route.ts", ["beginPasswordRecoveryProofChallenge", 'type === "recovery"', 'beginPasswordRecoveryProofChallenge(user.id, "otp")']);
