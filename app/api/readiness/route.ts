@@ -1,70 +1,15 @@
-import { getCurrentReleaseReadiness } from "@/lib/current-release-readiness";
-import { getHourlyPilotReadiness } from "@/lib/hourly-pilot-readiness";
-import { getProductReadiness, hasProductSetupBlocker } from "@/lib/product-readiness";
+import {
+  getControlledTechnicalReadiness,
+  type ControlledTechnicalReadiness,
+} from "@/lib/controlled-technical-readiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const READINESS_CACHE_TTL_MS = 3_000;
 
-type ReadinessPayload = {
-  service: "pulsercuit";
-  version: "0.1.0";
-  scope: "controlled-technical";
-  readiness: "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
-  ready: boolean;
-};
-
-type ReadinessResult = {
-  body: ReadinessPayload;
-  status: 200 | 503;
-};
-
-let cachedReadiness: { value: ReadinessResult; expiresAt: number } | null = null;
-let readinessInFlight: Promise<ReadinessResult> | null = null;
-
-async function computeReadiness(): Promise<ReadinessResult> {
-  const [release, product, hourlyPilot] = await Promise.all([
-    getCurrentReleaseReadiness(),
-    getProductReadiness(),
-    getHourlyPilotReadiness(),
-  ]);
-
-  const ready = release.ready && product.ready && hourlyPilot.ok;
-  const productSetupBlocked = hasProductSetupBlocker(product);
-  const readiness = release.state === "SETUP_REQUIRED" || !hourlyPilot.ok || productSetupBlocked
-    ? "SETUP_REQUIRED"
-    : ready
-      ? "READY"
-      : "READY_FOR_EXTERNAL_PROOF";
-
-  if (!ready) {
-    const releaseBlockingIds = release.checks
-      .filter((item) => item.blocking && item.status !== "pass")
-      .map((item) => item.id);
-    const publicOnlyProductIds = new Set(["public-access", "public-fair-share"]);
-    const productBlockingIds = product.checks
-      .filter((item) => !publicOnlyProductIds.has(item.id) && !item.pass)
-      .map((item) => item.id);
-
-    console.info("PULSECIRCUIT_READINESS_BLOCKERS", JSON.stringify({
-      release: releaseBlockingIds,
-      product: productBlockingIds,
-      hourlyPilotOk: hourlyPilot.ok,
-    }));
-  }
-
-  return {
-    body: {
-      service: "pulsercuit",
-      version: "0.1.0",
-      scope: "controlled-technical",
-      readiness,
-      ready,
-    },
-    status: ready ? 200 : 503,
-  };
-}
+let cachedReadiness: { value: ControlledTechnicalReadiness; expiresAt: number } | null = null;
+let readinessInFlight: Promise<ControlledTechnicalReadiness> | null = null;
 
 async function getReadinessSnapshot() {
   const now = Date.now();
@@ -77,7 +22,7 @@ async function getReadinessSnapshot() {
   }
 
   const startedAt = Date.now();
-  readinessInFlight = computeReadiness();
+  readinessInFlight = getControlledTechnicalReadiness();
 
   try {
     const value = await readinessInFlight;
@@ -105,10 +50,23 @@ export async function GET() {
   const snapshot = await getReadinessSnapshot();
   const durationMs = Date.now() - startedAt;
 
+  if (!snapshot.value.ready) {
+    console.info("PULSECIRCUIT_READINESS_BLOCKERS", JSON.stringify({
+      state: snapshot.value.state,
+      blockers: snapshot.value.blockingIds,
+    }));
+  }
+
   return Response.json(
-    snapshot.value.body,
     {
-      status: snapshot.value.status,
+      service: "pulsercuit",
+      version: "0.1.0",
+      scope: "controlled-technical",
+      readiness: snapshot.value.state,
+      ready: snapshot.value.ready,
+    },
+    {
+      status: snapshot.value.ready ? 200 : 503,
       headers: {
         "Cache-Control": "no-store",
         "X-Pulse-Readiness-Cache": snapshot.source,
