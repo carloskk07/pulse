@@ -325,6 +325,21 @@
   background:rgba(217,255,114,.055)!important;
 }
 
+/* Administrative cockpits stay dense, but explanatory copy must not become
+   decorative microtext. Strengthen only secondary prose; tables and controls
+   keep their compact operational geometry. */
+.app-frame .admin-head p{
+  color:#aeb6b0!important;
+  font-size:13px!important;
+  line-height:1.65!important;
+}
+.app-frame .readiness-summary p,
+.app-frame .admin-decision-card p{
+  color:#9aa39f!important;
+  font-size:12px!important;
+  line-height:1.65!important;
+}
+
 /* Dashboard is already the strongest surface; only tighten the unavailable
    fallback so it does not become the loudest object on small screens. */
 .pc-v9-chamber.state-paused .pc-v9-pulse-copy h2{

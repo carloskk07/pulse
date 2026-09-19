@@ -157,6 +157,9 @@ requireText("app/styles/visual-audit.css", [
   ".system-state-shell{",
   ".system-state-visual{",
   ".system-state-progress{",
+  ".app-frame .admin-head p{",
+  ".app-frame .readiness-summary p,",
+  ".app-frame .admin-decision-card p{",
 ]);
 
 requireText(".github/workflows/visual-smoke.yml", [
@@ -196,6 +199,8 @@ const contrastPairs = [
   ["post-claim readable metadata", "#89948f", "#090d0d"],
   ["system state secondary copy", "#aeb6b0", "#050706"],
   ["system state metadata", "#89948f", "#050706"],
+  ["admin heading secondary copy", "#aeb6b0", "#030504"],
+  ["admin explanatory copy", "#9aa39f", "#0d1016"],
 ];
 for (const [label, foreground, background] of contrastPairs) {
   const ratio = contrast(foreground, background);
