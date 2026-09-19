@@ -1,0 +1,67 @@
+name: Evidence Env Metadata Diagnostic
+
+on:
+  push:
+    branches:
+      - diagnostics/evidence-env-metadata
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect Vercel production env metadata only
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          node <<'NODE'
+          const keys = new Set([
+            "NEXT_PUBLIC_SITE_URL",
+            "NEXT_PUBLIC_SUPABASE_URL",
+            "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+            "TURNSTILE_SECRET_KEY",
+            "TURNSTILE_ALLOWED_HOSTNAMES",
+            "FAUCETPAY_READ_KEY",
+            "FAUCETPAY_SCOPED_KEY",
+            "FAUCETPAY_PAYOUT_CURRENCY",
+            "FAUCETPAY_PAYOUT_CREDITS",
+            "FAUCETPAY_PAYOUT_UNITS",
+            "FAUCETPAY_PAYOUT_LABEL",
+            "FAUCETPAY_SEND_DAILY_LIMIT_USD",
+          ]);
+
+          const token = process.env.VERCEL_TOKEN;
+          if (!token) throw new Error("VERCEL_TOKEN is unavailable.");
+
+          const url = new URL("https://api.vercel.com/v9/projects/pulse/env");
+          url.searchParams.set("teamId", "team_NwHeP9IhdhtOffLfyyf60gw2");
+
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!response.ok) {
+            throw new Error(`Vercel env metadata request failed: HTTP ${response.status}`);
+          }
+
+          const payload = await response.json();
+          const envs = Array.isArray(payload.envs) ? payload.envs : [];
+          const rows = envs
+            .filter((row) => keys.has(row.key))
+            .map((row) => ({
+              key: row.key,
+              type: row.type ?? null,
+              target: Array.isArray(row.target) ? row.target : [],
+              createdAt: row.createdAt ?? null,
+              updatedAt: row.updatedAt ?? null,
+            }))
+            .sort((a, b) => a.key.localeCompare(b.key));
+
+          for (const row of rows) {
+            console.log(JSON.stringify(row));
+          }
+
+          const missing = [...keys].filter((key) => !rows.some((row) => row.key === key));
+          console.log(JSON.stringify({ missing }));
+          NODE
