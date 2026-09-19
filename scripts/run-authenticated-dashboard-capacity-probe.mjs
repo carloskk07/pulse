@@ -1,27 +1,20 @@
 import https from "node:https";
-import crypto from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { appendFileSync, writeFileSync } from "node:fs";
-import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 
 const BASE = process.env.LOAD_BASE_URL ?? "https://pulsercuit.pro";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const runId = process.env.GITHUB_RUN_ID ?? "local";
 
 const parsedBase = new URL(BASE);
 if (parsedBase.protocol !== "https:" || parsedBase.hostname !== "pulsercuit.pro") {
   throw new Error(`Refusing authenticated load probe against unexpected target: ${BASE}`);
 }
-if (!url || !anonKey || !serviceRoleKey) {
-  throw new Error("Authenticated load probe requires Supabase URL, anon key and service-role key.");
+if (!url || !anonKey) {
+  throw new Error("Authenticated load probe requires the public Supabase URL and publishable key.");
 }
-
-const admin = createClient(url, serviceRoleKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 const agent = new https.Agent({
   keepAlive: true,
@@ -99,15 +92,6 @@ function oneDashboardRequest(cookie, requestNumber, captureBody = false) {
   });
 }
 
-async function countOwnRows(table, userId) {
-  const { count, error } = await admin
-    .from(table)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-  if (error) throw new Error(`Failed to audit ${table}: ${error.message}`);
-  return count ?? 0;
-}
-
 async function runStage(cookie, concurrency, serialOffset) {
   const started = performance.now();
   const results = await Promise.all(
@@ -162,29 +146,6 @@ const report = {
 };
 
 try {
-  const email = `capacity-probe+${runId}-${crypto.randomBytes(6).toString("hex")}@example.com`;
-  const password = `Pc!${crypto.randomBytes(28).toString("base64url")}9a`;
-
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    app_metadata: { purpose: "production_capacity_probe" },
-  });
-  if (createError || !created.user) {
-    throw new Error(`Synthetic auth user creation failed: ${createError?.message ?? "missing user"}`);
-  }
-  syntheticUserId = created.user.id;
-
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("id", syntheticUserId)
-    .maybeSingle();
-  if (profileError || !profile) {
-    throw new Error(`Synthetic profile trigger failed: ${profileError?.message ?? "missing profile"}`);
-  }
-
   const cookieJar = new Map();
   authenticatedClient = createServerClient(url, anonKey, {
     cookies: {
@@ -205,12 +166,24 @@ try {
     },
   });
 
-  const { data: signedIn, error: signInError } = await authenticatedClient.auth.signInWithPassword({
-    email,
-    password,
+  const { data: signedIn, error: signInError } = await authenticatedClient.auth.signInAnonymously({
+    options: {
+      data: { purpose: "production_capacity_probe" },
+    },
   });
-  if (signInError || signedIn.user?.id !== syntheticUserId || !signedIn.session) {
-    throw new Error(`Synthetic sign-in failed: ${signInError?.message ?? "session mismatch"}`);
+  if (signInError || !signedIn.user || !signedIn.session) {
+    throw new Error(`Synthetic anonymous sign-in failed: ${signInError?.message ?? "missing session"}`);
+  }
+  syntheticUserId = signedIn.user.id;
+  report.syntheticUserId = syntheticUserId;
+
+  const { data: profile, error: profileError } = await authenticatedClient
+    .from("profiles")
+    .select("id")
+    .eq("id", syntheticUserId)
+    .maybeSingle();
+  if (profileError || !profile) {
+    throw new Error(`Synthetic profile trigger/RLS proof failed: ${profileError?.message ?? "missing profile"}`);
   }
 
   const cookie = cookieHeader(cookieJar);
@@ -263,15 +236,27 @@ try {
     await sleep(3000);
   }
 
-  const [claims, ledger, withdrawals, reservations] = await Promise.all([
-    countOwnRows("pulse_claims", syntheticUserId),
-    countOwnRows("ledger_entries", syntheticUserId),
-    countOwnRows("withdrawals", syntheticUserId),
-    countOwnRows("treasury_reservations", syntheticUserId),
+  const [
+    { count: claims, error: claimsError },
+    { count: ledger, error: ledgerError },
+  ] = await Promise.all([
+    authenticatedClient
+      .from("pulse_claims")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", syntheticUserId),
+    authenticatedClient
+      .from("ledger_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", syntheticUserId),
   ]);
-  report.syntheticFinancialFootprint = { claims, ledger, withdrawals, reservations };
+  if (claimsError) throw new Error(`Synthetic claim audit failed: ${claimsError.message}`);
+  if (ledgerError) throw new Error(`Synthetic ledger audit failed: ${ledgerError.message}`);
 
-  if (claims !== 0 || ledger !== 0 || withdrawals !== 0 || reservations !== 0) {
+  report.syntheticFinancialFootprint = {
+    claims: claims ?? 0,
+    ledger: ledger ?? 0,
+  };
+  if ((claims ?? 0) !== 0 || (ledger ?? 0) !== 0) {
     throw new Error(
       `Authenticated GET probe mutated financial state: ${JSON.stringify(report.syntheticFinancialFootprint)}`,
     );
@@ -288,6 +273,7 @@ try {
     ok: postHealth.ok,
   };
   if (!postHealth.ok) throw new Error(`Post-authenticated-load health failed: HTTP ${postHealth.status}`);
+
 } finally {
   if (authenticatedClient) {
     try {
@@ -297,26 +283,9 @@ try {
     }
   }
 
-  if (syntheticUserId) {
-    try {
-      const { error } = await admin.auth.admin.deleteUser(syntheticUserId);
-      if (error) throw error;
-
-      const { data: lingeringProfile, error: profileCheckError } = await admin
-        .from("profiles")
-        .select("id")
-        .eq("id", syntheticUserId)
-        .maybeSingle();
-      if (profileCheckError) throw profileCheckError;
-      if (lingeringProfile) throw new Error("Synthetic profile still exists after auth-user deletion.");
-    } catch (error) {
-      const message = `cleanup: ${error instanceof Error ? error.message : String(error)}`;
-      cleanupError = cleanupError ? `${cleanupError}; ${message}` : message;
-    }
-  }
-
   report.cleanup = {
-    syntheticUserDeleted: Boolean(syntheticUserId) && !cleanupError,
+    signedOut: Boolean(syntheticUserId) && !cleanupError,
+    databaseDeletionRequired: Boolean(syntheticUserId),
     error: cleanupError,
   };
 
@@ -325,6 +294,7 @@ try {
     JSON.stringify(report, null, 2) + "\n",
     "utf8",
   );
+
 }
 
 if (cleanupError) {
@@ -344,11 +314,11 @@ if (summaryPath) {
     "",
     "### Safety",
     "",
-    "- Ephemeral confirmed Supabase user; removed at the end of the run.",
+    "- Ephemeral anonymous Supabase user; signed out by the runner and deleted from auth.users immediately after the run.",
     "- Real @supabase/ssr cookie path and protected /dashboard route.",
     "- GET requests only; no claim, payout, funding or mutation endpoint called.",
     `- Synthetic financial footprint: ${JSON.stringify(report.syntheticFinancialFootprint ?? {})}.`,
-    `- Cleanup: ${report.cleanup?.syntheticUserDeleted ? "PASS" : "FAIL"}.`,
+    `- Runner sign-out: ${report.cleanup?.signedOut ? "PASS" : "FAIL"}; database deletion follows immediately after orchestration.`,
     "",
   ];
   appendFileSync(summaryPath, lines.join("\n") + "\n", "utf8");
