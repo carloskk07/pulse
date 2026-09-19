@@ -1,0 +1,53 @@
+name: Auth Path Probe
+
+on:
+  push:
+    branches:
+      - perf/auth-path-probe
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect Supabase JWKS
+        shell: bash
+        run: |
+          body_file="$RUNNER_TEMP/jwks.json"
+          status="$(curl --silent --show-error --output "$body_file" --write-out '%{http_code}' \
+            https://rtszztcjdjgpqqhdoqhq.supabase.co/auth/v1/.well-known/jwks.json)"
+
+          node - "$status" "$body_file" <<'NODE'
+          const fs = require("node:fs");
+          const status = Number(process.argv[2]);
+          const body = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          const keys = Array.isArray(body.keys) ? body.keys : [];
+
+          if (status !== 200) {
+            throw new Error(`JWKS returned HTTP ${status}`);
+          }
+
+          const summary = keys.map((key) => ({
+            alg: key.alg ?? null,
+            kty: key.kty ?? null,
+            use: key.use ?? null,
+            key_ops: Array.isArray(key.key_ops) ? key.key_ops : [],
+            hasKid: typeof key.kid === "string" && key.kid.length > 0,
+          }));
+
+          console.log(JSON.stringify({
+            type: "supabase_jwks_probe",
+            keyCount: keys.length,
+            asymmetric: keys.length > 0,
+            keys: summary,
+          }));
+
+          if (keys.length === 0) {
+            console.log("JWT verification still depends on the Auth server because no asymmetric JWKS key is published.");
+          } else {
+            console.log("Asymmetric JWKS is active; getClaims() can use cached public-key verification.");
+          }
+          NODE
