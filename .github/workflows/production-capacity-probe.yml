@@ -82,20 +82,50 @@ jobs:
       - name: Install exact project dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Pull production auth configuration
+      - name: Load production Supabase keys securely
+        shell: bash
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           test -n "$VERCEL_TOKEN"
-          npx --yes vercel@59.17.0 pull --yes --environment=production --project=pulse --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+          env_file="$RUNNER_TEMP/vercel-production-env.json"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $VERCEL_TOKEN" \
+            --output "$env_file" \
+            "https://api.vercel.com/v10/projects/pulse/env?decrypt=true&source=vercel-cli%3Apull&slug=carloskk07s-projects"
+
+          node - "$env_file" "$GITHUB_ENV" <<'NODE'
+          const fs = require("node:fs");
+          const input = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const output = process.argv[3];
+          const required = [
+            "NEXT_PUBLIC_SUPABASE_URL",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+            "SUPABASE_SERVICE_ROLE_KEY",
+          ];
+
+          for (const key of required) {
+            const candidates = (input.envs ?? []).filter((item) =>
+              item.key === key
+              && Array.isArray(item.target)
+              && item.target.includes("production")
+              && !item.gitBranch
+            );
+            if (candidates.length !== 1 || typeof candidates[0].value !== "string" || !candidates[0].value) {
+              throw new Error(`Expected exactly one decrypted production value for ${key}; got ${candidates.length}.`);
+            }
+            const value = candidates[0].value;
+            console.log(`::add-mask::${value}`);
+            const delimiter = `PULSECIRCUIT_${key}_EOF`;
+            fs.appendFileSync(output, `${key}<<${delimiter}\n${value}\n${delimiter}\n`, "utf8");
+            console.log(`Loaded ${key} for authenticated capacity probe (length=${value.length}).`);
+          }
+          NODE
+
+          rm -f "$env_file"
 
       - name: Run authenticated dashboard capacity probe
-        shell: bash
-        run: |
-          set -a
-          source .vercel/.env.production.local
-          set +a
-          node scripts/run-authenticated-dashboard-capacity-probe.mjs
+        run: node scripts/run-authenticated-dashboard-capacity-probe.mjs
 
       - name: Print authenticated dashboard result
         if: always()
