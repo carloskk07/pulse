@@ -12,6 +12,16 @@ export function hasMergedMainPrProvenance(sha, pulls) {
     && pull.merge_commit_sha === sha);
 }
 
+export function requireMergedMainPrProvenance(eventName, sha, pulls) {
+  if (eventName !== "push" && eventName !== "workflow_dispatch") {
+    throw new Error(`Unsupported production deploy event: ${eventName}`);
+  }
+  if (!hasMergedMainPrProvenance(sha, pulls)) {
+    throw new Error(`Production deploy rejected: ${sha} is not proven as the merge commit of a closed PR into main.`);
+  }
+  return pulls.find((pull) => pull?.merge_commit_sha === sha && pull?.merged_at && pull?.base?.ref === "main");
+}
+
 function runSelfTest() {
   const sha = "a".repeat(40);
   const merged = [{
@@ -39,26 +49,40 @@ function runSelfTest() {
     }
   }
 
+  for (const eventName of ["push", "workflow_dispatch"]) {
+    const matched = requireMergedMainPrProvenance(eventName, sha, merged);
+    if (matched?.merge_commit_sha !== sha) {
+      throw new Error(`Deploy provenance self-test failed for ${eventName} merged provenance.`);
+    }
+
+    let rejected = false;
+    try {
+      requireMergedMainPrProvenance(eventName, sha, []);
+    } catch {
+      rejected = true;
+    }
+    if (!rejected) {
+      throw new Error(`Deploy provenance self-test failed: ${eventName} accepted missing PR provenance.`);
+    }
+  }
+
+  let unsupportedRejected = false;
+  try {
+    requireMergedMainPrProvenance("schedule", sha, merged);
+  } catch {
+    unsupportedRejected = true;
+  }
+  if (!unsupportedRejected) {
+    throw new Error("Deploy provenance self-test failed: unsupported event was accepted.");
+  }
+
   console.log("Deploy PR provenance contract PASS");
 }
 
 function verify(eventName, sha, proofPath) {
-  if (eventName === "workflow_dispatch") {
-    console.log("Deploy provenance PASS: explicit workflow_dispatch invocation.");
-    return;
-  }
-
-  if (eventName !== "push") {
-    throw new Error(`Unsupported automatic production deploy event: ${eventName}`);
-  }
-
   const pulls = JSON.parse(readFileSync(proofPath, "utf8"));
-  if (!hasMergedMainPrProvenance(sha, pulls)) {
-    throw new Error(`Automatic production deploy rejected: ${sha} is not proven as the merge commit of a closed PR into main.`);
-  }
-
-  const matched = pulls.find((pull) => pull?.merge_commit_sha === sha && pull?.merged_at && pull?.base?.ref === "main");
-  console.log(`Deploy provenance PASS: PR #${matched?.number ?? "unknown"} merged into main at ${matched?.merged_at ?? "unknown"}.`);
+  const matched = requireMergedMainPrProvenance(eventName, sha, pulls);
+  console.log(`Deploy provenance PASS: event=${eventName}, PR #${matched?.number ?? "unknown"} merged into main at ${matched?.merged_at ?? "unknown"}.`);
 }
 
 if (process.argv.includes("--self-test")) {
