@@ -20,7 +20,7 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const { data: { claims }, error: claimsError } = await supabase.auth.getClaims();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();\n  const claims = claimsData?.claims;
   const hasValidIdentity = !claimsError && typeof claims?.sub === "string" && claims.sub.length > 0;
   const isProtected = protectedPrefixes.some((prefix) => request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`));
 
