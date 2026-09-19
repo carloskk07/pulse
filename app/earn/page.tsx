@@ -66,6 +66,8 @@ export default async function EarnPage({ searchParams }: Props) {
             <div className={"pulse-line " + (best?.pulseProtected ? "protected" : "")}>{best?.pulseProtected ? "Funded before start" : "Optional"}</div>
           </div>
 
+          <div className="pc-turbo-orb" aria-hidden="true" />
+
           <div className="drop-card-main">
             <h2>{best ? best.title : primaryChannel ? "Open the available extra-reward route." : "Nothing worth interrupting your Pulse for right now."}</h2>
             <p>{best?.pulseProtected
