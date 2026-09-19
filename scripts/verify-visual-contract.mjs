@@ -47,9 +47,10 @@ const hardeningImport = '@import "./styles/visual-hardening.css";';
 const auditImport = '@import "./styles/sitewide-audit.css";';
 const currentImport = '@import "./styles/current.css";';
 const touchImport = '@import "./styles/touch-foundation.css";';
+const visualAuditImport = '@import "./styles/visual-audit.css";';
 const authorityImport = '@import "./styles/layout-authority.css";';
 
-for (const item of [currentImport, hardeningImport, auditImport, touchImport, authorityImport]) {
+for (const item of [currentImport, hardeningImport, auditImport, touchImport, visualAuditImport, authorityImport]) {
   if (!manifest.includes(item)) throw new Error(`Canonical CSS manifest must load ${item}.`);
 }
 if (manifest.lastIndexOf(hardeningImport) < manifest.lastIndexOf(currentImport)) {
@@ -61,7 +62,10 @@ if (manifest.lastIndexOf(auditImport) < manifest.lastIndexOf(hardeningImport)) {
 if (manifest.lastIndexOf(touchImport) < manifest.lastIndexOf(auditImport)) {
   throw new Error("Touch foundation must remain after site-wide audit corrections.");
 }
-if (manifest.lastIndexOf(authorityImport) < manifest.lastIndexOf(touchImport)) {
+if (manifest.lastIndexOf(visualAuditImport) < manifest.lastIndexOf(touchImport)) {
+  throw new Error("Current visual audit must remain after touch foundation.");
+}
+if (manifest.lastIndexOf(authorityImport) < manifest.lastIndexOf(visualAuditImport)) {
   throw new Error("Layout authority must remain the final visual authority.");
 }
 
@@ -125,9 +129,6 @@ requireText("app/styles/sitewide-audit.css", [
   "--muted-2:#818b9a;",
   "--pulse-muted-2:#818b9a;",
   ".auth-page,\n.referral-landing{overflow-x:clip!important;overflow-y:visible!important}",
-  ".app-frame .account-grid .completion-card{",
-  ".app-frame .account-grid .inline-action{color:#385c18!important}",
-  ".app-frame .account-grid .button-secondary{",
   ".referral-landing .referral-funnel>small{font-size:11px!important;line-height:1.55!important}",
   ".integration-path-grid article>span,",
   ".prospect-signal-fieldset legend,",
@@ -135,6 +136,26 @@ requireText("app/styles/sitewide-audit.css", [
   ".pc-v6-header .pc-v6-button.compact{min-height:44px}",
   ".completion-header nav a,",
   ".integration-code{font-size:11px!important;line-height:1.7}",
+]);
+
+requireText("app/styles/visual-audit.css", [
+  "/* Current visual audit refinements.",
+  ".pc-visual-story{",
+  ".pc-luxe-invite-hero{",
+  ".pc-luxe-vault-balance:before{",
+  ".pc-turbo-orb{",
+  ".app-frame .account-grid .completion-card{",
+  "color-scheme:dark;",
+  ".app-frame .account-grid .completion-form input{",
+  ".app-frame .account-grid .inline-action{color:#d9ff72!important}",
+  ".app-frame .account-grid .button-secondary{",
+]);
+
+requireText(".github/workflows/visual-smoke.yml", [
+  '"privacy|/privacy"',
+  '"terms|/terms"',
+  '"rewards-policy|/rewards-policy"',
+  'test "$count" -eq 68',
 ]);
 
 requireText("app/styles/theme.css", [
@@ -154,8 +175,9 @@ const contrastPairs = [
   ["business form placeholder", "#7d8796", "#0a0e14"],
   ["Turbo Quick Win metadata", "#8b94a5", "#07090d"],
   ["dark product secondary copy", "#818b9a", "#11151d"],
-  ["account light-card action", "#385c18", "#ffffff"],
-  ["account light-card metadata", "#59645c", "#ffffff"],
+  ["account dark-card action", "#d9ff72", "#111512"],
+  ["account dark-card metadata", "#aeb6b0", "#111512"],
+  ["account dark-card input placeholder", "#818b9a", "#0d100e"],
   ["public chamber live detail", "#818b83", "#0e1312"],
   ["dark balance metadata", "#8b94a5", "#12161f"],
   ["Vault primary value", "#f7f2e6", "#111713"],

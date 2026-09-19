@@ -298,24 +298,6 @@
 .auth-page,
 .referral-landing{overflow-x:clip!important;overflow-y:visible!important}
 
-/* Account intentionally reuses the light completion cards inside the dark app
-   shell. Establish the light color context locally so headings and actions do
-   not inherit dark-shell colors onto a white card. */
-.app-frame .account-grid .completion-card{
-  color-scheme:light;
-  color:#101511!important;
-}
-.app-frame .account-grid .completion-card :where(h2,strong){color:#101511!important}
-.app-frame .account-grid .completion-card .app-eyebrow{color:#566159!important}
-.app-frame .account-grid .account-facts small{color:#59645c!important}
-.app-frame .account-grid .inline-action{color:#385c18!important}
-.app-frame .account-grid .button-secondary{
-  color:#f7f8fa!important;
-  background:#11151d!important;
-  border-color:#303740!important;
-}
-.app-frame .account-grid input::placeholder{color:#667168!important;opacity:1!important}
-
 /* Functional secondary copy: several legacy explicit colors remained below
    AA contrast even after their font sizes were raised. */
 .sidebar-user small,

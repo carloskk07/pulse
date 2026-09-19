@@ -219,6 +219,59 @@
 }
 .pc-luxe-turbo-aside>*{position:relative;z-index:1}
 
+/* Account belongs to the authenticated product world. Earlier compatibility
+   styling kept completion cards white, which made Account feel like a separate
+   site. Keep the semantic completion markup but render it with the same dark
+   material, type hierarchy and controls as the rest of AppShell. */
+.app-frame .account-grid{
+  gap:16px;
+}
+.app-frame .account-grid .completion-card{
+  color-scheme:dark;
+  min-height:100%;
+  color:#f7f2e6!important;
+  border:1px solid rgba(239,208,138,.13)!important;
+  background:
+    radial-gradient(circle at 92% 0,rgba(239,208,138,.065),transparent 30%),
+    linear-gradient(150deg,rgba(17,21,18,.97),rgba(5,7,6,.98))!important;
+  box-shadow:0 34px 100px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.035)!important;
+}
+.app-frame .account-grid .completion-card :where(h2,strong){color:#fff7e6!important}
+.app-frame .account-grid .completion-card h2{
+  font-size:clamp(28px,2.4vw,36px);
+  line-height:1.02;
+  letter-spacing:-.045em;
+}
+.app-frame .account-grid .completion-card>p{
+  color:#aeb6b0!important;
+  font-size:13px;
+  line-height:1.68;
+}
+.app-frame .account-grid .completion-card .app-eyebrow{color:#efd08a!important}
+.app-frame .account-grid .account-facts div{border-color:rgba(255,255,255,.075)!important}
+.app-frame .account-grid .account-facts small{color:#aeb6b0!important}
+.app-frame .account-grid .completion-form label{color:#c5cbc5!important}
+.app-frame .account-grid .completion-form input{
+  color:#f7f2e6!important;
+  border-color:rgba(239,208,138,.14)!important;
+  background:rgba(255,255,255,.025)!important;
+}
+.app-frame .account-grid .completion-form input:focus{
+  border-color:rgba(217,255,114,.32)!important;
+  box-shadow:0 0 0 3px rgba(217,255,114,.05)!important;
+}
+.app-frame .account-grid input::placeholder{color:#818b9a!important;opacity:1!important}
+.app-frame .account-grid .inline-action{color:#d9ff72!important}
+.app-frame .account-grid .button-secondary{
+  color:#f7f2e6!important;
+  background:rgba(255,255,255,.035)!important;
+  border-color:rgba(239,208,138,.16)!important;
+}
+.app-frame .account-grid .button-secondary:hover{
+  border-color:rgba(217,255,114,.24)!important;
+  background:rgba(217,255,114,.055)!important;
+}
+
 /* Dashboard is already the strongest surface; only tighten the unavailable
    fallback so it does not become the loudest object on small screens. */
 .pc-v9-chamber.state-paused .pc-v9-pulse-copy h2{
