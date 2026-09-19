@@ -1,8 +1,8 @@
 import { getReleaseReadiness, type ReadinessCheck, type ReadinessState } from "@/lib/release-readiness";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export const CURRENT_RELEASE_SCHEMA_VERSION = 52;
-export const CURRENT_RELEASE_SCHEMA_MIGRATION = "0052_controlled_readiness_release_authority.sql";
+export const CURRENT_RELEASE_SCHEMA_VERSION = 53;
+export const CURRENT_RELEASE_SCHEMA_MIGRATION = "0053_compact_reward_snapshot.sql";
 
 function objectValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
