@@ -43,22 +43,17 @@ function runSelfTest() {
 }
 
 function verify(eventName, sha, proofPath) {
-  if (eventName === "workflow_dispatch") {
-    console.log("Deploy provenance PASS: explicit workflow_dispatch invocation.");
-    return;
-  }
-
-  if (eventName !== "push") {
-    throw new Error(`Unsupported automatic production deploy event: ${eventName}`);
+  if (eventName !== "push" && eventName !== "workflow_dispatch") {
+    throw new Error(`Unsupported production deploy event: ${eventName}`);
   }
 
   const pulls = JSON.parse(readFileSync(proofPath, "utf8"));
   if (!hasMergedMainPrProvenance(sha, pulls)) {
-    throw new Error(`Automatic production deploy rejected: ${sha} is not proven as the merge commit of a closed PR into main.`);
+    throw new Error(`Production deploy rejected: ${sha} is not proven as the merge commit of a closed PR into main.`);
   }
 
   const matched = pulls.find((pull) => pull?.merge_commit_sha === sha && pull?.merged_at && pull?.base?.ref === "main");
-  console.log(`Deploy provenance PASS: PR #${matched?.number ?? "unknown"} merged into main at ${matched?.merged_at ?? "unknown"}.`);
+  console.log(`Deploy provenance PASS: event=${eventName}, PR #${matched?.number ?? "unknown"} merged into main at ${matched?.merged_at ?? "unknown"}.`);
 }
 
 if (process.argv.includes("--self-test")) {
