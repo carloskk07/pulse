@@ -27,7 +27,7 @@ if (existsSync("lib/mock-data.ts")) {
 }
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
-requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha", 'body.scope !== "controlled-technical"', "Controlled technical status"]);
+requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha", "Require READY controlled technical state", "verify-controlled-readiness-gate.mjs", "max_attempts=6", "sleep 4", "exit 1"]);
 requireText("lib/release-readiness.ts", ['admin.rpc(\n        "release_runtime_contract_snapshot"', "runtimeSnapshot.snapshot_authority === true", "runtimeSnapshot.economics_ok === true", "runtimeSnapshot.referral_ok === true", "runtimeSnapshot.authenticated_read_scope === true", "runtimeSnapshot.withdrawal_settlement === true", "runtimeSnapshot.treasury_backing === true", "runtimeSnapshot.hourly_scale === true", "runtimeSnapshot.user_balance_materialization === true", "runtimeSnapshot.reward_snapshot === true", "runtimeSnapshot.wallet_snapshot === true", "runtimeSnapshot.invite_snapshot === true", "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
 forbidText("lib/release-readiness.ts", [
   'admin.rpc("release_authenticated_read_scope_contract")',
@@ -221,7 +221,7 @@ requireText("lib/reward-state.ts", ["maximumFractionDigits: 3", "minimumFraction
 requireText("lib/withdrawal-pilot.ts", ["hasWithdrawalPilotAccess", 'admin.rpc("withdrawal_pilot_allowed"', "return !error && data === true"]);
 requireText("scripts/report-safe-payout-profile.mjs", ["FAUCETPAY_PAYOUT_CURRENCY", "FAUCETPAY_PAYOUT_CREDITS", "FAUCETPAY_PAYOUT_UNITS", "FAUCETPAY_PAYOUT_LABEL", "FAUCETPAY_SEND_DAILY_LIMIT_USD", "visible-pack-ready"]);
 requireText(".github/workflows/ci.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Reject direct pushes to main", "verify-deploy-provenance.mjs push", "Main integrity rejected:", "pull-requests: read"]);
-requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Require merged PR provenance for production deploy", 'verify-deploy-provenance.mjs "$GITHUB_EVENT_NAME"', "Require current main HEAD", "Reconfirm current main HEAD before deploy", 'verify-current-main-head.mjs "$GITHUB_SHA"', "Require production database schema authority", "verify-production-schema-gate.mjs", "https://pulsercuit.pro/api/release-schema", "Production deploy rejected: database schema authority does not match the release contract."]);
+requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Require merged PR provenance for production deploy", 'verify-deploy-provenance.mjs "$GITHUB_EVENT_NAME"', "Require current main HEAD", "Reconfirm current main HEAD before deploy", 'verify-current-main-head.mjs "$GITHUB_SHA"', "Require production database schema authority", "verify-production-schema-gate.mjs", "https://pulsercuit.pro/api/release-schema", "Production deploy rejected: database schema authority does not match the release contract.", "Require READY controlled technical state", "verify-controlled-readiness-gate.mjs"]);
 {
   const source = read(".github/workflows/ci.yml");
   const mainGate = source.indexOf("Reject direct pushes to main");
@@ -449,6 +449,20 @@ forbidText("app/invite/page.tsx", [
 requireText("lib/pulse-receipt.ts", ["getCurrentUserContext", '.from("pulse_claims")', "RECENT_CLAIM_WINDOW_MS"]);
 forbidText("lib/pulse-receipt.ts", ["supabase.auth.getUser", "createSupabaseServerClient"]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
+requireText("scripts/verify-controlled-readiness-gate.mjs", [
+  "verifyControlledReadinessResponse",
+  'status !== 200',
+  'body.service !== "pulsercuit"',
+  'body.scope !== "controlled-technical"',
+  'body.readiness !== "READY"',
+  'body.ready !== true',
+  "Controlled readiness gate self-test PASS"
+]);
+requireText("package.json", ["verify-controlled-readiness-gate.mjs --self-test"]);
+forbidText(".github/workflows/vercel-prebuilt.yml", [
+  'const allowedStates = new Set(["SETUP_REQUIRED", "READY_FOR_EXTERNAL_PROOF", "READY"])',
+  "controlled technical readiness remains open"
+]);
 {
   const source = read(".github/workflows/vercel-prebuilt.yml");
   const mainHeadGate = source.indexOf("Require current main HEAD");
@@ -456,6 +470,8 @@ requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", 
   const buildStep = source.indexOf("Build prebuilt Vercel output");
   const predeployHeadGate = source.indexOf("Reconfirm current main HEAD before deploy");
   const deployStep = source.indexOf("Deploy prebuilt output");
+  const exactReleaseStep = source.indexOf("Verify exact canonical production release");
+  const readinessGate = source.indexOf("Require READY controlled technical state");
   const mainHeadChecks = source.match(/verify-current-main-head\.mjs "\$GITHUB_SHA"/g) ?? [];
   if (
     mainHeadGate < 0
@@ -463,13 +479,17 @@ requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", 
     || buildStep < 0
     || predeployHeadGate < 0
     || deployStep < 0
+    || exactReleaseStep < 0
+    || readinessGate < 0
     || mainHeadChecks.length < 2
     || mainHeadGate > buildStep
     || schemaGate > buildStep
     || buildStep > predeployHeadGate
     || predeployHeadGate > deployStep
+    || deployStep > exactReleaseStep
+    || exactReleaseStep > readinessGate
   ) {
-    throw new Error("Current main HEAD must be proven both before the build path and again immediately before Vercel deploy.");
+    throw new Error("Production release ordering must prove main/schema before build, recheck main before deploy, then prove exact release and READY state.");
   }
 }
 forbidText("scripts/audit-production-dependencies.mjs", ["process.exit(0); //", "audit-level=moderate"]);
