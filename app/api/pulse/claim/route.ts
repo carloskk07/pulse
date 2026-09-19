@@ -9,6 +9,7 @@ import {
 import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ensureFreshTreasuryBacking } from "@/lib/treasury-backing";
 import { verifyTurnstile } from "@/lib/turnstile";
 
 function dashboardRedirect(request: NextRequest, state: string) {
@@ -75,8 +76,17 @@ export async function POST(request: NextRequest) {
   await recordReleaseEvidence("turnstile");
   await admin.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
 
+  const backing = await ensureFreshTreasuryBacking("launch", admin);
+  if (backing === "backing_insufficient") return dashboardRedirect(request, "budget-paused");
+  if (backing !== "backing_ready") return dashboardRedirect(request, "budget-paused");
+
   const { data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id });
-  if (error) return dashboardRedirect(request, "failed");
+  if (error) {
+    if (String(error.message ?? "").includes("pulse_backing_guard:")) {
+      return dashboardRedirect(request, "budget-paused");
+    }
+    return dashboardRedirect(request, "failed");
+  }
 
   const result = (data ?? {}) as { status?: string };
   if (result.status === "claimed") return claimReceiptRedirect(request, user.id);
