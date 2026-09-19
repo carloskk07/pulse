@@ -5,7 +5,25 @@ import { getProductReadiness, hasProductSetupBlocker } from "@/lib/product-readi
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+const READINESS_CACHE_TTL_MS = 3_000;
+
+type ReadinessPayload = {
+  service: "pulsercuit";
+  version: "0.1.0";
+  scope: "controlled-technical";
+  readiness: "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
+  ready: boolean;
+};
+
+type ReadinessResult = {
+  body: ReadinessPayload;
+  status: 200 | 503;
+};
+
+let cachedReadiness: { value: ReadinessResult; expiresAt: number } | null = null;
+let readinessInFlight: Promise<ReadinessResult> | null = null;
+
+async function computeReadiness(): Promise<ReadinessResult> {
   const [release, product, hourlyPilot] = await Promise.all([
     getCurrentReleaseReadiness(),
     getProductReadiness(),
@@ -36,17 +54,66 @@ export async function GET() {
     }));
   }
 
-  return Response.json(
-    {
+  return {
+    body: {
       service: "pulsercuit",
       version: "0.1.0",
       scope: "controlled-technical",
       readiness,
       ready,
     },
+    status: ready ? 200 : 503,
+  };
+}
+
+async function getReadinessSnapshot() {
+  const now = Date.now();
+  if (cachedReadiness && cachedReadiness.expiresAt > now) {
+    return { value: cachedReadiness.value, source: "hit" as const };
+  }
+
+  if (readinessInFlight) {
+    return { value: await readinessInFlight, source: "coalesced" as const };
+  }
+
+  const startedAt = Date.now();
+  readinessInFlight = computeReadiness();
+
+  try {
+    const value = await readinessInFlight;
+    cachedReadiness = {
+      value,
+      expiresAt: Date.now() + READINESS_CACHE_TTL_MS,
+    };
+
+    const durationMs = Date.now() - startedAt;
+    if (durationMs >= 1_000) {
+      console.info("PULSECIRCUIT_READINESS_COMPUTE", JSON.stringify({
+        durationMs,
+        cacheTtlMs: READINESS_CACHE_TTL_MS,
+      }));
+    }
+
+    return { value, source: "miss" as const };
+  } finally {
+    readinessInFlight = null;
+  }
+}
+
+export async function GET() {
+  const startedAt = Date.now();
+  const snapshot = await getReadinessSnapshot();
+  const durationMs = Date.now() - startedAt;
+
+  return Response.json(
+    snapshot.value.body,
     {
-      status: ready ? 200 : 503,
-      headers: { "Cache-Control": "no-store" },
+      status: snapshot.value.status,
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Pulse-Readiness-Cache": snapshot.source,
+        "Server-Timing": `readiness;dur=${durationMs}`,
+      },
     },
   );
 }
