@@ -1,0 +1,60 @@
+name: Fresh Readiness Probe
+
+on:
+  push:
+    branches:
+      - diag/readiness-v55-fresh
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe canonical production after rollout TTL
+        shell: bash
+        run: |
+          sleep 5
+          readiness="$RUNNER_TEMP/readiness.json"
+          release="$RUNNER_TEMP/release.json"
+          health="$RUNNER_TEMP/health.json"
+
+          readiness_status="$(curl --silent --show-error --output "$readiness" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "https://pulsercuit.pro/api/readiness?fresh=$GITHUB_RUN_ID")"
+          release_status="$(curl --silent --show-error --output "$release" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "https://pulsercuit.pro/release.json?fresh=$GITHUB_RUN_ID")"
+          health_status="$(curl --silent --show-error --output "$health" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "https://pulsercuit.pro/api/health?fresh=$GITHUB_RUN_ID")"
+
+          node - "$readiness_status" "$readiness" "$release_status" "$release" "$health_status" "$health" <<'NODE'
+          const fs = require("node:fs");
+          const [readinessStatus, readinessPath, releaseStatus, releasePath, healthStatus, healthPath] = process.argv.slice(2);
+          const parse = (path) => JSON.parse(fs.readFileSync(path, "utf8"));
+          const readiness = parse(readinessPath);
+          const release = parse(releasePath);
+          const health = parse(healthPath);
+
+          console.log(JSON.stringify({
+            type: "fresh_production_probe",
+            readinessStatus: Number(readinessStatus),
+            readiness: {
+              service: readiness.service,
+              scope: readiness.scope,
+              state: readiness.readiness,
+              ready: readiness.ready,
+            },
+            releaseStatus: Number(releaseStatus),
+            releaseSha: release.git_sha,
+            healthStatus: Number(healthStatus),
+            healthService: health.service ?? null,
+          }));
+
+          if (Number(releaseStatus) !== 200 || release.git_sha !== "55630fbf010e7d0095e769432980c713d29be230") {
+            throw new Error("Canonical release identity mismatch.");
+          }
+          if (Number(healthStatus) !== 200) {
+            throw new Error("Canonical health check failed.");
+          }
+          if (Number(readinessStatus) !== 200 || readiness.ready !== true || readiness.readiness !== "READY") {
+            throw new Error("Fresh canonical readiness is not READY.");
+          }
+          NODE
