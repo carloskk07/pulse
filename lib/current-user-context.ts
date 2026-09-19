@@ -10,7 +10,7 @@ export const getCurrentUserContext = cache(async () => {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { supabase: null, user: null as CurrentUserIdentity | null };
 
-  const { data: { claims }, error } = await supabase.auth.getClaims();
+  const { data: claimsData, error } = await supabase.auth.getClaims();\n  const claims = claimsData?.claims;
   const id = !error && typeof claims?.sub === "string" ? claims.sub : "";
   if (!id) return { supabase, user: null as CurrentUserIdentity | null };
 
