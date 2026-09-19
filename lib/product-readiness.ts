@@ -349,6 +349,19 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
       ? "Hourly Pulse and the shared withdrawal authority are intentionally open beyond the controlled pilot allowlist."
       : "Controlled pilot mode is intentionally active. It does not block technical readiness; public expansion remains blocked until pilot mode is deliberately disabled after funding and launch gates are closed.",
   });
+  const publicFairShareReady = Boolean(
+    dailyBudgetCredits > 0
+    && maxUserDailyCredits > 0
+    && maxUserDailyCredits * 2 <= dailyBudgetCredits
+  );
+  checks.push({
+    id: "public-fair-share",
+    label: "Public daily fair-share limit",
+    pass: publicFairShareReady,
+    detail: publicFairShareReady
+      ? `One account can consume at most ${maxUserDailyCredits}/${dailyBudgetCredits} P of the UTC-day budget (50% or less).`
+      : `Public expansion requires max_user_daily_credits to be no more than 50% of the daily budget so one account cannot monopolize the faucet (current ${maxUserDailyCredits}/${dailyBudgetCredits} P).`,
+  });
   checks.push({
     id: "treasury",
     label: "Funded reward treasury",
@@ -414,8 +427,9 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
         : "Complete and prove one controlled FaucetPay payout before destination receipt can be verified.",
   });
 
+  const publicOnlyCheckIds = new Set(["public-access", "public-fair-share"]);
   const blockers = checks
-    .filter((item) => item.id !== "public-access" && !item.pass)
+    .filter((item) => !publicOnlyCheckIds.has(item.id) && !item.pass)
     .map((item) => item.label);
   const publicBlockers = checks.filter((item) => !item.pass).map((item) => item.label);
 
