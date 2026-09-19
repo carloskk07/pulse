@@ -20,6 +20,21 @@ export async function GET() {
       ? "READY"
       : "READY_FOR_EXTERNAL_PROOF";
 
+  if (!ready) {
+    const releaseBlockingIds = release.checks
+      .filter((item) => item.blocking && item.status !== "pass")
+      .map((item) => item.id);
+    const productBlockingIds = product.checks
+      .filter((item) => item.id !== "public-access" && !item.pass)
+      .map((item) => item.id);
+
+    console.info("PULSECIRCUIT_READINESS_BLOCKERS", JSON.stringify({
+      release: releaseBlockingIds,
+      product: productBlockingIds,
+      hourlyPilotOk: hourlyPilot.ok,
+    }));
+  }
+
   return Response.json(
     {
       service: "pulsercuit",
