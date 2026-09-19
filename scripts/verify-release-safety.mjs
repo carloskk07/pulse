@@ -440,7 +440,7 @@ requireText("lib/experience-presentation.ts", ["getUserNextAction", "getWalletPr
 requireText("app/dashboard/page.tsx", ["getUserNextAction", "nextAction", "Waiting for next Pulse", "getCurrentUserContext"]);
 requireText("app/admin/page.tsx", ["getOperatorNextAction", "One blocker at a time.", "Growth systems", "getProductLaunchReadiness"]);
 requireText("app/admin/advanced/page.tsx", ["/admin/product", "/admin/retention", "/admin/leads", "/admin/prospects"]);
-requireText("app/wallet/page.tsx", ["getWalletPresentation", "hasCurrentFaucetPaySendScopeProof", "hasWithdrawalPilotAccess", "withdrawalPilotAllowed", '"pilot-restricted"', "sendScopeProofReady", "canWithdraw", "TurnstileField", "This continues the same protected payment request. It cannot create a second payout."]);
+requireText("app/wallet/page.tsx", ["getWalletPresentation", "getWalletState", "withdrawalPilotAllowed", '"pilot-restricted"', "sendScopeProofReady", "canWithdraw", "TurnstileField", "This continues the same protected payment request. It cannot create a second payout."]);
 requireText("app/api/return-reminder/route.ts", ["export async function POST", "isTrustedSameOriginMutation(request)", "getCanonicalSiteUrl", "new URL(reminderId ? \"/return\" : \"/dashboard\", getCanonicalSiteUrl())"]);
 forbidText("app/api/return-reminder/route.ts", ["export async function GET"]);
 requireText("app/api/direct/start/route.ts", ["isTrustedSameOriginMutation(request)", 'admin.rpc("start_direct_campaign_session"', 'target.protocol !== "https:"']);
