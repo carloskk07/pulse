@@ -382,6 +382,8 @@ requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", 
 forbidText("scripts/audit-production-dependencies.mjs", ["process.exit(0); //", "audit-level=moderate"]);
 forbidText("scripts/report-safe-payout-profile.mjs", ["FAUCETPAY_SCOPED_KEY", "FAUCETPAY_READ_KEY", "VERCEL_TOKEN", "SUPABASE_SERVICE_ROLE_KEY"]);
 requireText("lib/current-user-context.ts", ['import { cache } from "react"', "CurrentUserIdentity", "getCurrentUserContext", "createSupabaseServerClient", "supabase.auth.getClaims", "claims?.sub", "claims?.email"]);
+requireText("lib/retention-summary.ts", ["getCurrentUserContext", 'supabase.from("pulse_claims")', '.gte("created_at", fourteenDaysAgo)']);
+forbidText("lib/retention-summary.ts", ["supabase.auth.getUser", "createSupabaseServerClient"]);
 forbidText("lib/current-user-context.ts", ["supabase.auth.getUser"]);
 requireText("proxy.ts", ["supabase.auth.getClaims", "hasValidIdentity", "claims?.sub", "isProtected && !hasValidIdentity"]);
 forbidText("proxy.ts", ["supabase.auth.getUser"]);
