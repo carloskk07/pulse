@@ -64,6 +64,18 @@ export default async function ProgressPage() {
           </div>
         </article>
 
+        {state.preview || !state.signedIn ? (
+          <aside className="pc-visual-story pc-momentum-story" aria-labelledby="momentum-story-title">
+            <div className="pc-visual-story-copy">
+              <span className="app-eyebrow">Verified path</span>
+              <h2 id="momentum-story-title">Every real Pulse makes the next mark clearer.</h2>
+              <p>Rank, rhythm and milestones grow from funded history, so the path reflects evidence instead of decorative progress.</p>
+            </div>
+            <div className="pc-visual-story-flow" aria-hidden="true">
+              <span>Pulse</span><i /><span>Rhythm</span><i /><span>Rank</span>
+            </div>
+          </aside>
+        ) : (
         <NextCircuitPanel
           claimIntervalMinutes={state.claimIntervalMinutes}
           claimReady={state.claimReady}
@@ -76,6 +88,7 @@ export default async function ProgressPage() {
           signalStage={signal.stage}
           signedIn={state.signedIn}
         />
+        )}
       </section>
 
       {shareReady ? (

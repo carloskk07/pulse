@@ -64,21 +64,24 @@ export default async function InvitePage() {
       <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Invite</span><h1>Invite real people. Reward real activity.</h1><p>One link. One clear qualification rule. No reward for empty signups.</p></div></div>
 
       <section className="invite-hero-card pc-luxe-invite-hero">
-        <div className="invite-hero-icon"><Users /></div>
-        <span className="app-eyebrow">Your invite link</span>
-        <h2>{referralLink ? "Invite someone into the climb." : user ? "Your share link is almost ready." : "Enter the circuit to start sharing."}</h2>
-        {referralLink ? (
-          <div className="referral-box pc-luxe-referral-box"><code>{referralLink}</code><CopyReferralLink value={referralLink} /></div>
-        ) : user ? (
-          <div className="preview-banner">The link appears when your live profile and production site URL are both available.</div>
-        ) : (
-          <Link className="button button-light" href="/auth?next=/invite">Sign in to continue</Link>
-        )}
-        {inviterBonus !== null && inviteeBonus !== null ? (
-          <p>After the first qualifying verified activity: you receive {formatUsdFromCredits(inviterBonus)} and your friend receives {formatUsdFromCredits(inviteeBonus)}. Reversed qualification reverses both bonuses.</p>
-        ) : (
-          <p>Bonus values appear only when the current referral rule is active.</p>
-        )}
+        <div className="pc-invite-copy">
+          <div className="invite-hero-icon"><Users /></div>
+          <span className="app-eyebrow">Your invite link</span>
+          <h2>{referralLink ? "Invite someone into the climb." : user ? "Your share link is almost ready." : "Enter the circuit to start sharing."}</h2>
+          {referralLink ? (
+            <div className="referral-box pc-luxe-referral-box"><code>{referralLink}</code><CopyReferralLink value={referralLink} /></div>
+          ) : user ? (
+            <div className="preview-banner">The link appears when your live profile and production site URL are both available.</div>
+          ) : (
+            <Link className="button button-light" href="/auth?next=/invite">Sign in to continue</Link>
+          )}
+          {inviterBonus !== null && inviteeBonus !== null ? (
+            <p>After the first qualifying verified activity: you receive {formatUsdFromCredits(inviterBonus)} and your friend receives {formatUsdFromCredits(inviteeBonus)}. Reversed qualification reverses both bonuses.</p>
+          ) : (
+            <p>Bonus values appear only when the current referral rule is active.</p>
+          )}
+        </div>
+        <div className="pc-invite-scene" aria-hidden="true"><span>Verified activity only</span></div>
       </section>
 
       <section className="pc-luxe-share-stats">
