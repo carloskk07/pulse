@@ -70,6 +70,30 @@ requireText("supabase/migrations/0045_treasury_exact_gap_backing.sql", ["availab
 requireText("supabase/migrations/0046_treasury_backing_freshness.sql", ["treasury_backing_observations", "max_age_seconds', 900", "record_treasury_backing_observation", "treasury_backing_guard", "backing_refresh_required", "backing_insufficient", "read_proof_fingerprint", "observed_balance_units < v_required_units", "pulse_claim_backing_guard", "pulse_backing_guard", "release_treasury_backing_guard_contract", "security invoker", "service_role", "version', 46"]);
 requireText("supabase/migrations/0047_faucetpay_payout_pack_authority.sql", ["create table if not exists public.faucetpay_payout_pack_authority", "values (true, 'USDT', 10, 1000000, 1)", "delete from public.app_config", "where key = 'faucetpay_payout_pack_authority'", "revoke all on table public.faucetpay_payout_pack_authority", "from public, anon, authenticated, service_role", "grant select on table public.faucetpay_payout_pack_authority", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'INSERT')", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'UPDATE')", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'DELETE')", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'TRUNCATE')", "not exists (", "record_treasury_backing_observation(text,bigint)", "record_treasury_backing_observation(text,text,bigint,bigint,bigint)') is null", "v_pack_credits", "v_pack_units", "v_observation.payout_pack_credits <> v_pack_credits", "v_observation.payout_pack_units <> v_pack_units", "release_treasury_backing_guard_contract", "version', 47"]);
 requireText("supabase/migrations/0048_hourly_pulse_claim_concurrency.sql", ["pulse_claims_treasury_created_idx", "include (reward_credits, user_id)", "treasury_reservations_expiry_idx", "SCALE_V48_GLOBAL_CRITICAL_SECTION", "pulse_claim_abort:daily_budget_exhausted", "pulse_claim_abort:user_daily_limit", "release_hourly_pulse_scale_contract", "security invoker", "service_role", "version', 48"]);
+{
+  const source = read("supabase/migrations/0048_hourly_pulse_claim_concurrency.sql");
+  const claimInsert = source.indexOf("insert into public.pulse_claims");
+  const trustRefresh = source.indexOf("v_trust := public.refresh_pulse_trust(p_user_id);");
+  const criticalMarker = source.indexOf("-- SCALE_V48_GLOBAL_CRITICAL_SECTION");
+  const treasuryLock = source.indexOf("for update;", criticalMarker);
+  const treasurySpend = source.indexOf("spent_credits = spent_credits + v_reward", criticalMarker);
+  const criticalEnd = source.indexOf("-- SCALE_V48_GLOBAL_CRITICAL_SECTION_END", criticalMarker);
+  if (
+    claimInsert < 0
+    || trustRefresh < 0
+    || criticalMarker < 0
+    || treasuryLock < 0
+    || treasurySpend < 0
+    || criticalEnd < 0
+    || claimInsert > trustRefresh
+    || trustRefresh > criticalMarker
+    || criticalMarker > treasuryLock
+    || treasuryLock > treasurySpend
+    || treasurySpend > criticalEnd
+  ) {
+    throw new Error("v48 must keep claim/backing/trust work before the short serialized Treasury close.");
+  }
+}
 requireText("lib/release-evidence.ts", ["FAUCETPAY_SEND_SCOPE_PROOF_SCHEMA", '"faucetpay_send_scope"', "getFaucetPaySendAuthorityConfig", "sendAuthority.dailyLimitUsd", "sendAuthority.dailyLimitSource", '"scope:send-only"', '"daily-cap:exact-value-operator-verified"', "GenericRecordableReleaseEvidenceKind", 'Exclude<ReleaseEvidenceKind, "faucetpay_payout">', "recordReleaseEvidence(kind: GenericRecordableReleaseEvidenceKind)", 'PASSWORD_RECOVERY_PROOF_SCHEMA = "password-recovery-proof-v2"', "PASSWORD_RECOVERY_MAX_AGE_SECONDS", '"hosted-email:pkce-or-otp"', '"password-update:bounded-recovery-context"', '"fresh-password-signin-required"', 'SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "auth-breach-protection-proof-v2"', "getPwnedPasswordProtectionContract"]);
 requireText("lib/faucetpay-authority.ts", ["hasCurrentFaucetPayEvidence", '"faucetpay_send_scope"', "hasCurrentFaucetPaySendScopeProof"]);
 requireText("lib/faucetpay-receipt-proof.ts", ["FAUCETPAY_PAYOUT_PROOF_SCHEMA", "FAUCETPAY_RECEIPT_PROOF_SCHEMA", "getFaucetPayPayoutFingerprint", "faucetPayPayoutEvidenceMatches", "recordFaucetPayPayoutProofById", "payoutWithdrawal", "payoutWithdrawal.id === receiptWithdrawal.id"]);
