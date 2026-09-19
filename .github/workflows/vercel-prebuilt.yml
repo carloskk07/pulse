@@ -159,6 +159,9 @@ jobs:
           if (!allowedStates.has(body.readiness)) {
             throw new Error(`Unexpected readiness state: ${body.readiness}`);
           }
+          if (body.scope !== "controlled-technical") {
+            throw new Error(`Unexpected readiness scope: ${body.scope}`);
+          }
           if (typeof body.ready !== "boolean") {
             throw new Error("Readiness response must contain a boolean ready field.");
           }
@@ -171,12 +174,12 @@ jobs:
             throw new Error(`ready=${body.ready} disagrees with readiness=${body.readiness}.`);
           }
 
-          const launchStatus = body.ready ? "READY" : "NOT READY";
-          console.log(`Readiness contract VALID: HTTP ${status}, state=${body.readiness}, ready=${body.ready}`);
-          console.log(`Launch status: ${launchStatus}`);
+          const technicalStatus = body.ready ? "READY" : "NOT READY";
+          console.log(`Readiness contract VALID: HTTP ${status}, scope=${body.scope}, state=${body.readiness}, ready=${body.ready}`);
+          console.log(`Controlled technical status: ${technicalStatus}`);
 
           if (!body.ready) {
-            console.log(`::warning title=Pulsercuit launch readiness::Canonical deployment is healthy, but launch readiness is ${body.readiness}. This step validates response integrity; it does not certify the product as launch-ready.`);
+            console.log(`::warning title=Pulsercuit technical readiness::Canonical deployment is healthy, but controlled technical readiness is ${body.readiness}.`);
           }
 
           const summaryPath = process.env.GITHUB_STEP_SUMMARY;
@@ -188,12 +191,13 @@ jobs:
               "| --- | --- |",
               `| Canonical commit | \`${process.env.GITHUB_SHA ?? "unknown"}\` |`,
               `| Readiness response | HTTP ${status} |`,
+              `| Readiness scope | **${body.scope}** |`,
               `| Readiness state | **${body.readiness}** |`,
-              `| Launch ready | **${body.ready ? "YES" : "NO"}** |`,
+              `| Controlled technical ready | **${body.ready ? "YES" : "NO"}** |`,
               "",
               body.ready
-                ? "The canonical production release is healthy and the launch-readiness gate is READY."
-                : "The canonical production release is healthy, but product launch readiness remains open. A green deploy must not be interpreted as launch approval.",
+                ? "The canonical production release is healthy and the controlled technical gate is READY. Public/global governance remains a separate review surface."
+                : "The canonical production release is healthy, but controlled technical readiness remains open.",
               "",
             ];
             fs.appendFileSync(summaryPath, `${rows.join("\n")}\n`, "utf8");

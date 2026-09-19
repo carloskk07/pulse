@@ -12,8 +12,10 @@ export type ProductReadinessCheck = {
 
 export type ProductReadiness = {
   ready: boolean;
+  publicReady: boolean;
   checks: ProductReadinessCheck[];
   blockers: string[];
+  publicBlockers: string[];
   confirmedMonetizationEvents: number;
   paidWithdrawals: number;
 };
@@ -25,7 +27,6 @@ const PRODUCT_SETUP_CHECK_IDS = new Set([
   "send-authority-config",
   "database",
   "hourly-pulse-config",
-  "public-access",
   "treasury",
 ]);
 
@@ -83,15 +84,17 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const admin = createSupabaseAdminClient();
   if (!admin) {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
-    checks.push({ id: "auth-hardening-proof", label: "Supabase Auth leaked-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
+    checks.push({ id: "auth-hardening-proof", label: "Compromised-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
     checks.push({ id: "password-recovery-proof", label: "Hosted password recovery proof", pass: false, detail: "Real recovery evidence cannot be verified without trusted database authority." });
     checks.push({ id: "faucetpay-send-scope-proof", label: "FaucetPay send-key least privilege", pass: false, detail: "Send-key scope evidence cannot be verified without trusted database authority." });
     checks.push({ id: "base-loop-continuity", label: "Same-account base loop", pass: false, detail: "The authoritative same-account Pulse → Wallet → payout chain cannot be verified without trusted database authority." });
     checks.push({ id: "payout-receipt-proof", label: "Actual payout receipt", pass: false, detail: "Destination receipt cannot be verified without trusted database authority." });
     return {
       ready: false,
+      publicReady: false,
       checks,
       blockers: checks.filter((item) => !item.pass).map((item) => item.label),
+      publicBlockers: checks.filter((item) => !item.pass).map((item) => item.label),
       confirmedMonetizationEvents: 0,
       paidWithdrawals: 0,
     };
@@ -252,11 +255,11 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
 
   checks.push({
     id: "auth-hardening-proof",
-    label: "Supabase Auth leaked-password protection",
+    label: "Compromised-password protection",
     pass: authHardeningProof,
     detail: authHardeningProof
-      ? "Current Supabase project has matching external Auth-hardening evidence."
-      : "Enable leaked-password protection, clear the Supabase security-advisor warning, then record fingerprint-bound evidence.",
+      ? "Current 12+ character password policy and free HIBP Pwned Passwords k-anonymity screening have matching live evidence."
+      : "Verify the built-in HIBP Pwned Passwords screening. This replaces the paid Supabase leaked-password feature without weakening the password-set gate.",
   });
   checks.push({
     id: "password-recovery-proof",
@@ -279,7 +282,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     pass: publicPulseAccess,
     detail: publicPulseAccess
       ? "Hourly Pulse and the shared withdrawal authority are intentionally open beyond the controlled pilot allowlist."
-      : "Controlled pilot mode is still active. Public launch cannot be promoted until pilot mode is intentionally disabled after launch funding and external release gates are closed.",
+      : "Controlled pilot mode is intentionally active. It does not block technical readiness; public expansion remains blocked until pilot mode is deliberately disabled after funding and launch gates are closed.",
   });
   checks.push({
     id: "treasury",
@@ -346,11 +349,17 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
         : "Complete and prove one controlled FaucetPay payout before destination receipt can be verified.",
   });
 
-  const blockers = checks.filter((item) => !item.pass).map((item) => item.label);
+  const blockers = checks
+    .filter((item) => item.id !== "public-access" && !item.pass)
+    .map((item) => item.label);
+  const publicBlockers = checks.filter((item) => !item.pass).map((item) => item.label);
+
   return {
     ready: blockers.length === 0,
+    publicReady: publicBlockers.length === 0,
     checks,
     blockers,
+    publicBlockers,
     confirmedMonetizationEvents,
     paidWithdrawals,
   };

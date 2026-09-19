@@ -15,6 +15,8 @@ const errorCopy: Record<string, string> = {
   "service-not-configured": "Password recovery is temporarily unavailable.",
   "password-mismatch": "The two passwords do not match.",
   "password-policy": `Use at least ${MIN_PASSWORD_LENGTH} characters for the new password.`,
+  "password-compromised": "This password appears in known breach data. Choose a unique password you have not used elsewhere.",
+  "password-security-unavailable": "Password safety verification is temporarily unavailable. Try again in a moment.",
   "password-update-failed": "The password could not be updated. Request a new recovery link and try again.",
 };
 
@@ -39,7 +41,7 @@ export default async function UpdatePasswordPage({ searchParams }: Props) {
           <span className="section-kicker">Verified recovery</span>
           <h1>Create a new password.<br /><em>Keep the same account.</em></h1>
           <p>Your recovery link is valid for a limited time and can only be used to replace this account password.</p>
-          <div className="auth-trust"><span>Recovery verified</span><span>{MIN_PASSWORD_LENGTH}+ character minimum</span><span>Link expires automatically</span></div>
+          <div className="auth-trust"><span>Recovery verified</span><span>{MIN_PASSWORD_LENGTH}+ character minimum</span><span>Known breached passwords blocked</span></div>
         </div>
 
         <div className="auth-card">

@@ -15,6 +15,7 @@ import {
   finalizePasswordRecoveryProof,
   markPasswordRecoveryPasswordUpdated,
 } from "@/lib/auth-recovery-proof";
+import { checkPasswordBreach } from "@/lib/pwned-passwords";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { getCanonicalSiteUrl } from "@/lib/site-url";
@@ -74,6 +75,16 @@ export async function signIn(formData: FormData) {
     const code = "code" in error ? String(error.code ?? "") : "";
     redirect(authError(code === "weak_password" ? "password-upgrade-required" : "invalid-credentials", next, ref));
   }
+
+  const breach = await checkPasswordBreach(password);
+  if (breach.state === "compromised") {
+    await supabase.auth.signOut();
+    redirect(authError("password-upgrade-required", next, ref));
+  }
+  if (breach.state === "safe") {
+    await recordReleaseEvidence("supabase_auth_hardening");
+  }
+
   if (data.user) {
     await finalizePasswordRecoveryProof(data.user.id);
     if (ref) await bindReferralForUser(data.user.id, ref);
@@ -91,7 +102,13 @@ export async function signUp(formData: FormData) {
   if (!email || !validNewPassword(password)) redirect(authError("invalid-signup", next, ref));
   const verification = await requireTurnstile(formData, "signup");
   if (!verification.success) redirect(authError(turnstileAuthError(verification), next, ref));
+
+  const breach = await checkPasswordBreach(password);
+  if (breach.state === "compromised") redirect(authError("password-compromised", next, ref));
+  if (breach.state === "unavailable") redirect(authError("password-security-unavailable", next, ref));
+
   await recordReleaseEvidence("turnstile");
+  await recordReleaseEvidence("supabase_auth_hardening");
   const callback = new URL("/auth/callback", getCanonicalSiteUrl());
   callback.searchParams.set("next", next);
   if (ref) callback.searchParams.set("ref", ref);
@@ -141,6 +158,11 @@ export async function updateRecoveredPassword(formData: FormData) {
   const confirmation = String(formData.get("confirmation") ?? "");
   if (password !== confirmation) redirect("/auth/update-password?error=password-mismatch");
   if (!validNewPassword(password)) redirect(`/auth/update-password?error=password-policy&min=${MIN_PASSWORD_LENGTH}`);
+
+  const breach = await checkPasswordBreach(password);
+  if (breach.state === "compromised") redirect("/auth/update-password?error=password-compromised");
+  if (breach.state === "unavailable") redirect("/auth/update-password?error=password-security-unavailable");
+  await recordReleaseEvidence("supabase_auth_hardening");
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) redirect("/auth/update-password?error=password-update-failed");

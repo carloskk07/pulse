@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { MIN_PASSWORD_LENGTH, PASSWORD_RECOVERY_MAX_AGE_SECONDS } from "@/lib/auth-security";
+import { getPwnedPasswordProtectionContract } from "@/lib/pwned-passwords";
 import {
   getInternationalTransferProviderSet,
   getLegalOperatorIdentity,
@@ -10,7 +11,7 @@ import { getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
 const FAUCETPAY_READ_PROOF_SCHEMA = "faucetpay-read-proof-v2";
 const FAUCETPAY_SEND_SCOPE_PROOF_SCHEMA = "faucetpay-send-scope-proof-v2";
-const SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "supabase-auth-hardening-proof-v1";
+const SUPABASE_AUTH_HARDENING_PROOF_SCHEMA = "auth-breach-protection-proof-v2";
 const PASSWORD_RECOVERY_PROOF_SCHEMA = "password-recovery-proof-v2";
 const LEGAL_POLICY_REVIEW_PROOF_SCHEMA = "legal-policy-review-proof-v1";
 const INTERNATIONAL_TRANSFER_REVIEW_PROOF_SCHEMA = "international-transfer-review-proof-v1";
@@ -83,6 +84,9 @@ function configuredValues(kind: ReleaseEvidenceKind) {
     return [
       SUPABASE_AUTH_HARDENING_PROOF_SCHEMA,
       process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SITE_URL,
+      String(MIN_PASSWORD_LENGTH),
+      ...getPwnedPasswordProtectionContract(),
     ];
   }
   if (kind === "password_recovery") {

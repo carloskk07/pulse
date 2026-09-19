@@ -10,11 +10,29 @@ export async function getProductLaunchReadiness() {
   const releaseBlockers = release.checks.filter(
     (item) => item.blocking && item.status !== "pass",
   );
+  const publicGovernanceIds = new Set([
+    "legal-operator",
+    "legal-policy-review",
+    "international-transfer-review",
+  ]);
+  const governanceAdvisories = release.checks.filter(
+    (item) => publicGovernanceIds.has(item.id) && item.status !== "pass",
+  );
+  const publicAccessBlockers = product.checks.filter(
+    (item) => item.id === "public-access" && !item.pass,
+  );
+  const technicalReady = product.ready && release.ready;
+  const publicExpansionBlockers = [...publicAccessBlockers, ...governanceAdvisories];
 
   return {
-    ready: product.ready && release.ready,
+    ready: technicalReady,
+    technicalReady,
+    publicLaunchReady: technicalReady && product.publicReady && governanceAdvisories.length === 0,
     product,
     release,
     releaseBlockers,
+    governanceAdvisories,
+    publicAccessBlockers,
+    publicExpansionBlockers,
   };
 }
