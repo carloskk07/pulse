@@ -26,7 +26,7 @@ jobs:
       - name: Install exact project dependencies
         run: npm ci --no-audit --no-fund
       - name: Audit production dependency surface
-        run: npm audit --omit=dev --audit-level=high
+        run: node scripts/audit-production-dependencies.mjs
       - name: Verify governed legal policy bundle
         run: npm run verify:legal
       - name: Verify release safety contracts
