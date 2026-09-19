@@ -448,6 +448,24 @@ forbidText("app/invite/page.tsx", [
 ]);
 requireText("lib/pulse-receipt.ts", ["getCurrentUserContext", '.from("pulse_claims")', "RECENT_CLAIM_WINDOW_MS"]);
 forbidText("lib/pulse-receipt.ts", ["supabase.auth.getUser", "createSupabaseServerClient"]);
+requireText("supabase/migrations/0056_reward_streak_efficiency.sql", [
+  "create or replace function public.current_user_reward_snapshot()",
+  "security invoker",
+  "ranked_days",
+  "row_number() over",
+  "count(*) filter",
+  "release_reward_snapshot_contract()",
+  "grant execute on function public.current_user_reward_snapshot()",
+  "to authenticated"
+]);
+forbidText("supabase/migrations/0056_reward_streak_efficiency.sql", [
+  "generate_series",
+  "security definer",
+  "insert into public.app_config",
+  "controlled_readiness_release_authority",
+  "to anon",
+  "to service_role"
+]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 requireText("scripts/verify-controlled-readiness-gate.mjs", [
   "verifyControlledReadinessResponse",
