@@ -35,6 +35,11 @@ set asset = excluded.asset,
     authority_version = excluded.authority_version,
     updated_at = now();
 
+-- Remove the first-draft mutable authority if this migration is replayed
+-- against a database where an earlier v47 draft was tested.
+delete from public.app_config
+where key = 'faucetpay_payout_pack_authority';
+
 -- Break the old contract dependency before removing the caller-controlled RPC.
 create or replace function public.release_treasury_backing_guard_contract()
 returns boolean
@@ -386,8 +391,14 @@ as $$
     and not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'INSERT')
     and not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'UPDATE')
     and not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'DELETE')
+    and not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'TRUNCATE')
     and not has_table_privilege('anon', 'public.faucetpay_payout_pack_authority', 'SELECT')
     and not has_table_privilege('authenticated', 'public.faucetpay_payout_pack_authority', 'SELECT')
+    and not exists (
+      select 1
+      from public.app_config
+      where key = 'faucetpay_payout_pack_authority'
+    )
     and coalesce((
       select
         upper(trim(asset)) = 'USDT'
