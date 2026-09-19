@@ -78,3 +78,28 @@ jobs:
           if [ -f production-load-probe.json ]; then
             cat production-load-probe.json
           fi
+
+      - name: Install exact project dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Pull production auth configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          test -n "$VERCEL_TOKEN"
+          npx --yes vercel@59.17.0 pull --yes --environment=production --project=pulse --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+
+      - name: Run authenticated dashboard capacity probe
+        shell: bash
+        run: |
+          set -a
+          source .vercel/.env.production.local
+          set +a
+          node scripts/run-authenticated-dashboard-capacity-probe.mjs
+
+      - name: Print authenticated dashboard result
+        if: always()
+        run: |
+          if [ -f authenticated-dashboard-capacity-probe.json ]; then
+            cat authenticated-dashboard-capacity-probe.json
+          fi
