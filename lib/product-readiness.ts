@@ -1,6 +1,7 @@
 import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
 export type ProductReadinessCheck = {
@@ -162,8 +163,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     }
   }
 
-  const dailyBudgetUsed = dailyClaimCredits + dailyReservationCredits;
-  const remainingDailyBudget = Math.max(dailyBudgetCredits - dailyBudgetUsed, 0);
+  const dailyFundingState = deriveTreasuryDailyFundingState({
+    availableCredits: availableTreasury,
+    dailyBudgetCredits,
+    dailyClaimCredits,
+    dailyReservationCredits,
+  });
+  const dailyBudgetUsed = dailyFundingState.dailyCommittedCredits;
+  const remainingDailyBudget = dailyFundingState.remainingDailyBudgetCredits;
   const treasuryReady = !treasuryResult.error && dailyBudgetStateKnown && Boolean(
     treasury &&
     treasury.enabled === true &&
@@ -171,7 +178,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     rewardCredits > 0 &&
     dailyBudgetCredits >= rewardCredits &&
     maxUserDailyCredits >= rewardCredits &&
-    availableTreasury >= remainingDailyBudget
+    dailyFundingState.availableCredits >= remainingDailyBudget
   );
 
   const latestClaim = latestPulseClaimResult.data;

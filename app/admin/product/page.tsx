@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getTreasurySnapshot } from "@/lib/treasury";
+import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { fundLaunchTreasury, verifyPasswordBreachProtection } from "./actions";
 
 export const metadata = { title: "Product Readiness" };
@@ -22,21 +22,16 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
   if (!user) redirect("/auth?next=/admin/product");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [readiness, treasuries, params] = await Promise.all([
+  const [readiness, launchTreasury, params] = await Promise.all([
     getProductLaunchReadiness(),
-    getTreasurySnapshot(),
+    getTreasuryDailyFundingState("launch"),
     searchParams,
   ]);
   const product = readiness.product;
   const release = readiness.release;
   const breachProtection = product.checks.find((item) => item.id === "auth-hardening-proof");
-  const launchTreasury = treasuries.find((item) => item.code === "launch") ?? null;
   const fundingIntentId = randomUUID();
-  const fundingNeeded = Boolean(
-    launchTreasury
-    && launchTreasury.dailyBudgetCredits > 0
-    && launchTreasury.availableCredits < launchTreasury.dailyBudgetCredits
-  );
+  const fundingNeeded = Boolean(launchTreasury && launchTreasury.fundingGapCredits > 0);
 
   return (
     <AppShell active="advanced">
@@ -74,22 +69,24 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
 
       <section className="admin-decision-card treasury-funding-card">
         <span className="app-eyebrow">Backed Treasury funding</span>
-        <h2>{fundingNeeded ? "One controlled daily budget remains unfunded." : "Treasury daily backing is covered."}</h2>
-        <p>Funding is fail-closed. Pulsercuit reads the FaucetPay balance with the read-only key, includes current available and pending user liabilities, and records one idempotent daily-budget funding event. This action never calls the payout endpoint.</p>
+        <h2>{fundingNeeded ? "An exact Treasury top-up is required." : "Treasury backing covers the remaining UTC-day budget."}</h2>
+        <p>Funding is fail-closed. Pulsercuit tops up only the uncovered portion of today&apos;s remaining budget, then requires the live FaucetPay balance to cover current financial liabilities plus all Treasury capacity that would remain spendable after the top-up. This action never calls the payout endpoint.</p>
         {launchTreasury ? (
           <div className="admin-secondary-grid treasury-funding-metrics">
             <article><span>Available</span><strong>{launchTreasury.availableCredits.toLocaleString("en-US")} P</strong></article>
+            <article><span>Remaining today</span><strong>{launchTreasury.remainingDailyBudgetCredits.toLocaleString("en-US")} P</strong></article>
+            <article><span>Exact top-up</span><strong>{launchTreasury.fundingGapCredits.toLocaleString("en-US")} P</strong></article>
             <article><span>Daily budget</span><strong>{launchTreasury.dailyBudgetCredits.toLocaleString("en-US")} P</strong></article>
-            <article><span>Funded total</span><strong>{launchTreasury.fundedCredits.toLocaleString("en-US")} P</strong></article>
-            <article><span>Spent</span><strong>{launchTreasury.spentCredits.toLocaleString("en-US")} P</strong></article>
           </div>
         ) : null}
-        {params.funding === "funded" ? <div className="auth-alert success">One live-backed daily budget was added and audit evidence was recorded.</div> : null}
+        {params.funding === "funded" ? <div className="auth-alert success">The exact live-backed Treasury gap was added and audit evidence was recorded.</div> : null}
         {params.funding === "already-funded" ? <div className="auth-alert success">This funding intent was already recorded. No duplicate funding was created.</div> : null}
-        {params.funding === "insufficient-backing" ? <div className="auth-alert error">FaucetPay read balance does not currently cover existing user liabilities plus one new daily budget. Nothing was funded.</div> : null}
+        {params.funding === "already-covered" ? <div className="auth-alert success">Treasury already covers the remaining UTC-day budget. No funding was added.</div> : null}
+        {params.funding === "insufficient-backing" ? <div className="auth-alert error">FaucetPay read balance does not currently cover existing liabilities plus all Treasury capacity after the proposed top-up. Nothing was funded.</div> : null}
         {params.funding === "backing-check-unavailable" ? <div className="auth-alert error">The read-only FaucetPay backing check was unavailable. Nothing was funded.</div> : null}
-        {params.funding === "liability-unavailable" ? <div className="auth-alert error">Current user liabilities could not be calculated safely. Nothing was funded.</div> : null}
+        {params.funding === "liability-unavailable" ? <div className="auth-alert error">Current financial liabilities could not be calculated safely. Nothing was funded.</div> : null}
         {params.funding === "liability-changed" ? <div className="auth-alert error">Financial liabilities changed during the backing check. Nothing was funded; run the action again against the fresh state.</div> : null}
+        {params.funding === "funding-gap-changed" ? <div className="auth-alert error">Daily usage or Treasury capacity changed during the backing check. Nothing was funded; reload this page before trying again.</div> : null}
         {params.funding === "payout-pack-unavailable" ? <div className="auth-alert error">The configured payout pack is unavailable, so backing cannot be calculated safely.</div> : null}
         {params.funding === "treasury-unavailable" || params.funding === "database-unavailable" || params.funding === "record-failed" ? <div className="auth-alert error">Treasury funding could not be recorded safely. No funding was added.</div> : null}
         {params.funding === "confirmation-required" || params.funding === "invalid-intent" ? <div className="auth-alert error">Funding requires a fresh explicit operator confirmation.</div> : null}
@@ -98,9 +95,9 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
             <input type="hidden" name="idempotency_key" value={fundingIntentId} />
             <label className="treasury-funding-confirm">
               <input type="checkbox" name="confirm" value="real-funding" required />
-              <span>I confirm this daily budget represents real funds already present in FaucetPay and may back real user rewards.</span>
+              <span>I confirm this exact top-up represents real funds already present in FaucetPay and may back real user rewards.</span>
             </label>
-            <button className="button" type="submit">Fund one daily budget ({launchTreasury.dailyBudgetCredits.toLocaleString("en-US")} P)</button>
+            <button className="button" type="submit">Top up exact gap ({launchTreasury.fundingGapCredits.toLocaleString("en-US")} P)</button>
           </form>
         ) : null}
       </section>
