@@ -1,0 +1,80 @@
+name: Production Capacity Probe
+
+on:
+  push:
+    branches:
+      - perf/production-capacity-probe
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulsercuit-production-capacity-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LOAD_BASE_URL: https://pulsercuit.pro
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.2
+          package-manager-cache: false
+
+      - name: Prove canonical production is current main
+        shell: bash
+        env:
+          GITHUB_API_TOKEN: ${{ github.token }}
+        run: |
+          main_file="$RUNNER_TEMP/main.json"
+          release_file="$RUNNER_TEMP/release.json"
+          health_file="$RUNNER_TEMP/health.json"
+
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GITHUB_API_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --output "$main_file" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/main"
+
+          curl --fail --silent --show-error \
+            --header "Cache-Control: no-cache" \
+            --output "$release_file" \
+            "https://pulsercuit.pro/release.json?capacity-probe=$GITHUB_RUN_ID"
+
+          curl --fail --silent --show-error \
+            --header "Cache-Control: no-cache" \
+            --output "$health_file" \
+            "https://pulsercuit.pro/api/health"
+
+          node - "$main_file" "$release_file" "$health_file" <<'NODE'
+          const fs = require("node:fs");
+          const main = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const release = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          const health = JSON.parse(fs.readFileSync(process.argv[4], "utf8"));
+
+          if (!/^[0-9a-f]{40}$/.test(main.sha ?? "")) {
+            throw new Error(`Invalid main SHA: ${main.sha}`);
+          }
+          if (release.service !== "pulsercuit" || release.git_sha !== main.sha) {
+            throw new Error(`Production is not current main: main=${main.sha} production=${release.git_sha}`);
+          }
+          if (health.service !== "pulsercuit" || health.ok !== true) {
+            throw new Error(`Pre-load health is not OK: ${JSON.stringify(health)}`);
+          }
+          console.log(`Capacity probe target verified at current main: ${main.sha}`);
+          NODE
+
+      - name: Run bounded production capacity probe
+        run: node scripts/run-production-load-probe.mjs
+
+      - name: Print structured result
+        if: always()
+        run: |
+          if [ -f production-load-probe.json ]; then
+            cat production-load-probe.json
+          fi
