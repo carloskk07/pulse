@@ -8,3 +8,11 @@
 .admin-panel[open]>summary:after,.readiness-panel[open]>summary:after{content:"−"}
 .admin-panel[open]>summary,.readiness-panel[open]>summary{margin-bottom:18px}
 .admin-panel>summary:focus-visible,.readiness-panel>summary:focus-visible{outline:2px solid var(--lime);outline-offset:4px;border-radius:8px}
+
+.treasury-funding-card{margin:16px 0}
+.treasury-funding-metrics{margin:20px 0 0}
+.treasury-funding-form{display:grid;gap:14px;margin-top:18px}
+.treasury-funding-confirm{display:flex;align-items:flex-start;gap:10px;max-width:780px;color:#b8c0bb;font-size:12px;line-height:1.55}
+.treasury-funding-confirm input{width:18px;height:18px;flex:0 0 auto;margin:1px 0 0;accent-color:var(--lime)}
+.treasury-funding-form .button{justify-self:start}
+@media(max-width:650px){.treasury-funding-form .button{width:100%}}
