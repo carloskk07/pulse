@@ -1,4 +1,4 @@
-// rerun after v50 readiness fan-out collapse
+// rerun after v51 one-query controlled readiness
 import https from "node:https";
 import { performance } from "node:perf_hooks";
 import { appendFileSync, writeFileSync } from "node:fs";
