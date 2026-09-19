@@ -113,8 +113,16 @@ requireText("app/api/pulse/claim/route.ts", ["isTrustedSameOriginMutation(reques
 requireText("lib/reward-state.ts", ["maximumFractionDigits: 3", "minimumFractionDigits: 2"]);
 requireText("lib/withdrawal-pilot.ts", ["hasWithdrawalPilotAccess", 'admin.rpc("withdrawal_pilot_allowed"', "return !error && data === true"]);
 requireText("scripts/report-safe-payout-profile.mjs", ["FAUCETPAY_PAYOUT_CURRENCY", "FAUCETPAY_PAYOUT_CREDITS", "FAUCETPAY_PAYOUT_UNITS", "FAUCETPAY_PAYOUT_LABEL", "FAUCETPAY_SEND_DAILY_LIMIT_USD", "visible-pack-ready"]);
-requireText(".github/workflows/ci.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs"]);
+requireText(".github/workflows/ci.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Reject direct pushes to main", "verify-deploy-provenance.mjs push", "Main integrity rejected:", "pull-requests: read"]);
 requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Require production database schema authority", "verify-production-schema-gate.mjs", "https://pulsercuit.pro/api/release-schema", "Production deploy rejected: database schema authority does not match the release contract."]);
+{
+  const source = read(".github/workflows/ci.yml");
+  const mainGate = source.indexOf("Reject direct pushes to main");
+  const dependencyAudit = source.indexOf("Audit production dependency surface");
+  if (mainGate < 0 || dependencyAudit < 0 || mainGate > dependencyAudit) {
+    throw new Error("Main merged-PR provenance must be checked before dependency audit and the expensive CI path.");
+  }
+}
 requireText("scripts/audit-production-dependencies.mjs", ["MAX_ATTEMPTS = 5", '"audit", "--omit=dev", "--audit-level=high"', "retryableInfrastructureFailure", "process.exit(status)", "attempt * 5000", "Security audit infrastructure remained unavailable"]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 {
