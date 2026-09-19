@@ -31,16 +31,15 @@ export async function getCanonicalFaucetPayPackAuthority(
   if (!admin) return null;
 
   const { data, error } = await admin
-    .from("app_config")
-    .select("value")
-    .eq("key", "faucetpay_payout_pack_authority")
+    .from("faucetpay_payout_pack_authority")
+    .select("asset,credits,units")
+    .eq("singleton", true)
     .maybeSingle();
-  if (error || !data?.value || typeof data.value !== "object" || Array.isArray(data.value)) return null;
+  if (error || !data) return null;
 
-  const value = data.value as Record<string, unknown>;
-  const asset = String(value.asset ?? "").trim().toUpperCase();
-  const amountCredits = Number(value.credits ?? 0);
-  const amountSmallestUnits = Number(value.units ?? 0);
+  const asset = String(data.asset ?? "").trim().toUpperCase();
+  const amountCredits = Number(data.credits ?? 0);
+  const amountSmallestUnits = Number(data.units ?? 0);
   if (
     !asset
     || !Number.isSafeInteger(amountCredits)
