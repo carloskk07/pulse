@@ -11,8 +11,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
-export const CONTROLLED_READINESS_SCHEMA_VERSION = 52;
-export const CONTROLLED_READINESS_SCHEMA_MIGRATION = "0052_controlled_readiness_release_authority.sql";
+export const CONTROLLED_READINESS_SCHEMA_VERSION = 53;
+export const CONTROLLED_READINESS_SCHEMA_MIGRATION = "0053_compact_reward_snapshot.sql";
 
 export type ControlledTechnicalReadinessState =
   | "SETUP_REQUIRED"
