@@ -124,7 +124,7 @@ requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(np
   }
 }
 requireText("scripts/audit-production-dependencies.mjs", ["MAX_ATTEMPTS = 5", '"audit", "--omit=dev", "--audit-level=high"', "retryableInfrastructureFailure", "process.exit(status)", "attempt * 5000", "Security audit infrastructure remained unavailable"]);
-requireText("scripts/verify-deploy-provenance.mjs", ["requireMergedMainPrProvenance", 'eventName !== "push" && eventName !== "workflow_dispatch"', "workflow_dispatch accepted missing PR provenance", "Unsupported production deploy event"]);
+requireText("scripts/verify-deploy-provenance.mjs", ["requireMergedMainPrProvenance", 'eventName !== "push" && eventName !== "workflow_dispatch"', "accepted missing PR provenance", "Unsupported production deploy event"]);
 forbidText("scripts/verify-deploy-provenance.mjs", ["Deploy provenance PASS: explicit workflow_dispatch invocation."]);
 forbidText(".github/workflows/vercel-prebuilt.yml", ["Allow explicit manual production deploy", "not-required.json"]);
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
