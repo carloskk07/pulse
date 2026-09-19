@@ -89,6 +89,7 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
         {params.funding === "insufficient-backing" ? <div className="auth-alert error">FaucetPay read balance does not currently cover existing user liabilities plus one new daily budget. Nothing was funded.</div> : null}
         {params.funding === "backing-check-unavailable" ? <div className="auth-alert error">The read-only FaucetPay backing check was unavailable. Nothing was funded.</div> : null}
         {params.funding === "liability-unavailable" ? <div className="auth-alert error">Current user liabilities could not be calculated safely. Nothing was funded.</div> : null}
+        {params.funding === "liability-changed" ? <div className="auth-alert error">Financial liabilities changed during the backing check. Nothing was funded; run the action again against the fresh state.</div> : null}
         {params.funding === "payout-pack-unavailable" ? <div className="auth-alert error">The configured payout pack is unavailable, so backing cannot be calculated safely.</div> : null}
         {params.funding === "treasury-unavailable" || params.funding === "database-unavailable" || params.funding === "record-failed" ? <div className="auth-alert error">Treasury funding could not be recorded safely. No funding was added.</div> : null}
         {params.funding === "confirmation-required" || params.funding === "invalid-intent" ? <div className="auth-alert error">Funding requires a fresh explicit operator confirmation.</div> : null}
