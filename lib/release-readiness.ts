@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 51;
-export const RELEASE_SCHEMA_MIGRATION = "0051_controlled_technical_readiness_snapshot.sql";
+export const RELEASE_SCHEMA_VERSION = 52;
+export const RELEASE_SCHEMA_MIGRATION = "0052_controlled_readiness_release_authority.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";

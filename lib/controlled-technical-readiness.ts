@@ -11,8 +11,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
-export const CONTROLLED_READINESS_SCHEMA_VERSION = 51;
-export const CONTROLLED_READINESS_SCHEMA_MIGRATION = "0051_controlled_technical_readiness_snapshot.sql";
+export const CONTROLLED_READINESS_SCHEMA_VERSION = 52;
+export const CONTROLLED_READINESS_SCHEMA_MIGRATION = "0052_controlled_readiness_release_authority.sql";
 
 export type ControlledTechnicalReadinessState =
   | "SETUP_REQUIRED"
@@ -58,31 +58,6 @@ function validTimestampOrder(first: unknown, second: unknown) {
   const left = Date.parse(first);
   const right = Date.parse(second);
   return Number.isFinite(left) && Number.isFinite(right) && left <= right;
-}
-
-function securityContractPasses(value: unknown) {
-  const contract = objectValue(value);
-  return contract.status === "ok"
-    && contract.profiles_rls === true
-    && contract.ledger_rls === true
-    && contract.claims_rls === true
-    && contract.referrals_rls === true
-    && contract.withdrawals_rls === true
-    && contract.app_config_rls === true
-    && contract.anon_app_config_select === false
-    && contract.anon_ledger_select === false
-    && contract.authenticated_profile_select === true
-    && contract.authenticated_ledger_select === true
-    && contract.authenticated_claims_select === true
-    && contract.authenticated_referrals_select === true
-    && contract.authenticated_balance_select === true
-    && contract.service_app_config_select === true
-    && contract.service_withdrawals_insert === true
-    && contract.service_withdrawals_update === true
-    && contract.authenticated_claim_rpc_execute === false
-    && contract.service_claim_rpc_execute === true
-    && contract.claim_security_definer === false
-    && contract.callback_security_definer === true;
 }
 
 function normalizePaidWithdrawal(value: unknown): SnapshotPaidWithdrawal | null {
@@ -133,28 +108,6 @@ function normalizePaidWithdrawal(value: unknown): SnapshotPaidWithdrawal | null 
   };
 }
 
-function runtimeContractsPass(runtime: JsonRecord) {
-  return runtime.snapshot_authority === true
-    && runtime.economics_ok === true
-    && runtime.referral_ok === true
-    && securityContractPasses(runtime.security)
-    && runtime.authenticated_read_scope === true
-    && runtime.withdrawal_read === true
-    && runtime.withdrawal_settlement === true
-    && runtime.withdrawal_pilot === true
-    && runtime.faucetpay_proof_chain === true
-    && runtime.reward_exchange === true
-    && runtime.treasury_funding === true
-    && runtime.treasury_backing === true
-    && runtime.opportunity_intelligence === true
-    && runtime.pulse_direct === true
-    && runtime.business_intake === true
-    && runtime.advertiser_outbound === true
-    && runtime.hourly_pilot === true
-    && runtime.hourly_scale === true
-    && runtime.user_balance_materialization === true;
-}
-
 export async function getControlledTechnicalReadiness(): Promise<ControlledTechnicalReadiness> {
   const setupBlockers: string[] = [];
   const proofBlockers: string[] = [];
@@ -195,7 +148,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
 
   const snapshot = objectValue(data);
-  const runtime = objectValue(snapshot.runtime);
+  const releaseAuthority = objectValue(snapshot.release_authority);
   const hourlyPulse = objectValue(snapshot.hourly_pulse);
   const authority = objectValue(snapshot.payout_pack_authority);
   const treasury = objectValue(snapshot.treasury);
@@ -203,16 +156,20 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   const chainClaim = objectValue(snapshot.chain_claim);
   const claimLedger = objectValue(snapshot.chain_claim_ledger);
   const withdrawalLedger = objectValue(snapshot.chain_withdrawal_ledger);
-  const proof = runtime.external_proof;
+  const proof = snapshot.external_proof;
 
-  const schemaVersion = numberValue(runtime.schema_version);
-  const schemaMigration = String(runtime.schema_migration ?? "");
-  const schemaReady = snapshot.snapshot_authority === true
-    && schemaVersion === CONTROLLED_READINESS_SCHEMA_VERSION
+  const schemaVersion = numberValue(snapshot.schema_version);
+  const schemaMigration = String(snapshot.schema_migration ?? "");
+  const schemaReady = schemaVersion === CONTROLLED_READINESS_SCHEMA_VERSION
     && schemaMigration === CONTROLLED_READINESS_SCHEMA_MIGRATION;
   if (!schemaReady) setupBlockers.push("schema");
 
-  if (!runtimeContractsPass(runtime)) setupBlockers.push("runtime-contracts");
+  const authorityReady = snapshot.snapshot_authority === true
+    && snapshot.authority_runtime_lock === true
+    && releaseAuthority.contracts_passed === true
+    && numberValue(releaseAuthority.schema_version) === CONTROLLED_READINESS_SCHEMA_VERSION
+    && String(releaseAuthority.schema_migration ?? "") === CONTROLLED_READINESS_SCHEMA_MIGRATION;
+  if (!authorityReady) setupBlockers.push("release-authority");
 
   const authorityCredits = positiveSafeInteger(authority.credits);
   const authorityUnits = positiveSafeInteger(authority.units);
