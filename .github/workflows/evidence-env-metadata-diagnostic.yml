@@ -16,8 +16,10 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          node <<'NODE'
-          (async () => {\n          const crypto = require("node:crypto");\n\n          function sha256(value) {
+          node --input-type=module <<'NODE'
+          import crypto from "node:crypto";
+
+          function sha256(value) {
             return crypto.createHash("sha256").update(value).digest("hex");
           }
 
@@ -64,6 +66,7 @@ jobs:
 
           const supabaseUrl = env.get("NEXT_PUBLIC_SUPABASE_URL").trim().replace(/\/$/, "");
           const serviceRole = env.get("SUPABASE_SERVICE_ROLE_KEY").trim();
+
           async function supabase(path) {
             const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
               headers: {
