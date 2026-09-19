@@ -88,7 +88,7 @@ function authoritativePaidSettlement(data: unknown, providerExternalId: string) 
     && settledExternalId === expectedExternalId;
 }
 
-async function matchesCurrentPayoutAuthority(
+async function reservedMatchesCanonicalPayoutAuthority(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
   reserved: ReservedWithdrawal,
 ) {
@@ -97,7 +97,14 @@ async function matchesCurrentPayoutAuthority(
   if (config.asset !== reserved.asset) return false;
   if (config.amountCredits !== Number(reserved.amount_credits)) return false;
   if (config.amountSmallestUnits !== Number(reserved.payout_amount_units)) return false;
-  if (!(await hasCanonicalFaucetPayPackAuthority(admin, config))) return false;
+  return hasCanonicalFaucetPayPackAuthority(admin, config);
+}
+
+async function matchesCurrentPayoutAuthority(
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  reserved: ReservedWithdrawal,
+) {
+  if (!(await reservedMatchesCanonicalPayoutAuthority(admin, reserved))) return false;
   const [readProof, sendScopeProof] = await Promise.all([
     hasCurrentFaucetPayReadProof(admin),
     hasCurrentFaucetPaySendScopeProof(admin),
@@ -127,6 +134,9 @@ async function executeReservedPayout(
 ) {
   if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) {
     return walletRedirect(request, "reserve-failed");
+  }
+  if (!(await reservedMatchesCanonicalPayoutAuthority(admin, reserved))) {
+    return walletRedirect(request, "payout-not-configured");
   }
 
   const claimed = await claimDispatch(admin, reserved.withdrawal_id);
