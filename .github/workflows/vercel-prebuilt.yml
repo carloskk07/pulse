@@ -202,64 +202,40 @@ jobs:
           echo "Canonical production did not converge to the exact Pulsercuit commit $GITHUB_SHA."
           exit 1
 
-      - name: Validate readiness contract and report launch state
+      - name: Require READY controlled technical state
         shell: bash
         run: |
           body_file="$(mktemp)"
-          status="$(curl --silent --show-error --output "$body_file" --write-out '%{http_code}' https://pulsercuit.pro/api/readiness)"
-          node - "$status" "$body_file" <<'NODE'
-          const fs = require("node:fs");
-          const status = Number(process.argv[2]);
-          const body = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
-          const allowedStates = new Set(["SETUP_REQUIRED", "READY_FOR_EXTERNAL_PROOF", "READY"]);
+          trap 'rm -f "$body_file"' EXIT
+          max_attempts=6
 
-          if (body.service !== "pulsercuit") {
-            throw new Error(`Unexpected readiness service identity: ${body.service}`);
-          }
-          if (!allowedStates.has(body.readiness)) {
-            throw new Error(`Unexpected readiness state: ${body.readiness}`);
-          }
-          if (body.scope !== "controlled-technical") {
-            throw new Error(`Unexpected readiness scope: ${body.scope}`);
-          }
-          if (typeof body.ready !== "boolean") {
-            throw new Error("Readiness response must contain a boolean ready field.");
-          }
+          for attempt in $(seq 1 "$max_attempts"); do
+            : > "$body_file"
+            status="$(curl --silent --show-error \
+              --output "$body_file" \
+              --write-out '%{http_code}' \
+              --header 'Cache-Control: no-cache' \
+              "https://pulsercuit.pro/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" || true)"
 
-          const expectedStatus = body.ready ? 200 : 503;
-          if (status !== expectedStatus) {
-            throw new Error(`HTTP ${status} disagrees with ready=${body.ready}; expected ${expectedStatus}.`);
-          }
-          if (body.ready !== (body.readiness === "READY")) {
-            throw new Error(`ready=${body.ready} disagrees with readiness=${body.readiness}.`);
-          }
+            if node scripts/verify-controlled-readiness-gate.mjs "$status" "$body_file"; then
+              {
+                echo "## Pulsercuit production gate"
+                echo
+                echo "| Check | Result |"
+                echo "| --- | --- |"
+                echo "| Canonical commit | \`$GITHUB_SHA\` |"
+                echo "| Controlled technical readiness | **READY** |"
+                echo
+                echo "The canonical production release is healthy and the controlled technical gate is READY. Public/global governance remains a separate review surface."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
 
-          const technicalStatus = body.ready ? "READY" : "NOT READY";
-          console.log(`Readiness contract VALID: HTTP ${status}, scope=${body.scope}, state=${body.readiness}, ready=${body.ready}`);
-          console.log(`Controlled technical status: ${technicalStatus}`);
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              echo "Controlled readiness is not READY on attempt $attempt/$max_attempts; retrying after rollout TTL."
+              sleep 4
+            fi
+          done
 
-          if (!body.ready) {
-            console.log(`::warning title=Pulsercuit technical readiness::Canonical deployment is healthy, but controlled technical readiness is ${body.readiness}.`);
-          }
-
-          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
-          if (summaryPath) {
-            const rows = [
-              "## Pulsercuit production gate",
-              "",
-              "| Check | Result |",
-              "| --- | --- |",
-              `| Canonical commit | \`${process.env.GITHUB_SHA ?? "unknown"}\` |`,
-              `| Readiness response | HTTP ${status} |`,
-              `| Readiness scope | **${body.scope}** |`,
-              `| Readiness state | **${body.readiness}** |`,
-              `| Controlled technical ready | **${body.ready ? "YES" : "NO"}** |`,
-              "",
-              body.ready
-                ? "The canonical production release is healthy and the controlled technical gate is READY. Public/global governance remains a separate review surface."
-                : "The canonical production release is healthy, but controlled technical readiness remains open.",
-              "",
-            ];
-            fs.appendFileSync(summaryPath, `${rows.join("\n")}\n`, "utf8");
-          }
-          NODE
+          echo "::error title=Pulsercuit technical readiness::Canonical deployment did not reach controlled technical READY after $max_attempts attempts."
+          exit 1
