@@ -31,8 +31,7 @@ jobs:
           npm install --global npm@11.19.1 --no-audit --no-fund
           test "$(npm --version)" = "11.19.1"
 
-      - name: Require merged PR provenance for automatic deploy
-        if: github.event_name == 'push'
+      - name: Require merged PR provenance for production deploy
         shell: bash
         env:
           GITHUB_API_TOKEN: ${{ github.token }}
@@ -46,7 +45,7 @@ jobs:
               --output "$proof_file" \
               "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls"
 
-            if node scripts/verify-deploy-provenance.mjs push "$GITHUB_SHA" "$proof_file"; then
+            if node scripts/verify-deploy-provenance.mjs "$GITHUB_EVENT_NAME" "$GITHUB_SHA" "$proof_file"; then
               exit 0
             fi
 
@@ -54,12 +53,8 @@ jobs:
             sleep 3
           done
 
-          echo "Automatic production deploy rejected: merged-PR provenance was not proven for $GITHUB_SHA."
+          echo "Production deploy rejected: merged-PR provenance was not proven for $GITHUB_SHA."
           exit 1
-
-      - name: Allow explicit manual production deploy
-        if: github.event_name == 'workflow_dispatch'
-        run: node scripts/verify-deploy-provenance.mjs workflow_dispatch "$GITHUB_SHA" "$RUNNER_TEMP/not-required.json"
 
       - name: Require production database schema authority
         shell: bash
