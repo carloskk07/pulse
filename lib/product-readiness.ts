@@ -115,14 +115,16 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     : { data: null, error: null };
   const treasury = treasuryResult.data;
   const availableTreasury = Number(treasury?.funded_credits ?? 0) - Number(treasury?.reserved_credits ?? 0) - Number(treasury?.spent_credits ?? 0);
+  const dailyBudgetCredits = Number(treasury?.daily_budget_credits ?? 0);
+  const maxUserDailyCredits = Number(treasury?.max_user_daily_credits ?? 0);
   const treasuryReady = !treasuryResult.error && Boolean(
     treasury &&
     treasury.enabled === true &&
     treasury.kill_switch === false &&
-    Number(treasury.daily_budget_credits ?? 0) > 0 &&
-    Number(treasury.max_user_daily_credits ?? 0) > 0 &&
-    availableTreasury >= rewardCredits &&
-    rewardCredits > 0
+    rewardCredits > 0 &&
+    dailyBudgetCredits >= rewardCredits &&
+    maxUserDailyCredits >= rewardCredits &&
+    availableTreasury >= dailyBudgetCredits
   );
 
   const latestClaim = latestPulseClaimResult.data;
@@ -268,7 +270,9 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     id: "treasury",
     label: "Funded reward treasury",
     pass: treasuryReady,
-    detail: treasuryReady ? `${availableTreasury} funded credit(s) remain behind Treasury ${treasuryCode}.` : `Treasury ${treasuryCode || "(unconfigured)"} must contain real funded credits, positive safety limits and an open kill switch before claims are promised.`,
+    detail: treasuryReady
+      ? `${availableTreasury} funded credit(s) remain behind Treasury ${treasuryCode}, covering at least one full ${dailyBudgetCredits}-credit daily budget.`
+      : `Treasury ${treasuryCode || "(unconfigured)"} must be enabled with kill switch open, daily/user limits large enough for one reward, and available real funding covering at least one full daily budget (available ${availableTreasury}, daily budget ${dailyBudgetCredits}).`,
   });
   checks.push({
     id: "turnstile-proof",
