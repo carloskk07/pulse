@@ -39,6 +39,15 @@ requireText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getHou
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
 requireText("app/api/pulse/claim/route.ts", ["claimReceiptRedirect", "ensureFreshTreasuryBacking", '"launch"', "pulse_backing_guard:", "PULSECIRCUIT_POST_CLAIM_RETENTION_FAILED", "PULSECIRCUIT_POST_CLAIM_REVALIDATION_FAILED", "PULSECIRCUIT_POST_CLAIM_COOKIE_CLEAR_FAILED", "try {", "catch {", 'new URL("/dashboard/claimed", request.url)', 'result.status === "claimed"']);
 requireText("lib/treasury-backing.ts", ["hasCurrentFaucetPayReadProof", "getFaucetPayBalanceReadOnly", "treasury_backing_guard", "record_treasury_backing_observation", "backing_refresh_required", "backing_insufficient", "read_proof_required", "ensureFreshTreasuryBacking"]);
+{
+  const source = read("lib/treasury-backing.ts");
+  const ensureStart = source.indexOf("export async function ensureFreshTreasuryBacking");
+  const proofCheck = source.indexOf("hasCurrentFaucetPayReadProof(admin)", ensureStart);
+  const guardCheck = source.indexOf("getTreasuryBackingGuard(treasuryCode, admin)", ensureStart);
+  if (ensureStart < 0 || proofCheck < ensureStart || guardCheck < ensureStart || proofCheck > guardCheck) {
+    throw new Error("Treasury backing TTL reuse must validate the current FaucetPay read proof before accepting a cached observation.");
+  }
+}
 forbidText("app/api/pulse/claim/route.ts", ["console.warn(userId", "console.warn(reminderId"]);
 requireText("supabase/migrations/0031_current_hourly_claim_security_contract.sql", ["claim_hourly_pulse(uuid) security invoker", "claim_hourly_pulse(uuid)', 'EXECUTE'", "release_security_contract"]);
 requireText("supabase/migrations/0032_authenticated_read_scope_contract.sql", ["release_authenticated_read_scope_contract", "security_invoker=true", "risk_score", "role_table_grants"]);
