@@ -53,7 +53,12 @@ export async function fundLaunchTreasury(formData: FormData) {
   if (existingError) redirect("/admin/product?funding=database-unavailable");
   if (existingEvent) redirect("/admin/product?funding=already-funded");
 
-  const [{ data: treasury, error: treasuryError }, { data: balances, error: balancesError }] = await Promise.all([
+  const [
+    { data: treasury, error: treasuryError },
+    { data: balances, error: balancesError },
+    { data: activeWithdrawals, error: withdrawalsError },
+    { data: activeReservations, error: reservationsError },
+  ] = await Promise.all([
     admin
       .from("reward_treasuries")
       .select("code,daily_budget_credits")
@@ -62,22 +67,48 @@ export async function fundLaunchTreasury(formData: FormData) {
     admin
       .from("user_balances")
       .select("available_credits,pending_credits"),
+    admin
+      .from("withdrawals")
+      .select("amount_credits")
+      .in("status", ["requested", "held", "submitted"]),
+    admin
+      .from("treasury_reservations")
+      .select("amount_credits")
+      .eq("status", "reserved"),
   ]);
 
   const dailyBudgetCredits = Number(treasury?.daily_budget_credits ?? 0);
   if (treasuryError || !treasury || dailyBudgetCredits <= 0) {
     redirect("/admin/product?funding=treasury-unavailable");
   }
-  if (balancesError || !Array.isArray(balances)) {
+  if (
+    balancesError || !Array.isArray(balances)
+    || withdrawalsError || !Array.isArray(activeWithdrawals)
+    || reservationsError || !Array.isArray(activeReservations)
+  ) {
     redirect("/admin/product?funding=liability-unavailable");
   }
 
-  const liabilityCredits = balances.reduce((sum, row) => {
+  const userBalanceLiability = balances.reduce((sum, row) => {
     const available = Math.max(0, Number(row.available_credits ?? 0));
     const pending = Math.max(0, Number(row.pending_credits ?? 0));
     return sum + available + pending;
   }, 0);
-  if (!Number.isSafeInteger(liabilityCredits)) {
+  const activeWithdrawalLiability = activeWithdrawals.reduce(
+    (sum, row) => sum + Math.max(0, Number(row.amount_credits ?? 0)),
+    0,
+  );
+  const activeReservationLiability = activeReservations.reduce(
+    (sum, row) => sum + Math.max(0, Number(row.amount_credits ?? 0)),
+    0,
+  );
+  const liabilityCredits = userBalanceLiability + activeWithdrawalLiability + activeReservationLiability;
+  if (
+    !Number.isSafeInteger(userBalanceLiability)
+    || !Number.isSafeInteger(activeWithdrawalLiability)
+    || !Number.isSafeInteger(activeReservationLiability)
+    || !Number.isSafeInteger(liabilityCredits)
+  ) {
     redirect("/admin/product?funding=liability-unavailable");
   }
 
@@ -122,5 +153,6 @@ export async function fundLaunchTreasury(formData: FormData) {
   if (status === "funded") redirect("/admin/product?funding=funded");
   if (status === "already_funded") redirect("/admin/product?funding=already-funded");
   if (status === "insufficient_backing") redirect("/admin/product?funding=insufficient-backing");
+  if (status === "liability_changed") redirect("/admin/product?funding=liability-changed");
   redirect("/admin/product?funding=record-failed");
 }
