@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 45;
-export const RELEASE_SCHEMA_MIGRATION = "0045_treasury_exact_gap_backing.sql";
+export const RELEASE_SCHEMA_VERSION = 46;
+export const RELEASE_SCHEMA_MIGRATION = "0046_treasury_backing_freshness.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -129,7 +129,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
-    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, withdrawal settlement integrity, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, Treasury reservation lifecycle, exact-gap fully backed Treasury funding authority, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound and Hourly Pulse pilot isolation contracts cannot be verified without database access."));
+    checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, withdrawal settlement integrity, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, Treasury reservation lifecycle, exact-gap fully backed Treasury funding authority, fresh external Treasury backing guard, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound and Hourly Pulse pilot isolation contracts cannot be verified without database access."));
     checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Public/global governance advisory cannot be verified until database authority is available.", false));
     checks.push(check("international-transfer-review", "International data-transfer review", "pending", "Public/global transfer advisory cannot be verified until database authority is available.", false));
     checks.push(check("supabase-auth-hardening", "Compromised-password protection", "pending", "Application-level breach-protection evidence cannot be verified until database authority is available.", true));
@@ -157,6 +157,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         faucetPayProofChainContract,
         rewardExchangeContract,
         treasuryFundingContract,
+        treasuryBackingContract,
         opportunityIntelligenceContract,
         pulseDirectContract,
         businessIntakeContract,
@@ -175,6 +176,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         admin.rpc("release_faucetpay_proof_chain_contract"),
         admin.rpc("release_reward_exchange_contract"),
         admin.rpc("release_treasury_funding_contract"),
+        admin.rpc("release_treasury_backing_guard_contract"),
         admin.rpc("release_opportunity_intelligence_contract"),
         admin.rpc("release_pulse_direct_contract"),
         admin.rpc("release_business_intake_contract"),
@@ -196,6 +198,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       const faucetPayProofChainOk = !faucetPayProofChainContract.error && faucetPayProofChainContract.data === true;
       const rewardExchangeOk = !rewardExchangeContract.error && rewardExchangeContract.data === true;
       const treasuryFundingOk = !treasuryFundingContract.error && treasuryFundingContract.data === true;
+      const treasuryBackingOk = !treasuryBackingContract.error && treasuryBackingContract.data === true;
       const opportunityIntelligenceOk = !opportunityIntelligenceContract.error && opportunityIntelligenceContract.data === true;
       const pulseDirectOk = !pulseDirectContract.error && pulseDirectContract.data === true;
       const businessIntakeOk = !businessIntakeContract.error && businessIntakeContract.data === true;
@@ -211,6 +214,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         && faucetPayProofChainOk
         && rewardExchangeOk
         && treasuryFundingOk
+        && treasuryBackingOk
         && opportunityIntelligenceOk
         && pulseDirectOk
         && businessIntakeOk
@@ -221,7 +225,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, exact-gap fully backed Treasury funding authority, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound and Hourly Pulse pilot isolation contracts are proven."
+          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, exact-gap fully backed Treasury funding authority, on-demand external Treasury backing freshness guard, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound and Hourly Pulse pilot isolation contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 
