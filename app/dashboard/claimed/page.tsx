@@ -74,6 +74,20 @@ export default async function ClaimedPage() {
                 <span>Balance updated</span>
               </div>
             </div>
+
+            <div className="pc-v8-vault-orbit" aria-label="Updated Pulse state">
+              <div className="pc-v8-orbit-ring">
+                <div className="pc-v8-orbit-core">
+                  <span>Vault updated</span>
+                  <strong>{state.availableCredits.toLocaleString("en-US")} P</strong>
+                  <small>available now</small>
+                </div>
+              </div>
+              <div className="pc-v8-orbit-meta">
+                <span><b>+{receipt.rewardCredits.toLocaleString("en-US")} P</b> this Pulse</span>
+                <span><b>{signal.stage}</b> current rank</span>
+              </div>
+            </div>
           </div>
         </section>
 
