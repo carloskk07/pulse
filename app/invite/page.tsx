@@ -73,7 +73,7 @@ export default async function InvitePage() {
 
       <details className="milestones pc-luxe-referral-milestones"><summary><strong>Invite milestones</strong></summary><div className="app-section-head"><div><span className="app-eyebrow">Share milestones</span><h2>Build a real circle.</h2></div></div>{milestones.map(([n,title]) => { const done = signedIn && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified {n === 1 ? "referral" : "referrals"}</small></div><b>{!signedIn ? "Locked" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</details>
 
-      {user && reversed > 0 ? <div className="pc-luxe-reversal-note">{reversed} referral qualification{reversed === 1 ? " was" : "s were"} reversed and excluded from progress.</div> : null}
+      {signedIn && reversed > 0 ? <div className="pc-luxe-reversal-note">{reversed} referral qualification{reversed === 1 ? " was" : "s were"} reversed and excluded from progress.</div> : null}
     </AppShell>
   );
 }
