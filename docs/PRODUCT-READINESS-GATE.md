@@ -6,13 +6,13 @@ Commercial scale remains frozen until the consumer product is proven end-to-end 
 
 1. Production Supabase auth and trusted server authority are configured.
 2. Turnstile is configured and has current controlled production evidence.
-3. Supabase leaked-password protection has current hardening evidence.
+3. The application-level HIBP Pwned Passwords control has current fingerprint-bound hardening evidence.
 4. Hosted password recovery has completed a real recovery → password update → later new-password sign-in proof.
 5. The Hourly Pulse contract has a positive deterministic reward, rolling interval and Treasury binding.
 6. The bound Treasury contains real funded credits, is explicitly enabled, has the kill switch open and has positive safety limits. New funding must be recorded through the idempotent funding authority after a read-only FaucetPay balance check proves current user liabilities plus the new daily budget are externally backed. The database independently recomputes user balances, active withdrawals and active Treasury reservations under the funding lock and rejects stale liability snapshots.
 7. At least one real Treasury-backed Hourly Pulse claim matches the current reward, interval and Treasury contract.
 8. FaucetPay has a fully configured fixed payout pack and current fingerprint-bound read-only unit proof.
-9. At least one controlled withdrawal reaches authoritative provider-side `paid` status with current FaucetPay payout evidence.
+9. At least one controlled withdrawal reaches authoritative provider-side `paid` status with current exact-withdrawal FaucetPay payout evidence; product readiness must use the same v3 payout authority as release readiness.
 10. Actual spendable receipt at the destination is explicitly proven and bound to that exact paid withdrawal.
 11. One same account has a causally consistent chain from current Hourly Pulse claim → authoritative claim ledger entry → later withdrawal ledger debit → paid FaucetPay withdrawal → matching destination receipt.
 12. No fabricated offers, balances, payouts, users, claims or activity are needed to make the product appear functional.
