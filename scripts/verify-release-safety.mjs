@@ -38,7 +38,7 @@ requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36"
 requireText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker", "productSetupBlocked", "hourlyPilot.ok", 'service: "pulsercuit"', 'scope: "controlled-technical"', '"PULSECIRCUIT_READINESS_BLOCKERS"', "releaseBlockingIds", "productBlockingIds", 'item.id !== "public-access"']);
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
 requireText("app/api/pulse/claim/route.ts", ["claimReceiptRedirect", "ensureFreshTreasuryBacking", '"launch"', "pulse_backing_guard:", "PULSECIRCUIT_POST_CLAIM_RETENTION_FAILED", "PULSECIRCUIT_POST_CLAIM_REVALIDATION_FAILED", "PULSECIRCUIT_POST_CLAIM_COOKIE_CLEAR_FAILED", "try {", "catch {", 'new URL("/dashboard/claimed", request.url)', 'result.status === "claimed"']);
-requireText("lib/treasury-backing.ts", ["hasCurrentFaucetPayReadProof", "getCanonicalFaucetPayPackAuthority", '.from("faucetpay_payout_pack_authority")', '.eq("singleton", true)', "payoutMatchesAuthority", "getFaucetPayBalanceReadOnly", "treasury_backing_guard", "record_treasury_backing_observation", "p_observed_balance_units", "pack_authority_mismatch", "backing_refresh_required", "backing_insufficient", "read_proof_required", "ensureFreshTreasuryBacking"]);
+requireText("lib/treasury-backing.ts", ["hasCurrentFaucetPayReadProof", "getCanonicalFaucetPayPackAuthority", "hasCanonicalFaucetPayPackAuthority", '.from("faucetpay_payout_pack_authority")', '.eq("singleton", true)', "payoutMatchesAuthority", "getFaucetPayBalanceReadOnly", "treasury_backing_guard", "record_treasury_backing_observation", "p_observed_balance_units", "pack_authority_mismatch", "backing_refresh_required", "backing_insufficient", "read_proof_required", "ensureFreshTreasuryBacking"]);
 forbidText("lib/treasury-backing.ts", ["p_backing_asset", "p_payout_pack_credits", "p_payout_pack_units", '.eq("key", "faucetpay_payout_pack_authority")']);
 {
   const source = read("lib/treasury-backing.ts");
@@ -72,8 +72,25 @@ requireText("lib/faucetpay-authority.ts", ["hasCurrentFaucetPayEvidence", '"fauc
 requireText("lib/faucetpay-receipt-proof.ts", ["FAUCETPAY_PAYOUT_PROOF_SCHEMA", "FAUCETPAY_RECEIPT_PROOF_SCHEMA", "getFaucetPayPayoutFingerprint", "faucetPayPayoutEvidenceMatches", "recordFaucetPayPayoutProofById", "payoutWithdrawal", "payoutWithdrawal.id === receiptWithdrawal.id"]);
 requireText("lib/product-readiness.ts", ['const receiptState = await getFaucetPayReceiptProofState(admin, proof)', 'pass: receiptState.payoutProofCurrent && paidWithdrawals > 0', "exact paid FaucetPay withdrawal"]);
 forbidText("lib/product-readiness.ts", ['releaseEvidenceMatches(proof, "faucetpay_payout")', "const payoutProof ="]);
-requireText("app/api/withdrawals/route.ts", ["isTrustedSameOriginMutation(request)", "hasCurrentFaucetPayReadProof", "hasCurrentFaucetPaySendScopeProof", "getFaucetPayReadOnlyPreflight", "hasLivePayoutPreflight", 'live.state === "READ_ONLY_VERIFIED"', "live.balanceSmallestUnits >= config.amountSmallestUnits", "validateDestination(active.destination, active.asset)", "idempotency_key", "matchesCurrentPayoutAuthority", "readProof && sendScopeProof", "recordFaucetPayPayoutProofById", "reserved.withdrawal_id", "FinalizeWithdrawalResult", "authoritativePaidSettlement", 'settlement.status === "paid"', "settledExternalId === expectedExternalId", "finalized.error || !authoritativePaidSettlement(finalized.data, payout.externalId)", "PAYOUT_DISPATCH_RETRY_SECONDS", "claimDispatch", 'admin.rpc("claim_withdrawal_dispatch"', "hasWithdrawalPilotAccess", '"pilot-restricted"', 'dispatch.status !== "submitted" || dispatch.dispatch !== true']);
+requireText("app/api/withdrawals/route.ts", ["isTrustedSameOriginMutation(request)", "hasCurrentFaucetPayReadProof", "hasCurrentFaucetPaySendScopeProof", "hasCanonicalFaucetPayPackAuthority", "reservedMatchesCanonicalPayoutAuthority", "getFaucetPayReadOnlyPreflight", "hasLivePayoutPreflight", 'live.state === "READ_ONLY_VERIFIED"', "live.balanceSmallestUnits >= config.amountSmallestUnits", "validateDestination(active.destination, active.asset)", "idempotency_key", "matchesCurrentPayoutAuthority", "readProof && sendScopeProof", "recordFaucetPayPayoutProofById", "reserved.withdrawal_id", "FinalizeWithdrawalResult", "authoritativePaidSettlement", 'settlement.status === "paid"', "settledExternalId === expectedExternalId", "finalized.error || !authoritativePaidSettlement(finalized.data, payout.externalId)", "PAYOUT_DISPATCH_RETRY_SECONDS", "claimDispatch", 'admin.rpc("claim_withdrawal_dispatch"', "hasWithdrawalPilotAccess", '"pilot-restricted"', 'dispatch.status !== "submitted" || dispatch.dispatch !== true']);
 forbidText("app/api/withdrawals/route.ts", ['recordReleaseEvidence("faucetpay_payout")']);
+{
+  const source = read("app/api/withdrawals/route.ts");
+  const executorStart = source.indexOf("async function executeReservedPayout");
+  const canonicalGate = source.indexOf("reservedMatchesCanonicalPayoutAuthority(admin, reserved)", executorStart);
+  const dispatchCall = source.indexOf("claimDispatch(admin, reserved.withdrawal_id)", executorStart);
+  const providerSend = source.indexOf("provider.send({", executorStart);
+  if (
+    executorStart < 0
+    || canonicalGate < executorStart
+    || dispatchCall < executorStart
+    || providerSend < executorStart
+    || canonicalGate > dispatchCall
+    || canonicalGate > providerSend
+  ) {
+    throw new Error("Every payout execution must prove the reserved pack matches the immutable database authority before dispatch or provider send.");
+  }
+}
 requireText("providers/faucetpay-read.ts", ["getFaucetPayBalanceReadOnly", 'fetch(`${BASE_URL}/balance`', "FAUCETPAY_READ_KEY", "balanceSmallestUnits", 'body: JSON.stringify({ currency: normalizedAsset })']);
 requireText("providers/faucetpay.ts", ["getFaucetPaySendAuthorityConfig", "CREDITS_PER_USD", "FAUCETPAY_SEND_DAILY_LIMIT_USD", "onePackDailyLimitUsd", '"one_pack_default"', '"configured_override"', "credentialsSeparated", "dailyLimitUsd", "const externalId =", "String(payoutId).trim()", "if (!externalId)", "without a usable payout id"]);
 requireText("app/admin/faucetpay/actions.ts", ["completeFaucetPayConnection", "FAUCETPAY_SEND_SETUP_CONFIRMED", 'recordReleaseEvidence("faucetpay_read")', "getFaucetPaySendAuthorityConfig", "credentialsSeparated", "expected_daily_limit_usd", "sendAuthority.dailyLimitUsd", 'releaseEvidenceMatches(proofRow?.value, "faucetpay_read")', 'recordReleaseEvidence("faucetpay_send_scope")', "reconcileFaucetPayPayoutProof", "recordFaucetPayPayoutProof", "expectedWithdrawalId", "state.withdrawal", "paidWithdrawal.id !== expectedWithdrawalId", "payout-proof-reconciled", "state.payoutWithdrawal", "state.payoutWithdrawal.id !== expectedWithdrawalId", "recordFaucetPayReceiptProof(admin, state.payoutWithdrawal)"]);
