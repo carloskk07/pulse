@@ -18,11 +18,13 @@ export async function getProductLaunchReadiness() {
   const governanceAdvisories = release.checks.filter(
     (item) => publicGovernanceIds.has(item.id) && item.status !== "pass",
   );
-  const publicAccessBlockers = product.checks.filter(
-    (item) => item.id === "public-access" && !item.pass,
+  const publicProductIds = new Set(["public-access", "public-fair-share"]);
+  const publicProductBlockers = product.checks.filter(
+    (item) => publicProductIds.has(item.id) && !item.pass,
   );
+  const publicAccessBlockers = publicProductBlockers.filter((item) => item.id === "public-access");
   const technicalReady = product.ready && release.ready;
-  const publicExpansionBlockers = [...publicAccessBlockers, ...governanceAdvisories];
+  const publicExpansionBlockers = [...publicProductBlockers, ...governanceAdvisories];
 
   return {
     ready: technicalReady,
@@ -32,6 +34,7 @@ export async function getProductLaunchReadiness() {
     release,
     releaseBlockers,
     governanceAdvisories,
+    publicProductBlockers,
     publicAccessBlockers,
     publicExpansionBlockers,
   };
