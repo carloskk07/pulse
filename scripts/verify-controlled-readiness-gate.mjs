@@ -7,7 +7,7 @@ export function verifyControlledReadinessResponse(status, body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new Error("Controlled technical readiness returned a non-object response.");
   }
-  if (body.service !== "pulsercircuit" && body.service !== "pulsercuit") {
+  if (body.service !== "pulsercuit") {
     throw new Error(`Unexpected readiness service identity: ${String(body.service)}`);
   }
   if (body.scope !== "controlled-technical") {
