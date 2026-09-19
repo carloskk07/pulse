@@ -66,6 +66,15 @@ function payoutMatchesAuthority(
   );
 }
 
+export async function hasCanonicalFaucetPayPackAuthority(
+  admin = createSupabaseAdminClient(),
+  payout = getFaucetPayPackConfig(),
+): Promise<boolean> {
+  if (!admin) return false;
+  const authority = await getCanonicalFaucetPayPackAuthority(admin);
+  return payoutMatchesAuthority(payout, authority);
+}
+
 export async function getTreasuryBackingGuard(
   treasuryCode = "launch",
   admin = createSupabaseAdminClient(),
