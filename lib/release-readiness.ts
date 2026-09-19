@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 49;
-export const RELEASE_SCHEMA_MIGRATION = "0049_user_balance_materialization.sql";
+export const RELEASE_SCHEMA_VERSION = 50;
+export const RELEASE_SCHEMA_MIGRATION = "0050_release_runtime_contract_snapshot.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -145,73 +145,45 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("database", "Database connectivity", databaseOk ? "pass" : "fail", databaseOk ? "Service-role database access is working." : "The service role could not read the public application schema."));
 
     if (databaseOk) {
-      const [
-        { data: marker, error: markerError },
-        economics,
-        referral,
-        securityContract,
-        authenticatedReadScopeContract,
-        withdrawalReadContract,
-        withdrawalSettlementContract,
-        withdrawalPilotContract,
-        faucetPayProofChainContract,
-        rewardExchangeContract,
-        treasuryFundingContract,
-        treasuryBackingContract,
-        opportunityIntelligenceContract,
-        pulseDirectContract,
-        businessIntakeContract,
-        advertiserOutboundContract,
-        hourlyPilotContract,
-        hourlyScaleContract,
-        userBalanceMaterializationContract,
-        { data: proofRow, error: proofError },
-      ] = await Promise.all([
-        admin.from("app_config").select("value,version").eq("key", "release_schema").maybeSingle(),
-        admin.rpc("admin_economics_snapshot", { p_from: "1970-01-01T00:00:00.000Z", p_to: "1970-01-02T00:00:00.000Z" }),
-        admin.from("profiles").select("referral_code").limit(1),
-        admin.rpc("release_security_contract"),
-        admin.rpc("release_authenticated_read_scope_contract"),
-        admin.rpc("release_withdrawal_read_contract"),
-        admin.rpc("release_withdrawal_settlement_contract"),
-        admin.rpc("release_withdrawal_pilot_contract"),
-        admin.rpc("release_faucetpay_proof_chain_contract"),
-        admin.rpc("release_reward_exchange_contract"),
-        admin.rpc("release_treasury_funding_contract"),
-        admin.rpc("release_treasury_backing_guard_contract"),
-        admin.rpc("release_opportunity_intelligence_contract"),
-        admin.rpc("release_pulse_direct_contract"),
-        admin.rpc("release_business_intake_contract"),
-        admin.rpc("release_advertiser_outbound_contract"),
-        admin.rpc("release_hourly_pulse_pilot_contract"),
-        admin.rpc("release_hourly_pulse_scale_contract"),
-        admin.rpc("release_user_balance_materialization_contract"),
-        admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
-      ]);
+      const { data: runtimeSnapshotData, error: runtimeSnapshotError } = await admin.rpc(
+        "release_runtime_contract_snapshot",
+      );
+      const runtimeSnapshot = objectValue(runtimeSnapshotData);
+      const schemaVersion = Number(runtimeSnapshot.schema_version ?? 0);
+      const schemaMigration = String(runtimeSnapshot.schema_migration ?? "");
+      const schemaOk = !runtimeSnapshotError
+        && schemaVersion >= RELEASE_SCHEMA_VERSION
+        && schemaMigration === RELEASE_SCHEMA_MIGRATION;
+      checks.push(check(
+        "schema",
+        "Schema version",
+        schemaOk ? "pass" : "fail",
+        schemaOk
+          ? `Database schema marker is v${schemaVersion} (${schemaMigration}).`
+          : `Apply migrations through ${RELEASE_SCHEMA_MIGRATION}.`,
+      ));
 
-      const markerValue = objectValue(marker?.value);
-      const schemaVersion = Number(markerValue.version ?? marker?.version ?? 0);
-      const schemaOk = !markerError && schemaVersion >= RELEASE_SCHEMA_VERSION;
-      checks.push(check("schema", "Schema version", schemaOk ? "pass" : "fail", schemaOk ? `Database schema marker is v${schemaVersion}.` : `Apply migrations through ${RELEASE_SCHEMA_MIGRATION}.`));
-
-      const securityOk = !securityContract.error && securityContractPasses(securityContract.data);
-      const authenticatedReadScopeOk = !authenticatedReadScopeContract.error && authenticatedReadScopeContract.data === true;
-      const withdrawalReadOk = !withdrawalReadContract.error && withdrawalReadContract.data === true;
-      const withdrawalSettlementOk = !withdrawalSettlementContract.error && withdrawalSettlementContract.data === true;
-      const withdrawalPilotOk = !withdrawalPilotContract.error && withdrawalPilotContract.data === true;
-      const faucetPayProofChainOk = !faucetPayProofChainContract.error && faucetPayProofChainContract.data === true;
-      const rewardExchangeOk = !rewardExchangeContract.error && rewardExchangeContract.data === true;
-      const treasuryFundingOk = !treasuryFundingContract.error && treasuryFundingContract.data === true;
-      const treasuryBackingOk = !treasuryBackingContract.error && treasuryBackingContract.data === true;
-      const opportunityIntelligenceOk = !opportunityIntelligenceContract.error && opportunityIntelligenceContract.data === true;
-      const pulseDirectOk = !pulseDirectContract.error && pulseDirectContract.data === true;
-      const businessIntakeOk = !businessIntakeContract.error && businessIntakeContract.data === true;
-      const advertiserOutboundOk = !advertiserOutboundContract.error && advertiserOutboundContract.data === true;
-      const hourlyPilotOk = !hourlyPilotContract.error && hourlyPilotContract.data === true;
-      const hourlyScaleOk = !hourlyScaleContract.error && hourlyScaleContract.data === true;
-      const userBalanceMaterializationOk = !userBalanceMaterializationContract.error && userBalanceMaterializationContract.data === true;
-      const contractsOk = !economics.error
-        && !referral.error
+      const securityOk = !runtimeSnapshotError && securityContractPasses(runtimeSnapshot.security);
+      const snapshotAuthorityOk = !runtimeSnapshotError && runtimeSnapshot.snapshot_authority === true;
+      const authenticatedReadScopeOk = !runtimeSnapshotError && runtimeSnapshot.authenticated_read_scope === true;
+      const withdrawalReadOk = !runtimeSnapshotError && runtimeSnapshot.withdrawal_read === true;
+      const withdrawalSettlementOk = !runtimeSnapshotError && runtimeSnapshot.withdrawal_settlement === true;
+      const withdrawalPilotOk = !runtimeSnapshotError && runtimeSnapshot.withdrawal_pilot === true;
+      const faucetPayProofChainOk = !runtimeSnapshotError && runtimeSnapshot.faucetpay_proof_chain === true;
+      const rewardExchangeOk = !runtimeSnapshotError && runtimeSnapshot.reward_exchange === true;
+      const treasuryFundingOk = !runtimeSnapshotError && runtimeSnapshot.treasury_funding === true;
+      const treasuryBackingOk = !runtimeSnapshotError && runtimeSnapshot.treasury_backing === true;
+      const opportunityIntelligenceOk = !runtimeSnapshotError && runtimeSnapshot.opportunity_intelligence === true;
+      const pulseDirectOk = !runtimeSnapshotError && runtimeSnapshot.pulse_direct === true;
+      const businessIntakeOk = !runtimeSnapshotError && runtimeSnapshot.business_intake === true;
+      const advertiserOutboundOk = !runtimeSnapshotError && runtimeSnapshot.advertiser_outbound === true;
+      const hourlyPilotOk = !runtimeSnapshotError && runtimeSnapshot.hourly_pilot === true;
+      const hourlyScaleOk = !runtimeSnapshotError && runtimeSnapshot.hourly_scale === true;
+      const userBalanceMaterializationOk = !runtimeSnapshotError && runtimeSnapshot.user_balance_materialization === true;
+      const contractsOk = !runtimeSnapshotError
+        && snapshotAuthorityOk
+        && runtimeSnapshot.economics_ok === true
+        && runtimeSnapshot.referral_ok === true
         && securityOk
         && authenticatedReadScopeOk
         && withdrawalReadOk
@@ -233,11 +205,12 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, exact-gap fully backed Treasury funding authority, database-owned payout-pack authority and external Treasury backing freshness guard, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound, Hourly Pulse pilot isolation, short critical-section concurrency and transactionally materialized user-balance contracts are proven."
-          : "One or more required runtime or database-access contracts are missing or have drifted.",
+          ? "One authoritative snapshot proves economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement and pilot isolation, exact FaucetPay proof chaining, Treasury funding/backing, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound, Hourly Pulse pilot/scale and materialized balances."
+          : "One or more required runtime contracts are missing, have drifted or the consolidated snapshot authority is invalid.",
       ));
 
-      const proofValue = proofRow?.value;
+      const proofValue = runtimeSnapshot.external_proof;
+      const proofError = runtimeSnapshotError;
 
       const legalPolicyReview = !proofError && releaseEvidenceMatches(proofValue, "legal_policy_review");
       checks.push(check(
