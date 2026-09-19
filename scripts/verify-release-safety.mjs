@@ -36,6 +36,8 @@ forbidText("lib/product-readiness.ts", ["availableTreasury >= rewardCredits", "a
 requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36", 'admin.rpc("release_hourly_pulse_pilot_contract")', "schemaVersion >= HOURLY_PILOT_SCHEMA_VERSION"]);
 requireText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker", "productSetupBlocked", "hourlyPilot.ok", 'service: "pulsercuit"', 'scope: "controlled-technical"', '"PULSECIRCUIT_READINESS_BLOCKERS"', "releaseBlockingIds", "productBlockingIds", 'item.id !== "public-access"']);
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
+requireText("app/api/pulse/claim/route.ts", ["claimReceiptRedirect", "PULSECIRCUIT_POST_CLAIM_RETENTION_FAILED", "PULSECIRCUIT_POST_CLAIM_REVALIDATION_FAILED", "PULSECIRCUIT_POST_CLAIM_COOKIE_CLEAR_FAILED", "try {", "catch {", 'new URL("/dashboard/claimed", request.url)', 'result.status === "claimed"']);
+forbidText("app/api/pulse/claim/route.ts", ["console.warn(userId", "console.warn(reminderId"]);
 requireText("supabase/migrations/0031_current_hourly_claim_security_contract.sql", ["claim_hourly_pulse(uuid) security invoker", "claim_hourly_pulse(uuid)', 'EXECUTE'", "release_security_contract"]);
 requireText("supabase/migrations/0032_authenticated_read_scope_contract.sql", ["release_authenticated_read_scope_contract", "security_invoker=true", "risk_score", "role_table_grants"]);
 requireText("supabase/migrations/0033_treasury_reservation_expiry.sql", ["release_expired_treasury_reservations", "status = 'expired'", "expires_at <= now()", "perform public.release_expired_treasury_reservations(v_treasury_id)", "release_reward_exchange_contract", "version', 33"]);

@@ -23,18 +23,34 @@ function revalidateRewardViews() {
 
 async function claimReceiptRedirect(request: NextRequest, userId: string) {
   const reminderId = cleanReminderId(request.cookies.get(RETENTION_ATTRIBUTION_COOKIE)?.value);
-  if (reminderId) await recordAttributedPulseCompletion(userId, reminderId);
 
-  revalidateRewardViews();
+  if (reminderId) {
+    try {
+      await recordAttributedPulseCompletion(userId, reminderId);
+    } catch {
+      console.warn("PULSECIRCUIT_POST_CLAIM_RETENTION_FAILED");
+    }
+  }
+
+  try {
+    revalidateRewardViews();
+  } catch {
+    console.warn("PULSECIRCUIT_POST_CLAIM_REVALIDATION_FAILED");
+  }
+
   const response = NextResponse.redirect(new URL("/dashboard/claimed", request.url), 303);
   if (reminderId) {
-    response.cookies.set(RETENTION_ATTRIBUTION_COOKIE, "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-    });
+    try {
+      response.cookies.set(RETENTION_ATTRIBUTION_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+    } catch {
+      console.warn("PULSECIRCUIT_POST_CLAIM_COOKIE_CLEAR_FAILED");
+    }
   }
   return response;
 }
