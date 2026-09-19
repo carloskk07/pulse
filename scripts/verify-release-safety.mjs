@@ -46,7 +46,7 @@ forbidText("lib/release-readiness.ts", [
   'admin.rpc("release_hourly_pulse_scale_contract")',
   'admin.rpc("release_user_balance_materialization_contract")',
 ]);
-requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 51", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0051_controlled_technical_readiness_snapshot.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
+requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 52", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0052_controlled_readiness_release_authority.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
 requireText("lib/product-launch-readiness.ts", ["getCurrentReleaseReadiness", "releaseBlockers", "governanceAdvisories", "publicProductBlockers", "publicAccessBlockers", "publicExpansionBlockers", 'new Set(["public-access", "public-fair-share"])', "technicalReady", "publicLaunchReady", "product.publicReady"]);
 requireText("lib/product-readiness.ts", ["PRODUCT_SETUP_CHECK_IDS", '"payout-pack-authority"', "getCanonicalFaucetPayPackAuthority", '"send-authority-config"', '"hourly-pulse-config"', '"public-access"', '"public-fair-share"', '"treasury"', "getFaucetPaySendAuthorityConfig", "deriveTreasuryDailyFundingState", '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proof, "faucetpay_send_scope")', "hasProductSetupBlocker", "!item.pass", "dailyBudgetCredits >= rewardCredits", "maxUserDailyCredits >= rewardCredits", "maxUserDailyCredits * 2 <= dailyBudgetCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.gte("created_at", utcTodayStartIso)', '.in("status", ["reserved", "consumed"])', "dailyFundingState.dailyCommittedCredits", "dailyFundingState.remainingDailyBudgetCredits", "dailyFundingState.availableCredits >= remainingDailyBudget", "current UTC day's remaining", "config?.pilot_mode === false", "does not block technical readiness", "publicReady", "publicBlockers", 'new Set(["public-access", "public-fair-share"])']);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
@@ -56,9 +56,12 @@ requireText("app/api/readiness/route.ts", ["getControlledTechnicalReadiness", 's
 forbidText("app/api/readiness/route.ts", ["getCurrentReleaseReadiness", "getProductReadiness", "getHourlyPilotReadiness", "hasProductSetupBlocker"]);
 requireText("lib/controlled-technical-readiness.ts", [
   'admin.rpc("controlled_technical_readiness_snapshot")',
-  "CONTROLLED_READINESS_SCHEMA_VERSION = 51",
-  'CONTROLLED_READINESS_SCHEMA_MIGRATION = "0051_controlled_technical_readiness_snapshot.sql"',
-  "runtimeContractsPass",
+  "CONTROLLED_READINESS_SCHEMA_VERSION = 52",
+  'CONTROLLED_READINESS_SCHEMA_MIGRATION = "0052_controlled_readiness_release_authority.sql"',
+  "snapshot.authority_runtime_lock === true",
+  "releaseAuthority.contracts_passed === true",
+  "numberValue(releaseAuthority.schema_version) === CONTROLLED_READINESS_SCHEMA_VERSION",
+  '"release-authority"',
   'releaseEvidenceMatches(proof, "supabase_auth_hardening")',
   'releaseEvidenceMatches(proof, "password_recovery")',
   'releaseEvidenceMatches(proof, "turnstile")',
@@ -73,6 +76,7 @@ requireText("lib/controlled-technical-readiness.ts", [
   'state: "READY_FOR_EXTERNAL_PROOF"',
   'state: "READY"'
 ]);
+forbidText("lib/controlled-technical-readiness.ts", ["runtimeContractsPass", "securityContractPasses", "runtime.external_proof"]);
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
 requireText("app/api/release-schema/route.ts", ['.from("app_config")', '.eq("key", "release_schema")', '"Cache-Control": "no-store"', 'schema_version: schemaVersion', 'schema_migration: schemaMigration', 'service: "pulsercuit"', 'available: true']);
 forbidText("app/api/release-schema/route.ts", ["process.env", "release_external_proof", "faucetpay", "treasury", "profiles", "withdrawals", "ledger_entries"]);
@@ -267,6 +271,51 @@ requireText("supabase/migrations/0051_controlled_technical_readiness_snapshot.sq
   "to service_role",
   "version', 51"
 ]);
+requireText("supabase/migrations/0052_controlled_readiness_release_authority.sql", [
+  "create table public.controlled_readiness_release_authority",
+  "enable row level security",
+  "revoke all on table public.controlled_readiness_release_authority",
+  "from public, anon, authenticated, service_role",
+  "grant select on table public.controlled_readiness_release_authority",
+  "to service_role",
+  "release_runtime_contract_snapshot()",
+  "v52 release authority refused",
+  "contracts_passed",
+  "create or replace function public.controlled_technical_readiness_snapshot()",
+  "security invoker",
+  "controlled_readiness_release_authority",
+  "'authority_runtime_lock'",
+  "has_table_privilege(",
+  "'INSERT'",
+  "'UPDATE'",
+  "'DELETE'",
+  "'TRUNCATE'",
+  "'external_proof'",
+  "grant execute on function public.controlled_technical_readiness_snapshot()",
+  "to service_role",
+  "version', 52"
+]);
+forbidText("supabase/migrations/0052_controlled_readiness_release_authority.sql", [
+  "grant insert on table public.controlled_readiness_release_authority",
+  "grant update on table public.controlled_readiness_release_authority",
+  "grant delete on table public.controlled_readiness_release_authority",
+  "grant truncate on table public.controlled_readiness_release_authority"
+]);
+{
+  const source = read("supabase/migrations/0052_controlled_readiness_release_authority.sql");
+  const fnStart = source.indexOf("create or replace function public.controlled_technical_readiness_snapshot()");
+  const fnEnd = source.indexOf("revoke all on function public.controlled_technical_readiness_snapshot()", fnStart);
+  if (fnStart < 0 || fnEnd < fnStart) {
+    throw new Error("v52 controlled readiness snapshot function boundaries are missing.");
+  }
+  const runtimeFunction = source.slice(fnStart, fnEnd);
+  if (runtimeFunction.includes("release_runtime_contract_snapshot()")) {
+    throw new Error("Public controlled readiness must not recompute static release contracts per request.");
+  }
+  if (!runtimeFunction.includes("controlled_readiness_release_authority")) {
+    throw new Error("Public controlled readiness must consume the immutable release authority.");
+  }
+}
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 {
   const source = read(".github/workflows/vercel-prebuilt.yml");
