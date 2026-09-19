@@ -44,7 +44,7 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
         <article><span>Paid withdrawals</span><strong>{product.paidWithdrawals}</strong></article>
         <article><span>Base-loop blockers</span><strong>{product.blockers.length}</strong></article>
         <article><span>Technical release blockers</span><strong>{readiness.releaseBlockers.length}</strong><small>{release.state}</small></article>
-        <article><span>Public governance advisories</span><strong>{readiness.governanceAdvisories.length}</strong><small>{readiness.publicLaunchReady ? "PUBLIC READY" : "SEPARATE REVIEW"}</small></article>
+        <article><span>Public expansion blockers</span><strong>{readiness.publicExpansionBlockers.length}</strong><small>{readiness.publicLaunchReady ? "PUBLIC READY" : "SEPARATE REVIEW"}</small></article>
       </section>
 
       <section className="admin-decision-card">
@@ -108,14 +108,14 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
         <div className="readiness-summary">
           <div>
             <span className="app-eyebrow">Public/global governance</span>
-            <h2>{readiness.publicLaunchReady ? "Governance review is complete." : "Governance stays visible without blocking the controlled faucet."}</h2>
-            <p>Operator identity, qualified legal review and international-transfer review remain explicit before broad public/global expansion, but they no longer make the technical service unhealthy.</p>
+            <h2>{readiness.publicLaunchReady ? "Public expansion gates are complete." : "Public expansion stays separate from the controlled faucet."}</h2>
+            <p>Pilot isolation, operator identity, qualified legal review and international-transfer review remain explicit before broad public/global expansion, but they do not make the controlled technical service unhealthy.</p>
           </div>
-          <div className="readiness-counts"><span>{readiness.governanceAdvisories.length} advisory</span></div>
+          <div className="readiness-counts"><span>{readiness.publicExpansionBlockers.length} open</span></div>
         </div>
         <div className="readiness-list">
-          {readiness.governanceAdvisories.length ? readiness.governanceAdvisories.map((item) => (
-            <article className="readiness-item pending" key={`governance-${item.id}`}>
+          {readiness.publicExpansionBlockers.length ? readiness.publicExpansionBlockers.map((item) => (
+            <article className="readiness-item pending" key={`public-${item.id}`}>
               <span className="readiness-dot" />
               <div><strong>{item.label}</strong><small>{item.detail}</small></div>
             </article>
