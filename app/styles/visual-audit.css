@@ -163,6 +163,14 @@
   background:rgba(3,5,4,.54);
   backdrop-filter:blur(12px);
 }
+.pc-luxe-vault-balance .payout-pack-label strong{
+  display:block;
+  margin-top:6px;
+  color:#f7f2e6!important;
+  font-size:clamp(17px,1.55vw,22px)!important;
+  line-height:1.08!important;
+  letter-spacing:-.03em!important;
+}
 
 /* Turbo: give the decision card a recognizable Pulsercuit object and stop the
    fallback headline from occupying an empty full-width field. */
