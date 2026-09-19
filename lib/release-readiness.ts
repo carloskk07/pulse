@@ -130,9 +130,9 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
     checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Economics, referrals, security, authenticated read scopes, withdrawal settlement integrity, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, Treasury reservation lifecycle, Reward Exchange, Opportunity Intelligence, Pulse Direct, business intake, advertiser outbound and Hourly Pulse pilot isolation contracts cannot be verified without database access."));
-    checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Legal-review evidence cannot be verified until database authority is available.", true));
-    checks.push(check("international-transfer-review", "International data-transfer review", "pending", "International-transfer evidence cannot be verified until database authority is available.", true));
-    checks.push(check("supabase-auth-hardening", "Compromised-password protection", "pending", "Managed Auth hardening evidence cannot be verified until database authority is available.", true));
+    checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Public/global governance advisory cannot be verified until database authority is available.", false));
+    checks.push(check("international-transfer-review", "International data-transfer review", "pending", "Public/global transfer advisory cannot be verified until database authority is available.", false));
+    checks.push(check("supabase-auth-hardening", "Compromised-password protection", "pending", "Application-level breach-protection evidence cannot be verified until database authority is available.", true));
     checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence cannot be verified until database authority is available.", true));
     checks.push(check("faucetpay-send-scope-proof", "FaucetPay send-key least privilege", "pending", "Send-key scope attestation cannot be verified until database authority is available.", true));
@@ -344,9 +344,9 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     } else {
       checks.push(check("schema", "Schema version", "fail", "Schema version cannot be verified while database access is failing."));
       checks.push(check("runtime-contracts", "Runtime contracts", "fail", "Runtime contracts cannot be verified while database access is failing."));
-      checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Legal-review evidence is still required after database recovery.", true));
-      checks.push(check("international-transfer-review", "International data-transfer review", "pending", "International-transfer review evidence is still required after database recovery.", true));
-      checks.push(check("supabase-auth-hardening", "Compromised-password protection", "pending", "Managed Auth hardening evidence is still required after database recovery.", true));
+      checks.push(check("legal-policy-review", "Qualified legal policy review", "pending", "Public/global legal review remains advisory after database recovery.", false));
+      checks.push(check("international-transfer-review", "International data-transfer review", "pending", "Public/global transfer review remains advisory after database recovery.", false));
+      checks.push(check("supabase-auth-hardening", "Compromised-password protection", "pending", "Application-level breach-protection evidence is still required after database recovery.", true));
       checks.push(check("password-recovery-proof", "Hosted password recovery proof", "pending", "Real password-recovery evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-read-proof", "FaucetPay read-only unit proof", "pending", "Live read-only FaucetPay evidence is still required after database recovery.", true));
       checks.push(check("faucetpay-send-scope-proof", "FaucetPay send-key least privilege", "pending", "Send-key least-privilege evidence is still required after database recovery.", true));
