@@ -2,8 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Check, Users } from "@/components/icons";
 import { CopyReferralLink } from "@/components/copy-referral-link";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUserContext } from "@/lib/current-user-context";
+import { getInviteState } from "@/lib/invite-state";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
 export const metadata = { title: "Invite" };
@@ -21,42 +20,19 @@ function configuredSiteUrl() {
 }
 
 export default async function InvitePage() {
-  const { supabase, user } = await getCurrentUserContext();
-  let referralCode: string | null = null;
-  let pending = 0;
-  let rewarded = 0;
-  let reversed = 0;
-  let referralCredits = 0;
-  let inviterBonus: number | null = null;
-  let inviteeBonus: number | null = null;
-
-  if (user && supabase) {
-    const [profileResult, referralResult, ledgerResult] = await Promise.all([
-      supabase.from("profiles").select("referral_code").eq("id", user.id).maybeSingle(),
-      supabase.from("referrals").select("status").eq("inviter_id", user.id),
-      supabase.from("ledger_entries").select("credits").eq("user_id", user.id).eq("entry_type", "referral"),
-    ]);
-    referralCode = profileResult.data?.referral_code ?? null;
-    for (const row of referralResult.data ?? []) {
-      if (row.status === "pending") pending += 1;
-      if (row.status === "rewarded") rewarded += 1;
-      if (row.status === "reversed") reversed += 1;
-    }
-    referralCredits = (ledgerResult.data ?? []).reduce((sum, row) => sum + Number(row.credits ?? 0), 0);
-
-    const admin = createSupabaseAdminClient();
-    if (admin) {
-      const { data: config } = await admin.from("app_config").select("value").eq("key", "referral_reward").maybeSingle();
-      const value = config?.value as { inviter_credits?: number; invitee_credits?: number } | null;
-      const inviter = Number(value?.inviter_credits ?? 0);
-      const invitee = Number(value?.invitee_credits ?? 0);
-      inviterBonus = Number.isFinite(inviter) && inviter >= 0 ? inviter : null;
-      inviteeBonus = Number.isFinite(invitee) && invitee >= 0 ? invitee : null;
-    }
-  }
+  const {
+    signedIn,
+    referralCode,
+    pending,
+    rewarded,
+    reversed,
+    referralCredits,
+    inviterBonus,
+    inviteeBonus,
+  } = await getInviteState();
 
   const site = configuredSiteUrl();
-  const referralLink = user && referralCode && site ? `${site}/r/${referralCode}` : null;
+  const referralLink = signedIn && referralCode && site ? `${site}/r/${referralCode}` : null;
   const milestones = [[1, "First connection"], [3, "Inner circle"], [5, "Momentum crew"], [10, "Circuit builder"]] as const;
 
   return (
@@ -67,10 +43,10 @@ export default async function InvitePage() {
         <div className="pc-invite-copy">
           <div className="invite-hero-icon"><Users /></div>
           <span className="app-eyebrow">Your invite link</span>
-          <h2>{referralLink ? "Invite someone into the climb." : user ? "Your share link is almost ready." : "Enter the circuit to start sharing."}</h2>
+          <h2>{referralLink ? "Invite someone into the climb." : signedIn ? "Your share link is almost ready." : "Enter the circuit to start sharing."}</h2>
           {referralLink ? (
             <div className="referral-box pc-luxe-referral-box"><code>{referralLink}</code><CopyReferralLink value={referralLink} /></div>
-          ) : user ? (
+          ) : signedIn ? (
             <div className="preview-banner">The link appears when your live profile and production site URL are both available.</div>
           ) : (
             <Link className="button button-light" href="/auth?next=/invite">Sign in to continue</Link>
@@ -85,17 +61,17 @@ export default async function InvitePage() {
       </section>
 
       <section className="pc-luxe-share-stats">
-        <article><small>Verified</small><strong>{user ? rewarded : "—"}</strong><span>real active referrals</span></article>
-        <article><small>Pending</small><strong>{user ? pending : "—"}</strong><span>awaiting qualification</span></article>
-        <article><small>Referral value</small><strong>{user ? formatUsdFromCredits(referralCredits) : "—"}</strong><span>net ledger value</span></article>
+        <article><small>Verified</small><strong>{signedIn ? rewarded : "—"}</strong><span>real active referrals</span></article>
+        <article><small>Pending</small><strong>{signedIn ? pending : "—"}</strong><span>awaiting qualification</span></article>
+        <article><small>Referral value</small><strong>{signedIn ? formatUsdFromCredits(referralCredits) : "—"}</strong><span>net ledger value</span></article>
       </section>
 
       <details className="pc-share-preview pc-luxe-referral-preview"><summary><strong>Invite quality details</strong></summary>
         <article className="pc-share-card pc-luxe-share-poster"><small>Share preview</small><h3>Bring someone into your <em>rhythm.</em></h3><p>Progress begins after real activity — not after an empty signup.</p></article>
-        <article className="pc-share-card pc-luxe-share-score"><small>Quality signal</small><h3>{user ? `${rewarded} verified` : "—"}</h3><p>{user ? "Only qualified referrals move the milestones." : "Sign in to reveal your progress."}</p></article>
+        <article className="pc-share-card pc-luxe-share-score"><small>Quality signal</small><h3>{signedIn ? `${rewarded} verified` : "—"}</h3><p>{signedIn ? "Only qualified referrals move the milestones." : "Sign in to reveal your progress."}</p></article>
       </details>
 
-      <details className="milestones pc-luxe-referral-milestones"><summary><strong>Invite milestones</strong></summary><div className="app-section-head"><div><span className="app-eyebrow">Share milestones</span><h2>Build a real circle.</h2></div></div>{milestones.map(([n,title]) => { const done = Boolean(user) && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified {n === 1 ? "referral" : "referrals"}</small></div><b>{!user ? "Locked" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</details>
+      <details className="milestones pc-luxe-referral-milestones"><summary><strong>Invite milestones</strong></summary><div className="app-section-head"><div><span className="app-eyebrow">Share milestones</span><h2>Build a real circle.</h2></div></div>{milestones.map(([n,title]) => { const done = signedIn && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified {n === 1 ? "referral" : "referrals"}</small></div><b>{!signedIn ? "Locked" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</details>
 
       {user && reversed > 0 ? <div className="pc-luxe-reversal-note">{reversed} referral qualification{reversed === 1 ? " was" : "s were"} reversed and excluded from progress.</div> : null}
     </AppShell>
