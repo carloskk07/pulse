@@ -10,12 +10,61 @@ export type TreasuryBackingStatus =
   | "backing_refresh_required"
   | "backing_insufficient"
   | "backing_unavailable"
-  | "read_proof_required";
+  | "read_proof_required"
+  | "pack_authority_mismatch";
+
+export type FaucetPayPackAuthority = {
+  asset: string;
+  amountCredits: number;
+  amountSmallestUnits: number;
+};
 
 function statusOf(value: unknown): string {
   return value && typeof value === "object" && !Array.isArray(value)
     ? String((value as Record<string, unknown>).status ?? "")
     : "";
+}
+
+export async function getCanonicalFaucetPayPackAuthority(
+  admin = createSupabaseAdminClient(),
+): Promise<FaucetPayPackAuthority | null> {
+  if (!admin) return null;
+
+  const { data, error } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", "faucetpay_payout_pack_authority")
+    .maybeSingle();
+  if (error || !data?.value || typeof data.value !== "object" || Array.isArray(data.value)) return null;
+
+  const value = data.value as Record<string, unknown>;
+  const asset = String(value.asset ?? "").trim().toUpperCase();
+  const amountCredits = Number(value.credits ?? 0);
+  const amountSmallestUnits = Number(value.units ?? 0);
+  if (
+    !asset
+    || !Number.isSafeInteger(amountCredits)
+    || amountCredits <= 0
+    || !Number.isSafeInteger(amountSmallestUnits)
+    || amountSmallestUnits <= 0
+  ) {
+    return null;
+  }
+
+  return { asset, amountCredits, amountSmallestUnits };
+}
+
+function payoutMatchesAuthority(
+  payout: ReturnType<typeof getFaucetPayPackConfig>,
+  authority: FaucetPayPackAuthority | null,
+) {
+  return Boolean(
+    payout.ready
+    && authority
+    && payout.asset === authority.asset
+    && payout.amountCredits === authority.amountCredits
+    && payout.amountSmallestUnits === authority.amountSmallestUnits
+  );
 }
 
 export async function getTreasuryBackingGuard(
@@ -48,9 +97,8 @@ export async function refreshTreasuryBackingObservation(
   if (!(await hasCurrentFaucetPayReadProof(admin))) return "read_proof_required";
 
   const payout = getFaucetPayPackConfig();
-  if (!payout.ready || !payout.amountCredits || !payout.amountSmallestUnits) {
-    return "backing_unavailable";
-  }
+  const authority = await getCanonicalFaucetPayPackAuthority(admin);
+  if (!payoutMatchesAuthority(payout, authority)) return "pack_authority_mismatch";
 
   const balance = await getFaucetPayBalanceReadOnly(payout.asset);
   if (!balance.ok || balance.balanceSmallestUnits === null) {
@@ -59,10 +107,7 @@ export async function refreshTreasuryBackingObservation(
 
   const { data, error } = await admin.rpc("record_treasury_backing_observation", {
     p_treasury_code: treasuryCode,
-    p_backing_asset: payout.asset,
     p_observed_balance_units: balance.balanceSmallestUnits,
-    p_payout_pack_credits: payout.amountCredits,
-    p_payout_pack_units: payout.amountSmallestUnits,
   });
   if (error) return "backing_unavailable";
 
@@ -70,6 +115,7 @@ export async function refreshTreasuryBackingObservation(
   if (status === "backing_ready") return "backing_ready";
   if (status === "backing_insufficient") return "backing_insufficient";
   if (status === "read_proof_missing") return "read_proof_required";
+  if (status === "pack_authority_missing") return "pack_authority_mismatch";
   return "backing_unavailable";
 }
 
@@ -83,6 +129,10 @@ export async function ensureFreshTreasuryBacking(
   // configuration still matches the fingerprint-bound FaucetPay read proof.
   // This is a local/database authority check and does not call FaucetPay.
   if (!(await hasCurrentFaucetPayReadProof(admin))) return "read_proof_required";
+
+  const payout = getFaucetPayPackConfig();
+  const authority = await getCanonicalFaucetPayPackAuthority(admin);
+  if (!payoutMatchesAuthority(payout, authority)) return "pack_authority_mismatch";
 
   const current = await getTreasuryBackingGuard(treasuryCode, admin);
   if (current === "backing_ready" || current === "backing_insufficient") return current;
