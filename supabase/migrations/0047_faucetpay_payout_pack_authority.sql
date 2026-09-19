@@ -2,21 +2,37 @@
 -- The database, not the caller, owns the conversion used to decide whether
 -- a FaucetPay balance observation covers current internal exposure.
 
-insert into public.app_config(key, value, version, reason)
-values (
-  'faucetpay_payout_pack_authority',
-  jsonb_build_object(
-    'asset', 'USDT',
-    'credits', 10,
-    'units', 1000000
-  ),
-  1,
-  'Canonical FaucetPay payout-pack authority for backing calculations'
+create table if not exists public.faucetpay_payout_pack_authority (
+  singleton boolean primary key default true check (singleton),
+  asset text not null,
+  credits bigint not null check (credits > 0),
+  units bigint not null check (units > 0),
+  authority_version integer not null default 1 check (authority_version > 0),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.faucetpay_payout_pack_authority enable row level security;
+
+-- The runtime service role may read the canonical pack but cannot mutate it.
+-- Changing payout economics requires a governed migration executed by the DB owner.
+revoke all on table public.faucetpay_payout_pack_authority
+  from public, anon, authenticated, service_role;
+grant select on table public.faucetpay_payout_pack_authority
+  to service_role;
+
+insert into public.faucetpay_payout_pack_authority (
+  singleton,
+  asset,
+  credits,
+  units,
+  authority_version
 )
-on conflict (key) do update
-set value = excluded.value,
-    version = excluded.version,
-    reason = excluded.reason,
+values (true, 'USDT', 10, 1000000, 1)
+on conflict (singleton) do update
+set asset = excluded.asset,
+    credits = excluded.credits,
+    units = excluded.units,
+    authority_version = excluded.authority_version,
     updated_at = now();
 
 -- Break the old contract dependency before removing the caller-controlled RPC.
@@ -44,7 +60,6 @@ declare
   v_treasury public.reward_treasuries%rowtype;
   v_read_proof_fingerprint text;
   v_policy jsonb := '{}'::jsonb;
-  v_pack jsonb := '{}'::jsonb;
   v_pack_asset text;
   v_pack_credits bigint;
   v_pack_units bigint;
@@ -74,21 +89,15 @@ begin
     return jsonb_build_object('status', 'read_proof_missing');
   end if;
 
-  select value into v_pack
-  from public.app_config
-  where key = 'faucetpay_payout_pack_authority';
+  select upper(trim(asset)), credits, units
+  into v_pack_asset, v_pack_credits, v_pack_units
+  from public.faucetpay_payout_pack_authority
+  where singleton is true;
 
-  if coalesce(trim(v_pack->>'asset'), '') = ''
-     or coalesce(v_pack->>'credits', '') !~ '^[0-9]+$'
-     or coalesce(v_pack->>'units', '') !~ '^[0-9]+$' then
-    return jsonb_build_object('status', 'pack_authority_missing');
-  end if;
-
-  v_pack_asset := upper(trim(v_pack->>'asset'));
-  v_pack_credits := (v_pack->>'credits')::bigint;
-  v_pack_units := (v_pack->>'units')::bigint;
-
-  if v_pack_credits <= 0 or v_pack_units <= 0 then
+  if not found
+     or coalesce(trim(v_pack_asset), '') = ''
+     or v_pack_credits is null or v_pack_credits <= 0
+     or v_pack_units is null or v_pack_units <= 0 then
     return jsonb_build_object('status', 'pack_authority_missing');
   end if;
 
@@ -206,7 +215,6 @@ declare
   v_treasury public.reward_treasuries%rowtype;
   v_observation public.treasury_backing_observations%rowtype;
   v_read_proof_fingerprint text;
-  v_pack jsonb := '{}'::jsonb;
   v_pack_asset text;
   v_pack_credits bigint;
   v_pack_units bigint;
@@ -238,21 +246,15 @@ begin
     return jsonb_build_object('status', 'backing_refresh_required');
   end if;
 
-  select value into v_pack
-  from public.app_config
-  where key = 'faucetpay_payout_pack_authority';
+  select upper(trim(asset)), credits, units
+  into v_pack_asset, v_pack_credits, v_pack_units
+  from public.faucetpay_payout_pack_authority
+  where singleton is true;
 
-  if coalesce(trim(v_pack->>'asset'), '') = ''
-     or coalesce(v_pack->>'credits', '') !~ '^[0-9]+$'
-     or coalesce(v_pack->>'units', '') !~ '^[0-9]+$' then
-    return jsonb_build_object('status', 'backing_refresh_required');
-  end if;
-
-  v_pack_asset := upper(trim(v_pack->>'asset'));
-  v_pack_credits := (v_pack->>'credits')::bigint;
-  v_pack_units := (v_pack->>'units')::bigint;
-
-  if v_pack_credits <= 0 or v_pack_units <= 0 then
+  if not found
+     or coalesce(trim(v_pack_asset), '') = ''
+     or v_pack_credits is null or v_pack_credits <= 0
+     or v_pack_units is null or v_pack_units <= 0 then
     return jsonb_build_object('status', 'backing_refresh_required');
   end if;
 
@@ -374,13 +376,26 @@ as $$
     )
     and not has_table_privilege('anon', 'public.treasury_backing_observations', 'SELECT')
     and not has_table_privilege('authenticated', 'public.treasury_backing_observations', 'SELECT')
+    and to_regclass('public.faucetpay_payout_pack_authority') is not null
+    and coalesce((
+      select relrowsecurity
+      from pg_class
+      where oid = 'public.faucetpay_payout_pack_authority'::regclass
+    ), false)
+    and has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'SELECT')
+    and not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'INSERT')
+    and not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'UPDATE')
+    and not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'DELETE')
+    and not has_table_privilege('anon', 'public.faucetpay_payout_pack_authority', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.faucetpay_payout_pack_authority', 'SELECT')
     and coalesce((
       select
-        upper(trim(value->>'asset')) = 'USDT'
-        and (value->>'credits')::bigint = 10
-        and (value->>'units')::bigint = 1000000
-      from public.app_config
-      where key = 'faucetpay_payout_pack_authority'
+        upper(trim(asset)) = 'USDT'
+        and credits = 10
+        and units = 1000000
+        and authority_version = 1
+      from public.faucetpay_payout_pack_authority
+      where singleton is true
     ), false)
     and position(
       'faucetpay_payout_pack_authority'
