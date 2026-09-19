@@ -2,6 +2,7 @@ import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
+import { getCanonicalFaucetPayPackAuthority } from "@/lib/treasury-backing";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
 export type ProductReadinessCheck = {
@@ -25,6 +26,7 @@ const PRODUCT_SETUP_CHECK_IDS = new Set([
   "auth",
   "turnstile-config",
   "payout-pack",
+  "payout-pack-authority",
   "send-authority-config",
   "database",
   "hourly-pulse-config",
@@ -85,6 +87,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const admin = createSupabaseAdminClient();
   if (!admin) {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
+    checks.push({ id: "payout-pack-authority", label: "Canonical payout-pack authority", pass: false, detail: "Database-owned payout-pack authority cannot be verified without trusted database access." });
     checks.push({ id: "auth-hardening-proof", label: "Compromised-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
     checks.push({ id: "password-recovery-proof", label: "Hosted password recovery proof", pass: false, detail: "Real recovery evidence cannot be verified without trusted database authority." });
     checks.push({ id: "faucetpay-send-scope-proof", label: "FaucetPay send-key least privilege", pass: false, detail: "Send-key scope evidence cannot be verified without trusted database authority." });
@@ -101,13 +104,31 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     };
   }
 
-  const [proofResult, pulseConfigResult, latestPulseClaimResult, monetizationResult, withdrawalResult] = await Promise.all([
+  const [proofResult, pulseConfigResult, latestPulseClaimResult, monetizationResult, withdrawalResult, payoutPackAuthority] = await Promise.all([
     admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
     admin.from("app_config").select("value").eq("key", "hourly_pulse").maybeSingle(),
     admin.from("pulse_claims").select("id,treasury_id,reward_credits,metadata,created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
     admin.from("monetization_events").select("id", { count: "exact", head: true }).eq("status", "confirmed"),
     admin.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "paid"),
+    getCanonicalFaucetPayPackAuthority(admin),
   ]);
+
+  const payoutPackAuthorityReady = Boolean(
+    payout.ready
+    && payoutPackAuthority
+    && payout.asset === payoutPackAuthority.asset
+    && payout.amountCredits === payoutPackAuthority.amountCredits
+    && payout.amountSmallestUnits === payoutPackAuthority.amountSmallestUnits
+  );
+
+  checks.push({
+    id: "payout-pack-authority",
+    label: "Canonical payout-pack authority",
+    pass: payoutPackAuthorityReady,
+    detail: payoutPackAuthorityReady
+      ? `Database authority matches the live ${payout.asset} payout pack: ${payout.amountCredits} P = ${payout.amountSmallestUnits} provider units.`
+      : "The live payout asset/credits/provider-units must exactly match the database-owned payout-pack authority before claims or payouts can be considered release-ready.",
+  });
 
   const config = pulseConfigResult.data?.value as {
     credits?: number | string;

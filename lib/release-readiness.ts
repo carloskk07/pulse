@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 46;
-export const RELEASE_SCHEMA_MIGRATION = "0046_treasury_backing_freshness.sql";
+export const RELEASE_SCHEMA_VERSION = 47;
+export const RELEASE_SCHEMA_MIGRATION = "0047_faucetpay_payout_pack_authority.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -225,7 +225,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, exact-gap fully backed Treasury funding authority, on-demand external Treasury backing freshness guard, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound and Hourly Pulse pilot isolation contracts are proven."
+          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, exact-gap fully backed Treasury funding authority, database-owned payout-pack authority and external Treasury backing freshness guard, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound and Hourly Pulse pilot isolation contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 

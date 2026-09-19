@@ -4,6 +4,7 @@ import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from 
 import { recordFaucetPayPayoutProofById } from "@/lib/faucetpay-receipt-proof";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { hasCanonicalFaucetPayPackAuthority } from "@/lib/treasury-backing";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -87,7 +88,7 @@ function authoritativePaidSettlement(data: unknown, providerExternalId: string) 
     && settledExternalId === expectedExternalId;
 }
 
-async function matchesCurrentPayoutAuthority(
+async function reservedMatchesCanonicalPayoutAuthority(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
   reserved: ReservedWithdrawal,
 ) {
@@ -96,6 +97,14 @@ async function matchesCurrentPayoutAuthority(
   if (config.asset !== reserved.asset) return false;
   if (config.amountCredits !== Number(reserved.amount_credits)) return false;
   if (config.amountSmallestUnits !== Number(reserved.payout_amount_units)) return false;
+  return hasCanonicalFaucetPayPackAuthority(admin, config);
+}
+
+async function matchesCurrentPayoutAuthority(
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  reserved: ReservedWithdrawal,
+) {
+  if (!(await reservedMatchesCanonicalPayoutAuthority(admin, reserved))) return false;
   const [readProof, sendScopeProof] = await Promise.all([
     hasCurrentFaucetPayReadProof(admin),
     hasCurrentFaucetPaySendScopeProof(admin),
@@ -125,6 +134,9 @@ async function executeReservedPayout(
 ) {
   if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) {
     return walletRedirect(request, "reserve-failed");
+  }
+  if (!(await reservedMatchesCanonicalPayoutAuthority(admin, reserved))) {
+    return walletRedirect(request, "payout-not-configured");
   }
 
   const claimed = await claimDispatch(admin, reserved.withdrawal_id);
@@ -210,15 +222,19 @@ export async function POST(request: NextRequest) {
     if (!process.env.FAUCETPAY_SCOPED_KEY?.trim()) return walletRedirect(request, "payout-not-configured");
     if (!(await hasCurrentFaucetPaySendScopeProof(admin))) return walletRedirect(request, "payout-not-configured");
 
+    const config = getFaucetPayPackConfig();
+    const packStillMatches = Boolean(
+      config.ready
+      && config.amountCredits === active.amount_credits
+      && config.amountSmallestUnits === active.payout_amount_units
+      && config.asset === active.asset,
+    );
+    if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
+    if (!(await hasCanonicalFaucetPayPackAuthority(admin, config))) {
+      return walletRedirect(request, "payout-not-configured");
+    }
+
     if (active.status === "requested") {
-      const config = getFaucetPayPackConfig();
-      const packStillMatches = Boolean(
-        config.ready
-        && config.amountCredits === active.amount_credits
-        && config.amountSmallestUnits === active.payout_amount_units
-        && config.asset === active.asset,
-      );
-      if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
       if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
       if (!(await hasLivePayoutPreflight(config))) return walletRedirect(request, "provider-temporary");
 
@@ -245,6 +261,7 @@ export async function POST(request: NextRequest) {
 
   const config = getFaucetPayPackConfig();
   if (!config.ready || !config.amountCredits || !config.amountSmallestUnits) return walletRedirect(request, "payout-not-configured");
+  if (!(await hasCanonicalFaucetPayPackAuthority(admin, config))) return walletRedirect(request, "payout-not-configured");
   if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
   if (!(await hasCurrentFaucetPaySendScopeProof(admin))) return walletRedirect(request, "payout-not-configured");
   if (!(await hasLivePayoutPreflight(config))) return walletRedirect(request, "provider-temporary");
