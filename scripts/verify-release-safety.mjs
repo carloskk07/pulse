@@ -90,22 +90,25 @@ requireText("supabase/migrations/0049_user_balance_materialization.sql", [
 {
   const source = read("supabase/migrations/0049_user_balance_materialization.sql");
   const lockLedger = source.indexOf("lock table public.ledger_entries in share row exclusive mode");
-  const backfill = source.indexOf("insert into public.user_balance_state");
-  const createTrigger = source.indexOf("create trigger ledger_user_balance_state_sync");
-  const replaceView = source.indexOf("create or replace view public.user_balances");
-  const verifyBackfill = source.indexOf("user_balance_state_backfill_mismatch");
+  const truncateState = source.indexOf("truncate table public.user_balance_state", lockLedger);
+  const backfill = source.indexOf("insert into public.user_balance_state", truncateState);
+  const createTrigger = source.indexOf("create trigger ledger_user_balance_state_sync", backfill);
+  const replaceView = source.indexOf("create or replace view public.user_balances", createTrigger);
+  const verifyBackfill = source.indexOf("user_balance_state_backfill_mismatch", replaceView);
   if (
     lockLedger < 0
+    || truncateState < 0
     || backfill < 0
     || createTrigger < 0
     || replaceView < 0
     || verifyBackfill < 0
-    || lockLedger > backfill
+    || lockLedger > truncateState
+    || truncateState > backfill
     || backfill > createTrigger
     || createTrigger > replaceView
     || replaceView > verifyBackfill
   ) {
-    throw new Error("v49 must lock ledger writes, backfill exact state, attach trigger, replace the view, then verify equivalence.");
+    throw new Error("v49 must lock ledger writes, truncate/rebuild exact state, attach trigger, replace the view, then verify equivalence.");
   }
 }
 {
