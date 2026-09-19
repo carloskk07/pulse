@@ -83,7 +83,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const admin = createSupabaseAdminClient();
   if (!admin) {
     checks.push({ id: "database", label: "Production database", pass: false, detail: "Trusted database authority is unavailable." });
-    checks.push({ id: "auth-hardening-proof", label: "Supabase Auth leaked-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
+    checks.push({ id: "auth-hardening-proof", label: "Compromised-password protection", pass: false, detail: "Managed Auth hardening evidence cannot be verified without trusted database authority." });
     checks.push({ id: "password-recovery-proof", label: "Hosted password recovery proof", pass: false, detail: "Real recovery evidence cannot be verified without trusted database authority." });
     checks.push({ id: "faucetpay-send-scope-proof", label: "FaucetPay send-key least privilege", pass: false, detail: "Send-key scope evidence cannot be verified without trusted database authority." });
     checks.push({ id: "base-loop-continuity", label: "Same-account base loop", pass: false, detail: "The authoritative same-account Pulse → Wallet → payout chain cannot be verified without trusted database authority." });
@@ -252,11 +252,11 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
 
   checks.push({
     id: "auth-hardening-proof",
-    label: "Supabase Auth leaked-password protection",
+    label: "Compromised-password protection",
     pass: authHardeningProof,
     detail: authHardeningProof
-      ? "Current Supabase project has matching external Auth-hardening evidence."
-      : "Enable leaked-password protection, clear the Supabase security-advisor warning, then record fingerprint-bound evidence.",
+      ? "Current 12+ character password policy and free HIBP Pwned Passwords k-anonymity screening have matching live evidence."
+      : "Verify the built-in HIBP Pwned Passwords screening. This replaces the paid Supabase leaked-password feature without weakening the password-set gate.",
   });
   checks.push({
     id: "password-recovery-proof",
