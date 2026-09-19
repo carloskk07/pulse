@@ -98,6 +98,9 @@ jobs:
       - name: Audit required production configuration visibility
         run: node scripts/audit-vercel-production-env.mjs .vercel/.env.production.local
 
+      - name: Report safe payout profile
+        run: node scripts/report-safe-payout-profile.mjs .vercel/.env.production.local
+
       - name: Build prebuilt Vercel output
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
