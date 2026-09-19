@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
-export const RELEASE_SCHEMA_VERSION = 48;
-export const RELEASE_SCHEMA_MIGRATION = "0048_hourly_pulse_claim_concurrency.sql";
+export const RELEASE_SCHEMA_VERSION = 49;
+export const RELEASE_SCHEMA_MIGRATION = "0049_user_balance_materialization.sql";
 
 export type ReadinessCheckStatus = "pass" | "fail" | "pending";
 export type ReadinessState = "SETUP_REQUIRED" | "READY_FOR_EXTERNAL_PROOF" | "READY";
@@ -164,6 +164,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         advertiserOutboundContract,
         hourlyPilotContract,
         hourlyScaleContract,
+        userBalanceMaterializationContract,
         { data: proofRow, error: proofError },
       ] = await Promise.all([
         admin.from("app_config").select("value,version").eq("key", "release_schema").maybeSingle(),
@@ -184,6 +185,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         admin.rpc("release_advertiser_outbound_contract"),
         admin.rpc("release_hourly_pulse_pilot_contract"),
         admin.rpc("release_hourly_pulse_scale_contract"),
+        admin.rpc("release_user_balance_materialization_contract"),
         admin.from("app_config").select("value").eq("key", "release_external_proof").maybeSingle(),
       ]);
 
@@ -207,6 +209,7 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       const advertiserOutboundOk = !advertiserOutboundContract.error && advertiserOutboundContract.data === true;
       const hourlyPilotOk = !hourlyPilotContract.error && hourlyPilotContract.data === true;
       const hourlyScaleOk = !hourlyScaleContract.error && hourlyScaleContract.data === true;
+      const userBalanceMaterializationOk = !userBalanceMaterializationContract.error && userBalanceMaterializationContract.data === true;
       const contractsOk = !economics.error
         && !referral.error
         && securityOk
@@ -223,13 +226,14 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
         && businessIntakeOk
         && advertiserOutboundOk
         && hourlyPilotOk
-        && hourlyScaleOk;
+        && hourlyScaleOk
+        && userBalanceMaterializationOk;
       checks.push(check(
         "runtime-contracts",
         "Runtime contracts",
         contractsOk ? "pass" : "fail",
         contractsOk
-          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, exact-gap fully backed Treasury funding authority, database-owned payout-pack authority and external Treasury backing freshness guard, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound, Hourly Pulse pilot isolation and short critical-section concurrency contracts are proven."
+          ? "Economics, referrals, security, authenticated read scopes, Wallet recovery, withdrawal settlement idempotency/provider truth, controlled withdrawal pilot isolation, exact FaucetPay payout→receipt proof chaining, authoritative Treasury reservation TTL, exact-gap fully backed Treasury funding authority, database-owned payout-pack authority and external Treasury backing freshness guard, Reward Exchange, Opportunity Intelligence, hardened Pulse Direct, business intake, private advertiser outbound, Hourly Pulse pilot isolation, short critical-section concurrency and transactionally materialized user-balance contracts are proven."
           : "One or more required runtime or database-access contracts are missing or have drifted.",
       ));
 

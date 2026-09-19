@@ -28,8 +28,8 @@ if (existsSync("lib/mock-data.ts")) {
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Verify exact canonical production release", "release.git_sha !== expectedSha", 'body.scope !== "controlled-technical"', "Controlled technical status"]);
-requireText("lib/release-readiness.ts", ['admin.rpc("release_authenticated_read_scope_contract")', 'admin.rpc("release_withdrawal_read_contract")', 'admin.rpc("release_withdrawal_settlement_contract")', 'admin.rpc("release_withdrawal_pilot_contract")', 'admin.rpc("release_faucetpay_proof_chain_contract")', 'admin.rpc("release_reward_exchange_contract")', 'admin.rpc("release_treasury_funding_contract")', 'admin.rpc("release_treasury_backing_guard_contract")', 'admin.rpc("release_pulse_direct_contract")', 'admin.rpc("release_hourly_pulse_pilot_contract")', 'admin.rpc("release_hourly_pulse_scale_contract")', "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
-requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 48", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0048_hourly_pulse_claim_concurrency.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
+requireText("lib/release-readiness.ts", ['admin.rpc("release_authenticated_read_scope_contract")', 'admin.rpc("release_withdrawal_read_contract")', 'admin.rpc("release_withdrawal_settlement_contract")', 'admin.rpc("release_withdrawal_pilot_contract")', 'admin.rpc("release_faucetpay_proof_chain_contract")', 'admin.rpc("release_reward_exchange_contract")', 'admin.rpc("release_treasury_funding_contract")', 'admin.rpc("release_treasury_backing_guard_contract")', 'admin.rpc("release_pulse_direct_contract")', 'admin.rpc("release_hourly_pulse_pilot_contract")', 'admin.rpc("release_hourly_pulse_scale_contract")', 'admin.rpc("release_user_balance_materialization_contract")', "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
+requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 49", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0049_user_balance_materialization.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
 requireText("lib/product-launch-readiness.ts", ["getCurrentReleaseReadiness", "releaseBlockers", "governanceAdvisories", "publicProductBlockers", "publicAccessBlockers", "publicExpansionBlockers", 'new Set(["public-access", "public-fair-share"])', "technicalReady", "publicLaunchReady", "product.publicReady"]);
 requireText("lib/product-readiness.ts", ["PRODUCT_SETUP_CHECK_IDS", '"payout-pack-authority"', "getCanonicalFaucetPayPackAuthority", '"send-authority-config"', '"hourly-pulse-config"', '"public-access"', '"public-fair-share"', '"treasury"', "getFaucetPaySendAuthorityConfig", "deriveTreasuryDailyFundingState", '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proof, "faucetpay_send_scope")', "hasProductSetupBlocker", "!item.pass", "dailyBudgetCredits >= rewardCredits", "maxUserDailyCredits >= rewardCredits", "maxUserDailyCredits * 2 <= dailyBudgetCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.gte("created_at", utcTodayStartIso)', '.in("status", ["reserved", "consumed"])', "dailyFundingState.dailyCommittedCredits", "dailyFundingState.remainingDailyBudgetCredits", "dailyFundingState.availableCredits >= remainingDailyBudget", "current UTC day's remaining", "config?.pilot_mode === false", "does not block technical readiness", "publicReady", "publicBlockers", 'new Set(["public-access", "public-fair-share"])']);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
@@ -70,6 +70,47 @@ requireText("supabase/migrations/0045_treasury_exact_gap_backing.sql", ["availab
 requireText("supabase/migrations/0046_treasury_backing_freshness.sql", ["treasury_backing_observations", "max_age_seconds', 900", "record_treasury_backing_observation", "treasury_backing_guard", "backing_refresh_required", "backing_insufficient", "read_proof_fingerprint", "observed_balance_units < v_required_units", "pulse_claim_backing_guard", "pulse_backing_guard", "release_treasury_backing_guard_contract", "security invoker", "service_role", "version', 46"]);
 requireText("supabase/migrations/0047_faucetpay_payout_pack_authority.sql", ["create table if not exists public.faucetpay_payout_pack_authority", "values (true, 'USDT', 10, 1000000, 1)", "delete from public.app_config", "where key = 'faucetpay_payout_pack_authority'", "revoke all on table public.faucetpay_payout_pack_authority", "from public, anon, authenticated, service_role", "grant select on table public.faucetpay_payout_pack_authority", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'INSERT')", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'UPDATE')", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'DELETE')", "not has_table_privilege('service_role', 'public.faucetpay_payout_pack_authority', 'TRUNCATE')", "not exists (", "record_treasury_backing_observation(text,bigint)", "record_treasury_backing_observation(text,text,bigint,bigint,bigint)') is null", "v_pack_credits", "v_pack_units", "v_observation.payout_pack_credits <> v_pack_credits", "v_observation.payout_pack_units <> v_pack_units", "release_treasury_backing_guard_contract", "version', 47"]);
 requireText("supabase/migrations/0048_hourly_pulse_claim_concurrency.sql", ["pulse_claims_treasury_created_idx", "include (reward_credits, user_id)", "treasury_reservations_expiry_idx", "SCALE_V48_GLOBAL_CRITICAL_SECTION", "pulse_claim_abort:daily_budget_exhausted", "pulse_claim_abort:user_daily_limit", "release_hourly_pulse_scale_contract", "security invoker", "service_role", "version', 48"]);
+requireText("supabase/migrations/0049_user_balance_materialization.sql", [
+  "create table if not exists public.user_balance_state",
+  "alter table public.user_balance_state enable row level security",
+  'create policy "user_balance_state_read_own"',
+  "sync_user_balance_state_from_ledger",
+  "security definer",
+  "ledger_user_balance_state_sync",
+  "lock table public.ledger_entries in share row exclusive mode",
+  "truncate table public.user_balance_state",
+  "user_balance_state_backfill_mismatch",
+  "with (security_invoker = true)",
+  "release_user_balance_materialization_contract",
+  "not has_table_privilege('service_role', 'public.user_balance_state', 'INSERT')",
+  "not has_table_privilege('service_role', 'public.user_balance_state', 'UPDATE')",
+  "not has_table_privilege('service_role', 'public.user_balance_state', 'DELETE')",
+  "version', 49"
+]);
+{
+  const source = read("supabase/migrations/0049_user_balance_materialization.sql");
+  const lockLedger = source.indexOf("lock table public.ledger_entries in share row exclusive mode");
+  const truncateState = source.indexOf("truncate table public.user_balance_state", lockLedger);
+  const backfill = source.indexOf("insert into public.user_balance_state", truncateState);
+  const createTrigger = source.indexOf("create trigger ledger_user_balance_state_sync", backfill);
+  const replaceView = source.indexOf("create or replace view public.user_balances", createTrigger);
+  const verifyBackfill = source.indexOf("user_balance_state_backfill_mismatch", replaceView);
+  if (
+    lockLedger < 0
+    || truncateState < 0
+    || backfill < 0
+    || createTrigger < 0
+    || replaceView < 0
+    || verifyBackfill < 0
+    || lockLedger > truncateState
+    || truncateState > backfill
+    || backfill > createTrigger
+    || createTrigger > replaceView
+    || replaceView > verifyBackfill
+  ) {
+    throw new Error("v49 must lock ledger writes, truncate/rebuild exact state, attach trigger, replace the view, then verify equivalence.");
+  }
+}
 {
   const source = read("supabase/migrations/0048_hourly_pulse_claim_concurrency.sql");
   const claimInsert = source.indexOf("insert into public.pulse_claims");
