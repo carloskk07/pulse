@@ -251,6 +251,11 @@ requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(np
   if (prePromotion.includes("vercel@59.17.0 promote")) {
     throw new Error("Promotion command appeared before all pre-promotion gates.");
   }
+  const stagedProbeBlock = source.slice(stagedIdentity, mainRecheck);
+  const stagedLocationCount = stagedProbeBlock.match(/--location/g)?.length ?? 0;
+  if (stagedLocationCount < 3) {
+    throw new Error("All staged health, release-identity and readiness probes must follow deployment redirects before promotion.");
+  }
 }
 
 {
