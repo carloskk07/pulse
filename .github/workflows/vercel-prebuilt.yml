@@ -189,8 +189,8 @@ jobs:
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             health_file="$(mktemp)"
             release_file="$(mktemp)"
-            if npx --yes vercel@59.17.0 --scope=carloskk07s-projects --token="$VERCEL_TOKEN" curl "$DEPLOYMENT_URL/api/health" --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$health_file" \
-              && npx --yes vercel@59.17.0 --scope=carloskk07s-projects --token="$VERCEL_TOKEN" curl "$DEPLOYMENT_URL/release.json?sha=$GITHUB_SHA" --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$release_file" \
+            if npx --yes vercel@59.17.0 curl "$DEPLOYMENT_URL/api/health" --scope=carloskk07s-projects --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$health_file" \
+              && npx --yes vercel@59.17.0 curl "$DEPLOYMENT_URL/release.json?sha=$GITHUB_SHA" --scope=carloskk07s-projects --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$release_file" \
               && node - "$health_file" "$release_file" <<'NODE'
           const fs = require("node:fs");
           const health = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
@@ -226,7 +226,7 @@ jobs:
 
           for attempt in $(seq 1 "$max_attempts"); do
             : > "$body_file"
-            status="$(npx --yes vercel@59.17.0 --scope=carloskk07s-projects --token="$VERCEL_TOKEN" curl "$DEPLOYMENT_URL/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" \
+            status="$(npx --yes vercel@59.17.0 curl "$DEPLOYMENT_URL/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" --scope=carloskk07s-projects \
               --silent --show-error \
               --location \
               --output "$body_file" \
