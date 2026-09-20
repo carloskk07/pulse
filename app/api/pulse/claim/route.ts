@@ -1,6 +1,5 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { recordReleaseEvidence } from "@/lib/release-evidence";
 import {
   cleanReminderId,
   recordAttributedPulseCompletion,
@@ -72,8 +71,6 @@ export async function POST(request: NextRequest) {
 
   const admin = createSupabaseAdminClient();
   if (!admin) return dashboardRedirect(request, "service-not-configured");
-
-  await recordReleaseEvidence("turnstile");
 
   const backing = await ensureFreshTreasuryBacking("launch", admin);
   if (backing === "backing_refreshing") return dashboardRedirect(request, "backing-refreshing");
