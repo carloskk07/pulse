@@ -18,7 +18,7 @@ const structuredData = {
 const ranks = [
   { id: "spark", name: "Spark", note: "Start with one Pulse" },
   { id: "flow", name: "Flow", note: "Build a return rhythm" },
-  { id: "rhythm", name: "Rhythm", note: "Grow verified history" },
+  { id: "rhythm", name: "Rhythm", note: "Build your history" },
   { id: "circuit", name: "Circuit", note: "Keep the loop moving" },
   { id: "resonance", name: "Resonance", note: "Reach the highest stage" },
 ] as const;
@@ -139,7 +139,7 @@ export default function HomePage() {
           <div className="pc-v6-vault-benefits">
             <div><span>◇</span><p><strong>Clear balance</strong><small>Everything in one place.</small></p></div>
             <div><span className="lime">✓</span><p><strong>Payout in view</strong><small>See how close you are.</small></p></div>
-            <div><span>≋</span><p><strong>One simple request</strong><small>Withdraw when you&apos;re ready.</small></p></div>
+            <div><span>≋</span><p><strong>One simple request</strong><small>Request payout when available.</small></p></div>
           </div>
         </div>
       </section>
