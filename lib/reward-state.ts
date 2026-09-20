@@ -117,11 +117,20 @@ export function buildRewardSnapshotFromPayload(
     Number(treasury.funded_credits ?? 0)
     - Number(treasury.reserved_credits ?? 0)
     - Number(treasury.spent_credits ?? 0);
+  const dailyBudgetCredits = Number(treasury.daily_budget_credits ?? 0);
+  const maxUserDailyCredits = Number(treasury.max_user_daily_credits ?? 0);
+  const pilotMode = String(config.pilot_mode ?? "false").toLowerCase() === "true";
+  const publicFairShareReady = pilotMode || (
+    dailyBudgetCredits > 0
+    && maxUserDailyCredits > 0
+    && maxUserDailyCredits * 2 <= dailyBudgetCredits
+  );
   const pulseFundingReady = Boolean(
     treasury.enabled === true
     && treasury.kill_switch === false
-    && Number(treasury.daily_budget_credits ?? 0) > 0
-    && Number(treasury.max_user_daily_credits ?? 0) > 0
+    && dailyBudgetCredits > 0
+    && maxUserDailyCredits > 0
+    && publicFairShareReady
     && claimRewardCredits > 0
     && availableTreasury >= claimRewardCredits
   );

@@ -273,6 +273,58 @@ forbidText("supabase/migrations/0065_public_proof_scan_compaction.sql", [
     );
   }
 }
+requireText("supabase/migrations/0067_public_fair_share_authority.sql", [
+  "create or replace function public.claim_hourly_pulse(p_user_id uuid)",
+  "public_fair_share_required",
+  "not v_pilot_mode",
+  "max_user_daily_credits::numeric * 2",
+  "create or replace function public.reserve_treasury_boost(",
+  "v_public_mode",
+  "create or replace function public.release_hourly_pulse_scale_contract()",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0067_public_fair_share_authority.sql", [
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events",
+  "'version', 67",
+  "schema_version = 67"
+]);
+{
+  const source = read("supabase/migrations/0067_public_fair_share_authority.sql");
+  const claimStart = source.indexOf("create or replace function public.claim_hourly_pulse");
+  const reserveStart = source.indexOf("create or replace function public.reserve_treasury_boost", claimStart);
+  const scaleStart = source.indexOf("create or replace function public.release_hourly_pulse_scale_contract", reserveStart);
+  if (claimStart < 0 || reserveStart < claimStart || scaleStart < reserveStart) {
+    throw new Error("v67 fair-share authority function ordering is missing.");
+  }
+  const claimBody = source.slice(claimStart, reserveStart);
+  const reserveBody = source.slice(reserveStart, scaleStart);
+  const treasuryUpdates = source.match(/update public\.reward_treasuries/g) ?? [];
+  if (treasuryUpdates.length !== 2) {
+    throw new Error(
+      "v67 must preserve exactly the existing claim + reservation Treasury accounting updates and add no new Treasury write path.",
+    );
+  }
+  if (
+    !claimBody.includes("public_fair_share_required")
+    || !claimBody.includes("not v_pilot_mode")
+    || !claimBody.includes("max_user_daily_credits::numeric * 2")
+    || !reserveBody.includes("public_fair_share_required")
+    || !reserveBody.includes("v_public_mode")
+    || !reserveBody.includes("max_user_daily_credits::numeric * 2")
+  ) {
+    throw new Error("v67 must enforce the same public fair-share authority in claims and reservations.");
+  }
+}
+requireText("lib/reward-state.ts", [
+  "const publicFairShareReady = pilotMode || (",
+  "maxUserDailyCredits * 2 <= dailyBudgetCredits",
+  "&& publicFairShareReady"
+]);
+requireText("app/api/pulse/claim/route.ts", [
+  'result.status === "public_fair_share_required"',
+  'dashboardRedirect(request, "budget-paused")'
+]);
 requireText("supabase/migrations/0066_public_social_proof_snapshot.sql", [
   "create or replace function public.public_social_proof_snapshot()",
   "security invoker",
