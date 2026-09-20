@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import "server-only";
 
 import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
@@ -23,6 +24,32 @@ function statusOf(value: unknown): string {
   return value && typeof value === "object" && !Array.isArray(value)
     ? String((value as Record<string, unknown>).status ?? "")
     : "";
+}
+
+async function claimTreasuryBackingRefreshLease(
+  treasuryCode: string,
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+) {
+  const { data, error } = await admin.rpc("claim_treasury_backing_refresh_lease", {
+    p_treasury_code: treasuryCode,
+    p_lease_token: randomUUID(),
+    p_lease_seconds: 10,
+  });
+  if (error) return "unavailable";
+  const status = statusOf(data);
+  return status === "acquired" || status === "busy" ? status : "unavailable";
+}
+
+async function waitForConcurrentBackingRefresh(
+  treasuryCode: string,
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+): Promise<TreasuryBackingStatus> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const current = await getTreasuryBackingGuard(treasuryCode, admin);
+    if (current !== "backing_refresh_required") return current;
+  }
+  return "backing_refresh_required";
 }
 
 export async function getCanonicalFaucetPayPackAuthority(
@@ -145,6 +172,12 @@ export async function ensureFreshTreasuryBacking(
   const current = await getTreasuryBackingGuard(treasuryCode, admin);
   if (current === "backing_ready" || current === "backing_insufficient") return current;
   if (current !== "backing_refresh_required") return current;
+
+  const lease = await claimTreasuryBackingRefreshLease(treasuryCode, admin);
+  if (lease === "busy") {
+    return waitForConcurrentBackingRefresh(treasuryCode, admin);
+  }
+  if (lease !== "acquired") return "backing_unavailable";
 
   const refreshed = await refreshTreasuryBackingObservation(treasuryCode, admin);
   if (refreshed !== "backing_ready") return refreshed;
