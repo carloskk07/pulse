@@ -22,9 +22,21 @@ function textValue(value: unknown) {
   return typeof value === "string" ? value : null;
 }
 
+function isLikelyAutomation(request: NextRequest) {
+  const userAgent = request.headers.get("user-agent")?.toLowerCase() ?? "";
+  return ["headlesschrome", "lighthouse", "playwright", "puppeteer"].some((marker) => userAgent.includes(marker));
+}
+
 export async function POST(request: NextRequest) {
   if (!isTrustedSameOriginMutation(request)) {
     return NextResponse.json({ error: "origin" }, { status: 403 });
+  }
+
+  if (isLikelyAutomation(request)) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: { "cache-control": "no-store" },
+    });
   }
 
   let body: EventBody;
