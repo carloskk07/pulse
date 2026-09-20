@@ -183,13 +183,14 @@ jobs:
       - name: Verify exact staged release identity
         shell: bash
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
         run: |
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             health_file="$(mktemp)"
             release_file="$(mktemp)"
-            if curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$health_file" "$DEPLOYMENT_URL/api/health" \
-              && curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$release_file" "$DEPLOYMENT_URL/release.json?sha=$GITHUB_SHA" \
+            if npx --yes vercel@59.17.0 --scope=carloskk07s-projects --token="$VERCEL_TOKEN" curl "$DEPLOYMENT_URL/api/health" --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$health_file" \
+              && npx --yes vercel@59.17.0 --scope=carloskk07s-projects --token="$VERCEL_TOKEN" curl "$DEPLOYMENT_URL/release.json?sha=$GITHUB_SHA" --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$release_file" \
               && node - "$health_file" "$release_file" <<'NODE'
           const fs = require("node:fs");
           const health = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
@@ -216,6 +217,7 @@ jobs:
       - name: Require READY controlled technical state before promotion
         shell: bash
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
         run: |
           body_file="$(mktemp)"
@@ -224,12 +226,12 @@ jobs:
 
           for attempt in $(seq 1 "$max_attempts"); do
             : > "$body_file"
-            status="$(curl --silent --show-error \
+            status="$(npx --yes vercel@59.17.0 --scope=carloskk07s-projects --token="$VERCEL_TOKEN" curl "$DEPLOYMENT_URL/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" \
+              --silent --show-error \
               --location \
               --output "$body_file" \
               --write-out '%{http_code}' \
-              --header 'Cache-Control: no-cache' \
-              "$DEPLOYMENT_URL/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" || true)"
+              --header 'Cache-Control: no-cache' || true)"
 
             if node scripts/verify-controlled-readiness-gate.mjs "$status" "$body_file"; then
               echo "Controlled readiness PASS on staged immutable deployment."
