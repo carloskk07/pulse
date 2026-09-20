@@ -459,13 +459,24 @@ requireText("supabase/migrations/0056_reward_streak_efficiency.sql", [
   "to authenticated"
 ]);
 forbidText("supabase/migrations/0056_reward_streak_efficiency.sql", [
-  "generate_series",
   "security definer",
   "insert into public.app_config",
   "controlled_readiness_release_authority",
   "to anon",
   "to service_role"
 ]);
+{
+  const source = read("supabase/migrations/0056_reward_streak_efficiency.sql");
+  const fnStart = source.indexOf("create or replace function public.current_user_reward_snapshot()");
+  const fnEnd = source.indexOf("revoke all on function public.current_user_reward_snapshot()", fnStart);
+  if (fnStart < 0 || fnEnd < fnStart) {
+    throw new Error("v56 reward snapshot function boundaries are missing.");
+  }
+  const functionBody = source.slice(fnStart, fnEnd);
+  if (functionBody.includes("generate_series")) {
+    throw new Error("v56 reward snapshot function must not restore the fixed 366-day scan.");
+  }
+}
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 requireText("scripts/verify-controlled-readiness-gate.mjs", [
   "verifyControlledReadinessResponse",
