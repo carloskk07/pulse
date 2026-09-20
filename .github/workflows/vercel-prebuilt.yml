@@ -166,10 +166,105 @@ jobs:
 
           node scripts/verify-current-main-head.mjs "$GITHUB_SHA" "$main_file"
 
-      - name: Deploy prebuilt output
+      - name: Stage production deployment without domain promotion
+        id: stage
+        shell: bash
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx --yes vercel@59.17.0 deploy --prebuilt --prod --yes --archive=tgz --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
+        run: |
+          deployment_url="$(npx --yes vercel@59.17.0 deploy --prebuilt --prod --skip-domain --yes --archive=tgz --scope=carloskk07s-projects --token="$VERCEL_TOKEN" | tail -n 1 | tr -d '\r')"
+          if [[ ! "$deployment_url" =~ ^https://[A-Za-z0-9.-]+\.vercel\.app$ ]]; then
+            echo "::error title=Pulsercuit staged deploy::Unexpected Vercel deployment URL: $deployment_url"
+            exit 1
+          fi
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "Staged immutable production candidate: $deployment_url"
+
+      - name: Verify exact staged release identity
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            health_file="$(mktemp)"
+            release_file="$(mktemp)"
+            if curl --fail --silent --show-error --header 'Cache-Control: no-cache' --output "$health_file" "$DEPLOYMENT_URL/api/health" \
+              && curl --fail --silent --show-error --header 'Cache-Control: no-cache' --output "$release_file" "$DEPLOYMENT_URL/release.json?sha=$GITHUB_SHA" \
+              && node - "$health_file" "$release_file" <<'NODE'
+          const fs = require("node:fs");
+          const health = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const release = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          const expectedSha = process.env.GITHUB_SHA;
+
+          if (health.service !== "pulsercuit" || health.ok !== true) {
+            throw new Error(`Unexpected staged health identity: ${JSON.stringify(health)}`);
+          }
+          if (release.service !== "pulsercuit" || release.git_sha !== expectedSha) {
+            throw new Error(`Staged release mismatch: expected ${expectedSha}, received ${release.git_sha}`);
+          }
+          console.log(`Exact staged release PASS: ${release.git_sha}`);
+          NODE
+            then
+              exit 0
+            fi
+            rm -f "$health_file" "$release_file"
+            sleep 6
+          done
+          echo "Staged production candidate did not converge to the exact Pulsercuit commit $GITHUB_SHA."
+          exit 1
+
+      - name: Require READY controlled technical state before promotion
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+        run: |
+          body_file="$(mktemp)"
+          trap 'rm -f "$body_file"' EXIT
+          max_attempts=6
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            : > "$body_file"
+            status="$(curl --silent --show-error \
+              --output "$body_file" \
+              --write-out '%{http_code}' \
+              --header 'Cache-Control: no-cache' \
+              "$DEPLOYMENT_URL/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" || true)"
+
+            if node scripts/verify-controlled-readiness-gate.mjs "$status" "$body_file"; then
+              echo "Controlled readiness PASS on staged immutable deployment."
+              break
+            fi
+
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "::error title=Pulsercuit technical readiness::Staged deployment did not reach controlled technical READY after $max_attempts attempts. Production aliases remain unchanged."
+              exit 1
+            fi
+
+            echo "Controlled readiness is not READY on staged attempt $attempt/$max_attempts; retrying after rollout TTL."
+            sleep 4
+          done
+
+      - name: Reconfirm current main HEAD before promotion
+        shell: bash
+        env:
+          GITHUB_API_TOKEN: ${{ github.token }}
+        run: |
+          main_file="$RUNNER_TEMP/main-head-prepromotion.json"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GITHUB_API_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --output "$main_file" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/main"
+
+          node scripts/verify-current-main-head.mjs "$GITHUB_SHA" "$main_file"
+
+      - name: Promote verified deployment to production aliases
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+        run: npx --yes vercel@59.17.0 promote "$DEPLOYMENT_URL" --yes --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
 
       - name: Verify exact canonical production release
         shell: bash
@@ -194,48 +289,21 @@ jobs:
           console.log(`Exact canonical release PASS: ${release.git_sha}`);
           NODE
             then
-              exit 0
-            fi
-            rm -f "$health_file" "$release_file"
-            sleep 6
-          done
-          echo "Canonical production did not converge to the exact Pulsercuit commit $GITHUB_SHA."
-          exit 1
-
-      - name: Require READY controlled technical state
-        shell: bash
-        run: |
-          body_file="$(mktemp)"
-          trap 'rm -f "$body_file"' EXIT
-          max_attempts=6
-
-          for attempt in $(seq 1 "$max_attempts"); do
-            : > "$body_file"
-            status="$(curl --silent --show-error \
-              --output "$body_file" \
-              --write-out '%{http_code}' \
-              --header 'Cache-Control: no-cache' \
-              "https://pulsercuit.pro/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" || true)"
-
-            if node scripts/verify-controlled-readiness-gate.mjs "$status" "$body_file"; then
               {
                 echo "## Pulsercuit production gate"
                 echo
                 echo "| Check | Result |"
                 echo "| --- | --- |"
-                echo "| Canonical commit | \`$GITHUB_SHA\` |"
-                echo "| Controlled technical readiness | **READY** |"
+                echo "| Canonical commit | `$GITHUB_SHA` |"
+                echo "| Staged controlled technical readiness | **READY** |"
+                echo "| Promotion | **COMPLETED AFTER GATES** |"
                 echo
-                echo "The canonical production release is healthy and the controlled technical gate is READY. Public/global governance remains a separate review surface."
+                echo "The immutable candidate passed release identity and controlled readiness before any production alias changed."
               } >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-
-            if [ "$attempt" -lt "$max_attempts" ]; then
-              echo "Controlled readiness is not READY on attempt $attempt/$max_attempts; retrying after rollout TTL."
-              sleep 4
-            fi
+            rm -f "$health_file" "$release_file"
+            sleep 6
           done
-
-          echo "::error title=Pulsercuit technical readiness::Canonical deployment did not reach controlled technical READY after $max_attempts attempts."
+          echo "Canonical production did not converge to the exact promoted Pulsercuit commit $GITHUB_SHA."
           exit 1
