@@ -272,6 +272,7 @@ jobs:
       - name: Verify exact canonical production release
         shell: bash
         run: |
+          set -euo pipefail
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             health_file="$(mktemp)"
             release_file="$(mktemp)"
@@ -297,11 +298,11 @@ jobs:
                 echo
                 echo "| Check | Result |"
                 echo "| --- | --- |"
-                echo "| Canonical commit | `$GITHUB_SHA` |"
-                echo "| Staged controlled technical readiness | **READY** |"
+                echo "| Canonical commit | $GITHUB_SHA |"
+                echo "| Deployment technical readiness | **READY** |"
                 echo "| Promotion | **COMPLETED AFTER GATES** |"
                 echo
-                echo "The immutable candidate passed release identity and controlled readiness before any production alias changed."
+                echo "The immutable candidate passed release identity and deployment-safe technical readiness before any production alias changed."
               } >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
