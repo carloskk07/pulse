@@ -14,7 +14,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
         </nav>
         <div className="pc-v6-header-actions">
           <Link className="pc-v6-login" href="/auth?next=/dashboard">Log in</Link>
-          <Link className="pc-v6-button compact primary" href="/auth?next=/dashboard">Enter the circuit <span>→</span></Link>
+          <Link className="pc-v6-button compact primary" href="/auth?mode=signup&next=/dashboard">Enter the circuit <span>→</span></Link>
         </div>
       </div>
     </header>
