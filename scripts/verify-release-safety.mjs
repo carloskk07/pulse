@@ -581,11 +581,20 @@ requireText("lib/treasury-backing.ts", [
   "claimTreasuryBackingRefreshLease",
   'admin.rpc("claim_treasury_backing_refresh_lease"',
   "p_lease_seconds: 10",
+  "CONCURRENT_REFRESH_POLL_DELAYS_MS = [250, 250, 500, 1_000]",
   "waitForConcurrentBackingRefresh",
-  "setTimeout(resolve, 250)",
+  "setTimeout(resolve, delayMs)",
+  'return "backing_refreshing"',
   'lease === "busy"',
   'lease !== "acquired"',
   "refreshTreasuryBackingObservation(treasuryCode, admin)"
+]);
+requireText("app/api/pulse/claim/route.ts", [
+  'backing === "backing_refreshing"',
+  'dashboardRedirect(request, "backing-refreshing")'
+]);
+requireText("app/dashboard/page.tsx", [
+  '"backing-refreshing": "Pulse backing is refreshing. Your balance did not change; try again in a moment."'
 ]);
 {
   const source = read("lib/treasury-backing.ts");

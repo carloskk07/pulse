@@ -19,6 +19,7 @@ const claimCopy: Record<string, string> = {
   success: "Pulse secured. Your balance and progress were updated.",
   "not-ready": "Your next Pulse is not ready yet.",
   "budget-paused": "Pulse is temporarily unavailable. Your balance did not change.",
+  "backing-refreshing": "Pulse backing is refreshing. Your balance did not change; try again in a moment.",
   "trust-review": "This Pulse needs a review before it can be released.",
   "verification-failed": "Verification failed. Try again.",
   "verification-not-configured": "Pulse verification is temporarily unavailable.",

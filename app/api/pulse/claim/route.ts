@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
   await admin.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
 
   const backing = await ensureFreshTreasuryBacking("launch", admin);
+  if (backing === "backing_refreshing") return dashboardRedirect(request, "backing-refreshing");
   if (backing === "backing_insufficient") return dashboardRedirect(request, "budget-paused");
   if (backing !== "backing_ready") return dashboardRedirect(request, "budget-paused");
 
