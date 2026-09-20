@@ -136,23 +136,60 @@ requireText("lib/treasury-backing.ts", [
 }
 {
   const source = read("app/api/pulse/claim/route.ts");
-  const backingCheck = source.indexOf('ensureFreshTreasuryBacking("launch", admin)');
-  const firstClaim = source.indexOf('admin.rpc("claim_hourly_pulse"', backingCheck);
+  const firstClaim = source.indexOf('admin.rpc("claim_hourly_pulse"');
   const unknownUser = source.indexOf('status === "unknown_user"', firstClaim);
   const profileRepair = source.indexOf('.from("profiles")', firstClaim);
-  const retryClaim = source.indexOf('admin.rpc("claim_hourly_pulse"', firstClaim + 1);
+  const profileRetry = source.indexOf('admin.rpc("claim_hourly_pulse"', firstClaim + 1);
+  const refreshRequired = source.indexOf(
+    "pulse_backing_guard:backing_refresh_required",
+    firstClaim,
+  );
+  const backingCheck = source.indexOf(
+    'ensureFreshTreasuryBacking("launch", admin)',
+    refreshRequired,
+  );
+  const backingRetry = source.indexOf(
+    'admin.rpc("claim_hourly_pulse"',
+    Math.max(profileRetry, backingCheck) + 1,
+  );
+  const backingChecks = source.match(
+    /ensureFreshTreasuryBacking\("launch", admin\)/g,
+  ) ?? [];
   if (
-    backingCheck < 0
-    || firstClaim < backingCheck
+    firstClaim < 0
     || unknownUser < firstClaim
     || profileRepair < unknownUser
-    || retryClaim < profileRepair
+    || profileRetry < profileRepair
+    || refreshRequired < firstClaim
+    || backingCheck < refreshRequired
+    || backingRetry < backingCheck
+    || backingChecks.length !== 1
   ) {
-    throw new Error("Claim hot path must avoid profile writes and self-heal a missing profile only after an unknown_user result.");
+    throw new Error(
+      "Claim hot path must claim first, self-heal profiles only on unknown_user, and refresh backing once only after backing_refresh_required.",
+    );
   }
-  const preClaim = source.slice(backingCheck, firstClaim);
-  if (preClaim.includes('.from("profiles")') || preClaim.includes(".upsert(")) {
-    throw new Error("Normal claim path must not write profiles before the first claim RPC.");
+
+  const preClaim = source.slice(0, firstClaim);
+  if (
+    preClaim.includes('.from("profiles")')
+    || preClaim.includes(".upsert(")
+    || preClaim.includes('ensureFreshTreasuryBacking("launch", admin)')
+  ) {
+    throw new Error(
+      "Normal claim path must not write profiles or perform backing preflight before the first claim RPC.",
+    );
+  }
+
+  const refreshWindow = source.slice(refreshRequired, backingRetry);
+  if (
+    !refreshWindow.includes('backing === "backing_refreshing"')
+    || !refreshWindow.includes('backing === "backing_insufficient"')
+    || !refreshWindow.includes('backing !== "backing_ready"')
+  ) {
+    throw new Error(
+      "On-demand backing refresh must remain fail-closed before its single retry.",
+    );
   }
 }
 forbidText("app/api/pulse/claim/route.ts", [
