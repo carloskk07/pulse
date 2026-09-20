@@ -27,6 +27,47 @@ if (existsSync("lib/mock-data.ts")) {
 }
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
+requireText(".github/workflows/visual-smoke.yml", [
+  "actions: read",
+  "Resolve canonical production release authority",
+  "Vercel Prebuilt Deploy",
+  'release.service !== "pulsercuit"',
+  "CANONICAL_RELEASE_SHA",
+  "CANONICAL_RELEASE_MATCH=true",
+  "CANONICAL_RELEASE_MATCH=false",
+  "Deploy succeeded but canonical release is",
+  "Canonical promotion deferred by deploy conclusion=",
+  "production_release_sha="
+]);
+forbidText(".github/workflows/visual-smoke.yml", [
+  "Canonical production did not converge to $GITHUB_SHA."
+]);
+{
+  const source = read(".github/workflows/visual-smoke.yml");
+  const authorityStart = source.indexOf("Resolve canonical production release authority");
+  const successMismatch = source.indexOf(
+    "Deploy succeeded but canonical release is",
+    authorityStart,
+  );
+  const deferred = source.indexOf(
+    "Canonical promotion deferred by deploy conclusion=",
+    authorityStart,
+  );
+  const routeValidation = source.indexOf(
+    "Validate production route identity",
+    authorityStart,
+  );
+  if (
+    authorityStart < 0
+    || successMismatch < authorityStart
+    || deferred < successMismatch
+    || routeValidation < deferred
+  ) {
+    throw new Error(
+      "Visual smoke must distinguish a failed/deferred promotion from a successful deploy with canonical SHA drift.",
+    );
+  }
+}
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require READY controlled technical state before promotion", "verify-controlled-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
 requireText("vercel.json", [
   '"$schema": "https://openapi.vercel.sh/vercel.json"',
