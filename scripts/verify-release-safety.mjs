@@ -68,6 +68,17 @@ forbidText(".github/workflows/visual-smoke.yml", [
     );
   }
 }
+requireText(".github/workflows/vercel-prebuilt.yml", [
+  "Verify exact canonical production release",
+  "set -euo pipefail",
+  'echo "| Canonical commit | $GITHUB_SHA |"',
+  'echo "| Deployment technical readiness | **READY** |"',
+  "deployment-safe technical readiness before any production alias changed."
+]);
+forbidText(".github/workflows/vercel-prebuilt.yml", [
+  'echo "| Canonical commit | `$GITHUB_SHA` |"',
+  "Staged controlled technical readiness"
+]);
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require deployment-safe technical state before promotion", "/api/deployment-readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt", "verify-deployment-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
 requireText("vercel.json", [
   '"$schema": "https://openapi.vercel.sh/vercel.json"',
