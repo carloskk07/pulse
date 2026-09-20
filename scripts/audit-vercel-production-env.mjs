@@ -47,8 +47,27 @@ export function classifyBuildVisibleGroup(values, keys) {
   return "PRESENT";
 }
 
+export function classifyBuildVisibleAny(values, keys) {
+  const states = keys.map((key) => classifyValue(values.get(key)));
+  if (states.includes("PRESENT")) return "PRESENT";
+  if (states.includes("SENSITIVE_MANAGED")) return "BUILD_VALUE_UNAVAILABLE";
+  return "MISSING";
+}
+
+export function classifySupabasePublicConfig(values) {
+  const urlState = classifyBuildVisibleGroup(values, ["NEXT_PUBLIC_SUPABASE_URL"]);
+  if (urlState !== "PRESENT") return urlState;
+  return classifyBuildVisibleAny(values, [
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  ]);
+}
+
 function runSelfTest() {
   const fixture = parseEnv(`\nPUBLIC=value\nSECRET=[SENSITIVE]\nQUOTED="hello"\nEMPTY=\n`);
+  const publishableOnly = parseEnv(`\nNEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_example\n`);
+  const legacyOnly = parseEnv(`\nNEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=legacy-anon\n`);
+  const noPublicKey = parseEnv(`\nNEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co\n`);
   const assertions = [
     [classifyValue(fixture.get("PUBLIC")), "PRESENT", "plain value"],
     [classifyValue(fixture.get("SECRET")), "SENSITIVE_MANAGED", "sensitive placeholder"],
@@ -60,6 +79,12 @@ function runSelfTest() {
     [classifyBuildVisibleGroup(fixture, ["PUBLIC", "QUOTED"]), "PRESENT", "build-visible group"],
     [classifyBuildVisibleGroup(fixture, ["PUBLIC", "SECRET"]), "BUILD_VALUE_UNAVAILABLE", "sensitive build-visible group"],
     [classifyBuildVisibleGroup(fixture, ["PUBLIC", "UNKNOWN"]), "MISSING", "missing build-visible group"],
+    [classifyBuildVisibleAny(fixture, ["UNKNOWN", "PUBLIC"]), "PRESENT", "build-visible alternative"],
+    [classifyBuildVisibleAny(fixture, ["UNKNOWN", "SECRET"]), "BUILD_VALUE_UNAVAILABLE", "managed build-visible alternative"],
+    [classifyBuildVisibleAny(fixture, ["UNKNOWN", "EMPTY"]), "MISSING", "missing build-visible alternatives"],
+    [classifySupabasePublicConfig(publishableOnly), "PRESENT", "publishable-only Supabase config"],
+    [classifySupabasePublicConfig(legacyOnly), "PRESENT", "legacy-only Supabase config"],
+    [classifySupabasePublicConfig(noPublicKey), "MISSING", "Supabase config without a public key"],
   ];
 
   for (const [actual, expected, label] of assertions) {
@@ -75,7 +100,7 @@ function audit(envPath) {
 
   const checks = [
     ["public-site", siteState === "PRESENT" && siteValue === CANONICAL_SITE ? "PRESENT" : siteState === "BUILD_VALUE_UNAVAILABLE" ? "BUILD_VALUE_UNAVAILABLE" : "MISSING"],
-    ["supabase-public", classifyBuildVisibleGroup(values, ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"])],
+    ["supabase-public", classifySupabasePublicConfig(values)],
     ["turnstile-public", classifyBuildVisibleGroup(values, ["NEXT_PUBLIC_TURNSTILE_SITE_KEY"])],
     ["service-role", classifyGroup(values, ["SUPABASE_SERVICE_ROLE_KEY"])],
     ["admin-allowlist", classifyGroup(values, ["ADMIN_EMAILS"])],
