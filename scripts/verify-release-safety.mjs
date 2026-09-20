@@ -28,6 +28,14 @@ if (existsSync("lib/mock-data.ts")) {
 
 requireText("next.config.ts", ["Strict-Transport-Security", "frame-ancestors 'none'", "Permissions-Policy", 'source: "/release.json"', 'value: "no-store, max-age=0"']);
 requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require READY controlled technical state before promotion", "verify-controlled-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
+requireText("vercel.json", [
+  '"$schema": "https://openapi.vercel.sh/vercel.json"',
+  '"regions": ["gru1"]',
+  '"deploymentEnabled": false'
+]);
+forbidText("vercel.json", [
+  '"regions": ["iad1"]'
+]);
 requireText("lib/release-readiness.ts", ['admin.rpc(\n        "release_runtime_contract_snapshot"', "runtimeSnapshot.snapshot_authority === true", "runtimeSnapshot.economics_ok === true", "runtimeSnapshot.referral_ok === true", "runtimeSnapshot.authenticated_read_scope === true", "runtimeSnapshot.withdrawal_settlement === true", "runtimeSnapshot.treasury_backing === true", "runtimeSnapshot.hourly_scale === true", "runtimeSnapshot.user_balance_materialization === true", "runtimeSnapshot.reward_snapshot === true", "runtimeSnapshot.wallet_snapshot === true", "runtimeSnapshot.invite_snapshot === true", "getFaucetPaySendAuthorityConfig", '"faucetpay-send-authority-config"', '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proofValue, "faucetpay_send_scope")', '"faucetpay-payout-proof"', 'receiptState.payoutProofCurrent', '"legal-operator"', 'legalIdentity ? "pass" : "pending"', 'Not required for controlled technical readiness', 'Public/global governance advisory', '"Compromised-password protection"', 'HIBP Pwned Passwords', 'false,']);
 forbidText("lib/release-readiness.ts", [
   'admin.rpc("release_authenticated_read_scope_contract")',
