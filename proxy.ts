@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabasePublicConfig } from "@/lib/supabase/public-config";
 
 const protectedPrefixes = ["/account", "/dashboard", "/earn", "/wallet", "/invite", "/admin"];
 const authFreeMachinePrefixes = ["/api/health", "/api/public"];
@@ -18,12 +19,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return NextResponse.next({ request });
+  const config = getSupabasePublicConfig();
+  if (!config) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(config.url, config.key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(cookiesToSet) {
