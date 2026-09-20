@@ -12,7 +12,7 @@ const structuredData = {
   name: "Pulsercuit",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
-  description: "Pulsercuit lets people claim funded Pulse rewards, build a verified balance and withdraw through a protected payout path.",
+  description: "Pulsercuit is a simple reward loop built around Pulse, Vault and payout.",
 };
 
 const ranks = [
