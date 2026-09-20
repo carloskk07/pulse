@@ -9,6 +9,7 @@ import { getFaucetPayBalanceReadOnly } from "@/providers/faucetpay-read";
 export type TreasuryBackingStatus =
   | "backing_ready"
   | "backing_refresh_required"
+  | "backing_refreshing"
   | "backing_insufficient"
   | "backing_unavailable"
   | "read_proof_required"
@@ -40,16 +41,18 @@ async function claimTreasuryBackingRefreshLease(
   return status === "acquired" || status === "busy" ? status : "unavailable";
 }
 
+const CONCURRENT_REFRESH_POLL_DELAYS_MS = [250, 250, 500, 1_000] as const;
+
 async function waitForConcurrentBackingRefresh(
   treasuryCode: string,
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
 ): Promise<TreasuryBackingStatus> {
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 250));
+  for (const delayMs of CONCURRENT_REFRESH_POLL_DELAYS_MS) {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
     const current = await getTreasuryBackingGuard(treasuryCode, admin);
     if (current !== "backing_refresh_required") return current;
   }
-  return "backing_refresh_required";
+  return "backing_refreshing";
 }
 
 export async function getCanonicalFaucetPayPackAuthority(
