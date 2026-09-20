@@ -45,6 +45,18 @@ function turnstileAuthError(verification: Awaited<ReturnType<typeof verifyTurnst
   return "verification-failed";
 }
 
+function isAuthRateLimited(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const authError = error as { code?: unknown; status?: unknown };
+  const code = String(authError.code ?? "");
+  if (Number(authError.status ?? 0) === 429) return true;
+  return new Set([
+    "over_request_rate_limit",
+    "over_email_send_rate_limit",
+    "over_sms_send_rate_limit",
+  ]).has(code);
+}
+
 async function requestIp() {
   const requestHeaders = await headers();
   return requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
@@ -72,6 +84,7 @@ export async function signIn(formData: FormData) {
   await recordReleaseEvidence("turnstile");
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
+    if (isAuthRateLimited(error)) redirect(authError("auth-rate-limited", next, ref));
     const code = "code" in error ? String(error.code ?? "") : "";
     redirect(authError(code === "weak_password" ? "password-upgrade-required" : "invalid-credentials", next, ref));
   }
@@ -113,7 +126,10 @@ export async function signUp(formData: FormData) {
   callback.searchParams.set("next", next);
   if (ref) callback.searchParams.set("ref", ref);
   const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callback.toString() } });
-  if (error) redirect(authError("signup-failed", next, ref));
+  if (error) {
+    if (isAuthRateLimited(error)) redirect(authError("auth-rate-limited", next, ref));
+    redirect(authError("signup-failed", next, ref));
+  }
   if (data.session && data.user) {
     if (ref) await bindReferralForUser(data.user.id, ref);
     redirect(next);
