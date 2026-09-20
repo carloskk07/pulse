@@ -101,26 +101,39 @@ requireText("lib/treasury-backing.ts", [
 ]);
 {
   const source = read("app/api/pulse/claim/route.ts");
-  const evidence = source.indexOf('await recordReleaseEvidence("turnstile")');
-  const firstClaim = source.indexOf('admin.rpc("claim_hourly_pulse"', evidence);
+  const backingCheck = source.indexOf('ensureFreshTreasuryBacking("launch", admin)');
+  const firstClaim = source.indexOf('admin.rpc("claim_hourly_pulse"', backingCheck);
   const unknownUser = source.indexOf('status === "unknown_user"', firstClaim);
   const profileRepair = source.indexOf('.from("profiles")', firstClaim);
   const retryClaim = source.indexOf('admin.rpc("claim_hourly_pulse"', firstClaim + 1);
   if (
-    evidence < 0
-    || firstClaim < evidence
+    backingCheck < 0
+    || firstClaim < backingCheck
     || unknownUser < firstClaim
     || profileRepair < unknownUser
     || retryClaim < profileRepair
   ) {
     throw new Error("Claim hot path must avoid profile writes and self-heal a missing profile only after an unknown_user result.");
   }
-  const preClaim = source.slice(evidence, firstClaim);
+  const preClaim = source.slice(backingCheck, firstClaim);
   if (preClaim.includes('.from("profiles")') || preClaim.includes(".upsert(")) {
     throw new Error("Normal claim path must not write profiles before the first claim RPC.");
   }
 }
-forbidText("app/api/pulse/claim/route.ts", ["console.warn(userId", "console.warn(reminderId"]);
+forbidText("app/api/pulse/claim/route.ts", [
+  "console.warn(userId",
+  "console.warn(reminderId",
+  "recordReleaseEvidence",
+  '@/lib/release-evidence'
+]);
+requireText("app/auth/actions.ts", [
+  'recordReleaseEvidence("turnstile")',
+  'recordReleaseEvidence("supabase_auth_hardening")'
+]);
+requireText("lib/controlled-technical-readiness.ts", [
+  'releaseEvidenceMatches(proof, "turnstile")',
+  'proofBlockers.push("turnstile-proof")'
+]);
 requireText("supabase/migrations/0031_current_hourly_claim_security_contract.sql", ["claim_hourly_pulse(uuid) security invoker", "claim_hourly_pulse(uuid)', 'EXECUTE'", "release_security_contract"]);
 requireText("supabase/migrations/0032_authenticated_read_scope_contract.sql", ["release_authenticated_read_scope_contract", "security_invoker=true", "risk_score", "role_table_grants"]);
 requireText("supabase/migrations/0033_treasury_reservation_expiry.sql", ["release_expired_treasury_reservations", "status = 'expired'", "expires_at <= now()", "perform public.release_expired_treasury_reservations(v_treasury_id)", "release_reward_exchange_contract", "version', 33"]);
