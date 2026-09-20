@@ -39,6 +39,9 @@
 @import "./styles/dashboard-refinement.css";
 @import "./styles/current.css";
 
+/* Conversion and editorial system — scoped additions only; release hardening remains authoritative. */
+@import "./styles/conversion-system.css";
+
 /* Release hardening and canonical geometry — these must remain last. */
 @import "./styles/visual-hardening.css";
 @import "./styles/sitewide-audit.css";

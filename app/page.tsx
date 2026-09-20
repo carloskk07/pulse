@@ -10,7 +10,7 @@ const structuredData = {
   name: "Pulsercuit",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
-  description: "Pulsercuit is a premium reward circuit built around funded Pulses, visible momentum, shareable progress and an evidence-gated payout path.",
+  description: "Pulsercuit lets people claim funded Pulse rewards, build a verified balance and withdraw through a protected payout path.",
 };
 
 const ranks = [
@@ -32,12 +32,15 @@ export default function HomePage() {
         <div className="pc-v6-hero-bg" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-hero" /></div>
         <div className="pc-v6-shell pc-v6-hero-grid">
           <div className="pc-v6-hero-copy">
-            <span className="pc-v6-kicker">Pulsercuit</span>
+            <span className="pc-v6-kicker">Funded rewards · live proof</span>
             <h1>Return. <em>Rise.</em> Repeat.</h1>
-            <p>Claim funded rewards, see real progress and withdraw through a protected payout path.</p>
+            <p>Claim a funded Pulse. Build your balance. Withdraw when your Vault is ready.</p>
             <div className="pc-v6-actions">
               <Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
               <Link className="pc-v6-button ghost" href="/proof">See live proof <span className="pc-v6-play">›</span></Link>
+            </div>
+            <div className="pc-v10-hero-micro" aria-label="Entry benefits">
+              <span>Free to join</span><span>No payment required</span><span>Production proof</span>
             </div>
           </div>
 
@@ -52,15 +55,15 @@ export default function HomePage() {
         <div className="pc-v6-shell pc-v6-section-grid">
           <div className="pc-v6-section-intro">
             <span className="pc-v6-kicker">How it works</span>
-            <h2>One clear<br />reward<br />loop.</h2>
-            <p className="pc-v6-spaced">Claim. Return.<br />Build real progress.</p>
+            <h2>Three clear<br />steps.<br />Then more.</h2>
+            <p className="pc-v6-spaced">Pulse. Balance.<br />Protected payout.</p>
             <i className="pc-v6-gold-line" />
           </div>
           <div className="pc-v6-pillar-grid">
-            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Return when your<br />next Pulse opens.</p><Link href="/#how">Start with Pulse <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb gold"><Trend /></div><h3>Momentum</h3><p>See rank and<br />the next milestone.</p><Link href="/progress">See progress <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb green"><Shield /></div><h3>Vault</h3><p>See your balance.<br />Withdraw when eligible.</p><Link href="/wallet">Open Vault <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb amber"><Users /></div><h3>Invite</h3><p>Invite real people.<br />Reward real activity.</p><Link href="/invite">Invite someone <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Claim one funded reward<br />when your window opens.</p><Link href="/auth?next=/dashboard">Claim your first Pulse <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb gold"><Trend /></div><h3>Vault</h3><p>Verified rewards build<br />one visible balance.</p><Link href="/wallet">See the Vault <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb green"><Shield /></div><h3>Payout</h3><p>Reach the target, then use<br />the protected withdrawal path.</p><Link href="/proof">See payout proof <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb amber"><Users /></div><h3>Share</h3><p>After real progress, invite<br />people without fake activity.</p><Link href="/invite">See sharing <ArrowUpRight /></Link></article>
           </div>
         </div>
       </section>
@@ -69,8 +72,8 @@ export default function HomePage() {
         <div className="pc-v6-shell pc-v6-chamber-grid">
           <div className="pc-v6-section-intro compact">
             <span className="pc-v6-kicker">The core experience</span>
-            <h2>Your<br />Pulse</h2>
-            <p className="pc-v6-spaced">One funded reward.<br />One live timer.<br />One next action.</p>
+            <h2>One Pulse.<br />One next<br />move.</h2>
+            <p className="pc-v6-spaced">One funded reward.<br />One live timer.<br />No clutter.</p>
             <Link className="pc-v6-outline-link" href="/dashboard">See the live experience <ArrowUpRight /></Link>
           </div>
 
@@ -106,9 +109,9 @@ export default function HomePage() {
         <div className="pc-v6-road-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-road" /></div>
         <div className="pc-v6-shell pc-v6-momentum-grid">
           <div className="pc-v6-section-intro compact">
-            <span className="pc-v6-kicker">Your journey</span>
-            <h2>Momentum<br />Lives Here</h2>
-            <p className="pc-v6-spaced">Rank, rhythm and<br />your next milestone.</p>
+            <span className="pc-v6-kicker">After the core loop</span>
+            <h2>Progress<br />After Proof</h2>
+            <p className="pc-v6-spaced">Ranks and milestones grow<br />only from real Pulse history.</p>
             <Link className="pc-v6-outline-link" href="/progress">See Momentum <ArrowUpRight /></Link>
           </div>
           <div className="pc-v6-ranks">
@@ -141,8 +144,8 @@ export default function HomePage() {
         <div className="pc-v6-shell pc-v6-vault-grid">
           <div className="pc-v6-section-intro compact">
             <span className="pc-v6-kicker">The Vault</span>
-            <h2>Your Effort<br />Deserves More</h2>
-            <p>See available value.<br />Withdraw only when eligible.</p>
+            <h2>Balance You<br />Can Understand</h2>
+            <p>See what is available, what is missing<br />and when payout becomes eligible.</p>
             <Link className="pc-v6-outline-link" href="/wallet">Open your vault <ArrowUpRight /></Link>
           </div>
           <div className="pc-v6-vault-art"><div className="pc-v6-sprite pc-v6-sprite-vault" /><span>Build today<br />progress<br />tomorrow</span></div>
@@ -158,12 +161,12 @@ export default function HomePage() {
         <div className="pc-v6-eclipse" aria-hidden="true" />
         <div className="pc-v6-shell pc-v6-final-grid">
           <div className="pc-v6-final-mantra">Discipline<br />creates<br />freedom</div>
-          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>A Brighter You<br />Starts Now.</h2><p>Return. Rise. Repeat.</p><Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link></div>
+          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>Start With<br />One Pulse.</h2><p>Free to join. Real progress starts after real activity.</p><Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link></div>
           <V6FinalProof />
         </div>
       </section>
 
-      <footer className="pc-v6-footer"><div className="pc-v6-shell"><strong>Pulsercuit</strong><span>© 2026 · Return. Rise. Repeat.</span><nav><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav></div></footer>
+      <footer className="pc-v6-footer"><div className="pc-v6-shell"><strong>Pulsercuit</strong><span>© 2026 · Return. Rise. Repeat.</span><nav><Link href="/proof">Proof</Link><Link href="/business">Business</Link><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav></div></footer>
     </main>
   );
 }

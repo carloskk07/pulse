@@ -31,7 +31,7 @@ export default async function SupportPage({ searchParams }: Props) {
 
   return <main className="completion-page">
     <header className="completion-header shell"><Link href="/"><Brand /></Link><nav><Link href="/dashboard">Product</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav></header>
-    <section className="completion-hero shell"><span className="section-kicker">Pulsercuit help center</span><h1>Help tied to a real case.</h1><p>Choose the problem, tell us what happened, and PulseCircuit keeps the request tied to the real account and product history.</p></section>
+    <section className="completion-hero shell"><span className="section-kicker">Pulsercuit help center</span><h1>One case. One reference. Real history.</h1><p>Choose the problem, tell us what happened, and PulseCircuit checks it against the account and product history that actually exists.</p></section>
     <section className="completion-grid shell">
       <div className="completion-card support-form-card"><span className="app-eyebrow">Support request</span><h2>Tell us what happened.</h2>
         {params.state ? <div className={`claim-message ${params.state === "created" ? "success" : "neutral"}`}>{messages[params.state] ?? "Support status updated."}{params.case ? ` Reference: ${params.case.toUpperCase()}` : ""}</div> : null}

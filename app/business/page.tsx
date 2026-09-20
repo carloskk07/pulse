@@ -36,6 +36,7 @@ export default async function BusinessPage({ searchParams }: Props) {
             <Link className="button button-ghost button-lg" href="#model">See how it works</Link>
           </div>
           <div className="trust-strip"><span><Check /> Prefunded</span><span><Shield /> Server-verified</span><span><Check /> No impression billing</span></div>
+          <Link className="pc-v10-business-proof" href="/proof">See the live user-side proof <ArrowUpRight /></Link>
         </div>
 
         <div className="business-console" aria-label="Illustrative campaign economics">

@@ -43,6 +43,12 @@ export default function BusinessIntegrationPage() {
         </div>
       </section>
 
+      <section className="pc-v10-integration-summary shell" aria-label="Integration summary">
+        <article><small>01</small><strong>No advertiser SDK</strong><span>Preserve one pseudonymous session ID.</span></article>
+        <article><small>02</small><strong>One server event</strong><span>Confirm the milestone your product already trusts.</span></article>
+        <article><small>03</small><strong>Settlement after proof</strong><span>Budget and user reward move only after verification.</span></article>
+      </section>
+
       <section className="section shell integration-section">
         <div className="section-heading narrow"><span className="section-kicker">01 · Protected start</span><h2>Preserve the session identifier.</h2><p>When a user starts an eligible direct Drop, Pulse reserves campaign capacity before redirecting them. The destination receives only the campaign and pseudonymous session identifiers.</p></div>
         <pre className="integration-code"><code>{redirectExample}</code></pre>

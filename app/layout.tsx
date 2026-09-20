@@ -9,18 +9,18 @@ export const metadata: Metadata = {
     template: "%s · Pulsercuit",
   },
   description:
-    "A cinematic reward circuit built around funded Pulses, visible momentum, shareable progress and a verified payout path.",
+    "Claim funded Pulse rewards, build a verified balance and withdraw through a protected payout path.",
   applicationName: "Pulsercuit",
   manifest: "/manifest.webmanifest",
   keywords: ["reward platform", "gamified rewards", "recurring rewards", "reward streaks", "transparent payouts", "Pulsercuit", "Pulse rewards"],
   twitter: {
     card: "summary_large_image",
     title: "Pulsercuit — Return. Rise. Repeat.",
-    description: "Build momentum through funded Pulses, milestones and evidence-backed progress.",
+    description: "Claim funded Pulses, build a verified balance and follow a protected payout path.",
   },
   openGraph: {
     title: "Pulsercuit — Return. Rise. Repeat.",
-    description: "A premium reward ritual built around Pulse, Momentum, Vault and Share.",
+    description: "Funded rewards, live production proof and a protected path from Pulse to payout.",
     type: "website",
     siteName: "Pulsercuit",
   },
