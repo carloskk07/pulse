@@ -205,8 +205,15 @@ export default async function AdminEconomicsPage() {
       <details className="admin-panel">
         <summary><strong>Growth systems</strong> · intentionally secondary until launch gates close</summary>
         <div className="app-section-head">
+          <div><span className="app-eyebrow">Growth evidence</span><h2>Measure before adding complexity.</h2></div>
+          <span className={"admin-badge " + (direct.activeCount > 0 ? "" : "setup")}>{direct.activeCount} DIRECT ACTIVE</span>
+        </div>
+        <div className="account-links">
+          <Link className="button button-secondary" href="/admin/marketing">Acquisition funnel</Link>
+          <Link className="button button-secondary" href="/admin/retention">Return funnel</Link>
+        </div>
+        <div className="app-section-head">
           <div><span className="app-eyebrow">Pulse Direct</span><h2>Real campaigns only.</h2></div>
-          <span className={"admin-badge " + (direct.activeCount > 0 ? "" : "setup")}>{direct.activeCount} ACTIVE</span>
         </div>
         <div className="admin-secondary-grid">
           <article><span>Advertiser funding</span><strong>{moneyFromMicros(direct.fundedUsdMicros)}</strong></article>

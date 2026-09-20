@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Brand } from "@/components/brand";
+import { FunnelBeacon } from "@/components/funnel-beacon";
 import { TurnstileField } from "@/components/turnstile-field";
 import { MIN_PASSWORD_LENGTH, safeAuthNext } from "@/lib/auth-security";
 import { cleanReferralCode } from "@/lib/referrals";
@@ -46,6 +47,7 @@ export default async function AuthPage({ searchParams }: Props) {
 
   return (
     <main className="auth-page pc-v5-auth-page pc-luxe-auth-page">
+      {signingUp ? <FunnelBeacon event="signup_view" /> : null}
       <div className="auth-glow" />
       <div className="pc-v5-auth-grid" aria-hidden="true" />
       <header className="auth-header shell"><Link href="/" aria-label="Pulsercuit home"><Brand /></Link></header>

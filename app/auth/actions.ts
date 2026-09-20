@@ -15,6 +15,13 @@ import {
   finalizePasswordRecoveryProof,
   markPasswordRecoveryPasswordUpdated,
 } from "@/lib/auth-recovery-proof";
+import {
+  cleanMarketingSessionId,
+  createMarketingSessionId,
+  MARKETING_SESSION_COOKIE,
+  MARKETING_SESSION_MAX_AGE_SECONDS,
+  recordMarketingEvent,
+} from "@/lib/marketing-funnel";
 import { checkPasswordBreach } from "@/lib/pwned-passwords";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
@@ -69,6 +76,26 @@ async function requireTurnstile(formData: FormData, expectedAction: string) {
     { expectedAction },
   );
   return verification;
+}
+
+async function recordSuccessfulSignup() {
+  try {
+    const cookieStore = await cookies();
+    let sessionId = cleanMarketingSessionId(cookieStore.get(MARKETING_SESSION_COOKIE)?.value);
+    if (!sessionId) {
+      sessionId = createMarketingSessionId();
+      cookieStore.set(MARKETING_SESSION_COOKIE, sessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: MARKETING_SESSION_MAX_AGE_SECONDS,
+      });
+    }
+    await recordMarketingEvent(sessionId, "signup_created");
+  } catch {
+    console.warn("PULSECIRCUIT_SIGNUP_MARKETING_EVENT_FAILED");
+  }
 }
 
 export async function signIn(formData: FormData) {
@@ -130,6 +157,7 @@ export async function signUp(formData: FormData) {
     if (isAuthRateLimited(error)) redirect(authError("auth-rate-limited", next, ref));
     redirect(authError("signup-failed", next, ref));
   }
+  if (data.user) await recordSuccessfulSignup();
   if (data.session && data.user) {
     if (ref) await bindReferralForUser(data.user.id, ref);
     redirect(next);
