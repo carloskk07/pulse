@@ -27,7 +27,7 @@ export default async function AccountPage({ searchParams }: Props) {
     ? await admin.from("profiles").select("handle,created_at").eq("id", user.id).maybeSingle()
     : { data: null };
 
-  return <AppShell active="account">
+  return <AppShell active="account" userLabel={profile?.handle || user.email?.split("@")[0] || "Member"}>
     <div className="app-page-head"><div><span className="app-eyebrow">Account</span><h1>Your account.</h1><p>Identity, support and privacy controls in one place.</p></div></div>
     {params.state ? <div className={`claim-message ${params.state === "profile-updated" ? "success" : "neutral"}`}>{copy[params.state] ?? "Account status updated."}</div> : null}
     <section className="completion-grid account-grid">

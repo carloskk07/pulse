@@ -36,9 +36,9 @@ for (const [path, active] of appShellRoutes) {
   if (!value.includes('import { AppShell } from "@/components/app-shell";')) {
     throw new Error(`${path} must import the canonical AppShell.`);
   }
-  const marker = `<AppShell active="${active}">`;
+  const marker = `<AppShell active="${active}"`;
   if (!value.includes(marker)) {
-    throw new Error(`${path} must render the canonical shell with ${marker}.`);
+    throw new Error(`${path} must render the canonical shell with active="${active}".`);
   }
   const shellCount = (value.match(/<AppShell\b/g) ?? []).length;
   if (shellCount !== 1) {

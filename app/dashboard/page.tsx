@@ -74,7 +74,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const payoutTargetLabel = payout.ready && payout.display ? payout.display : "Target preparing";
 
   return (
-    <AppShell active="home">
+    <AppShell active="home" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="pc-v9-dashboard">
         <div className="app-page-head pulse-page-head pc-luxe-dashboard-head pc-v9-head">
           <div className="pc-v9-head-copy">

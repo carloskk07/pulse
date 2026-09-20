@@ -41,7 +41,7 @@ export default async function ProgressPage() {
   const shareEntryHref = state.signedIn ? "#circuit-moments" : "/auth?next=/progress%23circuit-moments";
 
   return (
-    <AppShell active="progress">
+    <AppShell active="progress" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="app-page-head pc-progress-head pc-luxe-momentum-head">
         <div>
           <span className="app-eyebrow">Momentum</span>
