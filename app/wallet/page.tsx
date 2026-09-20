@@ -92,6 +92,7 @@ export default async function WalletPage({ searchParams }: Props) {
     && state.availableCredits >= payoutCredits,
   );
   const missingCredits = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
+  const payoutPercent = payoutCredits ? Math.max(0, Math.min(100, Math.round((state.availableCredits / payoutCredits) * 100))) : 0;
   const presentation = getWalletPresentation({
     signedIn: state.signedIn,
     preview: state.preview,
@@ -116,8 +117,8 @@ export default async function WalletPage({ searchParams }: Props) {
       <div className="app-page-head pc-luxe-vault-head">
         <div>
           <span className="app-eyebrow">Vault</span>
-          <h1>Your balance. One clear path.</h1>
-          <p>Available value stays separate from money that is already being paid.</p>
+          <h1>Your balance. Your next payout in view.</h1>
+          <p>See what is available, how close the target is, and what happens after withdrawal starts.</p>
         </div>
       </div>
 
@@ -133,6 +134,12 @@ export default async function WalletPage({ searchParams }: Props) {
           <span>Available</span>
           <strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong>
           {!state.preview ? <small>{state.availableCredits.toLocaleString("en-US")} credits</small> : null}
+          {!state.preview && payoutCredits ? (
+            <div className="pc-v10-vault-meter">
+              <div aria-hidden="true"><i style={{ width: `${payoutPercent}%` }} /></div>
+              <small>{payoutPercent >= 100 ? "Payout target reached" : `${payoutPercent}% to payout target`}</small>
+            </div>
+          ) : null}
         </div>
         <div className="payout-pack-label">
           <small>{activeWithdrawal ? "Current payment" : "Payout target"}</small>

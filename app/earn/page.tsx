@@ -51,10 +51,16 @@ export default async function EarnPage({ searchParams }: Props) {
       <div className="app-page-head pc-luxe-turbo-head">
         <div>
           <span className="app-eyebrow">Turbo · optional</span>
-          <h1>Extra rewards, only when worthwhile.</h1>
-          <p>Pulse remains the core loop. Turbo surfaces the strongest extra option without making you sort through inventory.</p>
+          <h1>Extra rewards, ranked before you waste time.</h1>
+          <p>Pulse remains the core loop. Turbo compares reward, time and verification evidence before putting an extra option in front of you.</p>
         </div>
         <div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
+      </div>
+
+      <div className="pc-v10-turbo-criteria" aria-label="Turbo ranking criteria">
+        <span><small>01</small><strong>Reward</strong><b>What it is worth</b></span>
+        <span><small>02</small><strong>Time</strong><b>How long it should take</b></span>
+        <span><small>03</small><strong>Evidence</strong><b>How completion is verified</b></span>
       </div>
 
       {params.direct ? <div className="claim-message neutral">{directCopy[params.direct] ?? "Turbo state changed before start."}</div> : null}

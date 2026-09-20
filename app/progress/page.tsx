@@ -45,8 +45,8 @@ export default async function ProgressPage() {
       <div className="app-page-head pc-progress-head pc-luxe-momentum-head">
         <div>
           <span className="app-eyebrow">Momentum</span>
-          <h1>Know your rank. Know the next mark.</h1>
-          <p>Progress comes from real Pulse history. The details stay available without competing with your next move.</p>
+          <h1>See what your real activity unlocks.</h1>
+          <p>Rank, rhythm and milestones grow from verified Pulse history — never from decorative progress.</p>
         </div>
         <Link className="button pc-v5-primary" href={shareEntryHref}>{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
       </div>
@@ -68,8 +68,11 @@ export default async function ProgressPage() {
           <aside className="pc-visual-story pc-momentum-story" aria-labelledby="momentum-story-title">
             <div className="pc-visual-story-copy">
               <span className="app-eyebrow">Verified path</span>
-              <h2 id="momentum-story-title">Every real Pulse makes the next mark clearer.</h2>
-              <p>Rank, rhythm and milestones grow from funded history, so the path reflects evidence instead of decorative progress.</p>
+              <h2 id="momentum-story-title">Five ranks. One evidence-backed path.</h2>
+              <p>Your live position appears after your first verified Pulse. Until then, the path stays visible without inventing a score.</p>
+              <div className="pc-v10-rank-preview" aria-label="Rank path">
+                {ranks.map((rank, index) => <span key={rank}><i>{index + 1}</i><strong>{rank}</strong></span>)}
+              </div>
             </div>
             <div className="pc-visual-story-flow" aria-hidden="true">
               <span>Pulse</span><i /><span>Rhythm</span><i /><span>Rank</span>

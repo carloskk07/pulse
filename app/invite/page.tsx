@@ -37,7 +37,7 @@ export default async function InvitePage() {
 
   return (
     <AppShell active="invite">
-      <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Invite</span><h1>Invite real people. Reward real activity.</h1><p>One link. One clear qualification rule. No reward for empty signups.</p></div></div>
+      <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Invite</span><h1>Share the circuit. Count only real activity.</h1><p>Your link can be shared anytime. Referral value appears only when the current verified-reward rule is active.</p></div></div>
 
       <section className="invite-hero-card pc-luxe-invite-hero">
         <div className="pc-invite-copy">
@@ -59,6 +59,13 @@ export default async function InvitePage() {
         </div>
         <div className="pc-invite-scene" aria-hidden="true"><span>Verified activity only</span></div>
       </section>
+
+      {signedIn && (inviterBonus === null || inviteeBonus === null) ? (
+        <div className="pc-v10-referral-status">
+          <strong>Sharing is active. Referral rewards are not active right now.</strong>
+          <span>Your link and verified progress can still be shared; no bonus is implied until a live rule publishes one.</span>
+        </div>
+      ) : null}
 
       <section className="pc-luxe-share-stats">
         <article><small>Verified</small><strong>{signedIn ? rewarded : "—"}</strong><span>real active referrals</span></article>
