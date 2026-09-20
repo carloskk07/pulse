@@ -225,6 +225,54 @@ requireText("app/api/pulse/claim/route.ts", [
 forbidText("app/api/pulse/claim/route.ts", [
   "supabase.auth.getUser()"
 ]);
+requireText("supabase/migrations/0065_public_proof_scan_compaction.sql", [
+  "create or replace function public.pulse_public_snapshot()",
+  "with claim_stats as",
+  "count(distinct user_id) filter",
+  "turbo_stats as",
+  "withdrawal_stats as",
+  "v65 public proof output mismatch",
+  "v65 public proof execution authority drifted",
+  "0055_invite_snapshot_compaction.sql",
+  "grant execute on function public.pulse_public_snapshot()",
+  "to service_role"
+]);
+forbidText("supabase/migrations/0065_public_proof_scan_compaction.sql", [
+  "'version', 65",
+  '"version": 65',
+  "schema_version = 65",
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events"
+]);
+{
+  const source = read("supabase/migrations/0065_public_proof_scan_compaction.sql");
+  const functionStart = source.indexOf(
+    "create or replace function public.pulse_public_snapshot()",
+  );
+  const privilegeStart = source.indexOf(
+    "revoke all on function public.pulse_public_snapshot()",
+    functionStart,
+  );
+  if (functionStart < 0 || privilegeStart < functionStart) {
+    throw new Error("v65 public proof function boundaries are missing.");
+  }
+  const functionBody = source.slice(functionStart, privilegeStart);
+  const claims = functionBody.indexOf("claim_stats as");
+  const turbos = functionBody.indexOf("turbo_stats as", claims);
+  const withdrawals = functionBody.indexOf("withdrawal_stats as", turbos);
+  const build = functionBody.indexOf("jsonb_build_object(", withdrawals);
+  if (
+    claims < 0
+    || turbos < claims
+    || withdrawals < turbos
+    || build < withdrawals
+    || functionBody.includes("(select count(*) from public.pulse_claims")
+  ) {
+    throw new Error(
+      "v65 must compact public proof to one claims aggregate, one Turbo aggregate and one withdrawal aggregate.",
+    );
+  }
+}
 requireText("supabase/migrations/0064_claim_duplicate_fast_reject.sql", [
   "create or replace function public.claim_hourly_pulse(p_user_id uuid)",
   "pg_try_advisory_xact_lock",
