@@ -6,9 +6,20 @@ export const MARKETING_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export const MARKETING_EXPERIENCE_VERSION = "superior-v11";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PUBLIC_EVENTS = new Set<MarketingEventType>(["home_view", "proof_view", "signup_view"]);
+const PUBLIC_EVENTS = new Set<MarketingEventType>(["home_view", "proof_view", "signup_view", "cta_click"]);
+const CLICK_LABELS = new Set([
+  "header_signup",
+  "home_hero_signup",
+  "home_hero_proof",
+  "home_pillar_signup",
+  "home_pillar_proof",
+  "home_chamber_signup",
+  "home_final_signup",
+  "proof_hero_signup",
+  "proof_final_signup",
+]);
 
-export type MarketingEventType = "home_view" | "proof_view" | "signup_view" | "signup_created";
+export type MarketingEventType = "home_view" | "proof_view" | "signup_view" | "signup_created" | "cta_click";
 
 export type MarketingAttribution = {
   utmSource?: string | null;
@@ -20,6 +31,11 @@ export type MarketingSourceRow = {
   source: string;
   sessions: number;
   signups: number;
+};
+
+export type MarketingCtaRow = {
+  label: string;
+  clicks: number;
 };
 
 export type MarketingFunnelSnapshot = {
@@ -36,6 +52,8 @@ export type MarketingFunnelSnapshot = {
   repeatPulseUsers: number;
   paidUsers: number;
   sources: MarketingSourceRow[];
+  ctaClicks: number;
+  ctaSurfaces: MarketingCtaRow[];
   experienceVersion: string;
 };
 
@@ -52,6 +70,16 @@ export function isPublicMarketingEvent(value: unknown): value is Exclude<Marketi
   return typeof value === "string" && PUBLIC_EVENTS.has(value as MarketingEventType);
 }
 
+export function cleanMarketingEventLabel(value: string | null | undefined) {
+  const candidate = value?.trim().toLowerCase() ?? "";
+  return CLICK_LABELS.has(candidate) ? candidate : null;
+}
+
+function cleanMarketingUserId(value: string | null | undefined) {
+  const candidate = value?.trim() ?? "";
+  return UUID_PATTERN.test(candidate) ? candidate : null;
+}
+
 function cleanAttribution(value: string | null | undefined, maxLength: number) {
   const candidate = value?.trim().replace(/\s+/g, " ") ?? "";
   if (!candidate) return null;
@@ -66,6 +94,7 @@ export async function recordMarketingEvent(
   sessionId: string,
   eventType: MarketingEventType,
   attribution: MarketingAttribution = {},
+  details: { label?: string | null; userId?: string | null } = {},
 ) {
   const cleanSession = cleanMarketingSessionId(sessionId);
   if (!cleanSession) return false;
@@ -73,9 +102,17 @@ export async function recordMarketingEvent(
   const admin = createSupabaseAdminClient();
   if (!admin) return false;
 
+  const label = eventType === "cta_click" ? cleanMarketingEventLabel(details.label) : null;
+  if (eventType === "cta_click" && !label) return false;
+
+  const userId = eventType === "signup_created" ? cleanMarketingUserId(details.userId) : null;
+  if (eventType === "signup_created" && !userId) return false;
+
   const { error } = await admin.from("marketing_funnel_events").insert({
     session_hash: sessionHash(cleanSession),
     event_type: eventType,
+    event_label: label,
+    user_id: userId,
     utm_source: cleanAttribution(attribution.utmSource, 120),
     utm_medium: cleanAttribution(attribution.utmMedium, 120),
     utm_campaign: cleanAttribution(attribution.utmCampaign, 160),
@@ -100,6 +137,8 @@ const EMPTY: MarketingFunnelSnapshot = {
   repeatPulseUsers: 0,
   paidUsers: 0,
   sources: [],
+  ctaClicks: 0,
+  ctaSurfaces: [],
   experienceVersion: MARKETING_EXPERIENCE_VERSION,
 };
 
@@ -126,6 +165,16 @@ export async function getMarketingFunnelSnapshot(days = 30): Promise<MarketingFu
       })
     : [];
 
+  const ctaSurfaces = Array.isArray(snapshot.cta_surfaces)
+    ? snapshot.cta_surfaces.map((row) => {
+        const item = (row ?? {}) as Record<string, unknown>;
+        return {
+          label: String(item.label ?? "unknown"),
+          clicks: Number(item.clicks ?? 0),
+        };
+      })
+    : [];
+
   return {
     available: snapshot.status === "ok",
     days: Number(snapshot.days ?? boundedDays),
@@ -140,6 +189,8 @@ export async function getMarketingFunnelSnapshot(days = 30): Promise<MarketingFu
     repeatPulseUsers: Number(snapshot.repeat_pulse_users ?? 0),
     paidUsers: Number(snapshot.paid_users ?? 0),
     sources,
+    ctaClicks: Number(snapshot.cta_clicks ?? 0),
+    ctaSurfaces,
     experienceVersion: String(snapshot.experience_version ?? MARKETING_EXPERIENCE_VERSION),
   };
 }

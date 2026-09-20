@@ -70,7 +70,25 @@ export default async function MarketingAdminPage() {
 
       <section className="admin-panel">
         <div className="app-section-head">
-          <div><span className="app-eyebrow">Activation cohort</span><h2>What new accounts actually do.</h2></div>
+          <div><span className="app-eyebrow">CTA intent</span><h2>Where visitors choose to advance.</h2></div>
+          <span className="admin-badge">{funnel.ctaClicks} CLICKS</span>
+        </div>
+        <div className="admin-provider-table">
+          <div className="admin-provider-row header"><span>Surface</span><span>Unique clicks</span><span>Home share</span><span>Signal</span></div>
+          {funnel.ctaSurfaces.length ? funnel.ctaSurfaces.map((cta) => (
+            <div className="admin-provider-row" key={cta.label}>
+              <strong>{cta.label.replaceAll("_", " ")}</strong>
+              <span>{cta.clicks.toLocaleString("en-US")}</span>
+              <span>{percent(cta.clicks, funnel.homeSessions)}</span>
+              <span>{cta.label.includes("proof") ? "trust" : "signup"}</span>
+            </div>
+          )) : <div className="empty-ledger">No measured CTA intent yet. Page views alone are not treated as conversion intent.</div>}
+        </div>
+      </section>
+
+      <section className="admin-panel">
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">Attributed activation cohort</span><h2>What accounts born in this experience actually do.</h2></div>
           <span className="admin-badge">AUTHORITATIVE</span>
         </div>
         <div className="admin-secondary-grid">
@@ -79,7 +97,7 @@ export default async function MarketingAdminPage() {
           <article><span>2+ Pulses</span><strong>{funnel.repeatPulseUsers.toLocaleString("en-US")} · {percent(funnel.repeatPulseUsers, funnel.firstPulseUsers)}</strong></article>
           <article><span>Paid users</span><strong>{funnel.paidUsers.toLocaleString("en-US")} · {percent(funnel.paidUsers, funnel.newUsers)}</strong></article>
         </div>
-        <p className="admin-panel-note">Signup creation is measured by the Auth action. First Pulse, repeat Pulse and paid-user counts come from existing authoritative tables; marketing telemetry cannot create or modify those outcomes.</p>
+        <p className="admin-panel-note">Only accounts whose successful signup is attributed to <strong>{funnel.experienceVersion}</strong> enter this cohort. First Pulse, repeat Pulse and paid-user counts are then read from the existing authoritative product tables; marketing telemetry cannot create or modify those outcomes.</p>
       </section>
 
       <section className="admin-panel">
@@ -104,7 +122,7 @@ export default async function MarketingAdminPage() {
         <span className="app-eyebrow">Measurement contract</span>
         <h2>No fingerprinting. No duplicated financial truth.</h2>
         <strong>{funnel.trackingStartedAt ? "LIVE" : "BASELINE"}</strong>
-        <p>The browser receives a random 30-day first-party cookie. Only its SHA-256 hash, sanitized UTM values and experience label <strong>{funnel.experienceVersion}</strong> are stored. IP address, user-agent, email, balance and payout destination are not written to the marketing event table.</p>
+        <p>The browser receives a random 30-day first-party cookie. Its SHA-256 hash, sanitized UTM values, CTA label and experience label <strong>{funnel.experienceVersion}</strong> are stored. After a successful signup, the internal user UUID is attached only to that signup event so activation can be attributed correctly. IP address, user-agent, email, balance and payout destination are not written to the marketing event table.</p>
       </section>
     </AppShell>
   );
