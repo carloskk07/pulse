@@ -2,8 +2,22 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const protectedPrefixes = ["/account", "/dashboard", "/earn", "/wallet", "/invite", "/admin"];
+const authFreeMachinePrefixes = ["/api/health", "/api/public"];
+
+function matchesPrefix(pathname: string, prefix: string) {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Public machine endpoints never consume user identity. Skipping SSR Auth here
+  // removes an unnecessary JWT/JWKS/Auth hop from health and CDN-cacheable public
+  // APIs and guarantees these responses cannot acquire refreshed auth cookies.
+  if (authFreeMachinePrefixes.some((prefix) => matchesPrefix(pathname, prefix))) {
+    return NextResponse.next({ request });
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return NextResponse.next({ request });
@@ -23,7 +37,7 @@ export async function proxy(request: NextRequest) {
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;
   const hasValidIdentity = !claimsError && typeof claims?.sub === "string" && claims.sub.length > 0;
-  const isProtected = protectedPrefixes.some((prefix) => request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`));
+  const isProtected = protectedPrefixes.some((prefix) => matchesPrefix(pathname, prefix));
 
   if (isProtected && !hasValidIdentity) {
     const authUrl = request.nextUrl.clone();
