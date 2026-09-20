@@ -58,48 +58,38 @@ function stageFor(memberCount: number, rewardEventCount: number, paidWithdrawalC
   return "early";
 }
 
+function isRewardType(value: unknown): value is RewardType {
+  return typeof value === "string" && (REWARD_TYPES as readonly string[]).includes(value);
+}
+
 export async function getPublicSocialProof(): Promise<PublicSocialProof> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) return EMPTY_PROOF;
 
   try {
-    const [members, rewards, paidWithdrawals, recent] = await Promise.all([
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase
-        .from("ledger_entries")
-        .select("id", { count: "exact", head: true })
-        .gt("credits", 0)
-        .in("state", [...REWARD_STATES])
-        .in("entry_type", [...REWARD_TYPES]),
-      supabase.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "paid"),
-      supabase
-        .from("ledger_entries")
-        .select("entry_type,credits,created_at")
-        .gt("credits", 0)
-        .in("state", [...REWARD_STATES])
-        .in("entry_type", [...REWARD_TYPES])
-        .order("created_at", { ascending: false })
-        .limit(5),
-    ]);
+    const { data, error } = await supabase.rpc("public_social_proof_snapshot");
 
-    if (members.error || rewards.error || paidWithdrawals.error || recent.error) {
-      console.error("[social-proof] aggregate query failed", {
-        members: members.error?.code,
-        rewards: rewards.error?.code,
-        paidWithdrawals: paidWithdrawals.error?.code,
-        recent: recent.error?.code,
-      });
+    if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+      console.error("[social-proof] snapshot query failed", error?.code ?? "invalid_payload");
       return EMPTY_PROOF;
     }
 
-    const memberCount = members.count ?? 0;
-    const rewardEventCount = rewards.count ?? 0;
-    const paidWithdrawalCount = paidWithdrawals.count ?? 0;
-    const recentActivity = ((recent.data ?? []) as RecentRewardRow[]).map((row) => ({
-      label: activityLabel(row.entry_type),
-      credits: Math.max(0, Number(row.credits) || 0),
-      occurredAt: row.created_at,
-    }));
+    const row = data as Record<string, unknown>;
+    const memberCount = Math.max(0, Number(row.member_count ?? 0) || 0);
+    const rewardEventCount = Math.max(0, Number(row.reward_event_count ?? 0) || 0);
+    const paidWithdrawalCount = Math.max(0, Number(row.paid_withdrawal_count ?? 0) || 0);
+    const recentActivity = Array.isArray(row.recent_activity)
+      ? row.recent_activity.flatMap((value) => {
+          if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+          const activity = value as Record<string, unknown>;
+          if (!isRewardType(activity.entry_type) || typeof activity.created_at !== "string") return [];
+          return [{
+            label: activityLabel(activity.entry_type),
+            credits: Math.max(0, Number(activity.credits ?? 0) || 0),
+            occurredAt: activity.created_at,
+          }];
+        })
+      : [];
 
     return {
       stage: stageFor(memberCount, rewardEventCount, paidWithdrawalCount),
@@ -114,3 +104,4 @@ export async function getPublicSocialProof(): Promise<PublicSocialProof> {
     return EMPTY_PROOF;
   }
 }
+
