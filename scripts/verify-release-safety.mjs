@@ -197,6 +197,46 @@ requireText("app/api/pulse/claim/route.ts", [
 requireText("app/dashboard/page.tsx", [
   '"claim-in-progress": "Your Pulse is already being processed. Your balance has not changed yet; try again in a moment."'
 ]);
+requireText("supabase/migrations/0065_public_social_proof_snapshot.sql", [
+  "create or replace function public.public_social_proof_snapshot()",
+  "security invoker",
+  "from public.profiles",
+  "from public.ledger_entries",
+  "from public.withdrawals",
+  "limit 5",
+  "grant execute on function public.public_social_proof_snapshot()",
+  "to service_role",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0065_public_social_proof_snapshot.sql", [
+  "security definer",
+  "to anon",
+  "to authenticated",
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events",
+  "schema_version = 56",
+  "'version', 56"
+]);
+requireText("lib/social-proof.ts", [
+  'supabase.rpc("public_social_proof_snapshot")',
+  "snapshot.member_count",
+  "snapshot.reward_event_count",
+  "snapshot.paid_withdrawal_count",
+  "snapshot.recent"
+]);
+forbidText("lib/social-proof.ts", [
+  '.from("profiles")',
+  '.from("ledger_entries")',
+  '.from("withdrawals")',
+  "Promise.all(["
+]);
+{
+  const source = read("lib/social-proof.ts");
+  const rpcCalls = source.match(/\.rpc\("public_social_proof_snapshot"\)/g) ?? [];
+  if (rpcCalls.length !== 1) {
+    throw new Error("Public social proof must use exactly one snapshot RPC.");
+  }
+}
 requireText("lib/treasury-backing.ts", [
   "hasCurrentFaucetPayReadProof",
   "getCanonicalFaucetPayPackAuthority",
