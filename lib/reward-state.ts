@@ -1,6 +1,16 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUserContext, type CurrentUserIdentity } from "@/lib/current-user-context";
 
+const PULSE_RUNTIME_CACHE_TTL_MS = 1_000;
+
+type PulseRuntimeCache = {
+  value: unknown;
+  expiresAt: number;
+};
+
+let cachedPulseRuntime: PulseRuntimeCache | null = null;
+let pulseRuntimeInFlight: Promise<unknown> | null = null;
+
 export type RewardSnapshot = {
   preview: boolean;
   signedIn: boolean;
@@ -84,6 +94,36 @@ export function trustLabel(level: number) {
   return "Building";
 }
 
+async function getPulseRuntimeState(
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+) {
+  const now = Date.now();
+  if (cachedPulseRuntime && cachedPulseRuntime.expiresAt > now) {
+    return cachedPulseRuntime.value;
+  }
+
+  if (pulseRuntimeInFlight) return pulseRuntimeInFlight;
+
+  pulseRuntimeInFlight = (async () => {
+    const { data, error } = await admin.rpc("current_pulse_runtime_state");
+    if (error || !data) return null;
+    return data;
+  })();
+
+  try {
+    const value = await pulseRuntimeInFlight;
+    if (value !== null) {
+      cachedPulseRuntime = {
+        value,
+        expiresAt: Date.now() + PULSE_RUNTIME_CACHE_TTL_MS,
+      };
+    }
+    return value;
+  } finally {
+    pulseRuntimeInFlight = null;
+  }
+}
+
 export function buildRewardSnapshotFromPayload(
   user: CurrentUserIdentity,
   rawUserSnapshot: unknown,
@@ -161,17 +201,15 @@ export async function getRewardSnapshot(): Promise<RewardSnapshot> {
   if (!user) return { ...disconnectedSnapshot, preview: false };
 
   const admin = createSupabaseAdminClient();
-  const [userSnapshotResult, runtimeResult] = await Promise.all([
+  const [userSnapshotResult, runtimeData] = await Promise.all([
     supabase.rpc("current_user_reward_snapshot"),
-    admin
-      ? admin.rpc("current_pulse_runtime_state")
-      : Promise.resolve({ data: null, error: null }),
+    admin ? getPulseRuntimeState(admin) : Promise.resolve(null),
   ]);
 
   return buildRewardSnapshotFromPayload(
     user,
     userSnapshotResult.data,
-    runtimeResult.data,
+    runtimeData,
   );
 }
 
