@@ -1,0 +1,22 @@
+/* Pulsercuit Conversion System v10
+   Scoped conversion/editorial additions. No financial state, product authority,
+   or canonical responsive geometry is defined here. */
+
+.pc-v10-hero-micro{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:17px;color:rgba(226,229,218,.72);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.pc-v10-hero-micro span{display:inline-flex;align-items:center;gap:7px}
+.pc-v10-hero-micro span:before{content:"";width:5px;height:5px;border-radius:50%;background:#d9ff5d;box-shadow:0 0 0 3px rgba(217,255,93,.08)}
+.pc-v10-live-proof-label{grid-column:1/-1!important;display:flex!important;align-items:baseline;gap:12px!important;border-right:0!important;margin:0 0 11px!important;padding:0 0 10px!important;border-bottom:1px solid rgba(242,207,114,.12)}
+.pc-v6-hero-stats>.pc-v10-live-proof-label:before{width:32px;background:linear-gradient(90deg,#f2cf72,transparent)}
+.pc-v10-live-proof-label strong{font-size:9px!important;text-transform:uppercase;letter-spacing:.16em;color:#f2cf72!important}
+.pc-v10-live-proof-label span{font-size:8px!important;margin:0!important;color:rgba(220,222,214,.55)!important;letter-spacing:.08em}
+.pc-v10-proof-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:20px}
+.pc-v10-proof-actions .inline-action{margin:0}
+.pc-v10-auth-reassurance{display:grid;gap:4px;margin-top:18px;padding:13px 14px;border:1px solid rgba(184,255,61,.11);border-radius:14px;background:rgba(184,255,61,.035)}
+.pc-v10-auth-reassurance strong{font-size:11px;color:#dce7ca}
+.pc-v10-auth-reassurance span{font-size:9px;line-height:1.5;color:#6f7885}
+
+@media(max-width:760px){
+  .pc-v10-hero-micro{gap:7px 11px;font-size:8px;letter-spacing:.055em}
+  .pc-v10-live-proof-label{gap:7px!important;align-items:flex-start;flex-direction:column}
+  .pc-v10-proof-actions{align-items:flex-start;flex-direction:column}
+}

@@ -9,6 +9,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
         <nav className="pc-v6-nav" aria-label="Primary navigation">
           <Link href="/#how">How it works</Link>
           <Link href="/proof">Proof</Link>
+          <Link href="/business">For business</Link>
           <Link href="/support">Help</Link>
         </nav>
         <div className="pc-v6-header-actions">

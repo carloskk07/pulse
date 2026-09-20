@@ -54,11 +54,11 @@ export default async function AuthPage({ searchParams }: Props) {
         <div className="auth-copy pc-v5-auth-copy pc-luxe-auth-copy">
           <span className="section-kicker">One account</span>
           <h1>{signingUp ? <>Start your <em>circuit.</em></> : <>Welcome <em>back.</em></>}</h1>
-          <p>Pulse, progress and Vault follow the same account across devices.</p>
+          <p>One account for Pulse, progress and Vault — across every device you use.</p>
           <div className="auth-trust pc-v5-auth-trust">
             <span>Free to join</span>
-            <span>Compromised passwords blocked</span>
-            <span>Real history</span>
+            <span>No payment required</span>
+            <span>Protected account</span>
           </div>
         </div>
 
@@ -85,7 +85,7 @@ export default async function AuthPage({ searchParams }: Props) {
               <label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label>
               <label>Password<input required minLength={MIN_PASSWORD_LENGTH} name="password" type="password" autoComplete="new-password" placeholder={MIN_PASSWORD_LENGTH + "+ characters"} /></label>
               <TurnstileField action="signup" />
-              <button className="button button-lg pc-v5-primary" type="submit">Create account</button>
+              <button className="button button-lg pc-v5-primary" type="submit">Create free account</button>
             </form>
           ) : (
             <form action={signIn} className="auth-form">
@@ -99,6 +99,10 @@ export default async function AuthPage({ searchParams }: Props) {
             </form>
           )}
 
+          <div className="pc-v10-auth-reassurance">
+            <strong>{signingUp ? "Start free. No deposit or purchase required." : "Your balance and history stay tied to this account."}</strong>
+            <span>Security checks run before sensitive account actions.</span>
+          </div>
           <small>By continuing you agree to the <Link href="/terms">Terms</Link>, <Link href="/privacy">Privacy</Link> and <Link href="/rewards-policy">Rewards policy</Link>.</small>
         </div>
       </section>
