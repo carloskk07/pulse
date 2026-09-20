@@ -15,6 +15,10 @@ const requiredActionFragments = [
   'const verification = await requireTurnstile(formData, "password_recovery");',
   'if (!verification.success) redirect(authError(turnstileAuthError(verification), next, ref));',
   'await recordReleaseEvidence("turnstile");',
+  'function isAuthRateLimited(error: unknown) {',
+  'Number(authError.status ?? 0) === 429',
+  '"over_request_rate_limit"',
+  'redirect(authError("auth-rate-limited", next, ref));',
 ];
 
 const requiredMultiWidgetFragments = [
@@ -44,6 +48,16 @@ const challengeIndex = signIn.indexOf('requireTurnstile(formData, "signin")');
 const passwordAttemptIndex = signIn.indexOf("supabase.auth.signInWithPassword");
 if (challengeIndex < 0 || passwordAttemptIndex < 0 || challengeIndex > passwordAttemptIndex) {
   throw new Error("Sign-in must verify Turnstile before attempting password authentication");
+}
+
+const rateLimitIndex = signIn.indexOf('isAuthRateLimited(error)');
+const invalidCredentialIndex = signIn.indexOf('"invalid-credentials"');
+if (
+  rateLimitIndex < passwordAttemptIndex
+  || invalidCredentialIndex < 0
+  || rateLimitIndex > invalidCredentialIndex
+) {
+  throw new Error("Sign-in must classify Auth rate limiting before invalid credentials");
 }
 
 console.log("Auth human-verification contract PASS");
