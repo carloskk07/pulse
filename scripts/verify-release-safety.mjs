@@ -81,24 +81,59 @@ forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
 requireText("app/api/release-schema/route.ts", ['.from("app_config")', '.eq("key", "release_schema")', '"Cache-Control": "no-store"', 'schema_version: schemaVersion', 'schema_migration: schemaMigration', 'service: "pulsercuit"', 'available: true']);
 forbidText("app/api/release-schema/route.ts", ["process.env", "release_external_proof", "faucetpay", "treasury", "profiles", "withdrawals", "ledger_entries"]);
 requireText("app/api/pulse/claim/route.ts", ["claimReceiptRedirect", "ensureFreshTreasuryBacking", '"launch"', "pulse_backing_guard:", "PULSECIRCUIT_POST_CLAIM_RETENTION_FAILED", "PULSECIRCUIT_POST_CLAIM_REVALIDATION_FAILED", "PULSECIRCUIT_POST_CLAIM_COOKIE_CLEAR_FAILED", "try {", "catch {", 'new URL("/dashboard/claimed", request.url)', 'result.status === "claimed"']);
-requireText("lib/treasury-backing.ts", ["hasCurrentFaucetPayReadProof", "getCanonicalFaucetPayPackAuthority", "hasCanonicalFaucetPayPackAuthority", '.from("faucetpay_payout_pack_authority")', '.eq("singleton", true)', "payoutMatchesAuthority", "getFaucetPayBalanceReadOnly", "treasury_backing_guard", "record_treasury_backing_observation", "p_observed_balance_units", "pack_authority_mismatch", "backing_refresh_required", "backing_insufficient", "read_proof_required", "ensureFreshTreasuryBacking"]);
-forbidText("lib/treasury-backing.ts", ["p_backing_asset", "p_payout_pack_credits", "p_payout_pack_units", '.eq("key", "faucetpay_payout_pack_authority")']);
-{
-  const source = read("lib/treasury-backing.ts");
-  const ensureStart = source.indexOf("export async function ensureFreshTreasuryBacking");
-  const proofCheck = source.indexOf("hasCurrentFaucetPayReadProof(admin)", ensureStart);
-  const guardCheck = source.indexOf("getTreasuryBackingGuard(treasuryCode, admin)", ensureStart);
-  if (ensureStart < 0 || proofCheck < ensureStart || guardCheck < ensureStart || proofCheck > guardCheck) {
-    throw new Error("Treasury backing TTL reuse must validate the current FaucetPay read proof before accepting a cached observation.");
-  }
-}
+requireText("lib/treasury-backing.ts", [
+  "hasCurrentFaucetPayReadProof",
+  "getCanonicalFaucetPayPackAuthority",
+  "hasCanonicalFaucetPayPackAuthority",
+  '.from("faucetpay_payout_pack_authority")',
+  '.eq("singleton", true)',
+  "payoutMatchesAuthority",
+  "getFaucetPayBalanceReadOnly",
+  "getReleaseEvidenceFingerprint",
+  'getReleaseEvidenceFingerprint("faucetpay_read")',
+  'admin.rpc("treasury_backing_preflight"',
+  "p_expected_read_proof_fingerprint",
+  "p_expected_asset",
+  "p_expected_credits",
+  "p_expected_units",
+  "record_treasury_backing_observation",
+  "p_observed_balance_units",
+  "pack_authority_mismatch",
+  "backing_insufficient",
+  "read_proof_required",
+  "ensureFreshTreasuryBacking"
+]);
+forbidText("lib/treasury-backing.ts", [
+  "p_backing_asset",
+  "p_payout_pack_credits",
+  "p_payout_pack_units",
+  '.eq("key", "faucetpay_payout_pack_authority")',
+  'admin.rpc("claim_treasury_backing_refresh_lease"'
+]);
 requireText("lib/treasury-backing.ts", [
   "const [readProofCurrent, authority] = await Promise.all([",
-  "const [readProofCurrent, authority, current] = await Promise.all([",
   "hasCurrentFaucetPayReadProof(admin)",
-  "getCanonicalFaucetPayPackAuthority(admin)",
-  "getTreasuryBackingGuard(treasuryCode, admin)"
+  "getCanonicalFaucetPayPackAuthority(admin)"
 ]);
+{
+  const source = read("lib/treasury-backing.ts");
+  const preflightStart = source.indexOf("async function getTreasuryBackingPreflight");
+  const fingerprint = source.indexOf('getReleaseEvidenceFingerprint("faucetpay_read")', preflightStart);
+  const preflightRpc = source.indexOf('admin.rpc("treasury_backing_preflight"', preflightStart);
+  const ensureStart = source.indexOf("export async function ensureFreshTreasuryBacking");
+  const ensurePreflight = source.indexOf("getTreasuryBackingPreflight(treasuryCode, admin)", ensureStart);
+  const refreshCall = source.indexOf("refreshTreasuryBackingObservation(treasuryCode, admin)", ensureStart);
+  if (
+    preflightStart < 0
+    || fingerprint < preflightStart
+    || preflightRpc < fingerprint
+    || ensureStart < 0
+    || ensurePreflight < ensureStart
+    || refreshCall < ensurePreflight
+  ) {
+    throw new Error("Treasury backing must bind the live FaucetPay fingerprint to one authoritative preflight before any external refresh.");
+  }
+}
 {
   const source = read("app/api/pulse/claim/route.ts");
   const backingCheck = source.indexOf('ensureFreshTreasuryBacking("launch", admin)');
@@ -617,17 +652,47 @@ forbidText("supabase/migrations/0058_backing_refresh_singleflight.sql", [
   "schema_version = 56",
   "'version', 56"
 ]);
+requireText("supabase/migrations/0059_backing_preflight_compaction.sql", [
+  "create or replace function public.treasury_backing_preflight(",
+  "security invoker",
+  "p_expected_read_proof_fingerprint",
+  "trim(v_stored_fingerprint) <> trim(p_expected_read_proof_fingerprint)",
+  "public.faucetpay_payout_pack_authority",
+  "public.treasury_backing_guard",
+  "public.claim_treasury_backing_refresh_lease",
+  "'backing_refresh_acquired'",
+  "'backing_refresh_busy'",
+  "'read_proof_required'",
+  "'pack_authority_mismatch'",
+  "grant execute on function public.treasury_backing_preflight(text,text,text,bigint,bigint,uuid,integer)",
+  "to service_role",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0059_backing_preflight_compaction.sql", [
+  "security definer",
+  "to anon",
+  "to authenticated",
+  "fund_reward_treasury",
+  "update public.reward_treasuries",
+  "insert into public.treasury_funding_events",
+  "schema_version = 56",
+  "'version', 56"
+]);
 requireText("lib/treasury-backing.ts", [
   'import { randomUUID } from "node:crypto"',
-  "claimTreasuryBackingRefreshLease",
-  'admin.rpc("claim_treasury_backing_refresh_lease"',
+  "getTreasuryBackingPreflight",
+  'admin.rpc("treasury_backing_preflight"',
+  "p_expected_read_proof_fingerprint",
+  "p_expected_asset",
+  "p_expected_credits",
+  "p_expected_units",
   "p_lease_seconds: 10",
   "CONCURRENT_REFRESH_POLL_DELAYS_MS = [250, 250, 500, 1_000]",
   "waitForConcurrentBackingRefresh",
   "setTimeout(resolve, delayMs)",
   'return "backing_refreshing"',
-  'lease === "busy"',
-  'lease !== "acquired"',
+  'preflight === "backing_refresh_busy"',
+  'preflight !== "backing_refresh_acquired"',
   "refreshTreasuryBackingObservation(treasuryCode, admin)"
 ]);
 requireText("app/api/pulse/claim/route.ts", [
@@ -640,15 +705,18 @@ requireText("app/dashboard/page.tsx", [
 {
   const source = read("lib/treasury-backing.ts");
   const ensureStart = source.indexOf("export async function ensureFreshTreasuryBacking");
-  const leaseCheck = source.indexOf("claimTreasuryBackingRefreshLease(treasuryCode, admin)", ensureStart);
-  const refreshCall = source.indexOf("refreshTreasuryBackingObservation(treasuryCode, admin)", ensureStart);
+  const preflightCall = source.indexOf("getTreasuryBackingPreflight(treasuryCode, admin)", ensureStart);
+  const busyGate = source.indexOf('preflight === "backing_refresh_busy"', preflightCall);
+  const acquiredGate = source.indexOf('preflight !== "backing_refresh_acquired"', busyGate);
+  const refreshCall = source.indexOf("refreshTreasuryBackingObservation(treasuryCode, admin)", acquiredGate);
   if (
     ensureStart < 0
-    || leaseCheck < ensureStart
-    || refreshCall < ensureStart
-    || leaseCheck > refreshCall
+    || preflightCall < ensureStart
+    || busyGate < preflightCall
+    || acquiredGate < busyGate
+    || refreshCall < acquiredGate
   ) {
-    throw new Error("Stale Treasury backing must acquire the distributed refresh lease before any external refresh.");
+    throw new Error("External backing refresh must occur only after the authoritative preflight acquires the distributed lease.");
   }
 }
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
