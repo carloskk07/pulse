@@ -220,10 +220,7 @@ jobs:
             node - "$release_file" <<'NODE'
           const fs = require("node:fs");
           const release = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-          if (
-            release.service !== "pulsercircuit"
-            && release.service !== "pulsercuit"
-          ) {
+          if (release.service !== "pulsercuit") {
             throw new Error(`Unexpected canonical service identity: ${release.service}`);
           }
           if (typeof release.git_sha !== "string" || !/^[0-9a-f]{40}$/.test(release.git_sha)) {
