@@ -1,0 +1,46 @@
+name: Production Load Baseline
+
+on:
+  pull_request:
+    paths:
+      - "scripts/production-load-baseline.mjs"
+      - ".github/workflows/production-load-baseline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulsercuit-production-load
+  cancel-in-progress: true
+
+jobs:
+  bounded-read-only-load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.23.2
+          package-manager-cache: false
+
+      - name: Run bounded production load baseline
+        env:
+          PULSECIRCUIT_LOAD_BASE_URL: https://pulsercuit.pro
+          PULSECIRCUIT_LOAD_TIMEOUT_MS: "10000"
+        run: node scripts/production-load-baseline.mjs
+
+      - name: Publish load summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f production-load-summary.md ]; then
+            cat production-load-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f production-load-results.json ]; then
+            echo
+            echo "Raw load result:"
+            cat production-load-results.json
+          fi
