@@ -68,7 +68,6 @@ export function V6HeroProof() {
 
   return (
     <div className="pc-v6-shell pc-v6-hero-stats" aria-live="polite">
-      <div className="pc-v10-live-proof-label"><strong>Live verified launch</strong><span>Production counts · no demo activity</span></div>
       <div><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
       <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Reward events</span></div>
       <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
