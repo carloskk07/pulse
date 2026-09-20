@@ -80,7 +80,26 @@ forbidText("lib/controlled-technical-readiness.ts", ["runtimeContractsPass", "se
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
 requireText("app/api/release-schema/route.ts", ['.from("app_config")', '.eq("key", "release_schema")', '"Cache-Control": "no-store"', 'schema_version: schemaVersion', 'schema_migration: schemaMigration', 'service: "pulsercuit"', 'available: true']);
 forbidText("app/api/release-schema/route.ts", ["process.env", "release_external_proof", "faucetpay", "treasury", "profiles", "withdrawals", "ledger_entries"]);
-requireText("app/api/pulse/claim/route.ts", ["claimReceiptRedirect", "ensureFreshTreasuryBacking", '"launch"', "pulse_backing_guard:", "PULSECIRCUIT_POST_CLAIM_RETENTION_FAILED", "PULSECIRCUIT_POST_CLAIM_REVALIDATION_FAILED", "PULSECIRCUIT_POST_CLAIM_COOKIE_CLEAR_FAILED", "try {", "catch {", 'new URL("/dashboard/claimed", request.url)', 'result.status === "claimed"']);
+requireText("app/api/pulse/claim/route.ts", [
+  "claimReceiptRedirect",
+  "ensureFreshTreasuryBacking",
+  '"launch"',
+  "pulse_backing_guard:",
+  "PULSECIRCUIT_POST_CLAIM_RETENTION_FAILED",
+  "PULSECIRCUIT_POST_CLAIM_REVALIDATION_FAILED",
+  "PULSECIRCUIT_POST_CLAIM_COOKIE_CLEAR_FAILED",
+  "supabase.auth.getClaims()",
+  "claimsData?.claims?.sub",
+  'typeof subject === "string"',
+  "p_user_id: userId",
+  "try {",
+  "catch {",
+  'new URL("/dashboard/claimed", request.url)',
+  'result.status === "claimed"'
+]);
+forbidText("app/api/pulse/claim/route.ts", [
+  "supabase.auth.getUser()"
+]);
 requireText("lib/treasury-backing.ts", [
   "hasCurrentFaucetPayReadProof",
   "getCanonicalFaucetPayPackAuthority",

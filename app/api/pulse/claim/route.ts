@@ -61,8 +61,10 @@ export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return dashboardRedirect(request, "service-not-configured");
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(new URL("/auth?next=/dashboard", request.url), 303);
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const subject = claimsData?.claims?.sub;
+  const userId = !claimsError && typeof subject === "string" ? subject : "";
+  if (!userId) return NextResponse.redirect(new URL("/auth?next=/dashboard", request.url), 303);
 
   const formData = await request.formData();
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
@@ -75,17 +77,17 @@ export async function POST(request: NextRequest) {
   // Let the claim decide eligibility first. The pulse_claims backing trigger
   // remains the final fail-closed authority. Only an otherwise eligible claim
   // can therefore pay the cost of a stale-backing refresh.
-  let { data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id });
+  let { data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: userId });
 
   // Profiles are normally created by the auth.users trigger. Keep a bounded
   // self-heal only for legacy/exceptional rows instead of writing on every claim.
   if (!error && (data as { status?: string } | null)?.status === "unknown_user") {
     const { error: profileError } = await admin
       .from("profiles")
-      .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+      .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
     if (profileError) return dashboardRedirect(request, "failed");
 
-    ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id }));
+    ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: userId }));
   }
 
   if (
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // One bounded retry after authoritative backing refresh. The DB trigger
     // still revalidates backing during the retried insert.
-    ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id }));
+    ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: userId }));
   }
 
   if (error) {
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = (data ?? {}) as { status?: string };
-  if (result.status === "claimed") return claimReceiptRedirect(request, user.id);
+  if (result.status === "claimed") return claimReceiptRedirect(request, userId);
   if (result.status === "not_ready") return dashboardRedirect(request, "not-ready");
   if (result.status === "risk_hold") return dashboardRedirect(request, "trust-review");
   if (["pilot_restricted", "treasury_closed", "treasury_missing", "budget_disabled", "insufficient_treasury", "daily_budget_exhausted", "user_daily_limit"].includes(result.status ?? "")) {
