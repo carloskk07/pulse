@@ -65,6 +65,9 @@ export function classifySupabasePublicConfig(values) {
 
 function runSelfTest() {
   const fixture = parseEnv(`\nPUBLIC=value\nSECRET=[SENSITIVE]\nQUOTED="hello"\nEMPTY=\n`);
+  const publishableOnly = parseEnv(`\nNEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_example\n`);
+  const legacyOnly = parseEnv(`\nNEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=legacy-anon\n`);
+  const noPublicKey = parseEnv(`\nNEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co\n`);
   const assertions = [
     [classifyValue(fixture.get("PUBLIC")), "PRESENT", "plain value"],
     [classifyValue(fixture.get("SECRET")), "SENSITIVE_MANAGED", "sensitive placeholder"],
@@ -79,6 +82,9 @@ function runSelfTest() {
     [classifyBuildVisibleAny(fixture, ["UNKNOWN", "PUBLIC"]), "PRESENT", "build-visible alternative"],
     [classifyBuildVisibleAny(fixture, ["UNKNOWN", "SECRET"]), "BUILD_VALUE_UNAVAILABLE", "managed build-visible alternative"],
     [classifyBuildVisibleAny(fixture, ["UNKNOWN", "EMPTY"]), "MISSING", "missing build-visible alternatives"],
+    [classifySupabasePublicConfig(publishableOnly), "PRESENT", "publishable-only Supabase config"],
+    [classifySupabasePublicConfig(legacyOnly), "PRESENT", "legacy-only Supabase config"],
+    [classifySupabasePublicConfig(noPublicKey), "MISSING", "Supabase config without a public key"],
   ];
 
   for (const [actual, expected, label] of assertions) {
