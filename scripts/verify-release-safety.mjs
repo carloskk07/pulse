@@ -92,6 +92,34 @@ forbidText("lib/treasury-backing.ts", ["p_backing_asset", "p_payout_pack_credits
     throw new Error("Treasury backing TTL reuse must validate the current FaucetPay read proof before accepting a cached observation.");
   }
 }
+requireText("lib/treasury-backing.ts", [
+  "const [readProofCurrent, authority] = await Promise.all([",
+  "const [readProofCurrent, authority, current] = await Promise.all([",
+  "hasCurrentFaucetPayReadProof(admin)",
+  "getCanonicalFaucetPayPackAuthority(admin)",
+  "getTreasuryBackingGuard(treasuryCode, admin)"
+]);
+{
+  const source = read("app/api/pulse/claim/route.ts");
+  const evidence = source.indexOf('await recordReleaseEvidence("turnstile")');
+  const firstClaim = source.indexOf('admin.rpc("claim_hourly_pulse"', evidence);
+  const unknownUser = source.indexOf('status === "unknown_user"', firstClaim);
+  const profileRepair = source.indexOf('.from("profiles")', firstClaim);
+  const retryClaim = source.indexOf('admin.rpc("claim_hourly_pulse"', firstClaim + 1);
+  if (
+    evidence < 0
+    || firstClaim < evidence
+    || unknownUser < firstClaim
+    || profileRepair < unknownUser
+    || retryClaim < profileRepair
+  ) {
+    throw new Error("Claim hot path must avoid profile writes and self-heal a missing profile only after an unknown_user result.");
+  }
+  const preClaim = source.slice(evidence, firstClaim);
+  if (preClaim.includes('.from("profiles")') || preClaim.includes(".upsert(")) {
+    throw new Error("Normal claim path must not write profiles before the first claim RPC.");
+  }
+}
 forbidText("app/api/pulse/claim/route.ts", ["console.warn(userId", "console.warn(reminderId"]);
 requireText("supabase/migrations/0031_current_hourly_claim_security_contract.sql", ["claim_hourly_pulse(uuid) security invoker", "claim_hourly_pulse(uuid)', 'EXECUTE'", "release_security_contract"]);
 requireText("supabase/migrations/0032_authenticated_read_scope_contract.sql", ["release_authenticated_read_scope_contract", "security_invoker=true", "risk_score", "role_table_grants"]);
