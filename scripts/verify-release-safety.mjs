@@ -68,7 +68,7 @@ forbidText(".github/workflows/visual-smoke.yml", [
     );
   }
 }
-requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require READY controlled technical state before promotion", "verify-controlled-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
+requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require deployment-safe technical state before promotion", "/api/deployment-readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt", "verify-deployment-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
 requireText("vercel.json", [
   '"$schema": "https://openapi.vercel.sh/vercel.json"',
   '"regions": ["gru1"]',
@@ -127,6 +127,71 @@ requireText("lib/controlled-technical-readiness.ts", [
 ]);
 forbidText("lib/controlled-technical-readiness.ts", ["runtimeContractsPass", "securityContractPasses", "runtime.external_proof"]);
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
+requireText("lib/deployment-technical-readiness.ts", [
+  "DEPLOYMENT_NON_BLOCKING_OPERATIONAL_IDS",
+  '"treasury"',
+  '"auth-hardening-proof"',
+  '"password-recovery-proof"',
+  '"turnstile-proof"',
+  '"faucetpay-read-proof"',
+  '"faucetpay-send-scope-proof"',
+  '"pulse-proof"',
+  '"payout-proof"',
+  '"payout-receipt-proof"',
+  '"base-loop-continuity"',
+  ".filter(",
+  "!DEPLOYMENT_NON_BLOCKING_OPERATIONAL_IDS.has(id)",
+  'state: blockingIds.length === 0 ? "READY" : "BLOCKED"',
+  "ready: blockingIds.length === 0",
+  "await getControlledTechnicalReadiness()"
+]);
+forbidText("lib/deployment-technical-readiness.ts", [
+  '"schema"',
+  '"release-authority"',
+  '"database"',
+  '"database-snapshot"',
+  '"payout-pack-authority"',
+  '"supabase-auth"',
+  '"service-role"',
+  '"admin-allowlist"',
+  '"turnstile-config"',
+  '"payout-pack"',
+  '"send-authority-config"',
+  '"hourly-pulse-config"'
+]);
+requireText("app/api/deployment-readiness/route.ts", [
+  "getDeploymentTechnicalReadiness",
+  'service: "pulsercuit"',
+  'scope: "deployment-technical"',
+  '"PULSECIRCUIT_DEPLOYMENT_READINESS_BLOCKERS"',
+  '"PULSECIRCUIT_DEPLOYMENT_OPERATIONAL_DEFERRED"',
+  "READINESS_CACHE_TTL_MS = 3_000",
+  "cachedReadiness",
+  "readinessInFlight",
+  'source: "coalesced"',
+  '"Cache-Control": "no-store"'
+]);
+forbidText("app/api/deployment-readiness/route.ts", [
+  "getCurrentReleaseReadiness",
+  "getProductReadiness",
+  "getHourlyPilotReadiness",
+  "item.detail",
+  "fingerprint"
+]);
+requireText("scripts/verify-deployment-readiness-gate.mjs", [
+  "verifyDeploymentReadinessResponse",
+  'scope !== "deployment-technical"',
+  'readiness !== "READY"',
+  "Deployment readiness gate self-test PASS"
+]);
+requireText("package.json", [
+  "verify-deployment-readiness-gate.mjs --self-test"
+]);
+forbidText(".github/workflows/vercel-prebuilt.yml", [
+  "Require READY controlled technical state before promotion",
+  'verify-controlled-readiness-gate.mjs "$status" "$body_file"'
+]);
+
 requireText("app/api/release-schema/route.ts", ['.from("app_config")', '.eq("key", "release_schema")', '"Cache-Control": "no-store"', 'schema_version: schemaVersion', 'schema_migration: schemaMigration', 'service: "pulsercuit"', 'available: true']);
 forbidText("app/api/release-schema/route.ts", ["process.env", "release_external_proof", "faucetpay", "treasury", "profiles", "withdrawals", "ledger_entries"]);
 requireText("app/api/pulse/claim/route.ts", [
