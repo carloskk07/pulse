@@ -225,6 +225,40 @@ requireText("app/api/pulse/claim/route.ts", [
 forbidText("app/api/pulse/claim/route.ts", [
   "supabase.auth.getUser()"
 ]);
+requireText("supabase/migrations/0066_social_proof_single_rpc.sql", [
+  "create or replace function public.public_social_proof_snapshot()",
+  "security definer",
+  "member_stats as",
+  "reward_stats as",
+  "paid_stats as",
+  "recent as",
+  "v66 social proof output mismatch",
+  "v66 social proof execution authority drifted",
+  "0055_invite_snapshot_compaction.sql",
+  "grant execute on function public.public_social_proof_snapshot()",
+  "to service_role"
+]);
+forbidText("supabase/migrations/0066_social_proof_single_rpc.sql", [
+  "'version', 66",
+  '"version": 66',
+  "schema_version = 66",
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events"
+]);
+requireText("lib/social-proof.ts", [
+  'supabase.rpc("public_social_proof_snapshot")',
+  "isRewardType",
+  "row.member_count",
+  "row.reward_event_count",
+  "row.paid_withdrawal_count",
+  "row.recent_activity",
+  "stageFor(memberCount, rewardEventCount, paidWithdrawalCount)"
+]);
+forbidText("lib/social-proof.ts", [
+  '.from("profiles")',
+  '.from("ledger_entries")',
+  '.from("withdrawals")'
+]);
 requireText("supabase/migrations/0065_public_proof_scan_compaction.sql", [
   "create or replace function public.pulse_public_snapshot()",
   "with claim_stats as",
