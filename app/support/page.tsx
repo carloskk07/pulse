@@ -29,7 +29,7 @@ export default async function SupportPage({ searchParams }: Props) {
     cases = data ?? [];
   }
 
-  return <main className="completion-page pc-v10-editorial">
+  return <main className="completion-page">
     <header className="completion-header shell"><Link href="/"><Brand /></Link><nav><Link href="/dashboard">Product</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav></header>
     <section className="completion-hero shell"><span className="section-kicker">Pulsercuit help center</span><h1>One case. One reference. Real history.</h1><p>Choose the problem, tell us what happened, and PulseCircuit checks it against the account and product history that actually exists.</p></section>
     <section className="completion-grid shell">
