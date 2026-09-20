@@ -6,7 +6,7 @@ export const metadata = { title: "Rewards Policy" };
 export const dynamic = "force-dynamic";
 
 export default function RewardsPolicyPage() {
-  return <main className="completion-page">
+  return <main className="completion-page pc-v10-editorial">
     <header className="completion-header shell"><PulsercuitBrand /><nav><Link href="/proof">Proof</Link><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link></nav></header>
     <section className="completion-hero shell"><span className="section-kicker">Rewards policy</span><h1>Rewards only move after verification.</h1><p>Eligibility, funding, verification and payout are separate steps. A screen alone never creates a reward or payment.</p></section><section className="completion-card shell"><span className="app-eyebrow">Quick summary</span><h2>Verified reward → available balance → protected payout.</h2><p>Pulse requires an open window and funded reward. Extra rewards require verified completion. Reversed qualifying activity can reverse linked rewards. A payout is reserved before it is sent so the same balance cannot be paid twice.</p></section>
     <article className="policy-body shell">
