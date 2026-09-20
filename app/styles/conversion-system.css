@@ -43,14 +43,14 @@
 .pc-v10-account-grid .completion-card:before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(184,255,61,.35),transparent)}
 
 /* Editorial light system for Help and policy surfaces */
-.pc-v10-editorial{background:radial-gradient(circle at 12% 0%,rgba(206,231,178,.32),transparent 25%),linear-gradient(180deg,#f7f8f3,#f2f4ef 52%,#eef1eb)}
-.pc-v10-editorial .completion-header{border-bottom:1px solid rgba(16,21,17,.08)}
-.pc-v10-editorial .completion-hero{position:relative}
-.pc-v10-editorial .completion-hero:before{content:"PULSECIRCUIT / TRUST";display:block;margin-bottom:18px;font-size:8px;font-weight:800;letter-spacing:.24em;color:#7c6b3d}
-.pc-v10-editorial .completion-card,.pc-v10-editorial .policy-body{box-shadow:0 24px 80px rgba(27,37,28,.055)}
-.pc-v10-editorial .policy-body{border-top:3px solid #202c22}
-.pc-v10-editorial .policy-body h2{color:#182219}
-.pc-v10-editorial .completion-footer{border-top-color:rgba(16,21,17,.1)}
+.pc-v10-editorial,.completion-page:has(.policy-body){background:radial-gradient(circle at 12% 0%,rgba(206,231,178,.32),transparent 25%),linear-gradient(180deg,#f7f8f3,#f2f4ef 52%,#eef1eb)}
+.pc-v10-editorial .completion-header,.completion-page:has(.policy-body) .completion-header{border-bottom:1px solid rgba(16,21,17,.08)}
+.pc-v10-editorial .completion-hero,.completion-page:has(.policy-body) .completion-hero{position:relative}
+.pc-v10-editorial .completion-hero:before,.completion-page:has(.policy-body) .completion-hero:before{content:"PULSECIRCUIT / TRUST";display:block;margin-bottom:18px;font-size:8px;font-weight:800;letter-spacing:.24em;color:#7c6b3d}
+.pc-v10-editorial .completion-card,.pc-v10-editorial .policy-body,.completion-page:has(.policy-body) .completion-card,.completion-page:has(.policy-body) .policy-body{box-shadow:0 24px 80px rgba(27,37,28,.055)}
+.pc-v10-editorial .policy-body,.completion-page:has(.policy-body) .policy-body{border-top:3px solid #202c22}
+.pc-v10-editorial .policy-body h2,.completion-page:has(.policy-body) .policy-body h2{color:#182219}
+.pc-v10-editorial .completion-footer,.completion-page:has(.policy-body) .completion-footer{border-top-color:rgba(16,21,17,.1)}
 
 /* B2B bridge */
 .pc-v10-business-proof{display:inline-flex;align-items:center;gap:7px;margin-top:15px;color:#aebc9b;font-size:10px;font-weight:800;letter-spacing:.04em;text-decoration:none}

@@ -6,7 +6,7 @@ export const metadata = { title: "Privacy" };
 export const dynamic = "force-dynamic";
 
 export default function PrivacyPage() {
-  return <main className="completion-page pc-v10-editorial">
+  return <main className="completion-page">
     <header className="completion-header shell"><PulsercuitBrand /><nav><Link href="/support">Help</Link><Link href="/terms">Terms</Link></nav></header>
     <section className="completion-hero shell"><span className="section-kicker">Privacy</span><h1>Clear data practices.</h1><p>Pulsercuit uses only the data needed to operate accounts, rewards, payouts, security and support.</p></section><section className="completion-card shell"><span className="app-eyebrow">Quick summary</span><h2>What matters first.</h2><p>We use account and activity data to run the service, protect rewards and process payouts. Service providers receive only what is needed for their role. Privacy requests can be opened through Help and tracked as a case.</p></section>
     <article className="policy-body shell">
