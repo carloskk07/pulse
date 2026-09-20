@@ -678,6 +678,76 @@ forbidText("supabase/migrations/0059_backing_preflight_compaction.sql", [
   "schema_version = 56",
   "'version', 56"
 ]);
+requireText("supabase/migrations/0060_treasury_liability_materialization.sql", [
+  "create schema private",
+  "create table private.treasury_liability_state",
+  "user_balance_liability_credits",
+  "active_withdrawal_liability_credits",
+  "active_reservation_liability_credits",
+  "security definer",
+  "set search_path = pg_catalog, public, private",
+  "lock table public.user_balance_state in share row exclusive mode",
+  "lock table public.withdrawals in share row exclusive mode",
+  "lock table public.treasury_reservations in share row exclusive mode",
+  "create trigger user_balance_treasury_liability_sync",
+  "create trigger withdrawal_treasury_liability_sync",
+  "create trigger reservation_treasury_liability_sync",
+  "create or replace function public.treasury_backing_guard(p_treasury_code text)",
+  "from private.treasury_liability_state",
+  "security invoker",
+  "grant select on table private.treasury_liability_state",
+  "to service_role",
+  "grant execute on function public.treasury_backing_guard(text)",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0060_treasury_liability_materialization.sql", [
+  "grant insert on table private.treasury_liability_state",
+  "grant update on table private.treasury_liability_state",
+  "grant delete on table private.treasury_liability_state",
+  "grant select on table private.treasury_liability_state\n  to anon",
+  "grant select on table private.treasury_liability_state\n  to authenticated",
+  "fund_reward_treasury",
+  "update public.reward_treasuries",
+  "insert into public.treasury_funding_events",
+  "schema_version = 56",
+  "'version', 56"
+]);
+{
+  const source = read("supabase/migrations/0060_treasury_liability_materialization.sql");
+  const lockBalance = source.indexOf("lock table public.user_balance_state in share row exclusive mode");
+  const lockWithdrawals = source.indexOf("lock table public.withdrawals in share row exclusive mode");
+  const lockReservations = source.indexOf("lock table public.treasury_reservations in share row exclusive mode");
+  const baseline = source.indexOf("insert into private.treasury_liability_state", lockReservations);
+  const balanceTrigger = source.indexOf("create trigger user_balance_treasury_liability_sync", baseline);
+  const withdrawalTrigger = source.indexOf("create trigger withdrawal_treasury_liability_sync", balanceTrigger);
+  const reservationTrigger = source.indexOf("create trigger reservation_treasury_liability_sync", withdrawalTrigger);
+  const guardStart = source.indexOf("create or replace function public.treasury_backing_guard", reservationTrigger);
+  const guardEnd = source.indexOf("revoke all on function public.treasury_backing_guard(text)", guardStart);
+  if (
+    lockBalance < 0
+    || lockWithdrawals < lockBalance
+    || lockReservations < lockWithdrawals
+    || baseline < lockReservations
+    || balanceTrigger < baseline
+    || withdrawalTrigger < balanceTrigger
+    || reservationTrigger < withdrawalTrigger
+    || guardStart < reservationTrigger
+    || guardEnd < guardStart
+  ) {
+    throw new Error("v60 must lock all liability sources, take one exact baseline, attach all delta triggers, then replace the backing guard.");
+  }
+  const guardBody = source.slice(guardStart, guardEnd);
+  if (!guardBody.includes("from private.treasury_liability_state")) {
+    throw new Error("v60 backing guard must read the private materialized liability singleton.");
+  }
+  if (
+    guardBody.includes("sum(greatest(available_credits")
+    || guardBody.includes("sum(amount_credits)")
+    || guardBody.includes("from public.user_balances")
+  ) {
+    throw new Error("v60 backing guard must not restore O(N) liability aggregation.");
+  }
+}
 requireText("lib/treasury-backing.ts", [
   'import { randomUUID } from "node:crypto"',
   "getTreasuryBackingPreflight",
