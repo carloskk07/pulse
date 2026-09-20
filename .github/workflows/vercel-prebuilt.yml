@@ -188,8 +188,8 @@ jobs:
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             health_file="$(mktemp)"
             release_file="$(mktemp)"
-            if curl --fail --silent --show-error --header 'Cache-Control: no-cache' --output "$health_file" "$DEPLOYMENT_URL/api/health" \
-              && curl --fail --silent --show-error --header 'Cache-Control: no-cache' --output "$release_file" "$DEPLOYMENT_URL/release.json?sha=$GITHUB_SHA" \
+            if curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$health_file" "$DEPLOYMENT_URL/api/health" \
+              && curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --output "$release_file" "$DEPLOYMENT_URL/release.json?sha=$GITHUB_SHA" \
               && node - "$health_file" "$release_file" <<'NODE'
           const fs = require("node:fs");
           const health = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
@@ -225,6 +225,7 @@ jobs:
           for attempt in $(seq 1 "$max_attempts"); do
             : > "$body_file"
             status="$(curl --silent --show-error \
+              --location \
               --output "$body_file" \
               --write-out '%{http_code}' \
               --header 'Cache-Control: no-cache' \
