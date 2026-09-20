@@ -803,6 +803,75 @@ forbidText("supabase/migrations/0061_bounded_trust_refresh.sql", [
     throw new Error("v61 trust refresh must not restore the unbounded distinct-day scan.");
   }
 }
+requireText("supabase/migrations/0062_cross_path_daily_budget.sql", [
+  "create or replace function private.treasury_daily_usage_snapshot(",
+  "security invoker",
+  "from public.pulse_claims",
+  "from public.treasury_reservations",
+  "union all",
+  "filter (where u.user_id = p_user_id)",
+  "status in ('reserved', 'consumed')",
+  "grant execute on function private.treasury_daily_usage_snapshot(uuid,uuid,timestamptz)",
+  "to service_role",
+  "create or replace function public.reserve_treasury_boost(",
+  "security definer",
+  "private.treasury_daily_usage_snapshot(",
+  "for update",
+  "daily_budget_exhausted",
+  "user_daily_limit",
+  "grant execute on function public.reserve_treasury_boost(text,uuid,text,bigint,text,integer)",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0062_cross_path_daily_budget.sql", [
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events",
+  "payout_pack_authority",
+  "schema_version = 56",
+  "'version', 56"
+]);
+{
+  const source = read("supabase/migrations/0062_cross_path_daily_budget.sql");
+  const snapshotStart = source.indexOf("create or replace function private.treasury_daily_usage_snapshot");
+  const snapshotEnd = source.indexOf("revoke all on function private.treasury_daily_usage_snapshot", snapshotStart);
+  const reserveStart = source.indexOf("create or replace function public.reserve_treasury_boost", snapshotEnd);
+  const reserveEnd = source.indexOf("revoke all on function public.reserve_treasury_boost", reserveStart);
+  if (
+    snapshotStart < 0
+    || snapshotEnd < snapshotStart
+    || reserveStart < snapshotEnd
+    || reserveEnd < reserveStart
+  ) {
+    throw new Error("v62 daily-budget function boundaries are missing or reordered.");
+  }
+
+  const snapshotBody = source.slice(snapshotStart, snapshotEnd);
+  const reserveBody = source.slice(reserveStart, reserveEnd);
+
+  if (
+    !snapshotBody.includes("security invoker")
+    || !snapshotBody.includes("from public.pulse_claims")
+    || !snapshotBody.includes("from public.treasury_reservations")
+    || !snapshotBody.includes("union all")
+    || !snapshotBody.includes("filter (where u.user_id = p_user_id)")
+    || snapshotBody.includes("update public.")
+    || snapshotBody.includes("insert into public.")
+    || snapshotBody.includes("delete from public.")
+  ) {
+    throw new Error("v62 private daily usage snapshot must remain read-only and cross-path exact.");
+  }
+
+  if (
+    !reserveBody.includes("security definer")
+    || !reserveBody.includes("private.treasury_daily_usage_snapshot(")
+    || !reserveBody.includes("for update")
+    || !reserveBody.includes("daily_budget_exhausted")
+    || !reserveBody.includes("user_daily_limit")
+    || reserveBody.includes("sum(amount_credits)")
+    || reserveBody.includes("sum(reward_credits)")
+  ) {
+    throw new Error("v62 reserve path must enforce one shared claims+reservations budget snapshot under the existing Treasury lock.");
+  }
+}
 requireText("lib/treasury-backing.ts", [
   'import { randomUUID } from "node:crypto"',
   "getTreasuryBackingPreflight",
