@@ -13,6 +13,7 @@ const errorCopy: Record<string, string> = {
   "service-not-configured": "Authentication is temporarily unavailable.",
   "missing-credentials": "Enter your email and password.",
   "invalid-credentials": "Email or password is incorrect.",
+  "auth-rate-limited": "Authentication is receiving too many requests right now. Wait a moment and try again.",
   "password-upgrade-required": "This password is no longer accepted by the security policy. Use password recovery to replace it safely.",
   "password-compromised": "This password appears in known breach data. Choose a unique password you have not used elsewhere.",
   "password-security-unavailable": "Password safety verification is temporarily unavailable. Try again in a moment.",
