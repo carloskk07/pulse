@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import "server-only";
 
 import { hasCurrentFaucetPayReadProof } from "@/lib/faucetpay-authority";
+import { getReleaseEvidenceFingerprint } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getFaucetPayBalanceReadOnly } from "@/providers/faucetpay-read";
@@ -27,18 +28,54 @@ function statusOf(value: unknown): string {
     : "";
 }
 
-async function claimTreasuryBackingRefreshLease(
+type TreasuryBackingPreflightStatus =
+  | "backing_ready"
+  | "backing_insufficient"
+  | "backing_refresh_acquired"
+  | "backing_refresh_busy"
+  | "backing_unavailable"
+  | "read_proof_required"
+  | "pack_authority_mismatch";
+
+async function getTreasuryBackingPreflight(
   treasuryCode: string,
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
-) {
-  const { data, error } = await admin.rpc("claim_treasury_backing_refresh_lease", {
+): Promise<TreasuryBackingPreflightStatus> {
+  const payout = getFaucetPayPackConfig();
+  const readProofFingerprint = getReleaseEvidenceFingerprint("faucetpay_read");
+  if (!readProofFingerprint) return "read_proof_required";
+  if (
+    !payout.ready
+    || !payout.asset
+    || !payout.amountCredits
+    || !payout.amountSmallestUnits
+  ) {
+    return "pack_authority_mismatch";
+  }
+
+  const { data, error } = await admin.rpc("treasury_backing_preflight", {
     p_treasury_code: treasuryCode,
+    p_expected_read_proof_fingerprint: readProofFingerprint,
+    p_expected_asset: payout.asset,
+    p_expected_credits: payout.amountCredits,
+    p_expected_units: payout.amountSmallestUnits,
     p_lease_token: randomUUID(),
     p_lease_seconds: 10,
   });
-  if (error) return "unavailable";
+  if (error) return "backing_unavailable";
+
   const status = statusOf(data);
-  return status === "acquired" || status === "busy" ? status : "unavailable";
+  if (
+    status === "backing_ready"
+    || status === "backing_insufficient"
+    || status === "backing_refresh_acquired"
+    || status === "backing_refresh_busy"
+    || status === "read_proof_required"
+    || status === "pack_authority_mismatch"
+  ) {
+    return status;
+  }
+  return "backing_unavailable";
 }
 
 const CONCURRENT_REFRESH_POLL_DELAYS_MS = [250, 250, 500, 1_000] as const;
@@ -166,25 +203,13 @@ export async function ensureFreshTreasuryBacking(
 ): Promise<TreasuryBackingStatus> {
   if (!admin) return "backing_unavailable";
 
-  // These checks are independent and all local/database-only. Resolve them
-  // concurrently so the common backing-ready path pays one network-latency
-  // window instead of three serial roundtrips.
-  const payout = getFaucetPayPackConfig();
-  const [readProofCurrent, authority, current] = await Promise.all([
-    hasCurrentFaucetPayReadProof(admin),
-    getCanonicalFaucetPayPackAuthority(admin),
-    getTreasuryBackingGuard(treasuryCode, admin),
-  ]);
-  if (!readProofCurrent) return "read_proof_required";
-  if (!payoutMatchesAuthority(payout, authority)) return "pack_authority_mismatch";
-  if (current === "backing_ready" || current === "backing_insufficient") return current;
-  if (current !== "backing_refresh_required") return current;
-
-  const lease = await claimTreasuryBackingRefreshLease(treasuryCode, admin);
-  if (lease === "busy") {
+  const preflight = await getTreasuryBackingPreflight(treasuryCode, admin);
+  if (preflight === "backing_ready" || preflight === "backing_insufficient") return preflight;
+  if (preflight === "read_proof_required" || preflight === "pack_authority_mismatch") return preflight;
+  if (preflight === "backing_refresh_busy") {
     return waitForConcurrentBackingRefresh(treasuryCode, admin);
   }
-  if (lease !== "acquired") return "backing_unavailable";
+  if (preflight !== "backing_refresh_acquired") return "backing_unavailable";
 
   const refreshed = await refreshTreasuryBackingObservation(treasuryCode, admin);
   if (refreshed !== "backing_ready") return refreshed;
