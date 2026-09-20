@@ -74,14 +74,25 @@ export async function POST(request: NextRequest) {
   if (!admin) return dashboardRedirect(request, "service-not-configured");
 
   await recordReleaseEvidence("turnstile");
-  await admin.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
 
   const backing = await ensureFreshTreasuryBacking("launch", admin);
   if (backing === "backing_refreshing") return dashboardRedirect(request, "backing-refreshing");
   if (backing === "backing_insufficient") return dashboardRedirect(request, "budget-paused");
   if (backing !== "backing_ready") return dashboardRedirect(request, "budget-paused");
 
-  const { data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id });
+  let { data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id });
+
+  // Profiles are normally created by the auth.users trigger. Keep a bounded
+  // self-heal only for legacy/exceptional rows instead of writing on every claim.
+  if (!error && (data as { status?: string } | null)?.status === "unknown_user") {
+    const { error: profileError } = await admin
+      .from("profiles")
+      .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+    if (profileError) return dashboardRedirect(request, "failed");
+
+    ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id }));
+  }
+
   if (error) {
     if (String(error.message ?? "").includes("pulse_backing_guard:")) {
       return dashboardRedirect(request, "budget-paused");
