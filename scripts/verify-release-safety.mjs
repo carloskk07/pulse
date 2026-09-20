@@ -748,6 +748,62 @@ forbidText("supabase/migrations/0060_treasury_liability_materialization.sql", [
     throw new Error("v60 backing guard must not restore O(N) liability aggregation.");
   }
 }
+requireText("supabase/migrations/0061_bounded_trust_refresh.sql", [
+  "create or replace function public.refresh_pulse_trust(p_user_id uuid)",
+  "security definer",
+  "set search_path = pg_catalog, public",
+  "limit 72",
+  "with recursive claim_days",
+  "claim_days.depth < 7",
+  "limit 2",
+  "select exists(",
+  "v_current_level is distinct from v_level",
+  "v_risk < 80 and v_claims >= 3",
+  "v_risk < 60 and v_claims >= 12 and v_active_days >= 2",
+  "v_risk < 60 and v_has_conversion and v_claims >= 12",
+  "v_paid_withdrawals >= 1",
+  "v_paid_withdrawals >= 2",
+  "not v_has_reversal",
+  "grant execute on function public.refresh_pulse_trust(uuid)",
+  "to service_role",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0061_bounded_trust_refresh.sql", [
+  "count(distinct",
+  "to anon",
+  "to authenticated",
+  "fund_reward_treasury",
+  "update public.reward_treasuries",
+  "insert into public.treasury_funding_events",
+  "schema_version = 56",
+  "'version', 56"
+]);
+{
+  const source = read("supabase/migrations/0061_bounded_trust_refresh.sql");
+  const fnStart = source.indexOf("create or replace function public.refresh_pulse_trust");
+  const fnEnd = source.indexOf("revoke all on function public.refresh_pulse_trust(uuid)", fnStart);
+  if (fnStart < 0 || fnEnd < fnStart) {
+    throw new Error("v61 bounded trust refresh function boundaries are missing.");
+  }
+  const body = source.slice(fnStart, fnEnd);
+  if (
+    !body.includes("limit 72")
+    || !body.includes("with recursive claim_days")
+    || !body.includes("claim_days.depth < 7")
+    || !body.includes("limit 2")
+    || !body.includes("v_current_level is distinct from v_level")
+    || !body.includes("v_risk < 80 and v_claims >= 3")
+    || !body.includes("v_risk < 60 and v_claims >= 12 and v_active_days >= 2")
+    || !body.includes("v_risk < 60 and v_has_conversion and v_claims >= 12")
+    || !body.includes("v_paid_withdrawals >= 2")
+    || !body.includes("not v_has_reversal")
+  ) {
+    throw new Error("v61 must preserve trust thresholds while bounding claims, active days, payouts, and no-op writes.");
+  }
+  if (body.includes("count(distinct")) {
+    throw new Error("v61 trust refresh must not restore the unbounded distinct-day scan.");
+  }
+}
 requireText("lib/treasury-backing.ts", [
   'import { randomUUID } from "node:crypto"',
   "getTreasuryBackingPreflight",
