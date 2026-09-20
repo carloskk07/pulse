@@ -273,6 +273,46 @@ forbidText("supabase/migrations/0065_public_proof_scan_compaction.sql", [
     );
   }
 }
+requireText("supabase/migrations/0066_public_social_proof_snapshot.sql", [
+  "create or replace function public.public_social_proof_snapshot()",
+  "security invoker",
+  "from public.profiles",
+  "from public.ledger_entries",
+  "from public.withdrawals",
+  "limit 5",
+  "grant execute on function public.public_social_proof_snapshot()",
+  "to service_role",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0066_public_social_proof_snapshot.sql", [
+  "security definer",
+  "to anon",
+  "to authenticated",
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events",
+  "'version', 66",
+  "schema_version = 66"
+]);
+requireText("lib/social-proof.ts", [
+  'supabase.rpc("public_social_proof_snapshot")',
+  "snapshot.member_count",
+  "snapshot.reward_event_count",
+  "snapshot.paid_withdrawal_count",
+  "snapshot.recent"
+]);
+forbidText("lib/social-proof.ts", [
+  '.from("profiles")',
+  '.from("ledger_entries")',
+  '.from("withdrawals")',
+  "Promise.all(["
+]);
+{
+  const source = read("lib/social-proof.ts");
+  const rpcCalls = source.match(/\.rpc\("public_social_proof_snapshot"\)/g) ?? [];
+  if (rpcCalls.length !== 1) {
+    throw new Error("Public social proof must use exactly one snapshot RPC.");
+  }
+}
 requireText("supabase/migrations/0064_claim_duplicate_fast_reject.sql", [
   "create or replace function public.claim_hourly_pulse(p_user_id uuid)",
   "pg_try_advisory_xact_lock",
