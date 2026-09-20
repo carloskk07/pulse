@@ -214,7 +214,7 @@ jobs:
           echo "Staged production candidate did not converge to the exact Pulsercuit commit $GITHUB_SHA."
           exit 1
 
-      - name: Require READY controlled technical state before promotion
+      - name: Require deployment-safe technical state before promotion
         shell: bash
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -226,24 +226,24 @@ jobs:
 
           for attempt in $(seq 1 "$max_attempts"); do
             : > "$body_file"
-            status="$(npx --yes vercel@59.17.0 curl "$DEPLOYMENT_URL/api/readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" --scope=carloskk07s-projects \
+            status="$(npx --yes vercel@59.17.0 curl "$DEPLOYMENT_URL/api/deployment-readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt" --scope=carloskk07s-projects \
               --silent --show-error \
               --location \
               --output "$body_file" \
               --write-out '%{http_code}' \
               --header 'Cache-Control: no-cache' || true)"
 
-            if node scripts/verify-controlled-readiness-gate.mjs "$status" "$body_file"; then
-              echo "Controlled readiness PASS on staged immutable deployment."
+            if node scripts/verify-deployment-readiness-gate.mjs "$status" "$body_file"; then
+              echo "Deployment technical readiness PASS on staged immutable deployment."
               break
             fi
 
             if [ "$attempt" -ge "$max_attempts" ]; then
-              echo "::error title=Pulsercuit technical readiness::Staged deployment did not reach controlled technical READY after $max_attempts attempts. Production aliases remain unchanged."
+              echo "::error title=Pulsecircuit deployment readiness::Staged deployment did not reach deployment-safe READY after $max_attempts attempts. Production aliases remain unchanged."
               exit 1
             fi
 
-            echo "Controlled readiness is not READY on staged attempt $attempt/$max_attempts; retrying after rollout TTL."
+            echo "Deployment technical readiness is not READY on staged attempt $attempt/$max_attempts; retrying after rollout TTL."
             sleep 4
           done
 

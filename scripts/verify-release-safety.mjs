@@ -68,7 +68,7 @@ forbidText(".github/workflows/visual-smoke.yml", [
     );
   }
 }
-requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require READY controlled technical state before promotion", "verify-controlled-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
+requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require deployment-safe technical state before promotion", "/api/deployment-readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt", "verify-deployment-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
 requireText("vercel.json", [
   '"$schema": "https://openapi.vercel.sh/vercel.json"',
   '"regions": ["gru1"]',
@@ -127,6 +127,71 @@ requireText("lib/controlled-technical-readiness.ts", [
 ]);
 forbidText("lib/controlled-technical-readiness.ts", ["runtimeContractsPass", "securityContractPasses", "runtime.external_proof"]);
 forbidText("app/api/readiness/route.ts", ["item.detail", "fingerprint"]);
+requireText("lib/deployment-technical-readiness.ts", [
+  "DEPLOYMENT_NON_BLOCKING_OPERATIONAL_IDS",
+  '"treasury"',
+  '"auth-hardening-proof"',
+  '"password-recovery-proof"',
+  '"turnstile-proof"',
+  '"faucetpay-read-proof"',
+  '"faucetpay-send-scope-proof"',
+  '"pulse-proof"',
+  '"payout-proof"',
+  '"payout-receipt-proof"',
+  '"base-loop-continuity"',
+  ".filter(",
+  "!DEPLOYMENT_NON_BLOCKING_OPERATIONAL_IDS.has(id)",
+  'state: blockingIds.length === 0 ? "READY" : "BLOCKED"',
+  "ready: blockingIds.length === 0",
+  "await getControlledTechnicalReadiness()"
+]);
+forbidText("lib/deployment-technical-readiness.ts", [
+  '"schema"',
+  '"release-authority"',
+  '"database"',
+  '"database-snapshot"',
+  '"payout-pack-authority"',
+  '"supabase-auth"',
+  '"service-role"',
+  '"admin-allowlist"',
+  '"turnstile-config"',
+  '"payout-pack"',
+  '"send-authority-config"',
+  '"hourly-pulse-config"'
+]);
+requireText("app/api/deployment-readiness/route.ts", [
+  "getDeploymentTechnicalReadiness",
+  'service: "pulsercuit"',
+  'scope: "deployment-technical"',
+  '"PULSECIRCUIT_DEPLOYMENT_READINESS_BLOCKERS"',
+  '"PULSECIRCUIT_DEPLOYMENT_OPERATIONAL_DEFERRED"',
+  "READINESS_CACHE_TTL_MS = 3_000",
+  "cachedReadiness",
+  "readinessInFlight",
+  'source: "coalesced"',
+  '"Cache-Control": "no-store"'
+]);
+forbidText("app/api/deployment-readiness/route.ts", [
+  "getCurrentReleaseReadiness",
+  "getProductReadiness",
+  "getHourlyPilotReadiness",
+  "item.detail",
+  "fingerprint"
+]);
+requireText("scripts/verify-deployment-readiness-gate.mjs", [
+  "verifyDeploymentReadinessResponse",
+  'scope !== "deployment-technical"',
+  'readiness !== "READY"',
+  "Deployment readiness gate self-test PASS"
+]);
+requireText("package.json", [
+  "verify-deployment-readiness-gate.mjs --self-test"
+]);
+forbidText(".github/workflows/vercel-prebuilt.yml", [
+  "Require READY controlled technical state before promotion",
+  'verify-controlled-readiness-gate.mjs "$status" "$body_file"'
+]);
+
 requireText("app/api/release-schema/route.ts", ['.from("app_config")', '.eq("key", "release_schema")', '"Cache-Control": "no-store"', 'schema_version: schemaVersion', 'schema_migration: schemaMigration', 'service: "pulsercuit"', 'available: true']);
 forbidText("app/api/release-schema/route.ts", ["process.env", "release_external_proof", "faucetpay", "treasury", "profiles", "withdrawals", "ledger_entries"]);
 requireText("app/api/pulse/claim/route.ts", [
@@ -450,13 +515,13 @@ requireText("lib/reward-state.ts", ["maximumFractionDigits: 3", "minimumFraction
 requireText("lib/withdrawal-pilot.ts", ["hasWithdrawalPilotAccess", 'admin.rpc("withdrawal_pilot_allowed"', "return !error && data === true"]);
 requireText("scripts/report-safe-payout-profile.mjs", ["FAUCETPAY_PAYOUT_CURRENCY", "FAUCETPAY_PAYOUT_CREDITS", "FAUCETPAY_PAYOUT_UNITS", "FAUCETPAY_PAYOUT_LABEL", "FAUCETPAY_SEND_DAILY_LIMIT_USD", "visible-pack-ready"]);
 requireText(".github/workflows/ci.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Reject direct pushes to main", "verify-deploy-provenance.mjs push", "Main integrity rejected:", "pull-requests: read"]);
-requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Require merged PR provenance for production deploy", 'verify-deploy-provenance.mjs "$GITHUB_EVENT_NAME"', "Require current main HEAD", "Reconfirm current main HEAD before deploy", "Reconfirm current main HEAD before promotion", 'verify-current-main-head.mjs "$GITHUB_SHA"', "Require production database schema authority", "verify-production-schema-gate.mjs", "https://pulsercuit.pro/api/release-schema", "Production deploy rejected: database schema authority does not match the release contract.", "Stage production deployment without domain promotion", "--skip-domain", "Require READY controlled technical state before promotion", "Promote verified deployment to production aliases", "verify-controlled-readiness-gate.mjs"]);
+requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(npm --version)" = "11.19.1"', "node scripts/audit-production-dependencies.mjs", "Require merged PR provenance for production deploy", 'verify-deploy-provenance.mjs "$GITHUB_EVENT_NAME"', "Require current main HEAD", "Reconfirm current main HEAD before deploy", "Reconfirm current main HEAD before promotion", 'verify-current-main-head.mjs "$GITHUB_SHA"', "Require production database schema authority", "verify-production-schema-gate.mjs", "https://pulsercuit.pro/api/release-schema", "Production deploy rejected: database schema authority does not match the release contract.", "Stage production deployment without domain promotion", "--skip-domain", "Require deployment-safe technical state before promotion", "Promote verified deployment to production aliases", "verify-deployment-readiness-gate.mjs"]);
 {
   const source = read(".github/workflows/vercel-prebuilt.yml");
   const stage = source.indexOf("Stage production deployment without domain promotion");
   const skipDomain = source.indexOf("--prod --skip-domain", stage);
   const stagedIdentity = source.indexOf("Verify exact staged release identity", stage);
-  const readiness = source.indexOf("Require READY controlled technical state before promotion", stage);
+  const readiness = source.indexOf("Require deployment-safe technical state before promotion", stage);
   const mainRecheck = source.indexOf("Reconfirm current main HEAD before promotion", stage);
   const promote = source.indexOf("Promote verified deployment to production aliases", stage);
   const canonical = source.indexOf("Verify exact canonical production release", stage);
@@ -474,7 +539,10 @@ requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(np
   }
 
   const prePromotion = source.slice(stage, promote);
-  if (prePromotion.includes("https://pulsercuit.pro/api/readiness")) {
+  if (
+    prePromotion.includes("https://pulsercuit.pro/api/readiness")
+    || prePromotion.includes("https://pulsercuit.pro/api/deployment-readiness")
+  ) {
     throw new Error("Pre-promotion readiness must target the immutable staged deployment URL, not the current production alias.");
   }
   if (prePromotion.includes("vercel@59.17.0 promote")) {
@@ -1137,7 +1205,7 @@ forbidText(".github/workflows/vercel-prebuilt.yml", [
   const predeployHeadGate = source.indexOf("Reconfirm current main HEAD before deploy");
   const stageStep = source.indexOf("Stage production deployment without domain promotion");
   const stagedIdentityStep = source.indexOf("Verify exact staged release identity");
-  const readinessGate = source.indexOf("Require READY controlled technical state before promotion");
+  const readinessGate = source.indexOf("Require deployment-safe technical state before promotion");
   const prepromotionHeadGate = source.indexOf("Reconfirm current main HEAD before promotion");
   const promoteStep = source.indexOf("Promote verified deployment to production aliases");
   const exactReleaseStep = source.indexOf("Verify exact canonical production release");
@@ -1164,7 +1232,7 @@ forbidText(".github/workflows/vercel-prebuilt.yml", [
     || prepromotionHeadGate > promoteStep
     || promoteStep > exactReleaseStep
   ) {
-    throw new Error("Production release ordering must prove main/schema before build, stage without aliases, prove immutable identity and READY, recheck main, promote, then prove canonical identity.");
+    throw new Error("Production release ordering must prove main/schema before build, stage without aliases, prove immutable identity and deployment-safe READY, recheck main, promote, then prove canonical identity.");
   }
 }
 forbidText("scripts/audit-production-dependencies.mjs", ["process.exit(0); //", "audit-level=moderate"]);
