@@ -102,8 +102,8 @@ export default async function AuthPage({ searchParams }: Props) {
           )}
 
           <div className="pc-v10-auth-reassurance">
-            <strong>{signingUp ? "No deposit. No purchase." : "Your balance and history stay tied to this account."}</strong>
-            <span>{signingUp ? "Your progress begins with your first Pulse." : "Security checks run before sensitive account actions."}</span>
+            <strong>{signingUp ? "No deposit. No purchase." : "Your Pulse, Vault and history stay with your account."}</strong>
+            <span>{signingUp ? "Your progress begins with your first Pulse." : "Sign in to continue where you left off."}</span>
           </div>
           <small>By continuing you agree to the <Link href="/terms">Terms</Link>, <Link href="/privacy">Privacy</Link> and <Link href="/rewards-policy">Rewards policy</Link>.</small>
         </div>
