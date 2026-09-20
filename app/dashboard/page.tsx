@@ -6,7 +6,7 @@ import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getUserNextAction } from "@/lib/experience-presentation";
-import { formatUsdFromCredits, getRewardSnapshot, trustLabel } from "@/lib/reward-state";
+import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -50,7 +50,6 @@ export default async function DashboardPage({ searchParams }: Props) {
   const away = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
   const vaultPercent = Math.max(0, Math.min(100, Math.round(progress)));
   const claimSucceeded = params.claim === "success";
-  const trust = trustLabel(state.trustLevel);
   const signal = getCircuitProgress({
     hourlyClaimCount: state.hourlyClaimCount,
     streakDays: state.streakDays,
@@ -81,8 +80,8 @@ export default async function DashboardPage({ searchParams }: Props) {
             <div className="pulse-line">Your circuit</div>
             <h1>{state.signedIn ? <>Know the <em>next move.</em></> : "Start with one Pulse."}</h1>
             <p>{state.signedIn
-              ? "PulseCircuit keeps the next useful action obvious and moves technical checks into the background."
-              : "Sign in to see your real reward, progress and Vault state."}</p>
+              ? "Your Pulse, Vault and progress stay focused on what matters now."
+              : "Sign in to see your Pulse, progress and Vault."}</p>
           </div>
 
           <Link href="/wallet" className="balance-chip balance-chip-v2 pc-luxe-vault-chip pc-v9-vault-chip" aria-label="Open Vault">
@@ -148,10 +147,10 @@ export default async function DashboardPage({ searchParams }: Props) {
             </div>
 
             <div className="pulse-integrity-rail pc-luxe-integrity pc-v9-integrity" aria-label="Pulse principles">
-              <span><i className="integrity-dot" />Funded rewards</span>
-              <span><i className="integrity-dot" />Real history</span>
-              <span><i className="integrity-dot" />Protected payout</span>
-              <strong className={state.pulseFundingReady ? "online" : "standby"}>{state.pulseFundingReady ? "LIVE" : "SAFE"}</strong>
+              <span><i className="integrity-dot" />Rewards</span>
+              <span><i className="integrity-dot" />Progress</span>
+              <span><i className="integrity-dot" />Payout</span>
+              <strong className={state.pulseFundingReady ? "online" : "standby"}>{state.pulseFundingReady ? "ACTIVE" : "PAUSED"}</strong>
             </div>
           </div>
         </section>
@@ -179,7 +178,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <div className="pc-v9-progress-value"><strong>{state.preview ? "—" : `${vaultPercent}%`}</strong></div>
               <h3>{state.preview ? "Live after sign-in" : formatUsdFromCredits(state.availableCredits)}</h3>
               <p>{state.preview || away === null
-                ? "Your payout target appears when the live payout pack is ready."
+                ? "Your payout details appear when they are available."
                 : away > 0
                   ? `${formatUsdFromCredits(away)} remains to the current payout target.`
                   : "Your current payout target is reached."}</p>
@@ -189,19 +188,18 @@ export default async function DashboardPage({ searchParams }: Props) {
             <article className="pc-v9-progress-card unlock-card">
               <span className="app-eyebrow">Invite</span>
               <div className="pc-v9-unlock-mark"><Users /></div>
-              <h3>Grow only with verified activity.</h3>
-              <p>Referral progress moves after qualifying real activity, not empty signups.</p>
+              <h3>Invite people into the loop.</h3>
+              <p>Referral progress begins after qualifying activity.</p>
               <Link href="/invite">Open Invite <ArrowUpRight /></Link>
             </article>
           </div>
 
           {!state.preview && state.signedIn ? (
             <details className="admin-panel-note">
-              <summary>More circuit details</summary>
+              <summary>More progress details</summary>
               <div className="admin-secondary-grid">
-                <article><span>Trust</span><strong>{trust}</strong><small>Level {state.trustLevel}/5</small></article>
-                <article><span>Rhythm</span><strong>{state.streakDays} day{state.streakDays === 1 ? "" : "s"}</strong><small>Derived from real Pulse history</small></article>
-                <article><span>Pulses</span><strong>{state.hourlyClaimCount}</strong><small>Funded claims</small></article>
+                <article><span>Rhythm</span><strong>{state.streakDays} day{state.streakDays === 1 ? "" : "s"}</strong><small>Your return streak</small></article>
+                <article><span>Pulses</span><strong>{state.hourlyClaimCount}</strong><small>Claims completed</small></article>
               </div>
             </details>
           ) : null}
@@ -212,16 +210,16 @@ export default async function DashboardPage({ searchParams }: Props) {
             <div className="invite-icon">{liveTurboRoute ? <Bolt /> : <Shield />}</div>
             <div>
               <span className="app-eyebrow">Optional</span>
-              <h3>Turbo never blocks the core Pulse.</h3>
-              <p>{liveTurboRoute ? "Use extra earning routes only when they are useful to you." : "The base experience stays independent from external offer supply."}</p>
+              <h3>Turbo stays optional.</h3>
+              <p>{liveTurboRoute ? "Use extra reward routes only when they are worth your time." : "Your core Pulse works without extra offers."}</p>
             </div>
             <Link href="/earn" className="icon-button" aria-label="Open extra rewards"><ArrowUpRight /></Link>
           </article>
 
           <article className="progress-card pc-luxe-vault-progress">
             <div className="app-eyebrow">Proof</div>
-            <h3>Real activity stays distinguishable from real payouts.</h3>
-            <p>Public proof never invents claims, conversions or paid withdrawals.</p>
+            <h3>See what the circuit has done.</h3>
+            <p>Claims and completed payouts are visible on the public Proof page.</p>
             <Link href="/proof" className="inline-action"><Shield /> View live proof</Link>
           </article>
         </section>

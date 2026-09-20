@@ -1395,7 +1395,19 @@ forbidText("lib/current-user-context.ts", ["supabase.auth.getUser"]);
 requireText("proxy.ts", ["supabase.auth.getClaims", "hasValidIdentity", "claims?.sub", "isProtected && !hasValidIdentity", "api/health", "api/public"]);
 forbidText("proxy.ts", ["supabase.auth.getUser"]);
 requireText("app/api/health/route.ts", ['export const dynamic = "force-static"', "service: \"pulsercuit\"", "ok: true"]);
-requireText("lib/experience-presentation.ts", ["getUserNextAction", "getWalletPresentation", "getOperatorNextAction", "payoutPilotAllowed", '"Withdrawals are limited during the payout pilot."', '"Withdrawals are temporarily unavailable."', '"Complete FaucetPay connection."']);
+requireText("lib/experience-presentation.ts", [
+  "getUserNextAction",
+  "getWalletPresentation",
+  "getOperatorNextAction",
+  "payoutPilotAllowed",
+  "if (!input.payoutPilotAllowed)",
+  '"Payout access is opening gradually."',
+  '"Not available yet"',
+  '"Payouts are temporarily unavailable."',
+  "destinationEnabled: false",
+  "submitEnabled: false",
+  '"Complete FaucetPay connection."'
+]);
 requireText("app/dashboard/page.tsx", ["getUserNextAction", "nextAction", "Waiting for next Pulse", "getCurrentUserContext"]);
 requireText("app/admin/page.tsx", ["getOperatorNextAction", "One blocker at a time.", "Growth systems", "getProductLaunchReadiness"]);
 requireText("app/admin/advanced/page.tsx", ["/admin/product", "/admin/retention", "/admin/leads", "/admin/prospects"]);

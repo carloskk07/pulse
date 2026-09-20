@@ -23,10 +23,10 @@ export function getUserNextAction(input: {
   if (input.preview) {
     return {
       kind: "standby",
-      eyebrow: "Live state",
+      eyebrow: "Pulse",
       title: "Pulse is temporarily unavailable.",
-      detail: "No financial state is simulated while the live reward service is unavailable.",
-      actionLabel: "Live service unavailable",
+      detail: "Your account remains unchanged. Check back soon.",
+      actionLabel: "Check back soon",
       href: "/dashboard",
     };
   }
@@ -36,7 +36,7 @@ export function getUserNextAction(input: {
       kind: "sign_in",
       eyebrow: "Start here",
       title: "Enter your circuit.",
-      detail: "Sign in once to see your real Pulse, progress and Vault state.",
+      detail: "Sign in to see your Pulse, progress and Vault.",
       actionLabel: "Sign in",
       href: "/auth?next=/dashboard",
     };
@@ -45,9 +45,9 @@ export function getUserNextAction(input: {
   if (!input.pulseFundingReady) {
     return {
       kind: "standby",
-      eyebrow: "Pulse status",
-      title: "Your history is safe while rewards are paused.",
-      detail: "Nothing is lost and no action is required. Check again when funded Pulses return.",
+      eyebrow: "Pulse",
+      title: "Rewards are paused for now.",
+      detail: "Your balance and history are unchanged. Check back later.",
       actionLabel: "Refresh Pulse",
       href: "/dashboard",
     };
@@ -58,7 +58,7 @@ export function getUserNextAction(input: {
       kind: "claim",
       eyebrow: "Ready now",
       title: "Your next Pulse is ready.",
-      detail: "Claim the funded reward and keep your real progress moving.",
+      detail: "Claim it and keep moving.",
       actionLabel: "Claim Pulse",
       href: "/dashboard",
     };
@@ -69,8 +69,8 @@ export function getUserNextAction(input: {
     eyebrow: "Next Pulse",
     title: "Your next reward window is forming.",
     detail: input.nextClaimAt
-      ? "Return when the live countdown reaches zero. You can set one reminder if useful."
-      : "Your next eligibility window will appear here automatically.",
+      ? "Come back when the countdown reaches zero. Set a reminder if you want."
+      : "Your next Pulse will appear here automatically.",
     actionLabel: "View Pulse",
     href: "/dashboard",
   };
@@ -126,8 +126,8 @@ export function getWalletPresentation(input: {
     return {
       eyebrow: "Vault",
       title: "Sign in to use your Vault.",
-      detail: "Your live balance and withdrawal eligibility appear after sign-in.",
-      buttonLabel: "Sign in required",
+      detail: "Your balance and payout progress appear after sign-in.",
+      buttonLabel: "Sign in",
       destinationEnabled: false,
       submitEnabled: false,
     };
@@ -135,10 +135,10 @@ export function getWalletPresentation(input: {
 
   if (!input.payoutPilotAllowed) {
     return {
-      eyebrow: "Controlled launch",
-      title: "Withdrawals are limited during the payout pilot.",
-      detail: "Your balance stays intact while the first real payment path is proven on the authorized pilot account.",
-      buttonLabel: "Pilot access only",
+      eyebrow: "Payout access",
+      title: "Payout access is opening gradually.",
+      detail: "Your balance stays available while withdrawals remain limited.",
+      buttonLabel: "Not available yet",
       destinationEnabled: false,
       submitEnabled: false,
     };
@@ -146,9 +146,9 @@ export function getWalletPresentation(input: {
 
   if (input.preview || !input.payoutPackReady || !input.readProofReady || !input.sendScopeProofReady) {
     return {
-      eyebrow: "Vault protected",
-      title: "Withdrawals are temporarily unavailable.",
-      detail: "Your balance stays intact while the payout connection is being completed.",
+      eyebrow: "Vault",
+      title: "Payouts are temporarily unavailable.",
+      detail: "Your balance is unchanged. Try again later.",
       buttonLabel: "Withdrawal unavailable",
       destinationEnabled: false,
       submitEnabled: false,
@@ -171,7 +171,7 @@ export function getWalletPresentation(input: {
   return {
     eyebrow: "Ready",
     title: "Your Vault is ready to withdraw.",
-    detail: "Enter your FaucetPay destination. PulseCircuit verifies the protected payout path before reserving value.",
+    detail: "Enter your FaucetPay destination to continue.",
     buttonLabel: "Withdraw",
     destinationEnabled: true,
     submitEnabled: true,
