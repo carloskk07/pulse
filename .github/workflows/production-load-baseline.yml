@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
     paths:
+      - "proxy.ts"
+      - "app/api/health/**"
+      - "app/api/public/**"
+      - "lib/social-proof.ts"
+      - "lib/supabase/**"
+      - "next.config.ts"
+      - "vercel.json"
       - "scripts/production-load-baseline.mjs"
       - ".github/workflows/production-load-baseline.yml"
   workflow_dispatch:
@@ -26,6 +33,61 @@ jobs:
         with:
           node-version: 22.23.2
           package-manager-cache: false
+
+      - name: Wait for exact canonical production release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 45); do
+            main_file="$(mktemp)"
+            release_file="$(mktemp)"
+
+            curl --fail --silent --show-error \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --output "$main_file" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/main"
+
+            main_sha="$(node -e 'const fs=require("node:fs"); const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(String(x.sha||""));' "$main_file")"
+            rm -f "$main_file"
+
+            if [ "$main_sha" != "$GITHUB_SHA" ]; then
+              {
+                echo "## Pulsercuit production load"
+                echo
+                echo "Skipped: commit \`$GITHUB_SHA\` was superseded by main \`$main_sha\` before canonical promotion."
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "Load probe skipped because this commit is no longer current main."
+              exit 0
+            fi
+
+            if curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              --output "$release_file" \
+              "https://pulsercuit.pro/release.json?sha=$GITHUB_SHA" \
+              && node - "$release_file" <<'NODE'
+          const fs = require("node:fs");
+          const release = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          if (release.service !== "pulsercuit" || release.git_sha !== process.env.GITHUB_SHA) {
+            process.exit(1);
+          }
+          console.log(`Exact canonical release ready for load probe: ${release.git_sha}`);
+          NODE
+            then
+              rm -f "$release_file"
+              exit 0
+            fi
+
+            rm -f "$release_file"
+            sleep 5
+          done
+
+          echo "Exact canonical production release did not converge before the load-probe deadline."
+          exit 1
 
       - name: Run bounded production load baseline
         env:
