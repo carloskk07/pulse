@@ -284,7 +284,6 @@ requireText("supabase/migrations/0067_public_fair_share_authority.sql", [
   "0055_invite_snapshot_compaction.sql"
 ]);
 forbidText("supabase/migrations/0067_public_fair_share_authority.sql", [
-  "update public.reward_treasuries",
   "fund_reward_treasury",
   "insert into public.treasury_funding_events",
   "'version', 67",
@@ -300,6 +299,12 @@ forbidText("supabase/migrations/0067_public_fair_share_authority.sql", [
   }
   const claimBody = source.slice(claimStart, reserveStart);
   const reserveBody = source.slice(reserveStart, scaleStart);
+  const treasuryUpdates = source.match(/update public\.reward_treasuries/g) ?? [];
+  if (treasuryUpdates.length !== 2) {
+    throw new Error(
+      "v67 must preserve exactly the existing claim + reservation Treasury accounting updates and add no new Treasury write path.",
+    );
+  }
   if (
     !claimBody.includes("public_fair_share_required")
     || !claimBody.includes("not v_pilot_mode")
