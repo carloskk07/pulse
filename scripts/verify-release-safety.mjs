@@ -253,8 +253,13 @@ requireText(".github/workflows/vercel-prebuilt.yml", ["npm@11.19.1", 'test "$(np
   }
   const stagedProbeBlock = source.slice(stagedIdentity, mainRecheck);
   const stagedLocationCount = stagedProbeBlock.match(/--location/g)?.length ?? 0;
+  const authenticatedProbeCount = stagedProbeBlock.match(/vercel@59\.17\.0 --scope=carloskk07s-projects --token="\$VERCEL_TOKEN" curl/g)?.length ?? 0;
+  const stagedTokenCount = stagedProbeBlock.match(/VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}/g)?.length ?? 0;
   if (stagedLocationCount < 3) {
     throw new Error("All staged health, release-identity and readiness probes must follow deployment redirects before promotion.");
+  }
+  if (authenticatedProbeCount < 3 || stagedTokenCount < 2) {
+    throw new Error("All immutable staged probes must use authenticated Vercel curl so Deployment Protection cannot redirect them to an HTML challenge.");
   }
 }
 
