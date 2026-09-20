@@ -563,27 +563,36 @@ forbidText(".github/workflows/vercel-prebuilt.yml", [
   const schemaGate = source.indexOf("Require production database schema authority");
   const buildStep = source.indexOf("Build prebuilt Vercel output");
   const predeployHeadGate = source.indexOf("Reconfirm current main HEAD before deploy");
-  const deployStep = source.indexOf("Deploy prebuilt output");
+  const stageStep = source.indexOf("Stage production deployment without domain promotion");
+  const stagedIdentityStep = source.indexOf("Verify exact staged release identity");
+  const readinessGate = source.indexOf("Require READY controlled technical state before promotion");
+  const prepromotionHeadGate = source.indexOf("Reconfirm current main HEAD before promotion");
+  const promoteStep = source.indexOf("Promote verified deployment to production aliases");
   const exactReleaseStep = source.indexOf("Verify exact canonical production release");
-  const readinessGate = source.indexOf("Require READY controlled technical state");
   const mainHeadChecks = source.match(/verify-current-main-head\.mjs "\$GITHUB_SHA"/g) ?? [];
   if (
     mainHeadGate < 0
     || schemaGate < 0
     || buildStep < 0
     || predeployHeadGate < 0
-    || deployStep < 0
-    || exactReleaseStep < 0
+    || stageStep < 0
+    || stagedIdentityStep < 0
     || readinessGate < 0
-    || mainHeadChecks.length < 2
+    || prepromotionHeadGate < 0
+    || promoteStep < 0
+    || exactReleaseStep < 0
+    || mainHeadChecks.length < 3
     || mainHeadGate > buildStep
     || schemaGate > buildStep
     || buildStep > predeployHeadGate
-    || predeployHeadGate > deployStep
-    || deployStep > exactReleaseStep
-    || exactReleaseStep > readinessGate
+    || predeployHeadGate > stageStep
+    || stageStep > stagedIdentityStep
+    || stagedIdentityStep > readinessGate
+    || readinessGate > prepromotionHeadGate
+    || prepromotionHeadGate > promoteStep
+    || promoteStep > exactReleaseStep
   ) {
-    throw new Error("Production release ordering must prove main/schema before build, recheck main before deploy, then prove exact release and READY state.");
+    throw new Error("Production release ordering must prove main/schema before build, stage without aliases, prove immutable identity and READY, recheck main, promote, then prove canonical identity.");
   }
 }
 forbidText("scripts/audit-production-dependencies.mjs", ["process.exit(0); //", "audit-level=moderate"]);
