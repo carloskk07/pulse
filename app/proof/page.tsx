@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Check, Shield, Spark } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
+import { FunnelBeacon } from "@/components/funnel-beacon";
 import { getPulseProof } from "@/lib/pulse-proof";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
@@ -24,6 +25,7 @@ export default async function ProofPage() {
 
   return (
     <main className="proof-page">
+      <FunnelBeacon event="proof_view" />
       <SiteHeader />
       <section className="proof-hero shell">
         <span className="section-kicker">Pulsercuit Proof</span>
