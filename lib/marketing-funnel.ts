@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const MARKETING_SESSION_COOKIE = "pc_growth";
 export const MARKETING_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+export const MARKETING_EXPERIENCE_VERSION = "superior-v11";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PUBLIC_EVENTS = new Set<MarketingEventType>(["home_view", "proof_view", "signup_view"]);
@@ -35,6 +36,7 @@ export type MarketingFunnelSnapshot = {
   repeatPulseUsers: number;
   paidUsers: number;
   sources: MarketingSourceRow[];
+  experienceVersion: string;
 };
 
 export function cleanMarketingSessionId(value: string | null | undefined) {
@@ -77,6 +79,7 @@ export async function recordMarketingEvent(
     utm_source: cleanAttribution(attribution.utmSource, 120),
     utm_medium: cleanAttribution(attribution.utmMedium, 120),
     utm_campaign: cleanAttribution(attribution.utmCampaign, 160),
+    experience_version: MARKETING_EXPERIENCE_VERSION,
   });
 
   if (!error) return true;
@@ -97,6 +100,7 @@ const EMPTY: MarketingFunnelSnapshot = {
   repeatPulseUsers: 0,
   paidUsers: 0,
   sources: [],
+  experienceVersion: MARKETING_EXPERIENCE_VERSION,
 };
 
 export async function getMarketingFunnelSnapshot(days = 30): Promise<MarketingFunnelSnapshot> {
@@ -104,7 +108,10 @@ export async function getMarketingFunnelSnapshot(days = 30): Promise<MarketingFu
   const admin = createSupabaseAdminClient();
   if (!admin) return { ...EMPTY, days: boundedDays };
 
-  const { data, error } = await admin.rpc("admin_marketing_funnel_snapshot", { p_days: boundedDays });
+  const { data, error } = await admin.rpc("admin_marketing_funnel_snapshot_by_version", {
+    p_days: boundedDays,
+    p_experience_version: MARKETING_EXPERIENCE_VERSION,
+  });
   if (error || !data || typeof data !== "object") return { ...EMPTY, days: boundedDays };
 
   const snapshot = data as Record<string, unknown>;
@@ -133,5 +140,6 @@ export async function getMarketingFunnelSnapshot(days = 30): Promise<MarketingFu
     repeatPulseUsers: Number(snapshot.repeat_pulse_users ?? 0),
     paidUsers: Number(snapshot.paid_users ?? 0),
     sources,
+    experienceVersion: String(snapshot.experience_version ?? MARKETING_EXPERIENCE_VERSION),
   };
 }

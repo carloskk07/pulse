@@ -107,7 +107,7 @@ export default async function BusinessPage({ searchParams }: Props) {
         </form>
       </section>
 
-      <section className="final-cta shell business-final-cta"><div><span className="section-kicker">Prefer the user side?</span><h2>See the user-side reward flow.</h2><p>The same marketplace that protects advertiser budget is designed to make reward authority visible to the user.</p></div><Link className="button button-lg button-dark" href="/dashboard">Open Pulse <ArrowUpRight /></Link></section>
+      <section className="final-cta shell business-final-cta"><div><span className="section-kicker">Prefer the user side?</span><h2>Inspect the same proof users see.</h2><p>The marketplace that protects advertiser budget also exposes aggregate reward and payout evidence publicly.</p></div><Link className="button button-lg button-dark" href="/proof">See live proof <ArrowUpRight /></Link></section>
 
       <footer className="footer shell"><div><strong>Pulsercuit</strong><span>© 2026. Pay for verified actions.</span></div><div><Link href="/">For users</Link><Link href="#model">Model</Link><Link href="#pilot">Pilot</Link></div></footer>
     </main>

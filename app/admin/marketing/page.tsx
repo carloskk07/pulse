@@ -34,7 +34,7 @@ export default async function MarketingAdminPage() {
     <AppShell active="advanced">
       <div className="admin-head">
         <div>
-          <span className="app-eyebrow">Private growth evidence</span>
+          <span className="app-eyebrow">Private growth evidence · {funnel.experienceVersion}</span>
           <h1>Acquisition → activation.</h1>
           <p>Measure the new conversion system with first-party, privacy-minimized events and authoritative product outcomes.</p>
         </div>
@@ -104,7 +104,7 @@ export default async function MarketingAdminPage() {
         <span className="app-eyebrow">Measurement contract</span>
         <h2>No fingerprinting. No duplicated financial truth.</h2>
         <strong>{funnel.trackingStartedAt ? "LIVE" : "BASELINE"}</strong>
-        <p>The browser receives a random 30-day first-party cookie. Only its SHA-256 hash and sanitized UTM values are stored. IP address, user-agent, email, balance and payout destination are not written to the marketing event table.</p>
+        <p>The browser receives a random 30-day first-party cookie. Only its SHA-256 hash, sanitized UTM values and experience label <strong>{funnel.experienceVersion}</strong> are stored. IP address, user-agent, email, balance and payout destination are not written to the marketing event table.</p>
       </section>
     </AppShell>
   );

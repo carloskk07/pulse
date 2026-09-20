@@ -1,4 +1,4 @@
-/* Pulsercuit Conversion System v10
+/* Pulsercuit Conversion System v11
    Scoped conversion/editorial additions. No financial state, product authority,
    or canonical responsive geometry is defined here. */
 
@@ -66,4 +66,32 @@
   .pc-v10-rank-preview{grid-template-columns:repeat(5,minmax(74px,1fr));overflow-x:auto;padding-bottom:5px}
   .pc-v10-turbo-criteria,.pc-v10-integration-summary{grid-template-columns:1fr}
   .pc-v10-turbo-criteria{margin-top:-8px}
+}
+
+
+/* Superior V11 — clarity, trust, and value hierarchy */
+.pc-v11-hero-thesis{align-self:end;justify-self:end;width:min(390px,100%);display:grid;gap:0;border:1px solid rgba(242,207,114,.14);border-radius:22px;overflow:hidden;background:linear-gradient(155deg,rgba(18,22,18,.82),rgba(8,11,9,.58));backdrop-filter:blur(16px);box-shadow:0 24px 80px rgba(0,0,0,.22)}
+.pc-v11-hero-thesis>small{padding:14px 17px 11px;color:#f2cf72;font-size:8px;font-weight:850;letter-spacing:.18em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.06)}
+.pc-v11-hero-thesis>span{display:grid;grid-template-columns:31px 1fr;gap:3px 10px;padding:14px 17px;border-bottom:1px solid rgba(255,255,255,.055)}
+.pc-v11-hero-thesis>span:last-child{border-bottom:0}
+.pc-v11-hero-thesis b{grid-row:1/3;color:#d9ff5d;font-size:8px;letter-spacing:.08em}
+.pc-v11-hero-thesis strong{font-size:12px;letter-spacing:-.015em;color:#f2f4ed}
+.pc-v11-hero-thesis em{font-style:normal;color:rgba(221,225,215,.56);font-size:9px;line-height:1.45}
+.pc-v11-trust-rail{position:relative;z-index:2;background:#090c0a;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06)}
+.pc-v11-trust-rail>.pc-v6-shell{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding-top:0;padding-bottom:0}
+.pc-v11-trust-rail>div>div{display:grid;gap:6px;padding:22px 26px;border-right:1px solid rgba(255,255,255,.06)}
+.pc-v11-trust-rail>div>div:last-child{border-right:0}
+.pc-v11-trust-rail small{color:#7f8a80;font-size:8px;font-weight:850;letter-spacing:.14em}
+.pc-v11-trust-rail strong{font-size:13px;color:#f0f3ec;letter-spacing:-.02em}
+.pc-v11-trust-rail span{font-size:9px;color:#747e75}
+.pc-v6-hero-copy .pc-v6-button.primary,.pc-v6-header-actions .pc-v6-button.primary,.pc-v6-final-copy .pc-v6-button.primary{font-weight:850;letter-spacing:-.01em}
+.pc-v6-chamber-quote{font-style:normal!important}
+@media(max-width:980px){
+  .pc-v11-hero-thesis{justify-self:start;width:100%;margin-top:18px}
+}
+@media(max-width:760px){
+  .pc-v11-trust-rail>.pc-v6-shell{grid-template-columns:1fr}
+  .pc-v11-trust-rail>div>div{padding:16px 2px;border-right:0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .pc-v11-trust-rail>div>div:last-child{border-bottom:0}
+  .pc-v11-hero-thesis>span{padding:12px 14px}
 }

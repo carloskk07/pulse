@@ -55,8 +55,8 @@ export default async function AuthPage({ searchParams }: Props) {
       <section className="auth-shell shell pc-v5-auth-shell">
         <div className="auth-copy pc-v5-auth-copy pc-luxe-auth-copy">
           <span className="section-kicker">One account</span>
-          <h1>{signingUp ? <>Start your <em>circuit.</em></> : <>Welcome <em>back.</em></>}</h1>
-          <p>One account for Pulse, progress and Vault — across every device you use.</p>
+          <h1>{signingUp ? <>Start free. <em>Begin with one Pulse.</em></> : <>Welcome <em>back.</em></>}</h1>
+          <p>{signingUp ? "One account for funded Pulse rewards, verified balance and your payout path." : "Your Pulse history, progress and Vault stay together across every device you use."}</p>
           <div className="auth-trust pc-v5-auth-trust">
             <span>Free to join</span>
             <span>No payment required</span>
@@ -102,8 +102,8 @@ export default async function AuthPage({ searchParams }: Props) {
           )}
 
           <div className="pc-v10-auth-reassurance">
-            <strong>{signingUp ? "Start free. No deposit or purchase required." : "Your balance and history stay tied to this account."}</strong>
-            <span>Security checks run before sensitive account actions.</span>
+            <strong>{signingUp ? "No deposit. No purchase. No invented starting balance." : "Your balance and history stay tied to this account."}</strong>
+            <span>{signingUp ? "Create the account first. Real progress appears only after verified activity." : "Security checks run before sensitive account actions."}</span>
           </div>
           <small>By continuing you agree to the <Link href="/terms">Terms</Link>, <Link href="/privacy">Privacy</Link> and <Link href="/rewards-policy">Rewards policy</Link>.</small>
         </div>
