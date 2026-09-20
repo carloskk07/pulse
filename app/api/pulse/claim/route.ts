@@ -72,11 +72,9 @@ export async function POST(request: NextRequest) {
   const admin = createSupabaseAdminClient();
   if (!admin) return dashboardRedirect(request, "service-not-configured");
 
-  const backing = await ensureFreshTreasuryBacking("launch", admin);
-  if (backing === "backing_refreshing") return dashboardRedirect(request, "backing-refreshing");
-  if (backing === "backing_insufficient") return dashboardRedirect(request, "budget-paused");
-  if (backing !== "backing_ready") return dashboardRedirect(request, "budget-paused");
-
+  // Let the claim decide eligibility first. The pulse_claims backing trigger
+  // remains the final fail-closed authority. Only an otherwise eligible claim
+  // can therefore pay the cost of a stale-backing refresh.
   let { data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id });
 
   // Profiles are normally created by the auth.users trigger. Keep a bounded
@@ -87,6 +85,20 @@ export async function POST(request: NextRequest) {
       .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
     if (profileError) return dashboardRedirect(request, "failed");
 
+    ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id }));
+  }
+
+  if (
+    error
+    && String(error.message ?? "").includes("pulse_backing_guard:backing_refresh_required")
+  ) {
+    const backing = await ensureFreshTreasuryBacking("launch", admin);
+    if (backing === "backing_refreshing") return dashboardRedirect(request, "backing-refreshing");
+    if (backing === "backing_insufficient") return dashboardRedirect(request, "budget-paused");
+    if (backing !== "backing_ready") return dashboardRedirect(request, "budget-paused");
+
+    // One bounded retry after authoritative backing refresh. The DB trigger
+    // still revalidates backing during the retried insert.
     ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: user.id }));
   }
 
