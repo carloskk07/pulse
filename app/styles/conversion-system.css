@@ -20,3 +20,50 @@
   .pc-v10-live-proof-label{gap:7px!important;align-items:flex-start;flex-direction:column}
   .pc-v10-proof-actions{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Product clarity and retention */
+.pc-v10-rank-preview{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:20px}
+.pc-v10-rank-preview span{display:grid;gap:6px;justify-items:start;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.025)}
+.pc-v10-rank-preview i{width:21px;height:21px;border-radius:50%;display:grid;place-items:center;background:rgba(184,255,61,.1);color:#b8ff3d;font-style:normal;font-size:8px;font-weight:850}
+.pc-v10-rank-preview strong{font-size:9px;letter-spacing:.03em}
+.pc-v10-vault-meter{display:grid;gap:7px;margin-top:13px;max-width:310px}
+.pc-v10-vault-meter>div{height:6px;border-radius:99px;background:rgba(10,13,11,.13);overflow:hidden}
+.pc-v10-vault-meter i{display:block;height:100%;border-radius:inherit;background:#0a0d0b}
+.pc-v10-vault-meter small{font-size:9px!important;font-weight:800;text-transform:uppercase;letter-spacing:.075em;color:#40511f!important}
+.pc-v10-turbo-criteria{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:-16px 0 24px}
+.pc-v10-turbo-criteria span{display:grid;grid-template-columns:auto 1fr;column-gap:9px;row-gap:2px;padding:12px 14px;border:1px solid rgba(255,255,255,.07);border-radius:15px;background:rgba(255,255,255,.02)}
+.pc-v10-turbo-criteria small{grid-row:1/3;color:#b8ff3d;font-size:8px;font-weight:850;letter-spacing:.1em}
+.pc-v10-turbo-criteria strong{font-size:10px}
+.pc-v10-turbo-criteria b{font-size:9px;font-weight:500;color:#727b89}
+.pc-v10-referral-status{display:grid;gap:5px;max-width:780px;margin:-2px 0 14px;padding:14px 16px;border:1px solid rgba(242,207,114,.18);border-radius:16px;background:rgba(242,207,114,.045)}
+.pc-v10-referral-status strong{font-size:11px;color:#e8dcba}
+.pc-v10-referral-status span{font-size:10px;line-height:1.55;color:#858d99}
+.pc-v10-account-grid .completion-card{position:relative;overflow:hidden}
+.pc-v10-account-grid .completion-card:before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(184,255,61,.35),transparent)}
+
+/* Editorial light system for Help and policy surfaces */
+.pc-v10-editorial{background:radial-gradient(circle at 12% 0%,rgba(206,231,178,.32),transparent 25%),linear-gradient(180deg,#f7f8f3,#f2f4ef 52%,#eef1eb)}
+.pc-v10-editorial .completion-header{border-bottom:1px solid rgba(16,21,17,.08)}
+.pc-v10-editorial .completion-hero{position:relative}
+.pc-v10-editorial .completion-hero:before{content:"PULSECIRCUIT / TRUST";display:block;margin-bottom:18px;font-size:8px;font-weight:800;letter-spacing:.24em;color:#7c6b3d}
+.pc-v10-editorial .completion-card,.pc-v10-editorial .policy-body{box-shadow:0 24px 80px rgba(27,37,28,.055)}
+.pc-v10-editorial .policy-body{border-top:3px solid #202c22}
+.pc-v10-editorial .policy-body h2{color:#182219}
+.pc-v10-editorial .completion-footer{border-top-color:rgba(16,21,17,.1)}
+
+/* B2B bridge */
+.pc-v10-business-proof{display:inline-flex;align-items:center;gap:7px;margin-top:15px;color:#aebc9b;font-size:10px;font-weight:800;letter-spacing:.04em;text-decoration:none}
+.pc-v10-business-proof:hover{color:#d8ff62}
+.pc-v10-business-proof svg{width:13px;height:13px}
+.pc-v10-integration-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:-22px;margin-bottom:30px}
+.pc-v10-integration-summary article{display:grid;gap:7px;padding:20px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.018))}
+.pc-v10-integration-summary small{color:#b8ff3d;font-size:8px;font-weight:850;letter-spacing:.13em}
+.pc-v10-integration-summary strong{font-size:15px;letter-spacing:-.02em}
+.pc-v10-integration-summary span{color:#818a96;font-size:10px;line-height:1.55}
+
+@media(max-width:760px){
+  .pc-v10-rank-preview{grid-template-columns:repeat(5,minmax(74px,1fr));overflow-x:auto;padding-bottom:5px}
+  .pc-v10-turbo-criteria,.pc-v10-integration-summary{grid-template-columns:1fr}
+  .pc-v10-turbo-criteria{margin-top:-8px}
+}
