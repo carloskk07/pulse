@@ -15,11 +15,11 @@ const structuredData = {
 };
 
 const ranks = [
-  { id: "spark", name: "Spark", note: "Begin the journey" },
-  { id: "flow", name: "Flow", note: "Build consistency" },
-  { id: "rhythm", name: "Rhythm", note: "Find your stride" },
-  { id: "circuit", name: "Circuit", note: "Expand your impact" },
-  { id: "resonance", name: "Resonance", note: "Leave a legacy" },
+  { id: "spark", name: "Spark", note: "Start with one Pulse" },
+  { id: "flow", name: "Flow", note: "Build a return rhythm" },
+  { id: "rhythm", name: "Rhythm", note: "Grow verified history" },
+  { id: "circuit", name: "Circuit", note: "Keep the loop moving" },
+  { id: "resonance", name: "Resonance", note: "Reach the highest stage" },
 ] as const;
 
 export default function HomePage() {
@@ -38,7 +38,7 @@ export default function HomePage() {
             <h1>Return. <em>Rise.</em> Repeat.</h1>
             <p>Claim a funded Pulse. Build your balance. Withdraw when your Vault is ready.</p>
             <div className="pc-v6-actions">
-              <Link className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
+              <Link className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard">Create free account <ArrowUpRight /></Link>
               <Link className="pc-v6-button ghost" href="/proof">See live proof <span className="pc-v6-play">›</span></Link>
             </div>
             <div className="pc-v10-hero-micro" aria-label="Entry benefits">
@@ -46,10 +46,23 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="pc-v6-hero-mantra" aria-hidden="true"><span>More</span><span>than</span><span>rewards</span><span>a brighter</span><span>you</span></div>
+          <div className="pc-v11-hero-thesis" aria-label="Pulsercuit trust model">
+            <small>How value becomes real</small>
+            <span><b>01</b><strong>Funded before claim</strong><em>Reward windows depend on real Treasury authority.</em></span>
+            <span><b>02</b><strong>Verified into balance</strong><em>Only authoritative activity becomes visible value.</em></span>
+            <span><b>03</b><strong>Payout after eligibility</strong><em>Withdrawal stays gated until the protected path is ready.</em></span>
+          </div>
         </div>
 
         <V6HeroProof />
+      </section>
+
+      <section className="pc-v11-trust-rail" aria-label="Why Pulsercuit is different">
+        <div className="pc-v6-shell">
+          <div><small>01 / FUNDING</small><strong>Reward authority before excitement.</strong><span>No invented earning state.</span></div>
+          <div><small>02 / PROOF</small><strong>Production numbers stay visible.</strong><span>Zero remains a valid answer.</span></div>
+          <div><small>03 / FOCUS</small><strong>One next action at a time.</strong><span>Progress without offerwall clutter.</span></div>
+        </div>
       </section>
 
       <section className="pc-v6-section pc-v6-pillars" id="about">
@@ -93,7 +106,7 @@ export default function HomePage() {
 
                 <div className="pc-v6-pulse-core">
                   <div className="pc-v6-pulse-ring"><div className="pc-v6-wave">⌁</div><small>Pulse Chamber</small><strong>PREVIEW</strong></div>
-                  <Link href="/auth?mode=signup&next=/dashboard">Enter the Pulse</Link>
+                  <Link href="/auth?mode=signup&next=/dashboard">Create account</Link>
                 </div>
 
                 <div className="pc-v6-chamber-right">
@@ -102,7 +115,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            <blockquote className="pc-v6-chamber-quote">“Small consistent actions<br />create extraordinary freedom.”</blockquote>
+            <blockquote className="pc-v6-chamber-quote">“The interface only moves<br />when real activity does.”</blockquote>
           </div>
         </div>
       </section>
@@ -120,24 +133,6 @@ export default function HomePage() {
             {ranks.map((rank) => <article key={rank.id}><div className={`pc-v6-rank-art rank-${rank.id}`} /><strong>{rank.name}</strong><span>{rank.note}</span></article>)}
           </div>
           <div className="pc-v6-side-mantra"><span>Progress</span><span>turns</span><span>people</span><span>into</span><span>possibilities</span></div>
-        </div>
-      </section>
-
-      <section className="pc-v6-section pc-v6-share" id="community">
-        <div className="pc-v6-shell pc-v6-share-grid">
-          <div className="pc-v6-section-intro compact">
-            <span className="pc-v6-kicker">Share Studio</span>
-            <h2>Moments<br />Move People</h2>
-            <p>Share verified progress<br />without sharing balance.</p>
-            <Link className="pc-v6-outline-link" href="/progress#circuit-moments">Create your card <ArrowUpRight /></Link>
-          </div>
-          <div className="pc-v6-share-cards">
-            <article className="pc-v6-social-card violet"><small>Pulsercuit</small><strong>RHYTHM</strong><span>Show the streak.<br />Keep the story moving.</span></article>
-            <article className="pc-v6-social-card gold"><small>Pulsercuit</small><strong>RANK</strong><span>Spark to Resonance.<br />Earn every stage.</span></article>
-            <article className="pc-v6-social-card lime"><small>Pulsercuit</small><strong>PROOF</strong><span>Real state.<br />No invented activity.</span></article>
-            <article className="pc-v6-social-card eclipse"><small>Pulsercuit</small><strong>Still showing up.</strong><span>Return. Rise. Repeat.</span></article>
-          </div>
-          <div className="pc-v6-share-side"><span className="pc-v6-spaced">Be a signal<br />not noise</span><div className="pc-v6-social-icons"><i>𝕏</i><i>◎</i><i>◉</i><i>◫</i><i>↗</i></div><Link className="pc-v6-outline-link" href="/invite">Share progress <ArrowUpRight /></Link></div>
         </div>
       </section>
 
@@ -159,11 +154,29 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="pc-v6-section pc-v6-share" id="community">
+        <div className="pc-v6-shell pc-v6-share-grid">
+          <div className="pc-v6-section-intro compact">
+            <span className="pc-v6-kicker">Share Studio</span>
+            <h2>Moments<br />Move People</h2>
+            <p>Share verified progress<br />without sharing balance.</p>
+            <Link className="pc-v6-outline-link" href="/progress#circuit-moments">Create your card <ArrowUpRight /></Link>
+          </div>
+          <div className="pc-v6-share-cards">
+            <article className="pc-v6-social-card violet"><small>Pulsercuit</small><strong>RHYTHM</strong><span>Show the streak.<br />Keep the story moving.</span></article>
+            <article className="pc-v6-social-card gold"><small>Pulsercuit</small><strong>RANK</strong><span>Spark to Resonance.<br />Build every stage.</span></article>
+            <article className="pc-v6-social-card lime"><small>Pulsercuit</small><strong>PROOF</strong><span>Real state.<br />No invented activity.</span></article>
+            <article className="pc-v6-social-card eclipse"><small>Pulsercuit</small><strong>Still showing up.</strong><span>Return. Rise. Repeat.</span></article>
+          </div>
+          <div className="pc-v6-share-side"><span className="pc-v6-spaced">Be a signal<br />not noise</span><div className="pc-v6-social-icons"><i>𝕏</i><i>◎</i><i>◉</i><i>◫</i><i>↗</i></div><Link className="pc-v6-outline-link" href="/invite">Share progress <ArrowUpRight /></Link></div>
+        </div>
+      </section>
+
       <section className="pc-v6-final">
         <div className="pc-v6-eclipse" aria-hidden="true" />
         <div className="pc-v6-shell pc-v6-final-grid">
-          <div className="pc-v6-final-mantra">Discipline<br />creates<br />freedom</div>
-          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>Start With<br />One Pulse.</h2><p>Free to join. Real progress starts after real activity.</p><Link className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard">Enter the circuit <ArrowUpRight /></Link></div>
+          <div className="pc-v6-final-mantra">Proof<br />before<br />hype</div>
+          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>Start With<br />One Pulse.</h2><p>Free to join. Real progress starts after real activity.</p><Link className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard">Create free account <ArrowUpRight /></Link></div>
           <V6FinalProof />
         </div>
       </section>
