@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { FunnelBeacon } from "@/components/funnel-beacon";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
 import { ArrowUpRight, Shield, Spark, Trend, Users } from "@/components/icons";
@@ -25,6 +26,7 @@ export default function HomePage() {
   return (
     <main className="pc-v6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <FunnelBeacon event="home_view" />
       <PulsercuitSensoryLayer />
       <SiteHeader overlay />
 
@@ -36,7 +38,7 @@ export default function HomePage() {
             <h1>Return. <em>Rise.</em> Repeat.</h1>
             <p>Claim a funded Pulse. Build your balance. Withdraw when your Vault is ready.</p>
             <div className="pc-v6-actions">
-              <Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
+              <Link className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard">Enter the circuit <ArrowUpRight /></Link>
               <Link className="pc-v6-button ghost" href="/proof">See live proof <span className="pc-v6-play">›</span></Link>
             </div>
             <div className="pc-v10-hero-micro" aria-label="Entry benefits">
@@ -60,7 +62,7 @@ export default function HomePage() {
             <i className="pc-v6-gold-line" />
           </div>
           <div className="pc-v6-pillar-grid">
-            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Claim one funded reward<br />when your window opens.</p><Link href="/auth?next=/dashboard">Claim your first Pulse <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Claim one funded reward<br />when your window opens.</p><Link href="/auth?mode=signup&next=/dashboard">Claim your first Pulse <ArrowUpRight /></Link></article>
             <article><div className="pc-v6-orb gold"><Trend /></div><h3>Vault</h3><p>Verified rewards build<br />one visible balance.</p><Link href="/wallet">See the Vault <ArrowUpRight /></Link></article>
             <article><div className="pc-v6-orb green"><Shield /></div><h3>Payout</h3><p>Reach the target, then use<br />the protected withdrawal path.</p><Link href="/proof">See payout proof <ArrowUpRight /></Link></article>
             <article><div className="pc-v6-orb amber"><Users /></div><h3>Share</h3><p>After real progress, invite<br />people without fake activity.</p><Link href="/invite">See sharing <ArrowUpRight /></Link></article>
@@ -91,7 +93,7 @@ export default function HomePage() {
 
                 <div className="pc-v6-pulse-core">
                   <div className="pc-v6-pulse-ring"><div className="pc-v6-wave">⌁</div><small>Pulse Chamber</small><strong>PREVIEW</strong></div>
-                  <Link href="/auth?next=/dashboard">Enter the Pulse</Link>
+                  <Link href="/auth?mode=signup&next=/dashboard">Enter the Pulse</Link>
                 </div>
 
                 <div className="pc-v6-chamber-right">
@@ -161,7 +163,7 @@ export default function HomePage() {
         <div className="pc-v6-eclipse" aria-hidden="true" />
         <div className="pc-v6-shell pc-v6-final-grid">
           <div className="pc-v6-final-mantra">Discipline<br />creates<br />freedom</div>
-          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>Start With<br />One Pulse.</h2><p>Free to join. Real progress starts after real activity.</p><Link className="pc-v6-button primary" href="/auth?next=/dashboard">Enter the circuit <ArrowUpRight /></Link></div>
+          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>Start With<br />One Pulse.</h2><p>Free to join. Real progress starts after real activity.</p><Link className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard">Enter the circuit <ArrowUpRight /></Link></div>
           <V6FinalProof />
         </div>
       </section>
