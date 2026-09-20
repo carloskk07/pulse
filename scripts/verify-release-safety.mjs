@@ -477,6 +477,40 @@ forbidText("supabase/migrations/0056_reward_streak_efficiency.sql", [
     throw new Error("v56 reward snapshot function must not restore the fixed 366-day scan.");
   }
 }
+requireText("supabase/migrations/0057_release_evidence_idempotency.sql", [
+  "create or replace function public.record_release_evidence(",
+  "security invoker",
+  "v_existing_fingerprint = p_fingerprint",
+  "coalesce(v_existing_verified_at, '') <> ''",
+  "unchanged release evidence must not write",
+  "grant execute on function public.record_release_evidence(text,text)",
+  "to service_role",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0057_release_evidence_idempotency.sql", [
+  "security definer",
+  "to anon",
+  "to authenticated",
+  "schema_version = 56",
+  "'version', 56"
+]);
+{
+  const source = read("supabase/migrations/0057_release_evidence_idempotency.sql");
+  const fnStart = source.indexOf("create or replace function public.record_release_evidence(");
+  const fnEnd = source.indexOf("revoke all on function public.record_release_evidence(text,text)", fnStart);
+  const fastPath = source.indexOf("v_existing_fingerprint = p_fingerprint", fnStart);
+  const writePath = source.indexOf("insert into public.app_config(key, value, version, reason)", fnStart);
+  if (
+    fnStart < 0
+    || fnEnd < fnStart
+    || fastPath < fnStart
+    || writePath < fnStart
+    || fastPath > writePath
+    || writePath > fnEnd
+  ) {
+    throw new Error("v57 release evidence must short-circuit unchanged proof before the singleton write path.");
+  }
+}
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 requireText("scripts/verify-controlled-readiness-gate.mjs", [
   "verifyControlledReadinessResponse",
