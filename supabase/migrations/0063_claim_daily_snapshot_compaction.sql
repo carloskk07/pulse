@@ -323,7 +323,7 @@ as $$
         )) > 0
     and regexp_count(
       (select src from fn),
-      'private\\.treasury_daily_usage_snapshot'
+      'private[.]treasury_daily_usage_snapshot'
     ) = 2
     and position('sum(reward_credits)' in (select src from fn)) = 0
     and position('sum(amount_credits)' in (select src from fn)) = 0
@@ -360,7 +360,7 @@ begin
 
   if regexp_count(
        v_claim_def,
-       'private\\.treasury_daily_usage_snapshot'
+       'private[.]treasury_daily_usage_snapshot'
      ) <> 2
      or position('sum(reward_credits)' in v_claim_def) > 0
      or position('sum(amount_credits)' in v_claim_def) > 0
