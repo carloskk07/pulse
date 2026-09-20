@@ -556,6 +556,51 @@ forbidText("supabase/migrations/0057_release_evidence_idempotency.sql", [
     throw new Error("v57 release evidence must short-circuit unchanged proof before the singleton write path.");
   }
 }
+requireText("supabase/migrations/0058_backing_refresh_singleflight.sql", [
+  "create or replace function public.claim_treasury_backing_refresh_lease(",
+  "security invoker",
+  "treasury_backing_refresh_lease:",
+  "leased_until_epoch",
+  "on conflict (key) do nothing",
+  "grant execute on function public.claim_treasury_backing_refresh_lease(text,uuid,integer)",
+  "to service_role",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0058_backing_refresh_singleflight.sql", [
+  "security definer",
+  "to anon",
+  "to authenticated",
+  "fund_reward_treasury",
+  "update public.reward_treasuries",
+  "insert into public.treasury_funding_events",
+  "schema_version = 56",
+  "'version', 56"
+]);
+requireText("lib/treasury-backing.ts", [
+  'import { randomUUID } from "node:crypto"',
+  "claimTreasuryBackingRefreshLease",
+  'admin.rpc("claim_treasury_backing_refresh_lease"',
+  "p_lease_seconds: 10",
+  "waitForConcurrentBackingRefresh",
+  "setTimeout(resolve, 250)",
+  'lease === "busy"',
+  'lease !== "acquired"',
+  "refreshTreasuryBackingObservation(treasuryCode, admin)"
+]);
+{
+  const source = read("lib/treasury-backing.ts");
+  const ensureStart = source.indexOf("export async function ensureFreshTreasuryBacking");
+  const leaseCheck = source.indexOf("claimTreasuryBackingRefreshLease(treasuryCode, admin)", ensureStart);
+  const refreshCall = source.indexOf("refreshTreasuryBackingObservation(treasuryCode, admin)", ensureStart);
+  if (
+    ensureStart < 0
+    || leaseCheck < ensureStart
+    || refreshCall < ensureStart
+    || leaseCheck > refreshCall
+  ) {
+    throw new Error("Stale Treasury backing must acquire the distributed refresh lease before any external refresh.");
+  }
+}
 requireText("scripts/verify-production-schema-gate.mjs", ["readExpectedSchema", "readBaseExpectedSchema", "verifySchemaResponse", "actualVersion !== expected.version", "actualMigration !== expected.migration", "Production schema gate self-test PASS"]);
 requireText("scripts/verify-controlled-readiness-gate.mjs", [
   "verifyControlledReadinessResponse",
