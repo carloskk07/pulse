@@ -8,7 +8,7 @@ import { formatUsdFromCredits } from "@/lib/reward-state";
 
 export const metadata = {
   title: "Pulsercuit Proof",
-  description: "Live, aggregate proof of Pulse claims, credited rewards, Turbo conversions and completed payouts.",
+  description: "Live aggregate activity across Pulse claims, credited rewards, optional extras and completed payouts.",
 };
 
 export const dynamic = "force-dynamic";
@@ -30,35 +30,35 @@ export default async function ProofPage() {
       <SiteHeader />
       <section className="proof-hero shell">
         <span className="section-kicker">Pulsercuit Proof</span>
-        <h1>Live numbers. No demo activity.</h1>
-        <p>Every number below comes from live production events. If nothing happened, PulseCircuit shows zero instead of manufacturing activity.</p>
+        <h1>Live activity. Clear outcomes.</h1>
+        <p>See recent Pulse activity, credited rewards and completed payouts in one place.</p>
         <div className={`proof-status ${proof.available ? "live" : "offline"}`}>
           <Shield />
-          <span>{proof.available ? "Production proof online" : "Production proof unavailable"}</span>
+          <span>{proof.available ? "Live proof available" : "Live proof unavailable"}</span>
           {proof.available && generatedAt ? <small>Updated {generatedAt}</small> : null}
         </div>
         <div className="pc-v10-proof-actions">
           <FunnelLink className="button" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_hero_signup">Create free account <ArrowUpRight /></FunnelLink>
-          <Link className="inline-action" href="/rewards-policy">How rewards become real</Link>
+          <Link className="inline-action" href="/rewards-policy">How rewards work</Link>
         </div>
       </section>
 
       <section className="proof-grid shell" aria-label="Pulsercuit proof metrics">
-        <article><small>Pulse claims · 24h</small><strong>{proof.available ? proof.claims24h.toLocaleString("en-US") : "—"}</strong><span>funded Pulses</span></article>
-        <article><small>People · 24h</small><strong>{proof.available ? proof.uniqueUsers24h.toLocaleString("en-US") : "—"}</strong><span>people with a valid Pulse</span></article>
-        <article><small>Rewards credited · 24h</small><strong>{proof.available ? formatUsdFromCredits(proof.credited24hCredits) : "—"}</strong><span>added to account balances</span></article>
-        <article><small>Rewards credited · all time</small><strong>{proof.available ? formatUsdFromCredits(proof.creditedAllTimeCredits) : "—"}</strong><span>recorded reward value</span></article>
-        <article><small>Verified extras · 24h</small><strong>{proof.available ? proof.confirmedTurbos24h.toLocaleString("en-US") : "—"}</strong><span>confirmed extra-reward events</span></article>
-        <article><small>Paid withdrawals</small><strong>{proof.available ? proof.paidWithdrawalsAllTime.toLocaleString("en-US") : "—"}</strong><span>{proof.available ? `${formatUsdFromCredits(proof.paidWithdrawalCreditsAllTime)} completed` : "authoritative payout evidence"}</span></article>
+        <article><small>Pulse claims · 24h</small><strong>{proof.available ? proof.claims24h.toLocaleString("en-US") : "—"}</strong><span>Pulses claimed</span></article>
+        <article><small>Active members · 24h</small><strong>{proof.available ? proof.uniqueUsers24h.toLocaleString("en-US") : "—"}</strong><span>members with a Pulse</span></article>
+        <article><small>Rewards credited · 24h</small><strong>{proof.available ? formatUsdFromCredits(proof.credited24hCredits) : "—"}</strong><span>added to Vaults</span></article>
+        <article><small>Rewards credited · all time</small><strong>{proof.available ? formatUsdFromCredits(proof.creditedAllTimeCredits) : "—"}</strong><span>credited reward value</span></article>
+        <article><small>Extra rewards · 24h</small><strong>{proof.available ? proof.confirmedTurbos24h.toLocaleString("en-US") : "—"}</strong><span>verified completions</span></article>
+        <article><small>Paid withdrawals</small><strong>{proof.available ? proof.paidWithdrawalsAllTime.toLocaleString("en-US") : "—"}</strong><span>{proof.available ? `${formatUsdFromCredits(proof.paidWithdrawalCreditsAllTime)} completed` : "payout records unavailable"}</span></article>
       </section>
 
-      <details className="proof-principles shell" open><summary><strong>How PulseCircuit proof works</strong></summary>
-        <article><Spark /><div><h2>Credited is not paid.</h2><p>Pulsercuit distinguishes rewards added to the internal ledger from withdrawals completed by the payout provider.</p></div></article>
-        <article><Check /><div><h2>Zero is a valid number.</h2><p>If no Turbo conversion or paid withdrawal exists yet, the page shows zero instead of manufacturing social proof.</p></div></article>
-        <article><Shield /><div><h2>Financial state stays server-authoritative.</h2><p>Claims, conversions and withdrawals are counted from trusted database events, never from browser counters.</p></div></article>
+      <details className="proof-principles shell" open><summary><strong>How these numbers work</strong></summary>
+        <article><Spark /><div><h2>Credited and paid are different.</h2><p>Rewards can appear in a Vault before a payout is completed. This page keeps those stages separate.</p></div></article>
+        <article><Check /><div><h2>Zero stays zero.</h2><p>If no completed event exists, this page shows zero.</p></div></article>
+        <article><Shield /><div><h2>Recorded activity only.</h2><p>Counts come from recorded claim, reward and payout events.</p></div></article>
       </details>
 
-      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one funded Pulse. Everything else can wait.</h2></div><FunnelLink className="button" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
+      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one Pulse. Build from there.</h2></div><FunnelLink className="button" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
     </main>
   );
 }
