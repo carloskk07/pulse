@@ -16,9 +16,9 @@ export default function OpenGraphImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", maxWidth: 850 }}>
           <div style={{ display: "flex", flexWrap: "wrap", fontSize: 88, lineHeight: .9, letterSpacing: "-5px", fontWeight: 600 }}><span>Return.&nbsp;</span><span style={{ color: "#f1d27d" }}>Rise.</span><span>&nbsp;Repeat.</span></div>
-          <div style={{ display: "flex", fontFamily: "sans-serif", fontSize: 22, color: "#b7b4aa", marginTop: 28 }}><span>Pulse. Momentum. Vault. Share.</span></div>
+          <div style={{ display: "flex", fontFamily: "sans-serif", fontSize: 22, color: "#b7b4aa", marginTop: 28 }}><span>Pulse. Vault. Payout.</span></div>
         </div>
-        <div style={{ display: "flex", gap: 25, color: "#9a9b91", fontFamily: "sans-serif", fontSize: 16 }}><span>Funded Pulses</span><span>•</span><span>Visible progress</span><span>•</span><span>Verified proof</span></div>
+        <div style={{ display: "flex", gap: 25, color: "#9a9b91", fontFamily: "sans-serif", fontSize: 16 }}><span>Claim</span><span>•</span><span>Build</span><span>•</span><span>Withdraw</span></div>
       </div>
     </div>,
     size,
