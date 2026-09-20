@@ -1392,8 +1392,9 @@ requireText("lib/current-user-context.ts", ['import { cache } from "react"', "Cu
 requireText("lib/retention-summary.ts", ["getCurrentUserContext", '.from("pulse_claims")', '.gte("created_at", fourteenDaysAgo)']);
 forbidText("lib/retention-summary.ts", ["supabase.auth.getUser", "createSupabaseServerClient"]);
 forbidText("lib/current-user-context.ts", ["supabase.auth.getUser"]);
-requireText("proxy.ts", ["supabase.auth.getClaims", "hasValidIdentity", "claims?.sub", "isProtected && !hasValidIdentity"]);
+requireText("proxy.ts", ["supabase.auth.getClaims", "hasValidIdentity", "claims?.sub", "isProtected && !hasValidIdentity", "api/health", "api/public"]);
 forbidText("proxy.ts", ["supabase.auth.getUser"]);
+requireText("app/api/health/route.ts", ['export const dynamic = "force-static"', "service: \"pulsercuit\"", "ok: true"]);
 requireText("lib/experience-presentation.ts", ["getUserNextAction", "getWalletPresentation", "getOperatorNextAction", "payoutPilotAllowed", '"Withdrawals are limited during the payout pilot."', '"Withdrawals are temporarily unavailable."', '"Complete FaucetPay connection."']);
 requireText("app/dashboard/page.tsx", ["getUserNextAction", "nextAction", "Waiting for next Pulse", "getCurrentUserContext"]);
 requireText("app/admin/page.tsx", ["getOperatorNextAction", "One blocker at a time.", "Growth systems", "getProductLaunchReadiness"]);
