@@ -4,7 +4,7 @@ import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
-import { ArrowUpRight, Shield, Spark, Trend, Users } from "@/components/icons";
+import { ArrowUpRight, Shield, Spark, Trend } from "@/components/icons";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -18,7 +18,7 @@ const structuredData = {
 const ranks = [
   { id: "spark", name: "Spark", note: "Start with one Pulse" },
   { id: "flow", name: "Flow", note: "Build a return rhythm" },
-  { id: "rhythm", name: "Rhythm", note: "Grow verified history" },
+  { id: "rhythm", name: "Rhythm", note: "Build your history" },
   { id: "circuit", name: "Circuit", note: "Keep the loop moving" },
   { id: "resonance", name: "Resonance", note: "Reach the highest stage" },
 ] as const;
@@ -37,13 +37,13 @@ export default function HomePage() {
           <div className="pc-v6-hero-copy">
             <span className="pc-v6-kicker">A simpler reward loop</span>
             <h1>Return. <em>Rise.</em> Repeat.</h1>
-            <p>Claim a Pulse. Grow your Vault. Withdraw when you&apos;re ready.</p>
+            <p>Claim a Pulse. Grow your Vault. Build toward payout.</p>
             <div className="pc-v6-actions">
               <FunnelLink className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard" eventLabel="home_hero_signup">Create free account <ArrowUpRight /></FunnelLink>
               <FunnelLink className="pc-v6-button ghost" href="/proof" eventLabel="home_hero_proof">See live proof <span className="pc-v6-play">›</span></FunnelLink>
             </div>
             <div className="pc-v10-hero-micro" aria-label="Entry benefits">
-              <span>Free to join</span><span>No purchase required</span><span>Protected payouts</span>
+              <span>Free to join</span><span>No purchase required</span><span>Payout safeguards</span>
             </div>
           </div>
 
@@ -51,7 +51,7 @@ export default function HomePage() {
             <small>Pulse → Vault → Payout</small>
             <span><b>01</b><strong>Claim your Pulse</strong></span>
             <span><b>02</b><strong>Grow your Vault</strong></span>
-            <span><b>03</b><strong>Withdraw when ready</strong></span>
+            <span><b>03</b><strong>Reach payout</strong></span>
           </div>
         </div>
 
@@ -67,11 +67,10 @@ export default function HomePage() {
             <p className="pc-v6-spaced">Pulse. Vault.<br />Payout.</p>
             <i className="pc-v6-gold-line" />
           </div>
-          <div className="pc-v6-pillar-grid">
+          <div className="pc-v6-pillar-grid pc-v12-pillar-grid">
             <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Claim when your next<br />Pulse opens.</p><FunnelLink href="/auth?mode=signup&next=/dashboard" eventLabel="home_pillar_signup">Claim your first Pulse <ArrowUpRight /></FunnelLink></article>
             <article><div className="pc-v6-orb gold"><Trend /></div><h3>Vault</h3><p>Keep your balance<br />easy to follow.</p><Link href="/wallet">See the Vault <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb green"><Shield /></div><h3>Payout</h3><p>Reach the target and<br />request your payout.</p><FunnelLink href="/proof" eventLabel="home_pillar_proof">See payout proof <ArrowUpRight /></FunnelLink></article>
-            <article><div className="pc-v6-orb amber"><Users /></div><h3>Share</h3><p>Share milestones without<br />sharing your balance.</p><Link href="/invite">See sharing <ArrowUpRight /></Link></article>
+            <article><div className="pc-v6-orb green"><Shield /></div><h3>Payout</h3><p>Build toward your<br />payout target.</p><FunnelLink href="/proof" eventLabel="home_pillar_proof">See payout proof <ArrowUpRight /></FunnelLink></article>
           </div>
         </div>
       </section>
@@ -108,14 +107,13 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            <blockquote className="pc-v6-chamber-quote">“Everything important<br />stays in view.”</blockquote>
           </div>
         </div>
       </section>
 
       <section className="pc-v6-section pc-v6-momentum-section">
         <div className="pc-v6-road-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-road" /></div>
-        <div className="pc-v6-shell pc-v6-momentum-grid">
+        <div className="pc-v6-shell pc-v6-momentum-grid pc-v12-momentum-grid">
           <div className="pc-v6-section-intro compact">
             <span className="pc-v6-kicker">Momentum</span>
             <h2>Progress<br />you can feel.</h2>
@@ -125,7 +123,6 @@ export default function HomePage() {
           <div className="pc-v6-ranks">
             {ranks.map((rank) => <article key={rank.id}><div className={`pc-v6-rank-art rank-${rank.id}`} /><strong>{rank.name}</strong><span>{rank.note}</span></article>)}
           </div>
-          <div className="pc-v6-side-mantra"><span>Keep</span><span>moving</span><span>forward</span></div>
         </div>
       </section>
 
@@ -142,26 +139,8 @@ export default function HomePage() {
           <div className="pc-v6-vault-benefits">
             <div><span>◇</span><p><strong>Clear balance</strong><small>Everything in one place.</small></p></div>
             <div><span className="lime">✓</span><p><strong>Payout in view</strong><small>See how close you are.</small></p></div>
-            <div><span>≋</span><p><strong>One simple request</strong><small>Withdraw when you&apos;re ready.</small></p></div>
+            <div><span>≋</span><p><strong>One simple request</strong><small>Request payout when available.</small></p></div>
           </div>
-        </div>
-      </section>
-
-      <section className="pc-v6-section pc-v6-share" id="community">
-        <div className="pc-v6-shell pc-v6-share-grid">
-          <div className="pc-v6-section-intro compact">
-            <span className="pc-v6-kicker">Share Studio</span>
-            <h2>Share the<br />moment.</h2>
-            <p>Celebrate progress<br />without sharing your balance.</p>
-            <Link className="pc-v6-outline-link" href="/progress#circuit-moments">Create your card <ArrowUpRight /></Link>
-          </div>
-          <div className="pc-v6-share-cards">
-            <article className="pc-v6-social-card violet"><small>Pulsercuit</small><strong>RHYTHM</strong><span>Show the streak.<br />Keep the story moving.</span></article>
-            <article className="pc-v6-social-card gold"><small>Pulsercuit</small><strong>RANK</strong><span>Spark to Resonance.<br />Build every stage.</span></article>
-            <article className="pc-v6-social-card lime"><small>Pulsercuit</small><strong>MILESTONE</strong><span>A moment worth<br />sharing.</span></article>
-            <article className="pc-v6-social-card eclipse"><small>Pulsercuit</small><strong>Still showing up.</strong><span>Return. Rise. Repeat.</span></article>
-          </div>
-          <div className="pc-v6-share-side"><span className="pc-v6-spaced">Your progress.<br />Your story.</span><Link className="pc-v6-outline-link" href="/invite">Share progress <ArrowUpRight /></Link></div>
         </div>
       </section>
 

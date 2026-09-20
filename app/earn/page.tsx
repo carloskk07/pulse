@@ -51,8 +51,8 @@ export default async function EarnPage({ searchParams }: Props) {
       <div className="app-page-head pc-luxe-turbo-head">
         <div>
           <span className="app-eyebrow">Turbo · optional</span>
-          <h1>Extra rewards, ranked before you waste time.</h1>
-          <p>Pulse remains the core loop. Turbo compares reward, time and verification evidence before putting an extra option in front of you.</p>
+          <h1>Extra rewards, ranked around your time.</h1>
+          <p>Pulse stays at the center. Turbo compares reward, time and completion confidence to surface the best extra option.</p>
         </div>
         <div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
@@ -60,7 +60,7 @@ export default async function EarnPage({ searchParams }: Props) {
       <div className="pc-v10-turbo-criteria" aria-label="Turbo ranking criteria">
         <span><small>01</small><strong>Reward</strong><b>What it is worth</b></span>
         <span><small>02</small><strong>Time</strong><b>How long it should take</b></span>
-        <span><small>03</small><strong>Evidence</strong><b>How completion is verified</b></span>
+        <span><small>03</small><strong>Completion</strong><b>How clearly it can be confirmed</b></span>
       </div>
 
       {params.direct ? <div className="claim-message neutral">{directCopy[params.direct] ?? "Turbo state changed before start."}</div> : null}
@@ -79,7 +79,7 @@ export default async function EarnPage({ searchParams }: Props) {
             <p>{best?.pulseProtected
               ? "This reward reserves funded capacity before you leave PulseCircuit."
               : best
-                ? "Ranked automatically from live value, time and verification evidence."
+                ? "Ranked from reward, time and completion confidence."
                 : primaryChannel
                   ? "Use it only if you want an extra earning path."
                   : "Return to Pulse. The base experience remains independent."}</p>
@@ -109,7 +109,7 @@ export default async function EarnPage({ searchParams }: Props) {
           <div>
             <span className="app-eyebrow">Core rule</span>
             <h3>Turbo never blocks Pulse.</h3>
-            <p>External supply can disappear without changing your base reward history or Vault.</p>
+            <p>Extra reward availability can change without affecting your Pulse history or Vault.</p>
           </div>
           <span className="status-pill"><Shield /> Optional by design</span>
         </aside>
@@ -117,7 +117,7 @@ export default async function EarnPage({ searchParams }: Props) {
 
       {moreOptions.length ? (
         <details className="admin-panel intelligence-section pc-luxe-ranked-turbo">
-          <summary><strong>More Turbo options</strong> · sorted automatically</summary>
+          <summary><strong>More Turbo options</strong></summary>
           <div className="reward-list">
             {moreOptions.map((item, index) => (
               <article className={"reward-row intelligence-row " + (item.pulseProtected ? "direct-opportunity-row" : "")} key={item.id}>

@@ -20,9 +20,9 @@ const withdrawalCopy: Record<string, string> = {
   "verification-failed": "Verification failed. Try again.",
   "verification-not-configured": "Withdrawal verification is temporarily unavailable.",
   "payout-not-configured": "Withdrawals are temporarily unavailable. Your balance is safe.",
-  "pilot-restricted": "Withdrawals are limited to the controlled launch account while the payout path is being proven.",
+  "pilot-restricted": "Withdrawals are opening gradually. Your balance remains available.",
   "service-not-configured": "The payout service is temporarily unavailable.",
-  "reserve-failed": "The payment could not continue safely. No duplicate payout was created.",
+  "reserve-failed": "The payout could not continue. Your balance remains protected.",
   failed: "The payout failed and the reserved credits were restored.",
 };
 
@@ -167,7 +167,7 @@ export default async function WalletPage({ searchParams }: Props) {
               </label>
               <TurnstileField action="withdrawal-retry" />
               <button className="button button-light button-lg" type="submit">{presentation.buttonLabel}</button>
-              <small>This continues the same protected payment request. It cannot create a second payout.</small>
+              <small>This continues the same payout request.</small>
             </form>
           ) : (
             <div className="claim-message neutral">
@@ -182,7 +182,7 @@ export default async function WalletPage({ searchParams }: Props) {
             </label>
             <TurnstileField action="withdrawal" />
             <button className="button button-light button-lg" type="submit">{payout.display ? `Withdraw ${payout.display}` : presentation.buttonLabel}</button>
-            <small>PulseCircuit checks the destination and protected payment path before reserving your value.</small>
+            <small>We verify the destination before the payout is reserved.</small>
           </form>
         ) : (
           <button className="button button-light button-lg" type="button" disabled>{presentation.buttonLabel}</button>
@@ -204,7 +204,7 @@ export default async function WalletPage({ searchParams }: Props) {
               </div>
             );
           }) : (
-            <div className="empty-ledger">{state.preview ? "Live activity appears after connection." : "Your first verified reward starts the history here."}</div>
+            <div className="empty-ledger">{state.preview ? "Live activity appears after connection." : "Your first reward starts the history here."}</div>
           )}
         </section>
 
@@ -212,7 +212,7 @@ export default async function WalletPage({ searchParams }: Props) {
           <Shield />
           <span className="app-eyebrow">How payouts work</span>
           <h3>Available → Reserved → Paid.</h3>
-          <p>Once a payout starts, that value stays protected until the same payment is completed or safely restored.</p>
+          <p>Once a payout starts, that amount stays reserved until the request completes or returns to your Vault.</p>
           <div className="state-list">
             <span className="done">Available</span>
             <span className={activeWithdrawal ? "active" : ""}>Reserved</span>

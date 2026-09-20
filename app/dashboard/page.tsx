@@ -159,8 +159,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           <div className="app-section-head">
             <div>
               <span className="app-eyebrow">Your progress</span>
-              <h2>Three things worth knowing.</h2>
-              <p className="pc-v9-section-sub">Progress, payout distance and optional extras stay visible without competing with your next action.</p>
+              <h2>Your circuit at a glance.</h2>
+              <p className="pc-v9-section-sub">Momentum, Vault and Invite stay visible without crowding your next Pulse.</p>
             </div>
           </div>
 
@@ -189,7 +189,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <span className="app-eyebrow">Invite</span>
               <div className="pc-v9-unlock-mark"><Users /></div>
               <h3>Invite people into the loop.</h3>
-              <p>Referral progress begins after qualifying activity.</p>
+              <p>Referral progress starts after the first eligible activity.</p>
               <Link href="/invite">Open Invite <ArrowUpRight /></Link>
             </article>
           </div>

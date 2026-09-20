@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s · Pulsercuit",
   },
   description:
-    "Claim a Pulse, grow your Vault and withdraw when you're ready.",
+    "Claim a Pulse, grow your Vault and build toward payout.",
   applicationName: "Pulsercuit",
   manifest: "/manifest.webmanifest",
   keywords: ["reward platform", "gamified rewards", "recurring rewards", "reward streaks", "transparent payouts", "Pulsercuit", "Pulse rewards"],

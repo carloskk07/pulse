@@ -113,3 +113,8 @@
   .pc-v11-hero-thesis>span{padding:13px 14px}
   .pc-v6-hero-stats{margin-top:8px}
 }
+
+
+/* V11.2 Journey Consistency — keep the public story on Pulse, Vault and payout. */
+.pc-v12-pillar-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.pc-v12-momentum-grid{grid-template-columns:190px minmax(0,1fr)}
