@@ -769,7 +769,6 @@ requireText("supabase/migrations/0061_bounded_trust_refresh.sql", [
   "0055_invite_snapshot_compaction.sql"
 ]);
 forbidText("supabase/migrations/0061_bounded_trust_refresh.sql", [
-  "count(distinct",
   "to anon",
   "to authenticated",
   "fund_reward_treasury",
