@@ -95,3 +95,21 @@
   .pc-v11-trust-rail>div>div:last-child{border-bottom:0}
   .pc-v11-hero-thesis>span{padding:12px 14px}
 }
+
+
+/* V11.1 Editorial Quiet — fewer words, stronger hierarchy */
+.pc-v11-hero-thesis{width:min(340px,100%);background:linear-gradient(155deg,rgba(15,18,15,.78),rgba(7,9,8,.58));box-shadow:0 30px 90px rgba(0,0,0,.28)}
+.pc-v11-hero-thesis>small{padding:15px 18px 12px;color:rgba(242,207,114,.82);font-size:8px;letter-spacing:.2em}
+.pc-v11-hero-thesis>span{grid-template-columns:30px 1fr;align-items:center;gap:10px;padding:16px 18px}
+.pc-v11-hero-thesis b{grid-row:auto;color:rgba(217,255,93,.82)}
+.pc-v11-hero-thesis strong{font-size:13px;font-weight:720;letter-spacing:-.02em}
+.pc-v6-hero-stats{margin-top:12px}
+.pc-v6-hero-stats>div{padding-block:3px}
+.pc-v6-side-mantra{opacity:.62}
+.pc-v6-vault-art>span,.pc-v6-social-icons{display:none!important}
+@media(max-width:760px){
+  .pc-v11-hero-thesis{margin-top:15px}
+  .pc-v11-hero-thesis>small{padding:13px 14px 10px}
+  .pc-v11-hero-thesis>span{padding:13px 14px}
+  .pc-v6-hero-stats{margin-top:8px}
+}
