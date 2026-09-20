@@ -1,7 +1,8 @@
 name: Production Load Baseline
 
 on:
-  pull_request:
+  push:
+    branches: [main]
     paths:
       - "scripts/production-load-baseline.mjs"
       - ".github/workflows/production-load-baseline.yml"
