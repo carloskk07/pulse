@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  cleanMarketingEventLabel,
   cleanMarketingSessionId,
   createMarketingSessionId,
   isPublicMarketingEvent,
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 type EventBody = {
   event?: unknown;
+  eventLabel?: unknown;
   utmSource?: unknown;
   utmMedium?: unknown;
   utmCampaign?: unknown;
@@ -50,6 +52,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_event" }, { status: 400 });
   }
 
+  const eventLabel = body.event === "cta_click" ? cleanMarketingEventLabel(textValue(body.eventLabel)) : null;
+  if (body.event === "cta_click" && !eventLabel) {
+    return NextResponse.json({ error: "invalid_event_label" }, { status: 400 });
+  }
+
   let sessionId = cleanMarketingSessionId(request.cookies.get(MARKETING_SESSION_COOKIE)?.value);
   const shouldSetCookie = !sessionId;
   if (!sessionId) sessionId = createMarketingSessionId();
@@ -59,6 +66,8 @@ export async function POST(request: NextRequest) {
       utmSource: textValue(body.utmSource),
       utmMedium: textValue(body.utmMedium),
       utmCampaign: textValue(body.utmCampaign),
+    }, {
+      label: eventLabel,
     });
   } catch {
     console.warn("PULSECIRCUIT_MARKETING_EVENT_FAILED");

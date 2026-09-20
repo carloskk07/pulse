@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check, Shield, Spark } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
 import { FunnelBeacon } from "@/components/funnel-beacon";
+import { FunnelLink } from "@/components/funnel-link";
 import { getPulseProof } from "@/lib/pulse-proof";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
@@ -37,7 +38,7 @@ export default async function ProofPage() {
           {proof.available && generatedAt ? <small>Updated {generatedAt}</small> : null}
         </div>
         <div className="pc-v10-proof-actions">
-          <Link className="button" href="/auth?mode=signup&next=/dashboard">Create free account <ArrowUpRight /></Link>
+          <FunnelLink className="button" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_hero_signup">Create free account <ArrowUpRight /></FunnelLink>
           <Link className="inline-action" href="/rewards-policy">How rewards become real</Link>
         </div>
       </section>
@@ -57,7 +58,7 @@ export default async function ProofPage() {
         <article><Shield /><div><h2>Financial state stays server-authoritative.</h2><p>Claims, conversions and withdrawals are counted from trusted database events, never from browser counters.</p></div></article>
       </details>
 
-      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one funded Pulse. Everything else can wait.</h2></div><Link className="button" href="/auth?mode=signup&next=/dashboard">Create free account <ArrowUpRight /></Link></section>
+      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one funded Pulse. Everything else can wait.</h2></div><FunnelLink className="button" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
     </main>
   );
 }

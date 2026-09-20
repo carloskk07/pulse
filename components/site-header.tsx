@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FunnelLink } from "./funnel-link";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 
 export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
@@ -14,7 +15,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
         </nav>
         <div className="pc-v6-header-actions">
           <Link className="pc-v6-login" href="/auth?next=/dashboard">Log in</Link>
-          <Link className="pc-v6-button compact primary" href="/auth?mode=signup&next=/dashboard">Create free account <span>→</span></Link>
+          <FunnelLink className="pc-v6-button compact primary" href="/auth?mode=signup&next=/dashboard" eventLabel="header_signup">Create free account <span>→</span></FunnelLink>
         </div>
       </div>
     </header>

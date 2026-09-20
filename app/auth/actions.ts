@@ -78,7 +78,7 @@ async function requireTurnstile(formData: FormData, expectedAction: string) {
   return verification;
 }
 
-async function recordSuccessfulSignup() {
+async function recordSuccessfulSignup(userId: string) {
   try {
     const cookieStore = await cookies();
     let sessionId = cleanMarketingSessionId(cookieStore.get(MARKETING_SESSION_COOKIE)?.value);
@@ -92,7 +92,7 @@ async function recordSuccessfulSignup() {
         maxAge: MARKETING_SESSION_MAX_AGE_SECONDS,
       });
     }
-    await recordMarketingEvent(sessionId, "signup_created");
+    await recordMarketingEvent(sessionId, "signup_created", {}, { userId });
   } catch {
     console.warn("PULSECIRCUIT_SIGNUP_MARKETING_EVENT_FAILED");
   }
@@ -157,7 +157,7 @@ export async function signUp(formData: FormData) {
     if (isAuthRateLimited(error)) redirect(authError("auth-rate-limited", next, ref));
     redirect(authError("signup-failed", next, ref));
   }
-  if (data.user) await recordSuccessfulSignup();
+  if (data.user) await recordSuccessfulSignup(data.user.id);
   if (data.session && data.user) {
     if (ref) await bindReferralForUser(data.user.id, ref);
     redirect(next);
