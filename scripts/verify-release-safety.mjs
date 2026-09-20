@@ -872,6 +872,54 @@ forbidText("supabase/migrations/0062_cross_path_daily_budget.sql", [
     throw new Error("v62 reserve path must enforce one shared claims+reservations budget snapshot under the existing Treasury lock.");
   }
 }
+requireText("supabase/migrations/0063_claim_daily_snapshot_compaction.sql", [
+  "create or replace function public.claim_hourly_pulse(p_user_id uuid)",
+  "security invoker",
+  "private.treasury_daily_usage_snapshot(",
+  "SCALE_V48_GLOBAL_CRITICAL_SECTION",
+  "insert into public.pulse_claims",
+  "refresh_pulse_trust(p_user_id)",
+  "pulse_claim_abort:daily_budget_exhausted",
+  "pulse_claim_abort:user_daily_limit",
+  "create or replace function public.release_hourly_pulse_scale_contract()",
+  "regexp_count(",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0063_claim_daily_snapshot_compaction.sql", [
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events",
+  "schema_version = 56",
+  "'version', 56"
+]);
+{
+  const source = read("supabase/migrations/0063_claim_daily_snapshot_compaction.sql");
+  const claimStart = source.indexOf("create or replace function public.claim_hourly_pulse");
+  const claimEnd = source.indexOf("revoke all on function public.claim_hourly_pulse(uuid)", claimStart);
+  if (claimStart < 0 || claimEnd < claimStart) {
+    throw new Error("v63 claim function boundaries are missing.");
+  }
+  const claimBody = source.slice(claimStart, claimEnd);
+  const snapshotCalls = claimBody.match(/private\.treasury_daily_usage_snapshot\(/g) ?? [];
+  const claimInsert = claimBody.indexOf("insert into public.pulse_claims");
+  const trustRefresh = claimBody.indexOf("refresh_pulse_trust(p_user_id)");
+  const critical = claimBody.indexOf("SCALE_V48_GLOBAL_CRITICAL_SECTION");
+  const lock = claimBody.indexOf("for update", critical);
+  const spend = claimBody.indexOf("spent_credits = spent_credits + v_reward", critical);
+  const criticalEnd = claimBody.indexOf("SCALE_V48_GLOBAL_CRITICAL_SECTION_END", critical);
+  if (
+    snapshotCalls.length !== 2
+    || claimBody.includes("sum(reward_credits)")
+    || claimBody.includes("sum(amount_credits)")
+    || claimInsert < 0
+    || trustRefresh < claimInsert
+    || critical < trustRefresh
+    || lock < critical
+    || spend < lock
+    || criticalEnd < spend
+  ) {
+    throw new Error("v63 must keep exactly two shared snapshots and preserve the v48 claim/lock/spend ordering.");
+  }
+}
 requireText("lib/treasury-backing.ts", [
   'import { randomUUID } from "node:crypto"',
   "getTreasuryBackingPreflight",
