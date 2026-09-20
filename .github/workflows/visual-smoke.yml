@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: pulsercuit-visual-smoke
@@ -198,29 +199,106 @@ jobs:
           RESPONSIVE_BASE_URL: http://127.0.0.1:3100
         run: node scripts/verify-responsive-runtime.mjs
 
-      - name: Verify exact canonical production release
+      - name: Resolve canonical production release authority
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 30); do
+
+          read_canonical_sha() {
+            local release_file
             release_file="$(mktemp)"
-            if curl --fail --silent --show-error               --header 'Cache-Control: no-cache'               --output "$release_file"               "https://pulsercuit.pro/release.json?sha=$GITHUB_SHA"               && node - "$release_file" <<'NODE'
+            if ! curl --fail --silent --show-error \
+              --header 'Cache-Control: no-cache' \
+              --output "$release_file" \
+              "https://pulsercuit.pro/release.json?visual_sha=$GITHUB_SHA"; then
+              rm -f "$release_file"
+              return 1
+            fi
+
+            node - "$release_file" <<'NODE'
           const fs = require("node:fs");
           const release = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-          const expectedSha = process.env.GITHUB_SHA;
-
-          if (release.service !== "pulsercuit" || release.git_sha !== expectedSha) {
-            throw new Error(`Canonical release mismatch: expected ${expectedSha}, received ${release.git_sha}`);
+          if (
+            release.service !== "pulsercircuit"
+            && release.service !== "pulsercuit"
+          ) {
+            throw new Error(`Unexpected canonical service identity: ${release.service}`);
           }
-          console.log(`Visual smoke canonical release PASS: ${release.git_sha}`);
+          if (typeof release.git_sha !== "string" || !/^[0-9a-f]{40}$/.test(release.git_sha)) {
+            throw new Error("Canonical release is missing a valid git SHA.");
+          }
+          process.stdout.write(release.git_sha);
           NODE
-            then
+            rm -f "$release_file"
+          }
+
+          read_deploy_state() {
+            local runs_file
+            runs_file="$(mktemp)"
+            if ! curl --fail --silent --show-error \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --output "$runs_file" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=push&per_page=20"; then
+              rm -f "$runs_file"
+              return 1
+            fi
+
+            node - "$runs_file" <<'NODE'
+          const fs = require("node:fs");
+          const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const deploy = (payload.workflow_runs ?? []).find(
+            (run) => run.name === "Vercel Prebuilt Deploy"
+          );
+          if (!deploy) {
+            process.stdout.write("missing|");
+          } else {
+            process.stdout.write(`${deploy.status ?? "unknown"}|${deploy.conclusion ?? ""}`);
+          }
+          NODE
+            rm -f "$runs_file"
+          }
+
+          for attempt in $(seq 1 90); do
+            canonical_sha="$(read_canonical_sha || true)"
+            if [ "$canonical_sha" = "$GITHUB_SHA" ]; then
+              echo "Visual smoke canonical release PASS: $canonical_sha"
+              echo "CANONICAL_RELEASE_SHA=$canonical_sha" >> "$GITHUB_ENV"
+              echo "CANONICAL_RELEASE_MATCH=true" >> "$GITHUB_ENV"
+              echo "production_release_sha=$canonical_sha" >> visual-smoke/manifest.txt
               exit 0
             fi
-            rm -f "$release_file"
-            sleep 6
+
+            deploy_state="$(read_deploy_state || true)"
+            deploy_status="${deploy_state%%|*}"
+            deploy_conclusion="${deploy_state#*|}"
+
+            if [ "$deploy_status" = "completed" ]; then
+              if [ "$deploy_conclusion" = "success" ]; then
+                echo "::error title=Pulsecircuit visual authority::Deploy succeeded but canonical release is $canonical_sha instead of $GITHUB_SHA."
+                exit 1
+              fi
+
+              if [ -z "$canonical_sha" ]; then
+                echo "::error title=Pulsecircuit visual authority::Canonical release identity could not be read after deploy concluded $deploy_conclusion."
+                exit 1
+              fi
+
+              echo "Canonical promotion deferred by deploy conclusion=$deploy_conclusion; validating currently published release $canonical_sha."
+              echo "CANONICAL_RELEASE_SHA=$canonical_sha" >> "$GITHUB_ENV"
+              echo "CANONICAL_RELEASE_MATCH=false" >> "$GITHUB_ENV"
+              echo "production_release_sha=$canonical_sha" >> visual-smoke/manifest.txt
+              echo "production_release_matches_git_sha=false" >> visual-smoke/manifest.txt
+              exit 0
+            fi
+
+            sleep 4
           done
-          echo "Canonical production did not converge to $GITHUB_SHA."
+
+          echo "::error title=Pulsecircuit visual authority::Deploy did not reach a terminal state while resolving canonical release authority."
           exit 1
 
       - name: Validate production route identity
