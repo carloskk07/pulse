@@ -47,7 +47,7 @@ export default async function EarnPage({ searchParams }: Props) {
   const moreOptions = ranked.slice(1, 8);
 
   return (
-    <AppShell active="earn">
+    <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="app-page-head pc-luxe-turbo-head">
         <div>
           <span className="app-eyebrow">Turbo · optional</span>
