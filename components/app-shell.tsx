@@ -29,11 +29,12 @@ function isAdminEmail(email: string | null | undefined) {
   return allowed.has(email.toLowerCase());
 }
 
-export async function AppShell({ children, active }: { children: React.ReactNode; active: string }) {
+export async function AppShell({ children, active, userLabel }: { children: React.ReactNode; active: string; userLabel?: string | null }) {
   const { supabase, user } = await getCurrentUserContext();
-  let label = "Demo member";
+  const suppliedLabel = userLabel?.trim();
+  let label = suppliedLabel || "Demo member";
 
-  if (user && supabase) {
+  if (!suppliedLabel && user && supabase) {
     const { data: profile } = await supabase.from("profiles").select("handle").eq("id", user.id).maybeSingle();
     label = profile?.handle || user.email?.split("@")[0] || "Member";
   }
