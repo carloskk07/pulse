@@ -108,6 +108,55 @@ requireText("app/api/pulse/claim/route.ts", [
 forbidText("app/api/pulse/claim/route.ts", [
   "supabase.auth.getUser()"
 ]);
+requireText("supabase/migrations/0064_claim_duplicate_fast_reject.sql", [
+  "create or replace function public.claim_hourly_pulse(p_user_id uuid)",
+  "pg_try_advisory_xact_lock",
+  "claim_in_progress",
+  "SCALE_V48_GLOBAL_CRITICAL_SECTION",
+  "private.treasury_daily_usage_snapshot(",
+  "create or replace function public.release_hourly_pulse_scale_contract()",
+  "0055_invite_snapshot_compaction.sql"
+]);
+forbidText("supabase/migrations/0064_claim_duplicate_fast_reject.sql", [
+  "perform pg_advisory_xact_lock(",
+  "fund_reward_treasury",
+  "insert into public.treasury_funding_events",
+  "schema_version = 56",
+  "'version', 56"
+]);
+{
+  const source = read("supabase/migrations/0064_claim_duplicate_fast_reject.sql");
+  const claimStart = source.indexOf("create or replace function public.claim_hourly_pulse");
+  const claimEnd = source.indexOf("revoke all on function public.claim_hourly_pulse(uuid)", claimStart);
+  if (claimStart < 0 || claimEnd < claimStart) {
+    throw new Error("v64 claim function boundaries are missing.");
+  }
+  const claimBody = source.slice(claimStart, claimEnd);
+  const tryLock = claimBody.indexOf("pg_try_advisory_xact_lock");
+  const busyReturn = claimBody.indexOf("'status', 'claim_in_progress'", tryLock);
+  const profileLock = claimBody.indexOf("for update", busyReturn);
+  const claimInsert = claimBody.indexOf("insert into public.pulse_claims", profileLock);
+  const globalCritical = claimBody.indexOf("SCALE_V48_GLOBAL_CRITICAL_SECTION", claimInsert);
+  if (
+    tryLock < 0
+    || busyReturn < tryLock
+    || profileLock < busyReturn
+    || claimInsert < profileLock
+    || globalCritical < claimInsert
+    || claimBody.includes("perform pg_advisory_xact_lock(")
+  ) {
+    throw new Error(
+      "v64 must fast-reject duplicate user claims before profile/claim/Treasury work while preserving v48 ordering.",
+    );
+  }
+}
+requireText("app/api/pulse/claim/route.ts", [
+  'result.status === "claim_in_progress"',
+  'dashboardRedirect(request, "claim-in-progress")'
+]);
+requireText("app/dashboard/page.tsx", [
+  '"claim-in-progress": "Your Pulse is already being processed. Your balance has not changed yet; try again in a moment."'
+]);
 requireText("lib/treasury-backing.ts", [
   "hasCurrentFaucetPayReadProof",
   "getCanonicalFaucetPayPackAuthority",
