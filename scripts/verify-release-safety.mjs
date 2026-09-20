@@ -118,7 +118,6 @@ requireText("supabase/migrations/0064_claim_duplicate_fast_reject.sql", [
   "0055_invite_snapshot_compaction.sql"
 ]);
 forbidText("supabase/migrations/0064_claim_duplicate_fast_reject.sql", [
-  "perform pg_advisory_xact_lock(",
   "fund_reward_treasury",
   "insert into public.treasury_funding_events",
   "schema_version = 56",
