@@ -132,10 +132,13 @@ export async function refreshTreasuryBackingObservation(
   admin = createSupabaseAdminClient(),
 ): Promise<TreasuryBackingStatus> {
   if (!admin) return "backing_unavailable";
-  if (!(await hasCurrentFaucetPayReadProof(admin))) return "read_proof_required";
 
   const payout = getFaucetPayPackConfig();
-  const authority = await getCanonicalFaucetPayPackAuthority(admin);
+  const [readProofCurrent, authority] = await Promise.all([
+    hasCurrentFaucetPayReadProof(admin),
+    getCanonicalFaucetPayPackAuthority(admin),
+  ]);
+  if (!readProofCurrent) return "read_proof_required";
   if (!payoutMatchesAuthority(payout, authority)) return "pack_authority_mismatch";
 
   const balance = await getFaucetPayBalanceReadOnly(payout.asset);
@@ -163,16 +166,17 @@ export async function ensureFreshTreasuryBacking(
 ): Promise<TreasuryBackingStatus> {
   if (!admin) return "backing_unavailable";
 
-  // A current observation is reusable only while the live application
-  // configuration still matches the fingerprint-bound FaucetPay read proof.
-  // This is a local/database authority check and does not call FaucetPay.
-  if (!(await hasCurrentFaucetPayReadProof(admin))) return "read_proof_required";
-
+  // These checks are independent and all local/database-only. Resolve them
+  // concurrently so the common backing-ready path pays one network-latency
+  // window instead of three serial roundtrips.
   const payout = getFaucetPayPackConfig();
-  const authority = await getCanonicalFaucetPayPackAuthority(admin);
+  const [readProofCurrent, authority, current] = await Promise.all([
+    hasCurrentFaucetPayReadProof(admin),
+    getCanonicalFaucetPayPackAuthority(admin),
+    getTreasuryBackingGuard(treasuryCode, admin),
+  ]);
+  if (!readProofCurrent) return "read_proof_required";
   if (!payoutMatchesAuthority(payout, authority)) return "pack_authority_mismatch";
-
-  const current = await getTreasuryBackingGuard(treasuryCode, admin);
   if (current === "backing_ready" || current === "backing_insufficient") return current;
   if (current !== "backing_refresh_required") return current;
 
