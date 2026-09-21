@@ -137,10 +137,11 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult] = await Promise.all([
+  const [snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult] = await Promise.all([
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
     admin.rpc("release_stacked_incentive_budget_contract"),
+    admin.rpc("release_cashback_budget_contract"),
   ]);
 
   if (referralIntegrityResult.error || referralIntegrityResult.data !== true) {
@@ -148,6 +149,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (stackedIncentiveBudgetResult.error || stackedIncentiveBudgetResult.data !== true) {
     setupBlockers.push("stacked-incentive-budget");
+  }
+  if (cashbackBudgetResult.error || cashbackBudgetResult.data !== true) {
+    setupBlockers.push("cashback-budget");
   }
 
   const { data, error } = snapshotResult;

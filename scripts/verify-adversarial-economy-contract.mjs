@@ -55,6 +55,23 @@ requireAll("supabase/migrations/0084_stacked_incentive_budget_authority.sql", [
   "canonical release schema v55",
 ]);
 
+requireAll("supabase/migrations/0085_cashback_budget_authority.sql", [
+  "cashback_disabled",
+  "cashback_user_share_bps",
+  "reward_exceeds_cashback_share",
+  "economics_mismatch",
+  "release_cashback_budget_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0085_cashback_budget_authority.sql", [
+  "cashback_enabled','true",
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 forbidAll("supabase/migrations/0084_stacked_incentive_budget_authority.sql", [
   "network_commission_enabled','true",
   "cashback_enabled','true",
@@ -114,6 +131,8 @@ requireAll("lib/controlled-technical-readiness.ts", [
   'setupBlockers.push("referral-network-integrity")',
   'admin.rpc("release_stacked_incentive_budget_contract")',
   'setupBlockers.push("stacked-incentive-budget")',
+  'admin.rpc("release_cashback_budget_contract")',
+  'setupBlockers.push("cashback-budget")',
 ]);
 
 const earn = requireAll("app/earn/page.tsx", [
