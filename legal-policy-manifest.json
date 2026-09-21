@@ -1,11 +1,30 @@
 {
   "schema": "pulsercuit-legal-policy-bundle-v1",
-  "revision": "2026-09-18.1",
+  "revision": "2026-09-20.1",
   "files": [
-    { "path": "app/terms/page.tsx", "gitBlobSha": "120abd1d5aec7f26a6ce1b61a870b648eae6dd6e" },
-    { "path": "app/privacy/page.tsx", "gitBlobSha": "b171da69c892efe7272d9b82258aad730cd9bdf2" },
-    { "path": "app/rewards-policy/page.tsx", "gitBlobSha": "54680947dd76ad0e033e7a27f995ea03784795b9" },
-    { "path": "components/legal-operator-disclosure.tsx", "gitBlobSha": "2d7315f0a11638a89275c4337e63c700bcf4ae85" },
-    { "path": "lib/legal-release.ts", "gitBlobSha": "75c9b78294cd7303e9508750b7d9cc0acd055e6f" }
+    {
+      "path": "app/terms/page.tsx",
+      "gitBlobSha": "23f28d1bf25a566c9860a5276a7e1f4a1ceb2e3e"
+    },
+    {
+      "path": "app/privacy/page.tsx",
+      "gitBlobSha": "b63906da6253250eb2cde31bb1330ae797a16e33"
+    },
+    {
+      "path": "app/advertising-policy/page.tsx",
+      "gitBlobSha": "15934e4a9cab8b7db8aac472bb8bff16f7cb3157"
+    },
+    {
+      "path": "app/rewards-policy/page.tsx",
+      "gitBlobSha": "54680947dd76ad0e033e7a27f995ea03784795b9"
+    },
+    {
+      "path": "components/legal-operator-disclosure.tsx",
+      "gitBlobSha": "2d7315f0a11638a89275c4337e63c700bcf4ae85"
+    },
+    {
+      "path": "lib/legal-release.ts",
+      "gitBlobSha": "75c9b78294cd7303e9508750b7d9cc0acd055e6f"
+    }
   ]
 }
