@@ -28,6 +28,7 @@ type ReservedWithdrawal = {
   asset?: string;
   amount_credits?: number;
   payout_amount_units?: number;
+  service_fee_credits?: number;
 };
 
 type ActiveWithdrawalRow = {
@@ -290,6 +291,7 @@ export async function POST(request: NextRequest) {
   if (error) return walletRedirect(request, "reserve-failed");
   const reserved = (data ?? {}) as ReservedWithdrawal;
   if (reserved.status === "insufficient") return walletRedirect(request, "insufficient");
+  if (reserved.status === "free_window_used") return walletRedirect(request, "free-pass-used");
   if (reserved.status === "held") return walletRedirect(request, "held");
   if (reserved.status === "pilot_restricted") return walletRedirect(request, "pilot-restricted");
 
