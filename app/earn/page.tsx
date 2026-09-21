@@ -7,7 +7,7 @@ import { getCurrentUserContext } from "@/lib/current-user-context";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getRewardEntryChannels } from "@/providers/registry";
 
-export const metadata = { title: "Turbo" };
+export const metadata = { title: "Earn" };
 
 type Props = { searchParams: Promise<{ direct?: string }> };
 
@@ -51,9 +51,9 @@ export default async function EarnPage({ searchParams }: Props) {
     <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="app-page-head pc-luxe-turbo-head">
         <div>
-          <span className="app-eyebrow">Turbo · optional</span>
-          <h1>Extra rewards, ranked around your time.</h1>
-          <p>Pulse stays at the center. Turbo compares reward, time and completion confidence to surface the best extra option.</p>
+          <span className="app-eyebrow">Earn · optional</span>
+          <h1>More ways to earn between Pulses.</h1>
+          <p>Pulse stays at the center. Missions, verified actions, cashback and partner routes add value without blocking the hourly faucet.</p>
         </div>
         <div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
