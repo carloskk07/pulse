@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPulseAdCampaign } from "@/lib/pulse-ads";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
   const userId = !claimsError && typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : "";
   if (!userId) return NextResponse.redirect(new URL("/auth?next=/advertise", request.url), 303);
 
-  const formData = await request.formData();
+  const formData = await readUrlEncodedFormWithLimit(request, 16_384);
+  if (!formData) return redirectState(request, "invalid");
   const ip = request.headers.get("cf-connecting-ip")
     ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
 

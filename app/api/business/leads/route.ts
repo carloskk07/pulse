@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -15,7 +15,7 @@ function businessRedirect(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/business?lead=${encodeURIComponent(state)}#pilot`, request.url), 303);
 }
 
-function text(form: FormData, key: string, max: number) {
+function text(form: URLSearchParams, key: string, max: number) {
   return String(form.get(key) ?? "").trim().slice(0, max);
 }
 
@@ -39,7 +39,8 @@ function sha256(value: string) {
 export async function POST(request: NextRequest) {
   if (!isTrustedSameOriginMutation(request)) return businessRedirect(request, "verification-failed");
 
-  const form = await request.formData();
+  const form = await readUrlEncodedFormWithLimit(request, 16_384);
+  if (!form) return businessRedirect(request, "invalid");
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const verification = await verifyTurnstile(String(form.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "business_lead" });
   if (!verification.success) return businessRedirect(request, verification.missingConfig ? "verification-not-configured" : "verification-failed");

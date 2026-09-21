@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clickPulseAd } from "@/lib/pulse-ads";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
   const userId = !claimsError && typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : "";
   if (!userId) return failure(401);
 
-  const formData = await request.formData();
+  const formData = await readUrlEncodedFormWithLimit(request, 4_096);
+  if (!formData) return failure(400);
   const campaignId = String(formData.get("campaign") ?? "").trim();
   if (!UUID_RE.test(campaignId)) return failure(400);
 

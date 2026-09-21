@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from "@/lib/faucetpay-authority";
 import { recordFaucetPayPayoutProofById } from "@/lib/faucetpay-receipt-proof";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { hasCanonicalFaucetPayPackAuthority } from "@/lib/treasury-backing";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -246,7 +246,8 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL("/auth?next=/wallet", request.url), 303);
 
-  const formData = await request.formData();
+  const formData = await readUrlEncodedFormWithLimit(request, 8_192);
+  if (!formData) return walletRedirect(request, "verification-failed");
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: ["withdrawal", "withdrawal-retry"] });
   if (!verification.success) return walletRedirect(request, verification.missingConfig ? "verification-not-configured" : "verification-failed");

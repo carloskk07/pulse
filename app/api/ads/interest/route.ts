@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -14,7 +14,7 @@ function redirectState(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/advertise?interest=${encodeURIComponent(state)}#launch-interest`, request.url), 303);
 }
 
-function cleanText(form: FormData, key: string, max: number) {
+function cleanText(form: URLSearchParams, key: string, max: number) {
   return String(form.get(key) ?? "").trim().slice(0, max);
 }
 
@@ -36,7 +36,8 @@ function sha256(value: string) {
 export async function POST(request: NextRequest) {
   if (!isTrustedSameOriginMutation(request)) return redirectState(request, "verification-failed");
 
-  const form = await request.formData();
+  const form = await readUrlEncodedFormWithLimit(request, 16_384);
+  if (!form) return redirectState(request, "invalid");
   const ip = request.headers.get("cf-connecting-ip")
     ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     ?? null;

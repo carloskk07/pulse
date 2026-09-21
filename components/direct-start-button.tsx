@@ -35,7 +35,7 @@ export function DirectStartButton({
     if (state === "opening") return;
     setState("opening");
 
-    const form = new FormData();
+    const form = new URLSearchParams();
     form.set("campaign", campaignId);
     if (sourcePulseClaimId) form.set("source_pulse_claim_id", sourcePulseClaimId);
 

@@ -14,6 +14,9 @@ const required = [
   "totalBytes > maxBytes",
   "reader.read()",
   'new TextDecoder("utf-8", { fatal: true })',
+  "readUrlEncodedFormWithLimit",
+  'contentType !== "application/x-www-form-urlencoded"',
+  "new URLSearchParams(body)",
 ];
 
 const sameOriginRoutes = [
@@ -32,6 +35,36 @@ for (const routePath of sameOriginRoutes) {
   const routeSource = readFileSync(routePath, "utf8");
   if (!routeSource.includes("isTrustedSameOriginMutation(request)")) {
     throw new Error(`${routePath} is missing same-origin mutation provenance enforcement.`);
+  }
+}
+
+const boundedFormRoutes = [
+  "app/api/business/leads/route.ts",
+  "app/api/ads/interest/route.ts",
+  "app/api/ads/campaigns/route.ts",
+  "app/api/ads/click/route.ts",
+  "app/api/pulse/claim/route.ts",
+  "app/api/withdrawals/route.ts",
+  "app/api/direct/start/route.ts",
+];
+
+for (const routePath of boundedFormRoutes) {
+  const routeSource = readFileSync(routePath, "utf8");
+  if (!routeSource.includes("readUrlEncodedFormWithLimit(request,")) {
+    throw new Error(`${routePath} is missing bounded URL-encoded form parsing.`);
+  }
+  if (routeSource.includes("request.formData()")) {
+    throw new Error(`${routePath} restored unbounded formData parsing.`);
+  }
+}
+
+for (const componentPath of [
+  "components/sponsored-visit-button.tsx",
+  "components/direct-start-button.tsx",
+]) {
+  const componentSource = readFileSync(componentPath, "utf8");
+  if (!componentSource.includes("new URLSearchParams()") || componentSource.includes("new FormData()")) {
+    throw new Error(`${componentPath} must keep the bounded URL-encoded request contract.`);
   }
 }
 
