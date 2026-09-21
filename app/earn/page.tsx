@@ -61,7 +61,7 @@ export default async function EarnPage({ searchParams }: Props) {
         <div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
 
-      <div className="pc-v10-turbo-criteria" aria-label="Turbo ranking criteria">
+      <div className="pc-v10-turbo-criteria" aria-label="Earn ranking criteria">
         <span><small>01</small><strong>Reward</strong><b>What it is worth</b></span>
         <span><small>02</small><strong>Time</strong><b>How long it should take</b></span>
         <span><small>03</small><strong>Completion</strong><b>How clearly it can be confirmed</b></span>
