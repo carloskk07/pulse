@@ -2,7 +2,7 @@ import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
-import { getCanonicalFaucetPayPackAuthority } from "@/lib/treasury-backing";
+import { getCanonicalFaucetPayPackAuthority, getTreasuryBackingGuard } from "@/lib/treasury-backing";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
 export type ProductReadinessCheck = {
@@ -93,6 +93,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     checks.push({ id: "faucetpay-send-scope-proof", label: "FaucetPay send-key least privilege", pass: false, detail: "Send-key scope evidence cannot be verified without trusted database authority." });
     checks.push({ id: "base-loop-continuity", label: "Same-account base loop", pass: false, detail: "The authoritative same-account Pulse → Wallet → payout chain cannot be verified without trusted database authority." });
     checks.push({ id: "payout-receipt-proof", label: "Actual payout receipt", pass: false, detail: "Destination receipt cannot be verified without trusted database authority." });
+    checks.push({ id: "public-backing", label: "Fresh FaucetPay backing for public launch", pass: false, detail: "Fresh public-launch backing cannot be verified without trusted database authority." });
     return {
       ready: false,
       publicReady: false,
@@ -201,6 +202,10 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     maxUserDailyCredits >= rewardCredits &&
     dailyFundingState.availableCredits >= remainingDailyBudget
   );
+  const publicBackingStatus = treasuryCode
+    ? await getTreasuryBackingGuard(treasuryCode, admin)
+    : "backing_unavailable";
+  const publicBackingReady = publicBackingStatus === "backing_ready";
 
   const latestClaim = latestPulseClaimResult.data;
   const claimMetadata = objectValue(latestClaim?.metadata);
@@ -363,6 +368,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
       : `Public expansion requires max_user_daily_credits to be no more than 50% of the daily budget so one account cannot monopolize the faucet (current ${maxUserDailyCredits}/${dailyBudgetCredits} P).`,
   });
   checks.push({
+    id: "public-backing",
+    label: "Fresh FaucetPay backing for public launch",
+    pass: publicBackingReady,
+    detail: publicBackingReady
+      ? "Current FaucetPay backing evidence is fresh and sufficient for the live Treasury exposure."
+      : `Public expansion requires fresh FaucetPay backing authority; current state is ${publicBackingStatus.replaceAll("_", " ")}.`,
+  });
+  checks.push({
     id: "treasury",
     label: "Funded reward treasury",
     pass: treasuryReady,
@@ -427,7 +440,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
         : "Complete and prove one controlled FaucetPay payout before destination receipt can be verified.",
   });
 
-  const publicOnlyCheckIds = new Set(["public-access", "public-fair-share"]);
+  const publicOnlyCheckIds = new Set(["public-access", "public-fair-share", "public-backing"]);
   const blockers = checks
     .filter((item) => !publicOnlyCheckIds.has(item.id) && !item.pass)
     .map((item) => item.label);
