@@ -38,6 +38,7 @@ export default async function ClaimedPage() {
   const devicePlatform = /mobile|android|iphone|ipad/.test(userAgent) ? "mobile" : "desktop";
   const sponsored = await getPulseAdPlacement({
     userId: userContext.user.id,
+    pulseClaimId: receipt.id,
     countryCode,
     devicePlatform,
   });
