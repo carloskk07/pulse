@@ -10,7 +10,7 @@ alter table public.ledger_entries
   add constraint ledger_entries_entry_type_check
   check (entry_type in (
     'daily_reward','pulse_reward','offer','survey','referral','withdrawal',
-    'chargeback','adjustment','cashback','network_commission'
+    'chargeback','adjustment','cashback','network_commission','withdrawal_fee'
   ));
 
 insert into public.app_config(key, value, version, reason)
@@ -397,6 +397,292 @@ $$;
 revoke all on function public.claim_hourly_pulse(uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.claim_hourly_pulse(uuid)
+  to service_role;
+
+alter table public.withdrawals
+  add column if not exists service_fee_credits bigint not null default 0,
+  add column if not exists service_fee_ledger_entry_id uuid unique references public.ledger_entries(id) on delete restrict;
+
+alter table public.withdrawals
+  drop constraint if exists withdrawals_service_fee_credits_check;
+
+alter table public.withdrawals
+  add constraint withdrawals_service_fee_credits_check
+  check (service_fee_credits >= 0);
+
+create or replace function public.reserve_withdrawal(
+  p_user_id uuid,
+  p_idempotency_key text,
+  p_provider text,
+  p_asset text,
+  p_destination text,
+  p_amount_credits bigint,
+  p_payout_amount_units bigint
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+declare
+  v_existing public.withdrawals%rowtype;
+  v_available bigint := 0;
+  v_risk_score integer := 0;
+  v_hold_score integer := 60;
+  v_status text := 'requested';
+  v_withdrawal_id uuid := gen_random_uuid();
+  v_ledger_id uuid := gen_random_uuid();
+  v_fee_ledger_id uuid;
+  v_economy jsonb := '{}'::jsonb;
+  v_window_hours integer := 24;
+  v_extra_enabled boolean := false;
+  v_fee_credits bigint := 0;
+  v_last_paid_at timestamptz;
+  v_next_free_at timestamptz;
+begin
+  if p_user_id is null then
+    return jsonb_build_object('status','invalid_user');
+  end if;
+
+  if p_amount_credits <= 0
+     or p_payout_amount_units <= 0
+     or length(trim(p_destination)) = 0 then
+    return jsonb_build_object('status','invalid');
+  end if;
+
+  if not public.withdrawal_pilot_allowed(p_user_id) then
+    return jsonb_build_object('status','pilot_restricted');
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('withdrawal:' || p_user_id::text,0));
+
+  select * into v_existing
+  from public.withdrawals
+  where user_id=p_user_id
+    and status in ('requested','held','submitted')
+  order by created_at desc
+  limit 1;
+
+  if found then
+    return jsonb_build_object(
+      'status',case when v_existing.status='held' then 'held' else 'active' end,
+      'withdrawal_id',v_existing.id,
+      'idempotency_key',v_existing.idempotency_key,
+      'destination',v_existing.destination,
+      'asset',v_existing.asset,
+      'amount_credits',v_existing.amount_credits,
+      'payout_amount_units',v_existing.payout_amount_units,
+      'service_fee_credits',coalesce(v_existing.service_fee_credits,0)
+    );
+  end if;
+
+  select coalesce(value,'{}'::jsonb)
+  into v_economy
+  from public.app_config
+  where key='pulse_economy_v13';
+
+  v_window_hours := greatest(1,least(
+    coalesce((v_economy->>'free_withdrawal_window_hours')::integer,24),
+    168
+  ));
+  v_extra_enabled := lower(coalesce(v_economy->>'extra_withdrawals_enabled','false'))
+    in ('true','1','yes','on');
+
+  select max(updated_at)
+  into v_last_paid_at
+  from public.withdrawals
+  where user_id=p_user_id and status='paid';
+
+  if v_last_paid_at is not null
+     and v_last_paid_at + make_interval(hours=>v_window_hours) > now() then
+    v_next_free_at := v_last_paid_at + make_interval(hours=>v_window_hours);
+
+    if not v_extra_enabled then
+      return jsonb_build_object(
+        'status','free_window_used',
+        'next_free_at',v_next_free_at
+      );
+    end if;
+
+    v_fee_credits := greatest(1,least(
+      coalesce((v_economy->>'extra_withdrawal_fee_credits')::bigint,1),
+      greatest(1,p_amount_credits)
+    ));
+  end if;
+
+  select coalesce(available_credits,0)
+  into v_available
+  from public.user_balances
+  where user_id=p_user_id;
+  v_available := coalesce(v_available,0);
+
+  if v_available < p_amount_credits + v_fee_credits then
+    return jsonb_build_object(
+      'status','insufficient',
+      'available_credits',v_available,
+      'required_credits',p_amount_credits + v_fee_credits,
+      'service_fee_credits',v_fee_credits
+    );
+  end if;
+
+  select coalesce(risk_score,0)
+  into v_risk_score
+  from public.profiles
+  where id=p_user_id;
+
+  select coalesce((value->>'hold_risk_score')::integer,60)
+  into v_hold_score
+  from public.app_config
+  where key='withdrawal_risk';
+
+  v_hold_score := coalesce(v_hold_score,60);
+  if coalesce(v_risk_score,0) >= v_hold_score then
+    v_status := 'held';
+  end if;
+
+  insert into public.ledger_entries(
+    id,user_id,event_key,entry_type,state,credits,metadata
+  ) values (
+    v_ledger_id,
+    p_user_id,
+    'withdrawal:reserve:' || v_withdrawal_id::text,
+    'withdrawal',
+    'available',
+    -p_amount_credits,
+    jsonb_build_object(
+      'provider',p_provider,
+      'asset',p_asset,
+      'withdrawal_id',v_withdrawal_id
+    )
+  );
+
+  if v_fee_credits > 0 then
+    v_fee_ledger_id := gen_random_uuid();
+
+    insert into public.ledger_entries(
+      id,user_id,event_key,entry_type,state,credits,metadata
+    ) values (
+      v_fee_ledger_id,
+      p_user_id,
+      'withdrawal:fee:' || v_withdrawal_id::text,
+      'withdrawal_fee',
+      'available',
+      -v_fee_credits,
+      jsonb_build_object(
+        'withdrawal_id',v_withdrawal_id,
+        'fee_kind','extra_withdrawal',
+        'free_window_hours',v_window_hours
+      )
+    );
+  end if;
+
+  insert into public.withdrawals(
+    id,user_id,idempotency_key,payout_provider,asset,destination,
+    amount_credits,payout_amount_units,status,ledger_entry_id,
+    service_fee_credits,service_fee_ledger_entry_id
+  ) values (
+    v_withdrawal_id,p_user_id,p_idempotency_key,p_provider,upper(p_asset),
+    trim(p_destination),p_amount_credits,p_payout_amount_units,v_status,
+    v_ledger_id,v_fee_credits,v_fee_ledger_id
+  );
+
+  return jsonb_build_object(
+    'status',v_status,
+    'withdrawal_id',v_withdrawal_id,
+    'idempotency_key',p_idempotency_key,
+    'destination',trim(p_destination),
+    'asset',upper(p_asset),
+    'amount_credits',p_amount_credits,
+    'payout_amount_units',p_payout_amount_units,
+    'service_fee_credits',v_fee_credits,
+    'free_pass_used',v_fee_credits=0
+  );
+end;
+$$;
+
+revoke all on function public.reserve_withdrawal(uuid,text,text,text,text,bigint,bigint)
+  from public, anon, authenticated, service_role;
+grant execute on function public.reserve_withdrawal(uuid,text,text,text,text,bigint,bigint)
+  to service_role;
+
+create or replace function public.finalize_withdrawal(
+  p_withdrawal_id uuid,
+  p_status text,
+  p_external_id text,
+  p_message text
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $$
+declare
+  v_row public.withdrawals%rowtype;
+  v_external_id text := nullif(trim(p_external_id),'');
+begin
+  if p_status not in ('submitted','paid','failed') then
+    return jsonb_build_object('status','invalid');
+  end if;
+
+  if p_status='paid' and v_external_id is null then
+    return jsonb_build_object('status','invalid_external_id');
+  end if;
+
+  select * into v_row
+  from public.withdrawals
+  where id=p_withdrawal_id
+  for update;
+
+  if not found then return jsonb_build_object('status','not_found'); end if;
+  if v_row.status='paid' then
+    return jsonb_build_object('status','paid','external_id',v_row.external_id);
+  end if;
+  if v_row.status in ('failed','cancelled') then
+    return jsonb_build_object('status',v_row.status);
+  end if;
+  if v_row.status='held' then return jsonb_build_object('status','held'); end if;
+
+  if p_status='submitted' then
+    update public.withdrawals
+    set status='submitted',provider_message=p_message,updated_at=now()
+    where id=p_withdrawal_id;
+    return jsonb_build_object('status','submitted');
+  end if;
+
+  if p_status='paid' then
+    update public.withdrawals
+    set status='paid',external_id=v_external_id,provider_message=p_message,updated_at=now()
+    where id=p_withdrawal_id;
+
+    update public.ledger_entries
+    set state='withdrawn'
+    where id in (v_row.ledger_entry_id,v_row.service_fee_ledger_entry_id);
+
+    return jsonb_build_object(
+      'status','paid',
+      'external_id',v_external_id,
+      'service_fee_credits',coalesce(v_row.service_fee_credits,0)
+    );
+  end if;
+
+  update public.withdrawals
+  set status='failed',provider_message=p_message,updated_at=now()
+  where id=p_withdrawal_id;
+
+  update public.ledger_entries
+  set state='reversed'
+  where id in (v_row.ledger_entry_id,v_row.service_fee_ledger_entry_id);
+
+  return jsonb_build_object(
+    'status','failed',
+    'service_fee_credits',coalesce(v_row.service_fee_credits,0)
+  );
+end;
+$$;
+
+revoke all on function public.finalize_withdrawal(uuid,text,text,text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.finalize_withdrawal(uuid,text,text,text)
   to service_role;
 
 create table if not exists public.cashback_events (
