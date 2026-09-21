@@ -142,6 +142,10 @@ requireAll("lib/pulse-ads-checkout.ts", [
   "verifyPulseAdsCheckoutCustom",
 ]);
 
+requireAll("next.config.ts", [
+  `"form-action 'self' https://faucetpay.io"`,
+]);
+
 requireAll("app/api/ads/merchant/callback/route.ts", [
   'createHash("sha256")',
   "pulse_ads_merchant_callbacks",
