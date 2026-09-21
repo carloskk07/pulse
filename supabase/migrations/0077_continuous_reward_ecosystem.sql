@@ -185,7 +185,9 @@ begin
   from public.app_config
   where key = 'hourly_pulse';
 
-  v_reward := public.resolve_hourly_pulse_reward(\n    greatest(1, least(coalesce((v_config->>'credits')::integer, 1), 1000000))\n  );
+  v_reward := public.resolve_hourly_pulse_reward(
+    greatest(1, least(coalesce((v_config->>'credits')::integer, 1), 1000000))
+  );
   v_interval_minutes := greatest(15, least(coalesce((v_config->>'interval_minutes')::integer, 60), 1440));
   v_treasury_code := coalesce(nullif(trim(v_config->>'treasury_code'), ''), 'launch');
   v_max_risk := greatest(0, least(coalesce((v_config->>'max_risk_score')::integer, 59), 100));
