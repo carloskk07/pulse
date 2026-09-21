@@ -145,11 +145,21 @@ select
   ) > 0
   and position(
     'least(900'
-    in replace(lower(pg_get_functiondef('public.claim_withdrawal_dispatch(uuid,integer)'::regprocedure)),' ','')
+    in regexp_replace(
+      lower(pg_get_functiondef('public.claim_withdrawal_dispatch(uuid,integer)'::regprocedure)),
+      '[[:space:]]+',
+      '',
+      'g'
+    )
   ) > 0
   and position(
     'dispatch_attempts=dispatch_attempts+1'
-    in replace(lower(pg_get_functiondef('public.claim_withdrawal_dispatch(uuid,integer)'::regprocedure)),' ','')
+    in regexp_replace(
+      lower(pg_get_functiondef('public.claim_withdrawal_dispatch(uuid,integer)'::regprocedure)),
+      '[[:space:]]+',
+      '',
+      'g'
+    )
   ) > 0
   and has_function_privilege(
     'service_role','public.claim_withdrawal_dispatch(uuid,integer)','EXECUTE'
