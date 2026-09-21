@@ -159,7 +159,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-as $
+as $$
 declare
   v_ref public.referrals%rowtype;
   v_config jsonb := '{}'::jsonb;
@@ -267,7 +267,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 revoke all on function public.reward_referral_on_conversion()
   from public, anon, authenticated, service_role;
