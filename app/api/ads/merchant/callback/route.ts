@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { recordVerifiedPulseAdPayment } from "@/lib/pulse-ads";
 import { verifyPulseAdsCheckoutCustom } from "@/lib/pulse-ads-checkout";
+import { readRequestTextWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -88,12 +89,17 @@ export async function POST(request: NextRequest) {
   const admin = createSupabaseAdminClient();
   if (!admin) return NextResponse.json({ status: "unavailable" }, { status: 503 });
 
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (Number.isFinite(contentLength) && contentLength > MAX_CALLBACK_BODY_BYTES) {
-    return NextResponse.json({ status: "payload-too-large" }, { status: 413 });
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/x-www-form-urlencoded") {
+    return NextResponse.json({ status: "unsupported-content-type" }, { status: 415 });
   }
 
-  const form = await request.formData();
+  const rawForm = await readRequestTextWithLimit(request, MAX_CALLBACK_BODY_BYTES);
+  if (rawForm === null || rawForm.length === 0) {
+    return NextResponse.json({ status: "invalid-payload" }, { status: 400 });
+  }
+
+  const form = new URLSearchParams(rawForm);
   const token = String(form.get("token") ?? "").trim();
   const callbackTransactionId = String(form.get("transaction_id") ?? "").trim().slice(0, 160);
   const callbackCustom = String(form.get("custom") ?? "").trim().slice(0, 220);
