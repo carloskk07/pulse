@@ -63,6 +63,11 @@ requireAll("components/direct-start-button.tsx", [
   "window.location.assign(target.toString())",
 ]);
 
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_referral_network_integrity_contract")',
+  'setupBlockers.push("referral-network-integrity")',
+]);
+
 const earn = requireAll("app/earn/page.tsx", [
   "DirectStartButton",
   "campaignId={best.externalId}",
