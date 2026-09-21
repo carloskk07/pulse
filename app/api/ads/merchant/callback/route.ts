@@ -1,21 +1,14 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { recordVerifiedPulseAdPayment } from "@/lib/pulse-ads";
+import { verifyPulseAdsCheckoutCustom } from "@/lib/pulse-ads-checkout";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{8,256}$/;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 function tokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
-}
-
-function parseCustom(value: string) {
-  const [prefix, campaignId, checkoutReference] = value.split(":");
-  if (prefix !== "ad" || !UUID_RE.test(campaignId ?? "") || !UUID_RE.test(checkoutReference ?? "")) return null;
-  return { campaignId, checkoutReference };
 }
 
 function amountToMicros(value: unknown) {
@@ -80,7 +73,7 @@ export async function POST(request: NextRequest) {
   const verifiedCustom = String(verified.custom ?? "").trim().slice(0, 220);
   const pricingCurrency = String(verified.currency1 ?? "").trim().toUpperCase();
   const amountUsdMicros = amountToMicros(verified.amount1);
-  const custom = parseCustom(verifiedCustom);
+  const custom = verifyPulseAdsCheckoutCustom(verifiedCustom);
 
   const authoritative = verified.valid === true
     && verifiedTransactionId.length > 0
