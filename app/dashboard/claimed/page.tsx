@@ -118,6 +118,7 @@ export default async function ClaimedPage() {
               {state.nextClaimAt ? <PulseCountdown target={state.nextClaimAt} /> : <strong>READY</strong>}
             </div>
             <Link href="/dashboard" className="button button-light">Return to Pulse <ArrowUpRight /></Link>
+            <Link href={"/earn?claim=" + encodeURIComponent(receipt.id)} className="button button-secondary">Earn while you wait <ArrowUpRight /></Link>
           </div>
 
           <div className="pc-v8-return-actions">
