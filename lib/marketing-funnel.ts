@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const MARKETING_SESSION_COOKIE = "pc_growth";
 export const MARKETING_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
-export const MARKETING_EXPERIENCE_VERSION = "superior-v11";
+export const MARKETING_EXPERIENCE_VERSION = "faucet-ads-v12";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PUBLIC_EVENTS = new Set<MarketingEventType>(["home_view", "proof_view", "signup_view", "cta_click"]);
@@ -17,6 +17,8 @@ const CLICK_LABELS = new Set([
   "home_final_signup",
   "proof_hero_signup",
   "proof_final_signup",
+  "faucet_signup",
+  "faucet_proof",
 ]);
 
 export type MarketingEventType = "home_view" | "proof_view" | "signup_view" | "signup_created" | "cta_click";
