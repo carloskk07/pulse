@@ -46,6 +46,25 @@ requireAll("supabase/migrations/0083_referral_acquisition_integrity.sql", [
   "canonical release schema v55",
 ]);
 
+requireAll("supabase/migrations/0084_stacked_incentive_budget_authority.sql", [
+  "network_commission_residual_cap_bps',3000",
+  "v_gross_margin - v_referral_cost",
+  "qualifying_conversion_id",
+  "v_total_bps > v_cap_bps",
+  "release_stacked_incentive_budget_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0084_stacked_incentive_budget_authority.sql", [
+  "network_commission_enabled','true",
+  "cashback_enabled','true",
+  "variable_reward_enabled','true",
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 const authActions = read("app/auth/actions.ts");
 const signInStart = authActions.indexOf("export async function signIn");
 const signUpStart = authActions.indexOf("export async function signUp");
@@ -93,6 +112,8 @@ requireAll("components/direct-start-button.tsx", [
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_referral_network_integrity_contract")',
   'setupBlockers.push("referral-network-integrity")',
+  'admin.rpc("release_stacked_incentive_budget_contract")',
+  'setupBlockers.push("stacked-incentive-budget")',
 ]);
 
 const earn = requireAll("app/earn/page.tsx", [
