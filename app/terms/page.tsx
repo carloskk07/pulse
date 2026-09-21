@@ -15,10 +15,11 @@ export default function TermsPage() {
       <h2>Reward availability</h2><p>Pulse windows, Turbo opportunities and other reward surfaces can change, expire or become unavailable. A displayed opportunity is not a promise of payment until the required event is verified under the applicable reward policy.</p>
       <h2>Account responsibility</h2><p>You are responsible for the accuracy of information you provide and for keeping access to your account secure. Activity that appears automated, deceptive, duplicated or abusive may be limited or reviewed.</p>
       <h2>Third-party services</h2><p>Some opportunities and payouts are delivered by independent providers. Their own eligibility, content and service terms may also apply. Pulsercuit does not control every external offer or provider decision.</p>
+      <h2>Sponsored advertising</h2><p>Pulse Ads campaigns are reviewed before funding and are also subject to the <Link href="/advertising-policy">Advertising Standards</Link>. Submitting a campaign does not charge the advertiser. Approved campaigns can be funded through the supported payment flow and spend only under the campaign&apos;s applicable billing rule. Sponsored clicks do not create a reward for the viewer. Pulsercuit may pause or reject advertising to protect users, measurement integrity, legal compliance or the service.</p>
       <h2>Balances and reversals</h2><p>Pulsercuit balances are derived from the authoritative ledger. Verified reversals, chargebacks, duplicate events or invalid activity may reduce a balance when the corresponding original reward is reversed.</p>
       <h2>Changes and availability</h2><p>We may change, suspend or retire features when needed for security, compliance, provider changes or product reliability. We will avoid representing unavailable functions as active.</p>
       <h2>Questions</h2><p>Open a case in the <Link href="/support">Help Center</Link> if you need clarification about a reward, payout, account or policy.</p>
     </article>
-    <footer className="completion-footer shell"><span>Pulsercuit</span><div><Link href="/privacy">Privacy</Link><Link href="/rewards-policy">Rewards policy</Link><Link href="/support">Support</Link></div></footer>
+    <footer className="completion-footer shell"><span>Pulsercuit</span><div><Link href="/privacy">Privacy</Link><Link href="/rewards-policy">Rewards policy</Link><Link href="/advertising-policy">Advertising</Link><Link href="/support">Support</Link></div></footer>
   </main>;
 }
