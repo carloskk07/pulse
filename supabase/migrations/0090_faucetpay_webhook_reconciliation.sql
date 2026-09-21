@@ -420,7 +420,11 @@ select
   ) > 0
   and coalesce((
     select
-      lower(coalesce(value->>'enabled','false'))='false'
+      lower(coalesce(value->>'enabled','false')) in ('true','false')
+      and (
+        lower(coalesce(value->>'enabled','false'))='false'
+        or coalesce((value->>'expected_faucet_id')::bigint,0) > 0
+      )
       and greatest(1,least(coalesce((value->>'max_event_age_hours')::integer,72),168)) between 1 and 168
     from public.app_config
     where key='faucetpay_webhook_reconciliation'
