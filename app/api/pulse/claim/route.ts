@@ -5,7 +5,7 @@ import {
   recordAttributedPulseCompletion,
   RETENTION_ATTRIBUTION_COOKIE,
 } from "@/lib/retention-attribution";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureFreshTreasuryBacking } from "@/lib/treasury-backing";
@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
   const userId = !claimsError && typeof subject === "string" ? subject : "";
   if (!userId) return NextResponse.redirect(new URL("/auth?next=/dashboard", request.url), 303);
 
-  const formData = await request.formData();
+  const formData = await readUrlEncodedFormWithLimit(request, 8_192);
+  if (!formData) return dashboardRedirect(request, "verification-failed");
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const verification = await verifyTurnstile(String(formData.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "hourly_pulse" });
   if (!verification.success) return dashboardRedirect(request, verification.missingConfig ? "verification-not-configured" : "verification-failed");
