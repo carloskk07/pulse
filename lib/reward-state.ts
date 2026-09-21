@@ -66,7 +66,7 @@ function labelForEntry(type: string) {
     referral: "Referral reward",
     withdrawal: "Withdrawal",
     chargeback: "Reward reversed",
-    adjustment: "Balance adjustment",
+    adjustment: "Balance adjustment",\n    cashback: "Cashback confirmed",\n    network_commission: "Network contribution",
   };
   return labels[type] ?? "Reward activity";
 }
