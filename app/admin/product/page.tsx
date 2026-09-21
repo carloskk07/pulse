@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
+import { getFaucetMicroLaunchPlan } from "@/lib/faucet-micro-launch";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { fundLaunchTreasury, verifyPasswordBreachProtection } from "./actions";
@@ -22,9 +23,10 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
   if (!user) redirect("/auth?next=/admin/product");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [readiness, launchTreasury, params] = await Promise.all([
+  const [readiness, launchTreasury, microLaunch, params] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasuryDailyFundingState("launch"),
+    getFaucetMicroLaunchPlan(),
     searchParams,
   ]);
   const product = readiness.product;
@@ -66,6 +68,27 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
         ) : null}
       </section>
 
+
+      <section className="admin-decision-card">
+        <span className="app-eyebrow">Controlled micro-launch</span>
+        <h2>{microLaunch.available ? `Stage: ${microLaunch.stage.replaceAll("_", " ")}` : "Micro-launch authority unavailable."}</h2>
+        <p>The first public faucet envelope is intentionally small: 10 P/day globally, 2 P/day per account and a five-paid-user evidence target. One funded day is enough to open a controlled test; the full proof runway is tracked separately before any scale increase.</p>
+        {microLaunch.available ? (
+          <>
+            <div className="admin-secondary-grid">
+              <article><span>Daily budget</span><strong>{microLaunch.dailyBudgetCredits} / 10 P</strong><small>{microLaunch.dailyBudgetCredits === 10 ? "TARGET" : "ADJUST REQUIRED"}</small></article>
+              <article><span>Per-user cap</span><strong>{microLaunch.maxUserDailyCredits} / 2 P</strong><small>{microLaunch.capsReady ? "MICRO-LAUNCH SAFE" : "TOO CONCENTRATED"}</small></article>
+              <article><span>Users/day at full share</span><strong>{microLaunch.supportedUsersPerFullDay}</strong><small>Target ≥ {microLaunch.paidUserEvidenceTarget}</small></article>
+              <article><span>Days to payout at cap</span><strong>{microLaunch.daysToPayoutAtCap ?? "—"}</strong><small>{microLaunch.claimsPerUserPerDay} claim(s)/user/day</small></article>
+              <article><span>Day-one funding gap</span><strong>{microLaunch.dayOneFundingGapCredits} P</strong><small>{microLaunch.dayOneFunded ? "COVERED" : "FUND BEFORE OPEN"}</small></article>
+              <article><span>Backing</span><strong>{microLaunch.backingReady ? "FRESH" : "REFRESH REQUIRED"}</strong></article>
+              <article><span>Paid-user evidence</span><strong>{microLaunch.paidUsers} / {microLaunch.paidUserEvidenceTarget}</strong><small>{microLaunch.remainingPaidUsers} remaining</small></article>
+              <article><span>Full proof runway gap</span><strong>{microLaunch.proofRunwayFundingGapCredits} P</strong><small>{microLaunch.proofRunwayCreditsNeeded} P still needed for remaining payout packs</small></article>
+            </div>
+            <p className="admin-panel-note"><strong>{microLaunch.activationEligible ? "Economically eligible for a controlled micro-open once pilot mode is deliberately changed." : "Do not open public claims yet."}</strong> Scale remains blocked until the five-paid-user evidence target is reached.</p>
+          </>
+        ) : null}
+      </section>
 
       <section className="admin-decision-card treasury-funding-card">
         <span className="app-eyebrow">Backed Treasury funding</span>
