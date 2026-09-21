@@ -58,6 +58,15 @@ create index if not exists faucetpay_webhook_withdrawal_idx
 
 alter table public.faucetpay_payout_webhook_events enable row level security;
 
+drop policy if exists "faucetpay_webhook_no_public_access"
+  on public.faucetpay_payout_webhook_events;
+create policy "faucetpay_webhook_no_public_access"
+on public.faucetpay_payout_webhook_events
+for all
+to anon,authenticated
+using (false)
+with check (false);
+
 revoke all on table public.faucetpay_payout_webhook_events
   from public,anon,authenticated,service_role;
 grant select,insert,update on table public.faucetpay_payout_webhook_events
