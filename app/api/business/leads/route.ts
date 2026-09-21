@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { isTrustedSameOriginMutation } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -36,6 +37,8 @@ function sha256(value: string) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isTrustedSameOriginMutation(request)) return businessRedirect(request, "verification-failed");
+
   const form = await request.formData();
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
   const verification = await verifyTurnstile(String(form.get("cf-turnstile-response") ?? ""), ip, { expectedAction: "business_lead" });
