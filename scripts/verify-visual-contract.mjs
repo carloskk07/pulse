@@ -167,8 +167,10 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"terms|/terms"',
   '"rewards-policy|/rewards-policy"',
   '"auth-recover|/auth/recover"',
+  '"faucet|/faucet"',
+  '"advertise|/advertise"',
   '"/__visual-smoke-not-found__"',
-  'test "$count" -eq 72',
+  'test "$count" -eq 76',
 ]);
 
 requireText("app/styles/theme.css", [
@@ -268,6 +270,7 @@ requireText("components/app-shell.tsx", [
   'className={active === "account" ? "active" : ""}',
   'aria-current={active === "account" ? "page" : undefined}',
   'aria-current={active === "proof" ? "page" : undefined}',
+  'aria-current={active === "ads" ? "page" : undefined}',
   'aria-current={active === "support" ? "page" : undefined}',
 ]);
 
