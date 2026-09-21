@@ -40,6 +40,18 @@ requireAll("supabase/migrations/0077_continuous_reward_ecosystem.sql", [
   "alter table public.network_commission_events enable row level security",
   "create or replace function public.apply_network_commission_on_monetization",
   "zz_network_commission_after_monetization",
+  "create or replace function public.resolve_hourly_pulse_reward",
+  "extensions.gen_random_bytes(2)",
+  "v_total_bps <> 10000",
+  "create or replace function public.claim_hourly_pulse(p_user_id uuid)",
+  "public.resolve_hourly_pulse_reward(",
+  "SCALE_V48_GLOBAL_CRITICAL_SECTION",
+  "create or replace function public.reserve_withdrawal(",
+  "free_window_used",
+  "extra_withdrawals_enabled",
+  "service_fee_credits",
+  "service_fee_ledger_entry_id",
+  "create or replace function public.finalize_withdrawal(",
   "create or replace function public.current_ecosystem_snapshot",
   "grant execute on function public.current_ecosystem_snapshot(uuid)",
   "to service_role",
@@ -53,8 +65,8 @@ forbidAll("supabase/migrations/0077_continuous_reward_ecosystem.sql", [
   "'extra_withdrawals_enabled', true",
   "'network_commission_enabled', true",
   "'cashback_enabled', true",
-  "update public.reward_treasuries",
-  "insert into public.pulse_claims",
+  "fund_reward_treasury(",
+  "pilot_mode = false",
 ]);
 
 requireAll("lib/pulse-ecosystem.ts", [
@@ -66,6 +78,8 @@ requireAll("lib/pulse-ecosystem.ts", [
   "rewardedReferrals * 40",
   "freeWithdrawalAvailable",
   "networkCommissionEnabled",
+  "extraWithdrawalsEnabled",
+  "variableRewardReviewRequired",
 ]);
 
 requireAll("components/continuous-pulse-panel.tsx", [
@@ -90,6 +104,28 @@ requireAll("components/withdrawal-pass-panel.tsx", [
   "Withdrawal Pass",
   "free withdrawal",
   "extraWithdrawalsEnabled",
+]);
+
+requireAll("app/api/withdrawals/route.ts", [
+  'reserved.status === "free_window_used"',
+  '"free-pass-used"',
+]);
+
+requireAll("app/wallet/page.tsx", [
+  "getPulseEcosystemSnapshot",
+  "ecosystem.freeWithdrawalAvailable || ecosystem.extraWithdrawalsEnabled",
+  '"free-pass-used"',
+]);
+
+requireAll("lib/reward-state.ts", [
+  "claimRewardVariable",
+  "claimRewardMinCredits",
+  "claimRewardMaxCredits",
+  "variable_reward_review_required",
+]);
+
+requireAll("app/dashboard/page.tsx", [
+  'state.claimRewardVariable ? "Reveal Pulse"',
 ]);
 
 requireAll("components/app-shell.tsx", [
