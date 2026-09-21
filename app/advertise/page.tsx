@@ -106,7 +106,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
                 </fieldset>
                 <TurnstileField action="pulse_ads_create" />
                 <button className="button button-light" type="submit">Submit for review <ArrowUpRight /></button>
-                <small className="pc-ads-form-note">Submitting does not charge you. Funding is offered only after campaign approval.</small>
+                <small className="pc-ads-form-note">Submitting does not charge you. Funding is offered only after campaign approval. <Link href="/advertising-policy">Campaign standards</Link> apply.</small>
               </form>
             </section>
 
