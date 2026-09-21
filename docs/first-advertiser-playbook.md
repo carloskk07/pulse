@@ -1,5 +1,30 @@
 # First Advertiser Playbook
 
+## V13.2 demand wedge
+
+Use two commercial doors instead of forcing every advertiser into the same funnel:
+
+**Pulse Ads** is the low-friction traffic test. Current launch economics are a $5 minimum budget and $0.05 per qualified sponsored click. The viewer is not paid to click, impressions are not billed, and delivery is never promised before real inventory exists.
+
+**Pulse Direct** is the higher-value verified-action product. Use it when the advertiser can define and verify a meaningful post-click event such as onboarding, an early product milestone, trial activation or another objective outcome.
+
+Routing rule:
+
+```text
+needs traffic / wants to inspect quality first
+→ Pulse Ads
+
+needs a verified outcome / can provide callback evidence
+→ Pulse Direct
+
+not sure
+→ qualify before creating any campaign
+```
+
+Do not require an account merely to express interest. The no-login advertiser intake creates a private CRM lead only. It does not create a campaign, budget, traffic entitlement or revenue.
+
+For outbound prospects already marked `ready`, execute outreach before researching more companies. Use the prefilled draft only as a starting point and mark the CRM stage only after the contact actually occurs.
+
 ## Objective
 
 Prove one real Pulse Direct loop with the smallest credible commercial experiment:
