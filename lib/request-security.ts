@@ -69,3 +69,14 @@ export async function readRequestTextWithLimit(request: NextRequest, maxBytes: n
     return null;
   }
 }
+
+
+export async function readUrlEncodedFormWithLimit(request: NextRequest, maxBytes: number) {
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/x-www-form-urlencoded") return null;
+
+  const body = await readRequestTextWithLimit(request, maxBytes);
+  if (body === null) return null;
+
+  return new URLSearchParams(body);
+}
