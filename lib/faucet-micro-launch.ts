@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
+import { getCanonicalFaucetPayPackAuthority } from "@/lib/treasury-backing";
 import { getFaucetLaunchRunway } from "@/lib/faucet-launch-runway";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 
@@ -69,14 +70,14 @@ export async function getFaucetMicroLaunchPlan(): Promise<FaucetMicroLaunchPlan>
     getFaucetLaunchState(),
     getFaucetLaunchRunway(),
     getTreasuryDailyFundingState("launch"),
-    admin.from("payout_pack_authority").select("amount_credits").eq("provider", "faucetpay").maybeSingle(),
+    getCanonicalFaucetPayPackAuthority(admin),
   ]);
 
-  if (!launch.available || !runway.available || !treasury || authorityResult.error || !authorityResult.data) {
+  if (!launch.available || !runway.available || !treasury || !authorityResult) {
     return unavailable();
   }
 
-  const payoutPackCredits = Math.max(0, Number(authorityResult.data.amount_credits ?? 0));
+  const payoutPackCredits = Math.max(0, authorityResult.amountCredits);
   const rewardCredits = Math.max(1, launch.rewardCredits);
   const supportedUsersPerFullDay = treasury.maxUserDailyCredits > 0
     ? Math.floor(treasury.dailyBudgetCredits / treasury.maxUserDailyCredits)
