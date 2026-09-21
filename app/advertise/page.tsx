@@ -13,7 +13,16 @@ export const metadata = {
 };
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ state?: string }> };
+type Props = { searchParams: Promise<{ state?: string; interest?: string }> };
+
+const interestCopy: Record<string, string> = {
+  received: "Received. No account or budget was created. We will review the use case before asking you to set anything up.",
+  invalid: "Check the contact, website and pilot details and try again.",
+  "verification-failed": "Human verification did not complete. Try again.",
+  "verification-unavailable": "Interest intake verification is temporarily unavailable.",
+  "service-unavailable": "Advertiser intake is temporarily unavailable. No submission was stored.",
+  failed: "The request could not be stored safely. Try again.",
+};
 
 const stateCopy: Record<string, string> = {
   pending_review: "Campaign received. We review the destination and creative before any payment is requested.",
@@ -59,6 +68,12 @@ export default async function AdvertisePage({ searchParams }: Props) {
               <span><Shield /> Prepaid budget</span>
               <span><Trend /> One billable click per user/day</span>
             </div>
+            <div className="pc-ads-hero-actions">
+              <Link className="button button-light" href={user ? "#campaign-builder" : "#launch-interest"}>
+                {user ? "Create a campaign" : "Describe a small test"} <ArrowUpRight />
+              </Link>
+              <Link className="button button-secondary" href="/business">Need verified actions?</Link>
+            </div>
           </div>
           <aside className="pc-ads-economics">
             <span>Starting budget</span>
@@ -69,16 +84,48 @@ export default async function AdvertisePage({ searchParams }: Props) {
         </header>
 
         {params.state ? <div className="claim-message neutral">{stateCopy[params.state] ?? "Campaign state updated."}</div> : null}
+        {params.interest ? <div className={`claim-message ${params.interest === "received" ? "success" : "neutral"}`}>{interestCopy[params.interest] ?? "Advertiser interest state updated."}</div> : null}
 
         {!user ? (
-          <section className="pc-ads-signin">
-            <Spark />
-            <div><span className="app-eyebrow">Advertiser access</span><h2>Use the same Pulsercuit account.</h2><p>Sign in, create the campaign, and keep funding and performance in one place.</p></div>
-            <Link className="button button-light" href="/auth?next=/advertise">Sign in to advertise <ArrowUpRight /></Link>
-          </section>
+          <>
+            <section className="pc-ads-builder pc-ads-interest" id="launch-interest">
+              <div className="pc-ads-builder-copy">
+                <span className="app-eyebrow">Founding advertiser path</span>
+                <h2>Tell us the result you want before creating an account.</h2>
+                <p>Use this when you want to test the audience but do not want another dashboard yet. We review the fit first. No campaign, charge or traffic promise is created by this form.</p>
+                <ol>
+                  <li><b>1</b><span><strong>Describe</strong><small>Website, goal, geography and a small test range.</small></span></li>
+                  <li><b>2</b><span><strong>Review</strong><small>We decide whether traffic or a verified-action pilot fits better.</small></span></li>
+                  <li><b>3</b><span><strong>Configure</strong><small>Only then do you create and fund a real campaign.</small></span></li>
+                </ol>
+              </div>
+
+              <form className="pc-ads-form" action="/api/ads/interest" method="post">
+                <div className="pc-ads-form-grid">
+                  <label><span>Company / brand</span><input name="company" minLength={2} maxLength={120} required autoComplete="organization" /></label>
+                  <label><span>Your name</span><input name="contact_name" minLength={2} maxLength={120} required autoComplete="name" /></label>
+                  <label><span>Work email</span><input name="work_email" type="email" maxLength={254} required autoComplete="email" /></label>
+                  <label><span>Website</span><input name="website" inputMode="url" maxLength={500} required placeholder="company.com" /></label>
+                  <label><span>What do you want?</span><select name="goal" required defaultValue=""><option value="" disabled>Select one</option><option value="traffic">Qualified website traffic</option><option value="verified_action">Verified user actions</option><option value="not_sure">Help me choose</option></select></label>
+                  <label><span>First test</span><select name="budget_range" required defaultValue="traffic_5_25"><option value="traffic_5_25">$5–$25</option><option value="traffic_25_100">$25–$100</option><option value="pilot_100_500">$100–$500</option><option value="not_sure">Not sure yet</option></select></label>
+                </div>
+                <label><span>Target countries · optional</span><input name="target_countries" maxLength={300} placeholder="Brazil, United States, Mexico…" /></label>
+                <label><span>What should happen after someone arrives?</span><textarea name="message" maxLength={3000} rows={4} placeholder="Example: visit a landing page and understand our new app. Or: install and complete onboarding with server-side verification." /></label>
+                <TurnstileField action="pulse_ads_interest" />
+                <button className="button button-light" type="submit">Request a small-test review <ArrowUpRight /></button>
+                <small className="pc-ads-form-note">No login required. Submitting asks Pulsercuit to review the use case and contact you; it does not authorize spend or guarantee delivery.</small>
+              </form>
+            </section>
+
+            <section className="pc-ads-signin">
+              <Spark />
+              <div><span className="app-eyebrow">Already decided?</span><h2>Create the campaign yourself.</h2><p>Sign in when you are ready to set the creative, targeting and exact prepaid budget.</p></div>
+              <Link className="button button-light" href="/auth?next=/advertise">Sign in to advertise <ArrowUpRight /></Link>
+            </section>
+          </>
         ) : (
           <>
-            <section className="pc-ads-builder">
+            <section className="pc-ads-builder" id="campaign-builder">
               <div className="pc-ads-builder-copy">
                 <span className="app-eyebrow">Create campaign</span>
                 <h2>Simple enough to launch in one screen.</h2>

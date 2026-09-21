@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { getOutboundProspects } from "@/lib/outbound-prospects";
+import { buildProspectOutreachHref, getOutboundProspects } from "@/lib/outbound-prospects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { updateProspectStatus, upsertProspect } from "./actions";
 
@@ -77,7 +77,13 @@ export default async function AdvertiserProspectsPage({ searchParams }: Props) {
             <article className="prospect-row" key={item.id}>
               <div className="prospect-company"><strong>{item.companyName}</strong><small>{segmentLabel(item.segment)}{item.country ? ` · ${item.country}` : ""}</small><a href={item.website} target="_blank" rel="noopener noreferrer">{item.domain}</a>{item.publicContactEmail ? <small>{item.publicContactEmail}</small> : null}</div>
               <div className={`prospect-score ${scoreClass(item.fitScore)}`}><strong>{item.fitScore}</strong><span>/100</span></div>
-              <div className="prospect-pilot"><p>{item.suggestedPilot ?? "Define a verified-action pilot before outreach."}</p><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Source</a></div>
+              <div className="prospect-pilot">
+                <p>{item.suggestedPilot ?? "Define a verified-action pilot before outreach."}</p>
+                <div className="prospect-actions">
+                  <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Source</a>
+                  {buildProspectOutreachHref(item) ? <a href={buildProspectOutreachHref(item) ?? undefined}>Open outreach draft</a> : <span>No public email</span>}
+                </div>
+              </div>
               <form className="prospect-stage-form" action={updateProspectStatus}>
                 <input type="hidden" name="id" value={item.id} />
                 <select name="status" defaultValue={item.status} aria-label={`Stage for ${item.companyName}`}>

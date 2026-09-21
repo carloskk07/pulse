@@ -11,7 +11,12 @@ export type BusinessLead = {
   budgetRange: string;
   targetCountries: string;
   estimatedActions: number | null;
+  productInterest: string;
   status: string;
+  source: string;
+  message: string;
+  nextActionAt: string | null;
+  operatorNote: string | null;
   createdAt: string;
 };
 
@@ -31,7 +36,7 @@ export async function getBusinessLeadSnapshot(): Promise<BusinessLeadSnapshot> {
     admin.from("business_leads").select("id", { count: "exact", head: true }).eq("status", "new"),
     admin.from("business_leads").select("id", { count: "exact", head: true }).in("status", ["qualified", "contacted", "pilot"]),
     admin.from("business_leads")
-      .select("id,company,contact_name,work_email,website,objective,budget_range,target_countries,estimated_actions,status,created_at")
+      .select("id,company,contact_name,work_email,website,objective,budget_range,target_countries,estimated_actions,product_interest,status,source,message,next_action_at,operator_note,created_at")
       .order("created_at", { ascending: false })
       .limit(12),
   ]);
@@ -50,7 +55,12 @@ export async function getBusinessLeadSnapshot(): Promise<BusinessLeadSnapshot> {
       budgetRange: String(row.budget_range),
       targetCountries: String(row.target_countries ?? ""),
       estimatedActions: row.estimated_actions == null ? null : Number(row.estimated_actions),
+      productInterest: String(row.product_interest ?? "pulse_direct"),
       status: String(row.status),
+      source: String(row.source ?? "business_page"),
+      message: String(row.message ?? ""),
+      nextActionAt: row.next_action_at ? String(row.next_action_at) : null,
+      operatorNote: row.operator_note ? String(row.operator_note) : null,
       createdAt: String(row.created_at),
     })),
   };
