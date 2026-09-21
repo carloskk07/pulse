@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowUpRight } from "@/components/icons";
 
@@ -27,6 +28,7 @@ export function DirectStartButton({
   label?: string;
   ariaLabel?: string;
 }) {
+  const router = useRouter();
   const [state, setState] = useState<"idle" | "opening">("idle");
 
   async function start() {
@@ -48,24 +50,24 @@ export function DirectStartButton({
       const status = typeof payload.status === "string" ? payload.status : "unavailable";
 
       if (response.status === 401) {
-        window.location.assign("/auth?next=/earn");
+        router.push("/auth?next=/earn");
         return;
       }
 
       if (!response.ok || typeof payload.destination !== "string") {
-        window.location.assign(failureUrl(status, sourcePulseClaimId));
+        router.push(failureUrl(status, sourcePulseClaimId));
         return;
       }
 
       const target = new URL(payload.destination);
       if (target.protocol !== "https:") {
-        window.location.assign(failureUrl("destination-error", sourcePulseClaimId));
+        router.push(failureUrl("destination-error", sourcePulseClaimId));
         return;
       }
 
       window.location.assign(target.toString());
     } catch {
-      window.location.assign(failureUrl("unavailable", sourcePulseClaimId));
+      router.push(failureUrl("unavailable", sourcePulseClaimId));
     }
   }
 
