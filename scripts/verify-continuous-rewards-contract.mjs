@@ -164,7 +164,7 @@ requireAll("app/api/withdrawals/route.ts", [
   "reservedHasStoredPayoutAuthority",
   'reserved.status === "submitted"',
   '"withdrawal_payout_authority_snapshot_valid"',
-  '"payout_authority_version"',
+  "payout_authority_version",
 ]);
 
 requireAll("app/wallet/page.tsx", [
