@@ -149,7 +149,7 @@ if (!invite.includes("<NetworkDepthPanel />")) {
 }
 
 const wallet = read("app/wallet/page.tsx");
-if (!wallet.includes("<WithdrawalPassPanel />")) {
+if (!wallet.includes("<WithdrawalPassPanel snapshot={ecosystem} />")) {
   throw new Error("Vault must expose the withdrawal pass.");
 }
 
