@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Check, Users } from "@/components/icons";
 import { CopyReferralLink } from "@/components/copy-referral-link";
+import { NetworkDepthPanel } from "@/components/network-depth-panel";
 import { getInviteState } from "@/lib/invite-state";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
@@ -66,6 +67,8 @@ export default async function InvitePage() {
           <span>You can still share your link; bonuses return only when a live referral rule is active.</span>
         </div>
       ) : null}
+
+      <NetworkDepthPanel />
 
       <section className="pc-luxe-share-stats">
         <article><small>Active</small><strong>{signedIn ? rewarded : "—"}</strong><span>confirmed referrals</span></article>
