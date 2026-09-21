@@ -9,7 +9,31 @@ const required = [
   "if (!fetchSite) return false;",
   'fetchSite === "same-origin"',
   'fetchSite === "none"',
+  "readRequestBytesWithLimit",
+  'request.headers.get("content-length")',
+  "totalBytes > maxBytes",
+  "reader.read()",
+  'new TextDecoder("utf-8", { fatal: true })',
 ];
+
+const sameOriginRoutes = [
+  "app/api/business/leads/route.ts",
+  "app/api/ads/interest/route.ts",
+  "app/api/ads/campaigns/route.ts",
+  "app/api/ads/click/route.ts",
+  "app/api/marketing/event/route.ts",
+  "app/api/pulse/claim/route.ts",
+  "app/api/withdrawals/route.ts",
+  "app/api/direct/start/route.ts",
+  "app/api/return-reminder/route.ts",
+];
+
+for (const routePath of sameOriginRoutes) {
+  const routeSource = readFileSync(routePath, "utf8");
+  if (!routeSource.includes("isTrustedSameOriginMutation(request)")) {
+    throw new Error(`${routePath} is missing same-origin mutation provenance enforcement.`);
+  }
+}
 
 for (const fragment of required) {
   if (!source.includes(fragment)) {
