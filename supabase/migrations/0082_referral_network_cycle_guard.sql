@@ -133,6 +133,145 @@ revoke all on function public.bind_referral(uuid,text)
 grant execute on function public.bind_referral(uuid,text)
   to service_role;
 
+-- Referral rewards must be financed by verified post-user-reward margin.
+-- Keep the configured headline rewards, but allow them to consume at most
+-- half of the qualifying conversion's verified margin by default.
+insert into public.app_config(key, value, version, reason)
+values (
+  'referral_reward',
+  jsonb_build_object(
+    'inviter_credits',100,
+    'invitee_credits',50,
+    'max_reward_share_of_margin_bps',5000
+  ),
+  2,
+  'Verified referral reward only when funded by conversion margin; at least half of verified margin remains with the platform'
+)
+on conflict (key) do update
+set value = coalesce(public.app_config.value,'{}'::jsonb)
+    || jsonb_build_object('max_reward_share_of_margin_bps',5000),
+    version = greatest(public.app_config.version,2),
+    reason = excluded.reason,
+    updated_at = now();
+
+create or replace function public.reward_referral_on_conversion()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $
+declare
+  v_ref public.referrals%rowtype;
+  v_config jsonb := '{}'::jsonb;
+  v_inviter_reward bigint := 100;
+  v_invitee_reward bigint := 50;
+  v_share_bps integer := 5000;
+  v_verified_margin_usd_micros bigint := 0;
+  v_reward_cost_usd_micros bigint := 0;
+  v_reward_budget_usd_micros bigint := 0;
+begin
+  if new.event_type <> 'conversion' or new.status <> 'confirmed' then
+    return new;
+  end if;
+
+  select * into v_ref
+  from public.referrals
+  where invitee_id = new.user_id
+    and status = 'pending'
+  for update;
+
+  if not found then
+    return new;
+  end if;
+
+  select coalesce(value,'{}'::jsonb)
+  into v_config
+  from public.app_config
+  where key='referral_reward';
+
+  v_inviter_reward := greatest(0,least(
+    coalesce((v_config->>'inviter_credits')::bigint,100),
+    1000000
+  ));
+  v_invitee_reward := greatest(0,least(
+    coalesce((v_config->>'invitee_credits')::bigint,50),
+    1000000
+  ));
+  v_share_bps := greatest(0,least(
+    coalesce((v_config->>'max_reward_share_of_margin_bps')::integer,5000),
+    10000
+  ));
+
+  -- 1 P = 1,000 USD micros under the canonical payout economics already used
+  -- by Pulse Direct. User reward cost is removed before referral budget exists.
+  v_verified_margin_usd_micros := greatest(
+    0,
+    coalesce(new.payout_usd_micros,0)
+      - greatest(0,coalesce(new.reward_credits,0)) * 1000
+  );
+  v_reward_cost_usd_micros := (v_inviter_reward + v_invitee_reward) * 1000;
+  v_reward_budget_usd_micros := floor(
+    (v_verified_margin_usd_micros::numeric * v_share_bps::numeric) / 10000::numeric
+  )::bigint;
+
+  if v_reward_cost_usd_micros <= 0
+     or v_reward_cost_usd_micros > v_reward_budget_usd_micros then
+    -- Leave the referral pending. A later profitable verified conversion may
+    -- qualify it; an underfunded conversion can never mint referral liability.
+    return new;
+  end if;
+
+  if v_inviter_reward > 0 then
+    insert into public.ledger_entries(user_id, event_key, entry_type, state, credits, metadata)
+    values (
+      v_ref.inviter_id,
+      'referral:inviter:' || v_ref.id::text,
+      'referral',
+      'available',
+      v_inviter_reward,
+      jsonb_build_object(
+        'referral_id',v_ref.id,
+        'role','inviter',
+        'qualifying_conversion_id',new.id,
+        'verified_margin_usd_micros',v_verified_margin_usd_micros,
+        'reward_budget_usd_micros',v_reward_budget_usd_micros
+      )
+    );
+  end if;
+
+  if v_invitee_reward > 0 then
+    insert into public.ledger_entries(user_id, event_key, entry_type, state, credits, metadata)
+    values (
+      v_ref.invitee_id,
+      'referral:invitee:' || v_ref.id::text,
+      'referral',
+      'available',
+      v_invitee_reward,
+      jsonb_build_object(
+        'referral_id',v_ref.id,
+        'role','invitee',
+        'qualifying_conversion_id',new.id,
+        'verified_margin_usd_micros',v_verified_margin_usd_micros,
+        'reward_budget_usd_micros',v_reward_budget_usd_micros
+      )
+    );
+  end if;
+
+  update public.referrals
+  set status='rewarded',
+      qualifying_conversion_id=new.id,
+      inviter_reward_credits=v_inviter_reward,
+      invitee_reward_credits=v_invitee_reward,
+      rewarded_at=now()
+  where id=v_ref.id;
+
+  return new;
+end;
+$;
+
+revoke all on function public.reward_referral_on_conversion()
+  from public, anon, authenticated, service_role;
+
 create or replace function public.apply_network_commission_on_monetization()
 returns trigger
 language plpgsql
@@ -303,6 +442,15 @@ select
     'v_beneficiary = any(v_seen)'
     in lower(pg_get_functiondef('public.apply_network_commission_on_monetization()'::regprocedure))
   ) > 0
+  and position(
+    'v_reward_cost_usd_micros > v_reward_budget_usd_micros'
+    in lower(pg_get_functiondef('public.reward_referral_on_conversion()'::regprocedure))
+  ) > 0
+  and coalesce((
+    select (value->>'max_reward_share_of_margin_bps')::integer = 5000
+    from public.app_config
+    where key='referral_reward'
+  ),false)
   and not has_function_privilege('anon','public.bind_referral(uuid,text)','EXECUTE')
   and not has_function_privilege('authenticated','public.bind_referral(uuid,text)','EXECUTE')
   and has_function_privilege('service_role','public.bind_referral(uuid,text)','EXECUTE');
