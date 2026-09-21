@@ -234,9 +234,9 @@ if (!home.includes("one authority controls the fragment order") && !home.include
 
 const homePage = read("app/page.tsx");
 for (const fragment of [
-  'import { getPublicSocialProof } from "@/lib/social-proof";',
+  'import { getHomeBootstrapProof } from "@/lib/social-proof";',
   "export default async function HomePage()",
-  "const initialProof = await getPublicSocialProof();",
+  "const initialProof = await getHomeBootstrapProof();",
   "<V6HeroProof initialProof={initialProof} />",
   "<V6FinalProof initialProof={initialProof} />",
 ]) {
