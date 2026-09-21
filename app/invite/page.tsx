@@ -6,7 +6,7 @@ import { NetworkDepthPanel } from "@/components/network-depth-panel";
 import { getInviteState } from "@/lib/invite-state";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
-export const metadata = { title: "Invite" };
+export const metadata = { title: "Network" };
 
 function configuredSiteUrl() {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -38,7 +38,7 @@ export default async function InvitePage() {
 
   return (
     <AppShell active="invite">
-      <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Invite</span><h1>Share the circuit. Grow a real circle.</h1><p>Your link can be shared anytime. Referral rewards appear only when an active reward rule applies.</p></div></div>
+      <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Network</span><h1>Build a network that grows from real activity.</h1><p>Your direct invite is level one. Their verified connections form deeper levels, while rewards remain tied to real eligible activity.</p></div></div>
 
       <section className="invite-hero-card pc-luxe-invite-hero">
         <div className="pc-invite-copy">
