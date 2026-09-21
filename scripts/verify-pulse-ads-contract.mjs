@@ -91,10 +91,19 @@ forbidAll("app/api/ads/click/route.ts", [
   "reward_credits",
 ]);
 
+requireAll("lib/pulse-ads-checkout.ts", [
+  'createHmac("sha256"',
+  "timingSafeEqual",
+  "PULSE_ADS_CHECKOUT_SECRET",
+  "buildPulseAdsCheckoutCustom",
+  "verifyPulseAdsCheckoutCustom",
+]);
+
 requireAll("app/api/ads/merchant/callback/route.ts", [
   'createHash("sha256")',
   "pulse_ads_merchant_callbacks",
   "PULSE_ADS_MERCHANT_USERNAME",
+  "verifyPulseAdsCheckoutCustom",
   "https://faucetpay.io/merchant/get-payment/",
   "verified.valid === true",
   "verifiedMerchant === merchantUsername",
@@ -114,6 +123,7 @@ const advertised = requireAll("app/advertise/page.tsx", [
   'name="merchant_username"',
   'name="callback_url"',
   'name="custom"',
+  "buildPulseAdsCheckoutCustom",
   'campaign.status === "approved"',
   "Users are never paid to click".replace("Users", "users"),
 ]);
@@ -132,6 +142,12 @@ const dashboard = read("app/dashboard/page.tsx");
 if (dashboard.includes("getPulseAdPlacement") || dashboard.includes("/api/ads/click")) {
   throw new Error("Sponsored monetization must not be inserted before the core faucet claim.");
 }
+
+requireAll("app/advertising-policy/page.tsx", [
+  "Sponsored traffic is not a paid click scheme.",
+  "Prohibited campaigns",
+  "Invalid activity",
+]);
 
 requireAll("app/faucet/page.tsx", [
   'sourceOverride="faucetpay"',
