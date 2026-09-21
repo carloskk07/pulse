@@ -34,7 +34,11 @@ export async function reviewPulseAd(formData: FormData) {
   const decision = String(formData.get("decision") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim().slice(0, 500);
 
-  if (!UUID_RE.test(campaignId) || !["approve", "reject"].includes(decision)) {
+  if (
+    !UUID_RE.test(campaignId)
+    || !["approve", "reject"].includes(decision)
+    || (decision === "reject" && note.length < 3)
+  ) {
     redirect(resultUrl("invalid"));
   }
 
