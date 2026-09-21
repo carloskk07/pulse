@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readRequestTextWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -14,8 +15,8 @@ export async function POST(request: NextRequest) {
   const secret = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
   if (!secret || secret.length > 256) return json(401, { status: "unauthorized" });
 
-  const raw = await request.text();
-  if (!raw || raw.length > 32_768) return json(400, { status: "invalid_payload" });
+  const raw = await readRequestTextWithLimit(request, 32_768);
+  if (!raw) return json(400, { status: "invalid_payload" });
 
   let payload: Record<string, unknown>;
   try {

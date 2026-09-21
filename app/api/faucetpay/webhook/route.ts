@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { readRequestBytesWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -26,7 +27,7 @@ function record(value: unknown): JsonRecord | null {
     : null;
 }
 
-function verifySignature(rawBody: string, signature: string, secret: string) {
+function verifySignature(rawBody: Uint8Array, signature: string, secret: string) {
   if (!SIGNATURE_RE.test(signature)) return false;
   const expected = "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
 
@@ -50,19 +51,20 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get("x-faucetpay-signature")?.trim() ?? "";
   if (!signature) return json(401, { status: "missing-signature" });
 
-  const rawBody = await request.text();
-  if (!rawBody || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+  const rawBody = await readRequestBytesWithLimit(request, MAX_BODY_BYTES);
+  if (!rawBody?.byteLength) {
     return json(400, { status: "invalid-payload" });
   }
 
-  // FaucetPay signs the exact raw request body. Verify before JSON parsing.
+  // FaucetPay signs the exact raw request bytes. Verify before JSON parsing.
   if (!verifySignature(rawBody, signature, secret)) {
     return json(401, { status: "invalid-signature" });
   }
 
   let payload: JsonRecord;
   try {
-    const parsed = JSON.parse(rawBody) as unknown;
+    const rawText = new TextDecoder("utf-8", { fatal: true }).decode(rawBody);
+    const parsed = JSON.parse(rawText) as unknown;
     const body = record(parsed);
     if (!body) return json(400, { status: "invalid-json" });
     payload = body;

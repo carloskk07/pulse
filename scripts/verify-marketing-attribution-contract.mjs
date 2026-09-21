@@ -12,6 +12,8 @@ const required = [
   [funnel, "user_id: userId", "signup user attribution"],
   [route, '"invalid_event_label"', "public label rejection"],
   [route, "isLikelyAutomation(request)", "automation exclusion"],
+  [route, "readRequestTextWithLimit(request, 4_096)", "bounded public event body"],
+  [route, "JSON.parse(rawBody)", "explicit bounded JSON parsing"],
   [actions, 'recordMarketingEvent(sessionId, "signup_created", {}, { userId })', "signup attribution write"],
   [actions, "recordSuccessfulSignup(data.user.id)", "Auth user binding"],
   [link, 'event: "cta_click"', "client CTA intent"],
