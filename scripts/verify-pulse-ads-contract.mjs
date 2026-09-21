@@ -206,7 +206,7 @@ requireAll("app/faucet/page.tsx", [
 requireAll("lib/faucet-launch.ts", [
   "pilotMode",
   "maxUserDailyCredits * 2 <= treasury.dailyBudgetCredits",
-  "publicClaimsOpen: !pilotMode && fairShareReady && treasuryReady",
+  "publicClaimsOpen: !pilotMode && backingReady && fairShareReady && treasuryReady",
 ]);
 requireAll("lib/marketing-funnel.ts", [
   'MARKETING_EXPERIENCE_VERSION = "faucet-ads-v12"',
