@@ -199,7 +199,7 @@ export default async function AdminEconomicsPage() {
             <article><span>Reserved</span><strong>{moneyFromCredits(launchTreasury.reservedCredits)}</strong></article>
             <article><span>Spent</span><strong>{moneyFromCredits(launchTreasury.spentCredits)}</strong></article>
             <article><span>Daily budget</span><strong>{moneyFromCredits(launchTreasury.dailyBudgetCredits)}</strong></article>
-            <article><span>User/day cap</span><strong>{moneyFromCredits(launchTreasury.maxUserDailyCredits)}</strong></article>
+            <article><span>Natural hourly ceiling</span><strong>{launchTreasury.maxUserDailyCredits.toLocaleString("en-US")} P</strong><small>Technical maximum implied by the current cadence</small></article>
             <article><span>Kill switch</span><strong>{launchTreasury.killSwitch ? "ON" : "OFF"}</strong></article>
             <article><span>Contribution / active</span><strong>{"$" + contributionDau.toFixed(4)}</strong></article>
           </div>
