@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Check, Shield, Spark } from "@/components/icons";
@@ -8,6 +9,8 @@ import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getRecentPulseReceipt } from "@/lib/pulse-receipt";
 import { getRewardSnapshot } from "@/lib/reward-state";
+import { getCurrentUserContext } from "@/lib/current-user-context";
+import { getPulseAdPlacement } from "@/lib/pulse-ads";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Pulse secured" };
@@ -21,9 +24,23 @@ function remainingCopy(remaining: number, unit: "Pulse" | "day" | "Signal point"
 }
 
 export default async function ClaimedPage() {
-  const [state, receipt] = await Promise.all([getRewardSnapshot(), getRecentPulseReceipt()]);
-  if (!state.signedIn) redirect("/auth?next=/dashboard");
+  const [state, receipt, userContext, requestHeaders] = await Promise.all([
+    getRewardSnapshot(),
+    getRecentPulseReceipt(),
+    getCurrentUserContext(),
+    headers(),
+  ]);
+  if (!state.signedIn || !userContext.user) redirect("/auth?next=/dashboard");
   if (!receipt) redirect("/dashboard");
+
+  const countryCode = requestHeaders.get("x-vercel-ip-country");
+  const userAgent = requestHeaders.get("user-agent")?.toLowerCase() ?? "";
+  const devicePlatform = /mobile|android|iphone|ipad/.test(userAgent) ? "mobile" : "desktop";
+  const sponsored = await getPulseAdPlacement({
+    userId: userContext.user.id,
+    countryCode,
+    devicePlatform,
+  });
 
   const signal = getCircuitProgress({
     hourlyClaimCount: state.hourlyClaimCount,
@@ -111,6 +128,23 @@ export default async function ClaimedPage() {
             ) : null}
           </div>
         </section>
+
+        {sponsored ? (
+          <aside className="pc-sponsored-slot" aria-label="Sponsored placement">
+            <div className="pc-sponsored-slot-copy">
+              <span>Sponsored · Pulse Ads</span>
+              <h3>{sponsored.title}</h3>
+              <p>{sponsored.body}</p>
+            </div>
+            <div className="pc-sponsored-slot-actions">
+              <form action="/api/ads/click" method="post">
+                <input type="hidden" name="campaign" value={sponsored.id} />
+                <button className="button button-secondary" type="submit">Visit sponsor <ArrowUpRight /></button>
+              </form>
+              <Link href="/advertise">Advertise here</Link>
+            </div>
+          </aside>
+        ) : null}
 
         <details className="admin-panel">
           <summary><strong>What else changed</strong> · Momentum, history and the next milestone</summary>
