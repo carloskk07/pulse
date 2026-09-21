@@ -113,3 +113,30 @@ export async function getOutboundProspects(): Promise<AdvertiserProspect[]> {
     createdAt: String(row.created_at),
   }));
 }
+
+
+export function buildProspectOutreachHref(prospect: AdvertiserProspect) {
+  if (!prospect.publicContactEmail) return null;
+
+  const subject = `Small verified-user pilot for ${prospect.companyName}`;
+  const hypothesis = prospect.suggestedPilot
+    ? `One pilot hypothesis I had: ${prospect.suggestedPilot}`
+    : "I would keep the first test narrow: one measurable action, one market and a hard prefunded cap.";
+
+  const body = [
+    `Hi ${prospect.companyName} team,`,
+    "",
+    "I’m building PulseCircuit, a prefunded performance channel for verified user actions.",
+    "",
+    "Instead of paying only for raw traffic, a small pilot can settle after one milestone you choose and can verify. Budget and completion count are capped before launch.",
+    "",
+    hypothesis,
+    "",
+    "If this is relevant, I can outline a small 25–50 action test and the verification flow before any budget is requested.",
+    "",
+    "PulseCircuit for Business",
+    "https://pulsercuit.pro/business",
+  ].join("\n");
+
+  return `mailto:${encodeURIComponent(prospect.publicContactEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
