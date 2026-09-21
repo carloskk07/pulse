@@ -9,7 +9,9 @@ import { getRewardEntryChannels } from "@/providers/registry";
 
 export const metadata = { title: "Earn" };
 
-type Props = { searchParams: Promise<{ direct?: string }> };
+type Props = { searchParams: Promise<{ direct?: string; claim?: string }> };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const directCopy: Record<string, string> = {
   "already-completed": "Already completed.",
@@ -46,6 +48,7 @@ export default async function EarnPage({ searchParams }: Props) {
   const primaryChannel = channels[0] ?? null;
   const best = ranked[0] ?? null;
   const moreOptions = ranked.slice(1, 8);
+  const sourcePulseClaimId = params.claim && UUID_RE.test(params.claim) ? params.claim : null;
 
   return (
     <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined}>
@@ -99,6 +102,7 @@ export default async function EarnPage({ searchParams }: Props) {
           {best?.pulseProtected ? (
             <form action="/api/direct/start" method="post" className="direct-start-form">
               <input type="hidden" name="campaign" value={best.externalId} />
+              {sourcePulseClaimId ? <input type="hidden" name="source_pulse_claim_id" value={sourcePulseClaimId} /> : null}
               <button className="button button-light direct-primary-action" type="submit">Start extra reward <ArrowUpRight /></button>
             </form>
           ) : primaryChannel ? (
@@ -134,6 +138,7 @@ export default async function EarnPage({ searchParams }: Props) {
                 {item.pulseProtected ? (
                   <form action="/api/direct/start" method="post" className="direct-start-form compact">
                     <input type="hidden" name="campaign" value={item.externalId} />
+                    {sourcePulseClaimId ? <input type="hidden" name="source_pulse_claim_id" value={sourcePulseClaimId} /> : null}
                     <button className="direct-row-action" type="submit" aria-label={"Start " + item.title}>Start <ArrowUpRight /></button>
                   </form>
                 ) : null}
