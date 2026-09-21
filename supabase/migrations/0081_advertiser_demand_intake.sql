@@ -2,6 +2,8 @@
 -- Reduce the first-contact barrier without creating campaigns, funding, traffic
 -- promises or revenue. All submissions remain private and operator-reviewed.
 
+alter table public.business_leads enable row level security;
+
 alter table public.business_leads
   add column if not exists product_interest text not null default 'pulse_direct',
   add column if not exists next_action_at timestamptz,
