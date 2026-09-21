@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Check, Shield, Spark } from "@/components/icons";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import { ShareRhythmButton } from "@/components/share-rhythm-button";
+import { SponsoredVisitButton } from "@/components/sponsored-visit-button";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getRecentPulseReceipt } from "@/lib/pulse-receipt";
@@ -139,10 +140,7 @@ export default async function ClaimedPage() {
               <p>{sponsored.body}</p>
             </div>
             <div className="pc-sponsored-slot-actions">
-              <form action="/api/ads/click" method="post">
-                <input type="hidden" name="campaign" value={sponsored.id} />
-                <button className="button button-secondary" type="submit">Visit sponsor <ArrowUpRight /></button>
-              </form>
+              <SponsoredVisitButton campaignId={sponsored.id} />
               <Link href="/advertise">Advertise here</Link>
             </div>
           </aside>
