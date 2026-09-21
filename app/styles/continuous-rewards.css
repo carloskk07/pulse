@@ -1,0 +1,334 @@
+.pc-v13-page-head {
+  align-items: flex-end;
+}
+
+.pc-v13-head-metrics,
+.pc-v13-continuous-metrics,
+.pc-v13-economy-metrics,
+.pc-v13-network-summary,
+.pc-v13-withdraw-pass-metrics {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pc-v13-mission-section,
+.pc-v13-continuous-panel,
+.pc-v13-network-panel,
+.pc-v13-withdraw-pass,
+.pc-v13-economy-card {
+  position: relative;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(177,255,82,.08), transparent 34%),
+    var(--panel);
+  box-shadow: 0 24px 70px rgba(0,0,0,.16);
+}
+
+.pc-v13-mission-section,
+.pc-v13-network-panel,
+.pc-v13-continuous-panel {
+  padding: clamp(20px, 3vw, 34px);
+  border-radius: 28px;
+  margin: 22px 0;
+  overflow: hidden;
+}
+
+.pc-v13-mission-section::after,
+.pc-v13-network-panel::after,
+.pc-v13-continuous-panel::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -80px;
+  top: -90px;
+  border-radius: 50%;
+  border: 1px solid rgba(177,255,82,.14);
+  pointer-events: none;
+}
+
+.pc-v13-rank-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(177,255,82,.25);
+  border-radius: 999px;
+  background: rgba(177,255,82,.07);
+  font-size: 13px;
+  letter-spacing: .02em;
+}
+
+.pc-v13-rank-track {
+  height: 4px;
+  background: rgba(255,255,255,.06);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 6px 0 20px;
+}
+
+.pc-v13-rank-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: .72;
+}
+
+.pc-v13-mission-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px;
+}
+
+.pc-v13-mission-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+  min-height: 152px;
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  background: rgba(255,255,255,.025);
+  text-decoration: none;
+  color: inherit;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+
+.pc-v13-mission-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(177,255,82,.24);
+  background: rgba(177,255,82,.035);
+}
+
+.pc-v13-mission-card.done {
+  border-color: rgba(177,255,82,.22);
+}
+
+.pc-v13-mission-card strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.pc-v13-mission-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.pc-v13-mission-status {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.055);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pc-v13-mission-card.done .pc-v13-mission-status {
+  background: rgba(177,255,82,.12);
+}
+
+.pc-v13-economy-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.pc-v13-economy-card {
+  min-height: 250px;
+  padding: clamp(20px,3vw,30px);
+  border-radius: 24px;
+}
+
+.pc-v13-economy-card h2 {
+  max-width: 620px;
+  margin: 12px 0 10px;
+  font-size: clamp(22px,2.4vw,32px);
+}
+
+.pc-v13-economy-card p {
+  max-width: 620px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.pc-v13-economy-metrics {
+  margin-top: 24px;
+}
+
+.pc-v13-economy-metrics span,
+.pc-v13-network-summary span,
+.pc-v13-withdraw-pass-metrics span,
+.pc-v13-continuous-metrics span {
+  display: grid;
+  gap: 3px;
+  min-width: 112px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 16px;
+  background: rgba(255,255,255,.025);
+}
+
+.pc-v13-economy-metrics small,
+.pc-v13-network-summary small,
+.pc-v13-withdraw-pass-metrics small,
+.pc-v13-continuous-metrics small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pc-v13-network-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pc-v13-network-grid article {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  padding: 22px;
+  min-height: 132px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  background: rgba(255,255,255,.025);
+}
+
+.pc-v13-network-grid article::after {
+  content: "";
+  position: absolute;
+  left: calc(100% + 1px);
+  top: 50%;
+  width: 12px;
+  border-top: 1px solid rgba(177,255,82,.18);
+}
+
+.pc-v13-network-grid article:last-child::after {
+  display: none;
+}
+
+.pc-v13-network-grid small {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 10px;
+}
+
+.pc-v13-network-grid strong {
+  font-size: 38px;
+  line-height: 1;
+}
+
+.pc-v13-network-grid span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pc-v13-network-summary {
+  margin-top: 14px;
+}
+
+.pc-v13-withdraw-pass {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: clamp(20px,3vw,30px);
+  border-radius: 24px;
+  margin: 18px 0;
+}
+
+.pc-v13-withdraw-pass h2 {
+  margin: 10px 0 8px;
+  font-size: clamp(22px,2.5vw,30px);
+}
+
+.pc-v13-withdraw-pass p {
+  margin: 0;
+  max-width: 720px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.pc-v13-continuous-panel {
+  display: grid;
+  grid-template-columns: minmax(0,1.1fr) minmax(300px,.9fr);
+  gap: 24px;
+  align-items: end;
+}
+
+.pc-v13-continuous-panel h2 {
+  margin: 10px 0;
+  font-size: clamp(28px,4vw,48px);
+  line-height: 1.02;
+  max-width: 700px;
+}
+
+.pc-v13-continuous-panel p {
+  margin: 0;
+  max-width: 720px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.pc-v13-continuous-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 980px) {
+  .pc-v13-mission-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .pc-v13-continuous-panel,
+  .pc-v13-withdraw-pass {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .pc-v13-mission-section,
+  .pc-v13-network-panel,
+  .pc-v13-continuous-panel {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .pc-v13-mission-grid,
+  .pc-v13-economy-grid,
+  .pc-v13-network-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-v13-mission-card {
+    min-height: 0;
+  }
+
+  .pc-v13-network-grid article::after {
+    display: none;
+  }
+
+  .pc-v13-withdraw-pass-metrics,
+  .pc-v13-continuous-metrics {
+    width: 100%;
+  }
+
+  .pc-v13-withdraw-pass-metrics span,
+  .pc-v13-continuous-metrics span {
+    flex: 1 1 130px;
+  }
+}
