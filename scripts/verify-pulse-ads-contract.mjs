@@ -166,6 +166,9 @@ const merchantCallback = requireAll("app/api/ads/merchant/callback/route.ts", [
   "https://faucetpay.io/merchant/get-payment/",
   "MAX_CALLBACK_BODY_BYTES",
   "MERCHANT_VERIFY_TIMEOUT_MS",
+  'contentType !== "application/x-www-form-urlencoded"',
+  "readRequestTextWithLimit(request, MAX_CALLBACK_BODY_BYTES)",
+  "new URLSearchParams(rawForm)",
   "const callbackAuthority = verifyPulseAdsCheckoutCustom(callbackCustom)",
   "!TOKEN_RE.test(token) || !callbackAuthority",
   "retryProof.campaignId !== callbackAuthority.campaignId",
@@ -185,6 +188,7 @@ forbidAll("app/api/ads/merchant/callback/route.ts", [
   "funded_usd_micros:",
   "update({ funded",
   "custom_reference: callbackCustom || null",
+  "request.formData()",
 ]);
 
 const callbackAuthorityIndex = merchantCallback.indexOf(
