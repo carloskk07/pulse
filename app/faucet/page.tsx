@@ -28,7 +28,7 @@ export default async function FaucetPage() {
 
   return (
     <main className="marketing-page pc-faucet-page">
-      <FunnelBeacon event="home_view" sourceOverride="faucetpay" />
+      <FunnelBeacon event="home_view" />
       <SiteHeader />
 
       <section className="pc-faucet-hero shell">
