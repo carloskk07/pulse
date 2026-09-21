@@ -69,6 +69,12 @@ forbidAll("supabase/migrations/0077_continuous_reward_ecosystem.sql", [
   "pilot_mode = false",
 ]);
 
+requireAll("supabase/migrations/0078_v13_fk_index_hardening.sql", [
+  "network_commission_source_user_idx",
+  "pulse_ads_callbacks_verified_campaign_idx",
+  "release_schema",
+]);
+
 requireAll("lib/pulse-ecosystem.ts", [
   "XP is non-monetary",
   "current_ecosystem_snapshot",
