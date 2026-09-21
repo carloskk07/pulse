@@ -81,7 +81,7 @@ forbidAll("supabase/migrations/0075_pulse_ads_callback_durability.sql", [
   "insert into public.pulse_claims",
   "insert into public.ledger_entries",
   "update public.withdrawals",
-  "release_schema",
+  "update public.app_config",
 ]);
 
 requireAll("app/api/ads/campaigns/route.ts", [
