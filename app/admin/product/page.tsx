@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
-import { getFaucetMicroLaunchPlan } from "@/lib/faucet-micro-launch";
+import { getFaucetContinuousLaunchPlan } from "@/lib/faucet-continuous-launch";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { fundLaunchTreasury, verifyPasswordBreachProtection } from "./actions";
@@ -23,10 +23,10 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
   if (!user) redirect("/auth?next=/admin/product");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [readiness, launchTreasury, microLaunch, params] = await Promise.all([
+  const [readiness, launchTreasury, continuousLaunch, params] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasuryDailyFundingState("launch"),
-    getFaucetMicroLaunchPlan(),
+    getFaucetContinuousLaunchPlan(),
     searchParams,
   ]);
   const product = readiness.product;
@@ -70,22 +70,22 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
 
 
       <section className="admin-decision-card">
-        <span className="app-eyebrow">Controlled micro-launch</span>
-        <h2>{microLaunch.available ? `Stage: ${microLaunch.stage.replaceAll("_", " ")}` : "Micro-launch authority unavailable."}</h2>
-        <p>The first public faucet envelope is intentionally small: 10 P/day globally, 2 P/day per account and a five-paid-user evidence target. One funded day is enough to open a controlled test; the full proof runway is tracked separately before any scale increase.</p>
-        {microLaunch.available ? (
+        <span className="app-eyebrow">Continuous hourly authority</span>
+        <h2>{continuousLaunch.available ? "Stage: " + continuousLaunch.stage.replaceAll("_", " ") : "Continuous launch authority unavailable."}</h2>
+        <p>The user is governed by time, not an arbitrary daily claim count. The configured daily user ceiling must cover every possible hourly window, while the global UTC-day budget and backing remain the financial brakes.</p>
+        {continuousLaunch.available ? (
           <>
             <div className="admin-secondary-grid">
-              <article><span>Daily budget</span><strong>{microLaunch.dailyBudgetCredits} / 10 P</strong><small>{microLaunch.dailyBudgetCredits === 10 ? "TARGET" : "ADJUST REQUIRED"}</small></article>
-              <article><span>Per-user cap</span><strong>{microLaunch.maxUserDailyCredits} / 2 P</strong><small>{microLaunch.capsReady ? "MICRO-LAUNCH SAFE" : "TOO CONCENTRATED"}</small></article>
-              <article><span>Users/day at full share</span><strong>{microLaunch.supportedUsersPerFullDay}</strong><small>Target ≥ {microLaunch.paidUserEvidenceTarget}</small></article>
-              <article><span>Days to payout at cap</span><strong>{microLaunch.daysToPayoutAtCap ?? "—"}</strong><small>{microLaunch.claimsPerUserPerDay} claim(s)/user/day</small></article>
-              <article><span>Day-one funding gap</span><strong>{microLaunch.dayOneFundingGapCredits} P</strong><small>{microLaunch.dayOneFunded ? "COVERED" : "FUND BEFORE OPEN"}</small></article>
-              <article><span>Backing</span><strong>{microLaunch.backingReady ? "FRESH" : "REFRESH REQUIRED"}</strong></article>
-              <article><span>Paid-user evidence</span><strong>{microLaunch.paidUsers} / {microLaunch.paidUserEvidenceTarget}</strong><small>{microLaunch.remainingPaidUsers} remaining</small></article>
-              <article><span>Full proof runway gap</span><strong>{microLaunch.proofRunwayFundingGapCredits} P</strong><small>{microLaunch.proofRunwayCreditsNeeded} P still needed for remaining payout packs</small></article>
+              <article><span>Hourly cadence</span><strong>{continuousLaunch.intervalMinutes} min</strong><small>{continuousLaunch.windowsPerDay} windows/day</small></article>
+              <article><span>Natural user ceiling</span><strong>{continuousLaunch.naturalDailyCeilingCredits} P</strong><small>{continuousLaunch.cadenceUnrestricted ? "NO ARTIFICIAL USER CAP" : "CAP TOO LOW"}</small></article>
+              <article><span>Configured user authority</span><strong>{continuousLaunch.configuredUserDailyCredits} P</strong><small>Must cover the natural hourly ceiling</small></article>
+              <article><span>Global daily budget</span><strong>{continuousLaunch.dailyBudgetCredits} P</strong><small>Fair-share target ≥ {continuousLaunch.minimumFairShareBudgetCredits} P</small></article>
+              <article><span>Reward engine</span><strong>{continuousLaunch.variableRewardsEnabled ? continuousLaunch.minRewardCredits + "–" + continuousLaunch.maxRewardCredits + " P" : continuousLaunch.baseRewardCredits + " P fixed"}</strong><small>Expected {continuousLaunch.expectedRewardCredits.toFixed(2)} P/claim</small></article>
+              <article><span>Backing</span><strong>{continuousLaunch.backingReady ? "FRESH" : "REFRESH REQUIRED"}</strong></article>
+              <article><span>Day-one gap</span><strong>{continuousLaunch.dayOneFundingGapCredits} P</strong><small>{continuousLaunch.dayOneFundingGapCredits === 0 ? "COVERED" : "FUND BEFORE OPEN"}</small></article>
+              <article><span>Payout pack</span><strong>{continuousLaunch.payoutPackCredits} P</strong><small>Current canonical provider pack</small></article>
             </div>
-            <p className="admin-panel-note"><strong>{microLaunch.activationEligible ? "Economically eligible for a controlled micro-open once pilot mode is deliberately changed." : "Do not open public claims yet."}</strong> Scale remains blocked until the five-paid-user evidence target is reached.</p>
+            <p className="admin-panel-note"><strong>{continuousLaunch.cadenceUnrestricted ? "A genuine member can use every hourly window without hitting an artificial account quota." : "Current per-account authority would still interrupt a fully active member."}</strong> Variable monetary rewards remain separately gated until their budget and jurisdictional review are ready.</p>
           </>
         ) : null}
       </section>

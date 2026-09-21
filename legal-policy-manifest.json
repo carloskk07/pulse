@@ -1,14 +1,14 @@
 {
   "schema": "pulsercuit-legal-policy-bundle-v1",
-  "revision": "2026-09-20.1",
+  "revision": "2026-09-21.1",
   "files": [
     {
       "path": "app/terms/page.tsx",
-      "gitBlobSha": "23f28d1bf25a566c9860a5276a7e1f4a1ceb2e3e"
+      "gitBlobSha": "5ce305c923cb6db34a7d56d8927699a82b51f703"
     },
     {
       "path": "app/privacy/page.tsx",
-      "gitBlobSha": "b63906da6253250eb2cde31bb1330ae797a16e33"
+      "gitBlobSha": "c487cb49b7a9685f7dceb88c4960eb8a3dd39983"
     },
     {
       "path": "app/advertising-policy/page.tsx",
@@ -16,7 +16,7 @@
     },
     {
       "path": "app/rewards-policy/page.tsx",
-      "gitBlobSha": "54680947dd76ad0e033e7a27f995ea03784795b9"
+      "gitBlobSha": "83914e1cd3a8a6654c96827ae864d697a148d47b"
     },
     {
       "path": "components/legal-operator-disclosure.tsx",

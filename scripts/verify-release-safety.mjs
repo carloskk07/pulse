@@ -654,7 +654,7 @@ requireText("lib/auth-security.ts", ["PASSWORD_RECOVERY_CONTEXT_LEGACY", "PASSWO
 requireText("lib/pwned-passwords.ts", ['createHash("sha1")', '"https://api.pwnedpasswords.com/range/"', '"User-Agent"', '"Add-Padding": "true"', 'cache: "no-store"', '"new-password:fail-closed-on-unavailable"', '"existing-signin:fail-open-on-unavailable"', "probePwnedPasswordProtection"]);
 requireText("app/admin/product/actions.ts", ["verifyPasswordBreachProtection", "probePwnedPasswordProtection", 'recordReleaseEvidence("supabase_auth_hardening")', "fundLaunchTreasury", "getTreasuryDailyFundingState", "getFaucetPayBalanceReadOnly", 'admin.rpc("fund_reward_treasury"', "user_balances", "activeWithdrawals", "activeReservations", 'formData.get("confirm") === "real-funding"', "treasuryState.fundingGapCredits", "totalCapacityAfterTopUp", "totalCreditsToBack", "liabilityCredits", "requiredUnits", '"liability_changed"', '"funding_gap_changed"', '"already_sufficient"']);
 forbidText("app/admin/product/actions.ts", ["FAUCETPAY_SCOPED_KEY", '"/send"']);
-requireText("app/admin/product/page.tsx", ["Password security without Pro", "Verify free breach protection", "Backed Treasury funding", "getTreasuryDailyFundingState", "Remaining today", "Exact top-up", "Top up exact gap", 'name="confirm"', "publicExpansionBlockers", "publicLaunchReady", "bounded per-account share of the daily faucet budget"]);
+requireText("app/admin/product/page.tsx", ["Password security without Pro", "Verify free breach protection", "Backed Treasury funding", "getTreasuryDailyFundingState", "Remaining today", "Exact top-up", "Top up exact gap", 'name="confirm"', "publicExpansionBlockers", "publicLaunchReady", "Continuous hourly authority", "Natural user ceiling", "NO ARTIFICIAL USER CAP"]);
 requireText("lib/auth-recovery-proof.ts", ["beginPasswordRecoveryProofChallenge", "markPasswordRecoveryPasswordUpdated", "password_updated_at: null", '.is("password_updated_at", null)', '.select("user_id,password_updated_at,expires_at")', "!data.password_updated_at"]);
 requireText("app/auth/callback/route.ts", ["beginPasswordRecoveryProofChallenge", "hasRecentRecoverySend", 'beginPasswordRecoveryProofChallenge(user.id, "pkce")']);
 requireText("app/auth/confirm/route.ts", ["beginPasswordRecoveryProofChallenge", 'type === "recovery"', 'beginPasswordRecoveryProofChallenge(user.id, "otp")']);
@@ -887,7 +887,7 @@ requireText("lib/wallet-state.ts", [
   'releaseEvidenceMatches(proof, "faucetpay_send_scope")',
   "rawRuntime.withdrawal_pilot_allowed === true"
 ]);
-requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, params] = await Promise.all([", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady"]);
+requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, ecosystem, params] = await Promise.all([", "getPulseEcosystemSnapshot", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady"]);
 forbidText("app/wallet/page.tsx", [
   "getRewardSnapshot",
   "getLedgerItems",
@@ -1423,7 +1423,7 @@ requireText("app/auth/page.tsx", ["safeAuthNext(params.next)", 'params.mode === 
 requireText("components/circuit-share-studio.tsx", ["copyTextToClipboard", "isNativeShareAbort"]);
 requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "UUID_RE", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
 requireText("app/admin/support/actions.ts", ["UUID_RE.test(id)"]);
-requireText("components/app-shell.tsx", ['label: "Invite"', '/admin/faucetpay', 'label: "Payments"', '/admin/support', '/admin/advanced']);
+requireText("components/app-shell.tsx", ['label: "Earn"', 'label: "Network"', '/admin/faucetpay', 'label: "Payments"', '/admin/support', '/admin/advanced']);
 requireText("app/styles/current/compatibility-hardening.css", [".pc-v6-ranks article:nth-child(3):before{display:none!important}"]);
 requireText("app/styles/home/cinematic.css", ['content:"PULSECIRCUIT / 01"']);
 

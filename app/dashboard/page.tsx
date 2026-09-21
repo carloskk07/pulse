@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ContinuousPulsePanel } from "@/components/continuous-pulse-panel";
 import { ArrowUpRight, Bolt, Shield, Spark, Users } from "@/components/icons";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { PulseCountdown } from "@/components/pulse-countdown";
@@ -68,7 +69,9 @@ export default async function DashboardPage({ searchParams }: Props) {
     : !state.pulseFundingReady
       ? "Rewards paused"
       : state.claimReady
-        ? `+${state.claimRewardCredits} P available`
+        ? state.claimRewardVariable
+          ? `Reveal ${state.claimRewardMinCredits}–${state.claimRewardMaxCredits} P`
+          : `+${state.claimRewardCredits} P available`
         : "Next window";
   const payoutTargetLabel = payout.ready && payout.display ? payout.display : "Target preparing";
 
@@ -115,7 +118,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                 <form action="/api/pulse/claim" method="post" className="claim-form">
                   <TurnstileField action="hourly_pulse" />
                   <button className="button button-light pulse-claim-button pc-luxe-claim pc-v9-primary-cta" type="submit">
-                    Claim +{state.claimRewardCredits} P <ArrowUpRight />
+                    {state.claimRewardVariable ? "Reveal Pulse" : `Claim +${state.claimRewardCredits} P`} <ArrowUpRight />
                   </button>
                 </form>
               ) : state.claimReady ? (
@@ -155,6 +158,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           </div>
         </section>
 
+        <ContinuousPulsePanel />
+
         <section className="app-section pc-luxe-momentum-section pc-v9-momentum">
           <div className="app-section-head">
             <div>
@@ -186,11 +191,11 @@ export default async function DashboardPage({ searchParams }: Props) {
             </article>
 
             <article className="pc-v9-progress-card unlock-card">
-              <span className="app-eyebrow">Invite</span>
+              <span className="app-eyebrow">Network</span>
               <div className="pc-v9-unlock-mark"><Users /></div>
-              <h3>Invite people into the loop.</h3>
-              <p>Referral progress starts after the first eligible activity.</p>
-              <Link href="/invite">Open Invite <ArrowUpRight /></Link>
+              <h3>Grow a real network.</h3>
+              <p>Each verified connection can extend your network without changing anyone else&apos;s reward.</p>
+              <Link href="/invite">Open Network <ArrowUpRight /></Link>
             </article>
           </div>
 
