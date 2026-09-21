@@ -15,7 +15,7 @@ on:
       - "lib/faucet-launch.ts"
       - "lib/pulse-ads.ts"
       - "lib/treasury.ts"
-      - "lib/treasury-backing.ts"
+      - "lib/treasury-backing.ts"\n      - "supabase/migrations/**"
       - "lib/supabase/**"
       - "next.config.ts"
       - "vercel.json"
