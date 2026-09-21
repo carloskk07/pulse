@@ -53,7 +53,7 @@ returns integer
 language plpgsql
 security invoker
 set search_path = pg_catalog, public
-as $
+as $$
 declare
   v_config jsonb := '{}'::jsonb;
   v_bands jsonb := '[]'::jsonb;
@@ -128,7 +128,7 @@ begin
 
   return p_default_credits;
 end;
-$;
+$$;
 
 revoke all on function public.resolve_hourly_pulse_reward(integer)
   from public, anon, authenticated, service_role;
@@ -140,7 +140,7 @@ returns jsonb
 language plpgsql
 security invoker
 set search_path = pg_catalog, public
-as $
+as $$
 declare
   v_config jsonb := '{}'::jsonb;
   v_reward integer := 1;
@@ -388,7 +388,7 @@ begin
     'interval_minutes', v_interval_minutes
   );
 end;
-$;
+$$;
 
 
 
