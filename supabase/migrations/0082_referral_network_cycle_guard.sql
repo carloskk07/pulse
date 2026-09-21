@@ -148,9 +148,9 @@ values (
   'Verified referral reward only when funded by conversion margin; at least half of verified margin remains with the platform'
 )
 on conflict (key) do update
-set value = coalesce(public.app_config.value,'{}'::jsonb)
+set value = coalesce(app_config.value,'{}'::jsonb)
     || jsonb_build_object('max_reward_share_of_margin_bps',5000),
-    version = greatest(public.app_config.version,2),
+    version = greatest(app_config.version,2),
     reason = excluded.reason,
     updated_at = now();
 
