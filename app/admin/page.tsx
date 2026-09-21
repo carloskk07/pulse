@@ -8,6 +8,7 @@ import { getPulseAdsAdminSnapshot } from "@/lib/pulse-ads";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
 import { getFaucetPayListingReadiness } from "@/lib/faucetpay-listing-readiness";
 import { getFaucetLaunchRunway } from "@/lib/faucet-launch-runway";
+import { getHourlyValueSnapshot } from "@/lib/hourly-value";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTreasurySnapshot } from "@/lib/treasury";
@@ -63,7 +64,7 @@ export default async function AdminEconomicsPage() {
   if (!user) redirect("/auth?next=/admin");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [launchReadiness, treasuries, direct, ads, faucet, faucetListing, faucetRunway] = await Promise.all([
+  const [launchReadiness, treasuries, direct, ads, faucet, faucetListing, faucetRunway, hourlyValue] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasurySnapshot(),
     getDirectCampaignSnapshot(),
@@ -71,6 +72,7 @@ export default async function AdminEconomicsPage() {
     getFaucetLaunchState(),
     getFaucetPayListingReadiness(),
     getFaucetLaunchRunway(),
+    getHourlyValueSnapshot(),
   ]);
   const readiness = launchReadiness.release;
   const product = launchReadiness.product;
@@ -197,7 +199,7 @@ export default async function AdminEconomicsPage() {
             <article><span>Reserved</span><strong>{moneyFromCredits(launchTreasury.reservedCredits)}</strong></article>
             <article><span>Spent</span><strong>{moneyFromCredits(launchTreasury.spentCredits)}</strong></article>
             <article><span>Daily budget</span><strong>{moneyFromCredits(launchTreasury.dailyBudgetCredits)}</strong></article>
-            <article><span>User/day cap</span><strong>{moneyFromCredits(launchTreasury.maxUserDailyCredits)}</strong></article>
+            <article><span>Natural hourly ceiling</span><strong>{launchTreasury.maxUserDailyCredits.toLocaleString("en-US")} P</strong><small>Technical maximum implied by the current cadence</small></article>
             <article><span>Kill switch</span><strong>{launchTreasury.killSwitch ? "ON" : "OFF"}</strong></article>
             <article><span>Contribution / active</span><strong>{"$" + contributionDau.toFixed(4)}</strong></article>
           </div>
@@ -224,6 +226,32 @@ export default async function AdminEconomicsPage() {
           <Link className="button button-secondary" href="/admin/retention">Return funnel</Link>
           <Link className="button button-secondary" href="/admin/ads">Pulse Ads</Link>
         </div>
+
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">Hourly value loop</span><h2>Measure what each Pulse earns back over 7 days.</h2></div>
+          <span className={"admin-badge " + (hourlyValue.selfSufficiencyRatio >= 1 ? "" : "setup")}>
+            {hourlyValue.available ? (hourlyValue.selfSufficiencyRatio * 100).toFixed(0) + "% COVERED" : "NO DATA"}
+          </span>
+        </div>
+        {hourlyValue.available ? (
+          <>
+            <div className="admin-secondary-grid">
+              <article><span>Pulse sessions · 7d</span><strong>{hourlyValue.claims.toLocaleString("en-US")}</strong></article>
+              <article><span>Base Pulse cost</span><strong>{moneyFromMicros(hourlyValue.basePulseCostUsdMicros)}</strong><small>{moneyFromMicros(hourlyValue.baseCostPerClaimUsdMicros)} / claim</small></article>
+              <article><span>Sponsored fill</span><strong>{(hourlyValue.sponsoredFillRate * 100).toFixed(1)}%</strong><small>{hourlyValue.sponsoredServes} served · {hourlyValue.unfilledClaims} unfilled</small></article>
+              <article><span>Sponsored CTR</span><strong>{(hourlyValue.sponsoredCtr * 100).toFixed(1)}%</strong><small>{hourlyValue.sponsoredClicks} billable click{hourlyValue.sponsoredClicks === 1 ? "" : "s"}</small></article>
+              <article><span>Sponsored revenue</span><strong>{moneyFromMicros(hourlyValue.sponsoredRevenueUsdMicros)}</strong></article>
+              <article><span>Direct funnel</span><strong>{hourlyValue.directStarts} → {hourlyValue.directCompletions}</strong><small>Started → confirmed</small></article>
+              <article><span>Direct revenue</span><strong>{moneyFromMicros(hourlyValue.directRevenueUsdMicros)}</strong><small>{hourlyValue.directRewardCredits} P user reward</small></article>
+              <article><span>Monetized Pulses</span><strong>{(hourlyValue.monetizedClaimRate * 100).toFixed(1)}%</strong><small>{hourlyValue.monetizedClaims} / {hourlyValue.claims}</small></article>
+              <article><span>Support generated</span><strong>{moneyFromMicros(hourlyValue.pulseSupportUsdMicros)}</strong><small>Ads + Direct contribution after Direct rewards</small></article>
+              <article><span>Support / Pulse</span><strong>{moneyFromMicros(hourlyValue.supportPerClaimUsdMicros)}</strong><small>Target ≥ {moneyFromMicros(hourlyValue.baseCostPerClaimUsdMicros)}</small></article>
+              <article><span>Self-sufficiency · 7d</span><strong>{hourlyValue.selfSufficiencyRatio.toFixed(2)}×</strong><small>1.00× = optional monetization pays the base Pulse</small></article>
+              <article><span>Hourly contribution</span><strong>{moneyFromMicros(hourlyValue.grossContributionUsdMicros)}</strong><small>After base Pulse + Direct user rewards</small></article>
+            </div>
+            <p className="admin-panel-note">This is claim-bound evidence, not attribution by time alone. Pulse Ads revenue is tied to the exact claim that unlocked the placement; Pulse Direct is counted only when a protected session carries a recent verified claim identity.</p>
+          </>
+        ) : <div className="empty-ledger">Hourly value evidence is unavailable. No monetization rate is inferred.</div>}
 
         <div className="app-section-head">
           <div><span className="app-eyebrow">Faucet economic loop</span><h2>Acquisition must earn its way toward sustainability.</h2></div>
