@@ -78,4 +78,25 @@ forbidAll("supabase/migrations/0090_faucetpay_webhook_reconciliation.sql", [
   "grant select,insert,update on table public.faucetpay_payout_webhook_events to authenticated",
 ]);
 
+requireAll("supabase/migrations/0091_faucetpay_webhook_causal_binding.sql", [
+  "withdrawal_dispatch_attempt_events",
+  "withdrawal_dispatch_attempt_event_guard",
+  "new.dispatch_attempts > old.dispatch_attempts",
+  "on conflict (withdrawal_id,attempt) do nothing",
+  "p_event_created_at between",
+  "dae.claimed_at - interval '5 minutes'",
+  "dae.claimed_at + interval '15 minutes'",
+  "outside",
+  "release_faucetpay_webhook_reconciliation_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0091_faucetpay_webhook_causal_binding.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "'version',56",
+  "schema_version = 56",
+  "grant select,insert on table public.withdrawal_dispatch_attempt_events to authenticated",
+]);
+
 console.log("FaucetPay webhook reconciliation contract PASS");
