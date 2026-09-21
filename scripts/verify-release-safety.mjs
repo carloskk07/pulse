@@ -887,7 +887,7 @@ requireText("lib/wallet-state.ts", [
   'releaseEvidenceMatches(proof, "faucetpay_send_scope")',
   "rawRuntime.withdrawal_pilot_allowed === true"
 ]);
-requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, params] = await Promise.all([", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady"]);
+requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, ecosystem, params] = await Promise.all([", "getPulseEcosystemSnapshot", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady"]);
 forbidText("app/wallet/page.tsx", [
   "getRewardSnapshot",
   "getLedgerItems",
