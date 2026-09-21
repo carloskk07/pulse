@@ -1423,7 +1423,7 @@ requireText("app/auth/page.tsx", ["safeAuthNext(params.next)", 'params.mode === 
 requireText("components/circuit-share-studio.tsx", ["copyTextToClipboard", "isNativeShareAbort"]);
 requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "UUID_RE", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
 requireText("app/admin/support/actions.ts", ["UUID_RE.test(id)"]);
-requireText("components/app-shell.tsx", ['label: "Invite"', '/admin/faucetpay', 'label: "Payments"', '/admin/support', '/admin/advanced']);
+requireText("components/app-shell.tsx", ['label: "Earn"', 'label: "Network"', '/admin/faucetpay', 'label: "Payments"', '/admin/support', '/admin/advanced']);
 requireText("app/styles/current/compatibility-hardening.css", [".pc-v6-ranks article:nth-child(3):before{display:none!important}"]);
 requireText("app/styles/home/cinematic.css", ['content:"PULSECIRCUIT / 01"']);
 
