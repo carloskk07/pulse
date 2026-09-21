@@ -305,6 +305,8 @@ jobs:
 
           direct_routes=(
             "home|/"
+            "faucet|/faucet"
+            "advertise|/advertise"
             "proof|/proof"
             "business|/business"
             "business-integration|/business/integration"
@@ -401,6 +403,8 @@ jobs:
 
           direct_routes=(
             "home|/"
+            "faucet|/faucet"
+            "advertise|/advertise"
             "proof|/proof"
             "business|/business"
             "business-integration|/business/integration"
@@ -500,8 +504,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
-          # 40 local-preview PNGs (5 routes × 8 viewports) + 32 production PNGs.
-          test "$count" -eq 72
+          # 40 local-preview PNGs (5 routes × 8 viewports) + 36 production PNGs.
+          # Production adds the FaucetPay entry and advertiser surface in desktop + mobile.
+          test "$count" -eq 76
 
       - name: Stop local preview
         if: always()
