@@ -1,7 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const REWARD_TYPES = ["daily_reward", "pulse_reward", "offer", "survey", "referral"] as const;
-type RewardType = (typeof REWARD_TYPES)[number];
+type RewardType = "daily_reward" | "pulse_reward" | "offer" | "survey" | "referral";
 
 type RecentRewardRow = {
   entry_type: RewardType;

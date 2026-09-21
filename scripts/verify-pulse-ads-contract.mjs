@@ -126,12 +126,20 @@ requireAll("app/api/ads/click/route.ts", [
   "isTrustedSameOriginMutation(request)",
   "clickPulseAd(campaignId, userId)",
   'url.protocol === "https:"',
+  "NextResponse.json({ ok: true, destination: url.toString() })",
 ]);
 forbidAll("app/api/ads/click/route.ts", [
   "export async function GET",
+  "NextResponse.redirect(url",
   "ledger_entries",
   "pulse_claims",
   "reward_credits",
+]);
+requireAll("components/sponsored-visit-button.tsx", [
+  'fetch("/api/ads/click"',
+  'method: "POST"',
+  'target.protocol !== "https:"',
+  "window.location.assign(target.toString())",
 ]);
 
 requireAll("lib/pulse-ads-checkout.ts", [
@@ -140,6 +148,10 @@ requireAll("lib/pulse-ads-checkout.ts", [
   "PULSE_ADS_CHECKOUT_SECRET",
   "buildPulseAdsCheckoutCustom",
   "verifyPulseAdsCheckoutCustom",
+]);
+
+requireAll("next.config.ts", [
+  `"form-action 'self' https://faucetpay.io"`,
 ]);
 
 requireAll("app/api/ads/merchant/callback/route.ts", [
@@ -178,11 +190,11 @@ if (!advertised.includes("users are never paid to click") && !advertised.include
   throw new Error("Advertiser surface must state that sponsored clicks are not user rewards.");
 }
 
-const claimed = requireAll("app/dashboard/claimed/page.tsx", [
+requireAll("app/dashboard/claimed/page.tsx", [
   "getPulseAdPlacement",
   "pulseClaimId: receipt.id",
   'aria-label="Sponsored placement"',
-  'action="/api/ads/click"',
+  "SponsoredVisitButton",
   "Sponsored · Pulse Ads",
   "Advertise here",
 ]);
