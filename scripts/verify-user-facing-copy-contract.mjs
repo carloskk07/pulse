@@ -69,8 +69,8 @@ const requiredBySurface = new Map([
   ]],
   ["app/proof/page.tsx", ["Live activity. Clear outcomes.", "How these numbers work"]],
   ["app/progress/page.tsx", ["See your rhythm take shape.", "Five ranks. One clear path."]],
-  ["app/invite/page.tsx", ["Share the circuit. Grow a real circle."]],
-  ["app/earn/page.tsx", ["Extra rewards, ranked around your time."]],
+  ["app/invite/page.tsx", ["Build a network that grows from real activity."]],
+  ["app/earn/page.tsx", ["More ways to earn between Pulses."]],
   ["app/support/page.tsx", ["Tell us what happened. Keep one reference."]],
 ]);
 
