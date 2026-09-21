@@ -35,6 +35,28 @@ requireAll("supabase/migrations/0082_referral_network_cycle_guard.sql", [
   "canonical release schema v55",
 ]);
 
+requireAll("supabase/migrations/0083_referral_acquisition_integrity.sql", [
+  "referral_acquisition_integrity_guard",
+  "'already_economically_active'",
+  "public.ledger_entries",
+  "public.pulse_claims",
+  "public.monetization_events",
+  "public.withdrawals",
+  "release_referral_network_integrity_contract",
+  "canonical release schema v55",
+]);
+
+const authActions = read("app/auth/actions.ts");
+const signInStart = authActions.indexOf("export async function signIn");
+const signUpStart = authActions.indexOf("export async function signUp");
+if (signInStart < 0 || signUpStart <= signInStart) {
+  throw new Error("Could not isolate signIn for referral acquisition contract.");
+}
+const signInBody = authActions.slice(signInStart, signUpStart);
+if (signInBody.includes("bindReferralForUser")) {
+  throw new Error("Normal sign-in must not create referral attribution.");
+}
+
 forbidAll("supabase/migrations/0082_referral_network_cycle_guard.sql", [
   "network_commission_enabled','true",
   "pilot_mode = false",
