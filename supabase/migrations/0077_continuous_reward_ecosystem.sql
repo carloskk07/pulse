@@ -48,6 +48,355 @@ set value = excluded.value,
     reason = excluded.reason,
     updated_at = now();
 
+create or replace function public.resolve_hourly_pulse_reward(p_default_credits integer)
+returns integer
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $
+declare
+  v_config jsonb := '{}'::jsonb;
+  v_bands jsonb := '[]'::jsonb;
+  v_band jsonb;
+  v_enabled boolean := false;
+  v_review_required boolean := true;
+  v_total_bps integer := 0;
+  v_cursor integer := 0;
+  v_bps integer;
+  v_credits integer;
+  v_entropy bytea;
+  v_sample integer;
+  v_roll integer;
+begin
+  p_default_credits := greatest(1, least(coalesce(p_default_credits,1),1000000));
+
+  select coalesce(value,'{}'::jsonb)
+  into v_config
+  from public.app_config
+  where key='pulse_economy_v13';
+
+  v_enabled := lower(coalesce(v_config->>'variable_reward_enabled','false'))
+    in ('true','1','yes','on');
+  v_review_required := lower(coalesce(v_config->>'variable_reward_review_required','true'))
+    in ('true','1','yes','on');
+
+  if not v_enabled or v_review_required then
+    return p_default_credits;
+  end if;
+
+  v_bands := case
+    when jsonb_typeof(v_config->'reward_bands')='array'
+      then v_config->'reward_bands'
+    else '[]'::jsonb
+  end;
+
+  if jsonb_array_length(v_bands) < 1 or jsonb_array_length(v_bands) > 32 then
+    return p_default_credits;
+  end if;
+
+  for v_band in select value from jsonb_array_elements(v_bands)
+  loop
+    v_bps := coalesce((v_band->>'probability_bps')::integer,0);
+    v_credits := coalesce((v_band->>'credits')::integer,0);
+    if v_bps <= 0 or v_bps > 10000 or v_credits <= 0 or v_credits > 1000000 then
+      return p_default_credits;
+    end if;
+    v_total_bps := v_total_bps + v_bps;
+  end loop;
+
+  if v_total_bps <> 10000 then
+    return p_default_credits;
+  end if;
+
+  -- Uniform 0..9999 draw. Reject 60000..65535 before modulo to avoid bias.
+  loop
+    v_entropy := gen_random_bytes(2);
+    v_sample := get_byte(v_entropy,0) * 256 + get_byte(v_entropy,1);
+    exit when v_sample < 60000;
+  end loop;
+  v_roll := v_sample % 10000;
+
+  for v_band in select value from jsonb_array_elements(v_bands)
+  loop
+    v_bps := (v_band->>'probability_bps')::integer;
+    v_credits := (v_band->>'credits')::integer;
+    v_cursor := v_cursor + v_bps;
+    if v_roll < v_cursor then
+      return v_credits;
+    end if;
+  end loop;
+
+  return p_default_credits;
+end;
+$;
+
+revoke all on function public.resolve_hourly_pulse_reward(integer)
+  from public, anon, authenticated, service_role;
+grant execute on function public.resolve_hourly_pulse_reward(integer)
+  to service_role;
+
+create or replace function public.claim_hourly_pulse(p_user_id uuid)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $
+declare
+  v_config jsonb := '{}'::jsonb;
+  v_reward integer := 1;
+  v_interval_minutes integer := 60;
+  v_treasury_code text := 'launch';
+  v_max_risk integer := 59;
+  v_pilot_mode boolean := false;
+  v_profile public.profiles%rowtype;
+  v_treasury public.reward_treasuries%rowtype;
+  v_treasury_id uuid;
+  v_last_claim_at timestamptz;
+  v_next_eligible_at timestamptz;
+  v_today_start timestamptz := date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
+  v_daily_total bigint := 0;
+  v_user_daily_total bigint := 0;
+  v_available bigint := 0;
+  v_claim_id uuid := gen_random_uuid();
+  v_ledger_id uuid := gen_random_uuid();
+  v_trust smallint := 0;
+  v_abort_status text;
+begin
+  if p_user_id is null then
+    return jsonb_build_object('status', 'invalid_user');
+  end if;
+
+  if not pg_try_advisory_xact_lock(
+    hashtextextended('hourly-pulse:' || p_user_id::text, 0)
+  ) then
+    return jsonb_build_object('status', 'claim_in_progress');
+  end if;
+
+  select * into v_profile
+  from public.profiles
+  where id = p_user_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('status', 'unknown_user');
+  end if;
+
+  select value into v_config
+  from public.app_config
+  where key = 'hourly_pulse';
+
+  v_reward := public.resolve_hourly_pulse_reward(\n    greatest(1, least(coalesce((v_config->>'credits')::integer, 1), 1000000))\n  );
+  v_interval_minutes := greatest(15, least(coalesce((v_config->>'interval_minutes')::integer, 60), 1440));
+  v_treasury_code := coalesce(nullif(trim(v_config->>'treasury_code'), ''), 'launch');
+  v_max_risk := greatest(0, least(coalesce((v_config->>'max_risk_score')::integer, 59), 100));
+  v_pilot_mode := lower(coalesce(v_config->>'pilot_mode', 'false')) in ('true','1','yes','on');
+
+  if v_pilot_mode and not exists (
+    select 1
+    from jsonb_array_elements_text(
+      case when jsonb_typeof(v_config->'pilot_user_ids') = 'array'
+        then v_config->'pilot_user_ids'
+        else '[]'::jsonb
+      end
+    ) as pilot(user_id)
+    where pilot.user_id = p_user_id::text
+  ) then
+    return jsonb_build_object('status', 'pilot_restricted');
+  end if;
+
+  if v_profile.risk_score > v_max_risk then
+    return jsonb_build_object('status', 'risk_hold');
+  end if;
+
+  select created_at into v_last_claim_at
+  from public.pulse_claims
+  where user_id = p_user_id
+  order by created_at desc
+  limit 1;
+
+  if v_last_claim_at is not null then
+    v_next_eligible_at := v_last_claim_at + make_interval(mins => v_interval_minutes);
+    if v_next_eligible_at > now() then
+      return jsonb_build_object(
+        'status', 'not_ready',
+        'next_eligible_at', v_next_eligible_at,
+        'interval_minutes', v_interval_minutes
+      );
+    end if;
+  end if;
+
+  select * into v_treasury
+  from public.reward_treasuries
+  where code = v_treasury_code;
+
+  if not found then
+    return jsonb_build_object('status', 'treasury_missing');
+  end if;
+
+  v_treasury_id := v_treasury.id;
+
+  perform public.release_expired_treasury_reservations(v_treasury_id);
+
+  select * into v_treasury
+  from public.reward_treasuries
+  where id = v_treasury_id;
+
+  if not found then
+    return jsonb_build_object('status', 'treasury_missing');
+  end if;
+
+  if not v_treasury.enabled or v_treasury.kill_switch then
+    return jsonb_build_object('status', 'treasury_closed');
+  end if;
+
+  if v_treasury.daily_budget_credits <= 0 or v_treasury.max_user_daily_credits <= 0 then
+    return jsonb_build_object('status', 'budget_disabled');
+  end if;
+
+  if not v_pilot_mode
+     and (v_treasury.max_user_daily_credits::numeric * 2)
+       > v_treasury.daily_budget_credits::numeric then
+    return jsonb_build_object('status', 'public_fair_share_required');
+  end if;
+
+  v_available := v_treasury.funded_credits - v_treasury.reserved_credits - v_treasury.spent_credits;
+  if v_reward > v_available then
+    return jsonb_build_object('status', 'insufficient_treasury');
+  end if;
+
+  -- One shared read-only snapshot replaces four independent SUM queries.
+  select total_credits, user_credits
+  into v_daily_total, v_user_daily_total
+  from private.treasury_daily_usage_snapshot(
+    v_treasury_id,
+    p_user_id,
+    v_today_start
+  );
+
+  if v_user_daily_total + v_reward > v_treasury.max_user_daily_credits then
+    return jsonb_build_object('status', 'user_daily_limit');
+  end if;
+
+  if v_daily_total + v_reward > v_treasury.daily_budget_credits then
+    return jsonb_build_object('status', 'daily_budget_exhausted');
+  end if;
+
+  begin
+    insert into public.ledger_entries(
+      id, user_id, event_key, entry_type, state, credits, metadata
+    ) values (
+      v_ledger_id,
+      p_user_id,
+      'hourly_pulse:' || v_claim_id::text,
+      'pulse_reward',
+      'available',
+      v_reward,
+      jsonb_build_object(
+        'claim_id', v_claim_id,
+        'funding_source', 'pulse',
+        'treasury_code', v_treasury.code,
+        'interval_minutes', v_interval_minutes
+      )
+    );
+
+    insert into public.pulse_claims(
+      id, user_id, treasury_id, reward_credits, funding_source, ledger_entry_id,
+      metadata
+    ) values (
+      v_claim_id,
+      p_user_id,
+      v_treasury_id,
+      v_reward,
+      'pulse',
+      v_ledger_id,
+      jsonb_build_object('interval_minutes', v_interval_minutes)
+    );
+
+    v_trust := public.refresh_pulse_trust(p_user_id);
+
+    -- SCALE_V48_GLOBAL_CRITICAL_SECTION
+    select * into v_treasury
+    from public.reward_treasuries
+    where id = v_treasury_id
+    for update;
+
+    if not found then
+      raise exception 'pulse_claim_abort:treasury_missing' using errcode = 'P0001';
+    end if;
+
+    if not v_treasury.enabled or v_treasury.kill_switch then
+      raise exception 'pulse_claim_abort:treasury_closed' using errcode = 'P0001';
+    end if;
+
+    if v_treasury.daily_budget_credits <= 0 or v_treasury.max_user_daily_credits <= 0 then
+      raise exception 'pulse_claim_abort:budget_disabled' using errcode = 'P0001';
+    end if;
+
+    if not v_pilot_mode
+       and (v_treasury.max_user_daily_credits::numeric * 2)
+         > v_treasury.daily_budget_credits::numeric then
+      raise exception 'pulse_claim_abort:public_fair_share_required' using errcode = 'P0001';
+    end if;
+
+    v_available := v_treasury.funded_credits - v_treasury.reserved_credits - v_treasury.spent_credits;
+    if v_reward > v_available then
+      raise exception 'pulse_claim_abort:insufficient_treasury' using errcode = 'P0001';
+    end if;
+
+    -- The inserted claim is visible to this transaction. After the Treasury
+    -- row lock, this statement sees all usage committed by the previous lock
+    -- holder plus the current claim, preserving the v48 fail-closed ordering.
+    select total_credits, user_credits
+    into v_daily_total, v_user_daily_total
+    from private.treasury_daily_usage_snapshot(
+      v_treasury_id,
+      p_user_id,
+      v_today_start
+    );
+
+    if v_daily_total > v_treasury.daily_budget_credits then
+      raise exception 'pulse_claim_abort:daily_budget_exhausted' using errcode = 'P0001';
+    end if;
+
+    if v_user_daily_total > v_treasury.max_user_daily_credits then
+      raise exception 'pulse_claim_abort:user_daily_limit' using errcode = 'P0001';
+    end if;
+
+    update public.reward_treasuries
+    set spent_credits = spent_credits + v_reward,
+        updated_at = now()
+    where id = v_treasury_id;
+    -- SCALE_V48_GLOBAL_CRITICAL_SECTION_END
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm like 'pulse_claim_abort:%' then
+        v_abort_status := split_part(sqlerrm, ':', 2);
+        return jsonb_build_object('status', v_abort_status);
+      end if;
+      raise;
+  end;
+
+  v_next_eligible_at := now() + make_interval(mins => v_interval_minutes);
+
+  return jsonb_build_object(
+    'status', 'claimed',
+    'claim_id', v_claim_id,
+    'ledger_id', v_ledger_id,
+    'reward_credits', v_reward,
+    'trust_level', v_trust,
+    'next_eligible_at', v_next_eligible_at,
+    'interval_minutes', v_interval_minutes
+  );
+end;
+$;
+
+
+
+revoke all on function public.claim_hourly_pulse(uuid)
+  from public, anon, authenticated, service_role;
+grant execute on function public.claim_hourly_pulse(uuid)
+  to service_role;
+
 create table if not exists public.cashback_events (
   id uuid primary key default gen_random_uuid(),
   provider text not null check (length(trim(provider)) between 1 and 80),
@@ -589,6 +938,11 @@ select
   and coalesce((select relrowsecurity from pg_class where oid='public.cashback_events'::regclass),false)
   and coalesce((select relrowsecurity from pg_class where oid='public.network_commission_events'::regclass),false)
   and to_regprocedure('public.apply_cashback_event(text,text,uuid,text,bigint,bigint,jsonb)') is not null
+  and to_regprocedure('public.resolve_hourly_pulse_reward(integer)') is not null
+  and has_function_privilege('service_role','public.resolve_hourly_pulse_reward(integer)','EXECUTE')
+  and not has_function_privilege('anon','public.resolve_hourly_pulse_reward(integer)','EXECUTE')
+  and not has_function_privilege('authenticated','public.resolve_hourly_pulse_reward(integer)','EXECUTE')
+  and position('resolve_hourly_pulse_reward' in lower(pg_get_functiondef('public.claim_hourly_pulse(uuid)'::regprocedure))) > 0
   and to_regprocedure('public.current_ecosystem_snapshot(uuid)') is not null
   and to_regprocedure('public.current_pulse_runtime_state()') is not null
   and has_function_privilege('service_role','public.apply_cashback_event(text,text,uuid,text,bigint,bigint,jsonb)','EXECUTE')
