@@ -80,33 +80,31 @@ requireAll("lib/product-launch-readiness.ts", [
   'new Set(["public-access", "public-fair-share", "public-backing"])',
 ]);
 
-requireAll("lib/faucet-micro-launch.ts", [
-  "dailyBudgetCredits: 10",
-  "maxUserDailyCredits: 2",
-  "paidUserEvidenceTarget: 5",
-  "supportedUsersPerFullDay",
-  "daysToPayoutAtCap",
-  "dayOneFundingGapCredits",
-  "proofRunwayFundingGapCredits",
-  "activationEligible",
-  '"READY_FOR_MICRO_OPEN"',
-  '"EVIDENCE_TARGET_REACHED"',
+requireAll("lib/faucet-continuous-launch.ts", [
+  "windowsPerDay",
+  "naturalDailyCeilingCredits",
+  "configuredUserDailyCredits",
+  "cadenceUnrestricted",
+  "minimumFairShareBudgetCredits",
+  "dailyBudgetSupportsContinuousUse",
+  '"READY_TO_OPEN"',
+  '"PUBLIC"',
+  "variableRewardsEnabled",
 ]);
-forbidAll("lib/faucet-micro-launch.ts", [
+forbidAll("lib/faucet-continuous-launch.ts", [
   ".insert(",
   ".update(",
   ".upsert(",
   ".delete(",
   "fund_reward_treasury",
-  "pilot_mode:",
 ]);
 
 requireAll("app/admin/product/page.tsx", [
-  "Controlled micro-launch",
-  "Users/day at full share",
-  "Day-one funding gap",
-  "Full proof runway gap",
-  "Do not open public claims yet.",
+  "Continuous hourly authority",
+  "Natural user ceiling",
+  "NO ARTIFICIAL USER CAP",
+  "Global daily budget",
+  "Variable monetary rewards remain separately gated",
 ]);
 
 if (runway.includes("INITIAL_PAID_USER_TARGET = 2")) {
