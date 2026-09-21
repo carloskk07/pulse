@@ -127,7 +127,6 @@ export async function signIn(formData: FormData) {
 
   if (data.user) {
     await finalizePasswordRecoveryProof(data.user.id);
-    if (ref) await bindReferralForUser(data.user.id, ref);
   }
   redirect(next);
 }
