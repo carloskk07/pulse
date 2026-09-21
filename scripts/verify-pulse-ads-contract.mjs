@@ -178,7 +178,7 @@ if (!advertised.includes("users are never paid to click") && !advertised.include
   throw new Error("Advertiser surface must state that sponsored clicks are not user rewards.");
 }
 
-const claimed = requireAll("app/dashboard/claimed/page.tsx", [
+requireAll("app/dashboard/claimed/page.tsx", [
   "getPulseAdPlacement",
   "pulseClaimId: receipt.id",
   'aria-label="Sponsored placement"',
