@@ -126,12 +126,20 @@ requireAll("app/api/ads/click/route.ts", [
   "isTrustedSameOriginMutation(request)",
   "clickPulseAd(campaignId, userId)",
   'url.protocol === "https:"',
+  "NextResponse.json({ ok: true, destination: url.toString() })",
 ]);
 forbidAll("app/api/ads/click/route.ts", [
   "export async function GET",
+  "NextResponse.redirect(url",
   "ledger_entries",
   "pulse_claims",
   "reward_credits",
+]);
+requireAll("components/sponsored-visit-button.tsx", [
+  'fetch("/api/ads/click"',
+  'method: "POST"',
+  'target.protocol !== "https:"',
+  "window.location.assign(target.toString())",
 ]);
 
 requireAll("lib/pulse-ads-checkout.ts", [
@@ -186,7 +194,7 @@ requireAll("app/dashboard/claimed/page.tsx", [
   "getPulseAdPlacement",
   "pulseClaimId: receipt.id",
   'aria-label="Sponsored placement"',
-  'action="/api/ads/click"',
+  "SponsoredVisitButton",
   "Sponsored · Pulse Ads",
   "Advertise here",
 ]);
