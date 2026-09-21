@@ -21,6 +21,9 @@ export type RewardSnapshot = {
   streakDays: number;
   claimReady: boolean;
   claimRewardCredits: number;
+  claimRewardVariable: boolean;
+  claimRewardMinCredits: number;
+  claimRewardMaxCredits: number;
   claimIntervalMinutes: number;
   nextClaimAt: string | null;
   pulseFundingReady: boolean;
@@ -45,6 +48,9 @@ export const disconnectedSnapshot: RewardSnapshot = {
   streakDays: 0,
   claimReady: false,
   claimRewardCredits: 0,
+  claimRewardVariable: false,
+  claimRewardMinCredits: 0,
+  claimRewardMaxCredits: 0,
   claimIntervalMinutes: 60,
   nextClaimAt: null,
   pulseFundingReady: false,
@@ -134,10 +140,22 @@ export function buildRewardSnapshotFromPayload(
   const runtime = objectValue(rawRuntime);
   const config = objectValue(runtime.hourly_pulse);
   const treasury = objectValue(runtime.treasury);
+  const economy = objectValue(runtime.economy);
 
   const configuredReward = Number(config.credits ?? 0);
   const configuredInterval = Number(config.interval_minutes ?? 60);
   const claimRewardCredits = Number.isFinite(configuredReward) && configuredReward > 0 ? configuredReward : 0;
+  const rewardBands = Array.isArray(economy.reward_bands)
+    ? economy.reward_bands.map(objectValue)
+    : [];
+  const variableConfigured = String(economy.variable_reward_enabled ?? "false").toLowerCase() === "true";
+  const variableReviewRequired = String(economy.variable_reward_review_required ?? "true").toLowerCase() !== "false";
+  const validBandCredits = rewardBands
+    .map((band) => Number(band.credits ?? 0))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const claimRewardVariable = variableConfigured && !variableReviewRequired && validBandCredits.length > 0;
+  const claimRewardMinCredits = claimRewardVariable ? Math.min(...validBandCredits) : claimRewardCredits;
+  const claimRewardMaxCredits = claimRewardVariable ? Math.max(...validBandCredits) : claimRewardCredits;
   const claimIntervalMinutes = Number.isFinite(configuredInterval) && configuredInterval >= 15
     ? Math.min(1440, Math.floor(configuredInterval))
     : 60;
@@ -171,8 +189,8 @@ export function buildRewardSnapshotFromPayload(
     && dailyBudgetCredits > 0
     && maxUserDailyCredits > 0
     && publicFairShareReady
-    && claimRewardCredits > 0
-    && availableTreasury >= claimRewardCredits
+    && claimRewardMaxCredits > 0
+    && availableTreasury >= claimRewardMaxCredits
   );
 
   const fallbackLabel = user.email?.split("@")[0] || "Member";
@@ -188,6 +206,9 @@ export function buildRewardSnapshotFromPayload(
     streakDays: Number(userSnapshot.streak_days ?? 0),
     claimReady,
     claimRewardCredits,
+    claimRewardVariable,
+    claimRewardMinCredits,
+    claimRewardMaxCredits,
     claimIntervalMinutes,
     nextClaimAt,
     pulseFundingReady,
