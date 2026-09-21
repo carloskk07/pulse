@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type RewardType = "daily_reward" | "pulse_reward" | "offer" | "survey" | "referral";
@@ -32,6 +33,8 @@ export type PublicSocialProof = {
   available: boolean;
 };
 
+const SOCIAL_PROOF_DATA_CACHE_SECONDS = 30;
+
 const EMPTY_PROOF: PublicSocialProof = {
   stage: "early",
   memberCount: 0,
@@ -62,40 +65,63 @@ function stageFor(memberCount: number, rewardEventCount: number, paidWithdrawalC
   return "early";
 }
 
-export async function getPublicSocialProof(): Promise<PublicSocialProof> {
+async function queryPublicSocialProof(): Promise<PublicSocialProof> {
   const supabase = createSupabaseAdminClient();
-  if (!supabase) return EMPTY_PROOF;
+  if (!supabase) throw new Error("social-proof database not configured");
 
+  const { data, error } = await supabase.rpc("public_social_proof_snapshot");
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+    const failure = new Error("social-proof snapshot RPC failed");
+    Object.assign(failure, { code: error?.code });
+    throw failure;
+  }
+
+  const snapshot = data as PublicSocialProofSnapshot;
+  const memberCount = Math.max(0, Number(snapshot.member_count) || 0);
+  const rewardEventCount = Math.max(0, Number(snapshot.reward_event_count) || 0);
+  const paidWithdrawalCount = Math.max(0, Number(snapshot.paid_withdrawal_count) || 0);
+  const recentActivity = (snapshot.recent ?? []).map((row) => ({
+    label: activityLabel(row.entry_type),
+    credits: Math.max(0, Number(row.credits) || 0),
+    occurredAt: row.created_at,
+  }));
+
+  return {
+    stage: stageFor(memberCount, rewardEventCount, paidWithdrawalCount),
+    memberCount,
+    rewardEventCount,
+    paidWithdrawalCount,
+    recentActivity,
+    available: true,
+  };
+}
+
+const getCachedPublicSocialProof = unstable_cache(
+  queryPublicSocialProof,
+  ["public-social-proof-v1"],
+  {
+    revalidate: SOCIAL_PROOF_DATA_CACHE_SECONDS,
+    tags: ["public-social-proof"],
+  },
+);
+
+let socialProofInFlight: Promise<PublicSocialProof> | null = null;
+
+export async function getPublicSocialProof(): Promise<PublicSocialProof> {
+  if (socialProofInFlight) return socialProofInFlight;
+
+  socialProofInFlight = getCachedPublicSocialProof();
   try {
-    const { data, error } = await supabase.rpc("public_social_proof_snapshot");
-
-    if (error || !data || typeof data !== "object" || Array.isArray(data)) {
-      console.error("[social-proof] snapshot RPC failed", {
-        code: error?.code,
-      });
-      return EMPTY_PROOF;
-    }
-
-    const snapshot = data as PublicSocialProofSnapshot;
-    const memberCount = Math.max(0, Number(snapshot.member_count) || 0);
-    const rewardEventCount = Math.max(0, Number(snapshot.reward_event_count) || 0);
-    const paidWithdrawalCount = Math.max(0, Number(snapshot.paid_withdrawal_count) || 0);
-    const recentActivity = (snapshot.recent ?? []).map((row) => ({
-      label: activityLabel(row.entry_type),
-      credits: Math.max(0, Number(row.credits) || 0),
-      occurredAt: row.created_at,
-    }));
-
-    return {
-      stage: stageFor(memberCount, rewardEventCount, paidWithdrawalCount),
-      memberCount,
-      rewardEventCount,
-      paidWithdrawalCount,
-      recentActivity,
-      available: true,
-    };
+    return await socialProofInFlight;
   } catch (error) {
-    console.error("[social-proof] unexpected query failure", error instanceof Error ? error.message : "unknown");
+    console.error("[social-proof] snapshot unavailable", {
+      code: error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : undefined,
+      message: error instanceof Error ? error.message : "unknown",
+    });
     return EMPTY_PROOF;
+  } finally {
+    socialProofInFlight = null;
   }
 }

@@ -350,13 +350,21 @@ requireText("lib/social-proof.ts", [
   "snapshot.member_count",
   "snapshot.reward_event_count",
   "snapshot.paid_withdrawal_count",
-  "snapshot.recent"
+  "snapshot.recent",
+  'import { unstable_cache } from "next/cache"',
+  "SOCIAL_PROOF_DATA_CACHE_SECONDS = 30",
+  '["public-social-proof-v1"]',
+  "revalidate: SOCIAL_PROOF_DATA_CACHE_SECONDS",
+  "socialProofInFlight",
+  "if (socialProofInFlight) return socialProofInFlight"
 ]);
 forbidText("lib/social-proof.ts", [
   '.from("profiles")',
   '.from("ledger_entries")',
   '.from("withdrawals")',
-  "Promise.all(["
+  "Promise.all([",
+  "unstable_noStore",
+  "cache: \"no-store\""
 ]);
 {
   const source = read("lib/social-proof.ts");
