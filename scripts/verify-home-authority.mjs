@@ -231,4 +231,35 @@ if (!home.includes("one authority controls the fragment order") && !home.include
   throw new Error("home.css must document its canonical ordering responsibility.");
 }
 
+
+const homePage = read("app/page.tsx");
+for (const fragment of [
+  'import { getPublicSocialProof } from "@/lib/social-proof";',
+  "export default async function HomePage()",
+  "const initialProof = await getPublicSocialProof();",
+  "<V6HeroProof initialProof={initialProof} />",
+  "<V6FinalProof initialProof={initialProof} />",
+]) {
+  if (!homePage.includes(fragment)) {
+    throw new Error(`Home lost verified social-proof HTML bootstrap: ${fragment}`);
+  }
+}
+if (homePage.includes('export const dynamic = "force-dynamic"')) {
+  throw new Error("Home social-proof bootstrap must not force dynamic rendering.");
+}
+
+const liveProof = read("components/v6-live-proof.tsx");
+for (const fragment of [
+  "initialProof: PublicSocialProof",
+  "useState<PublicSocialProof>(cachedProof ?? initialProof ?? EMPTY_PROOF)",
+  "void refreshPublicProof().then",
+]) {
+  if (!liveProof.includes(fragment)) {
+    throw new Error(`Live proof lost server bootstrap/background refresh contract: ${fragment}`);
+  }
+}
+if (liveProof.includes("if (cachedProof) return Promise.resolve(cachedProof);")) {
+  throw new Error("Live proof must refresh authoritative runtime data even when bootstrapped.");
+}
+
 console.log("Canonical Home cascade PASS");

@@ -16,12 +16,15 @@ const EMPTY_PROOF: PublicSocialProof = {
 let cachedProof: PublicSocialProof | null = null;
 let pendingProof: Promise<PublicSocialProof> | null = null;
 
+type V6ProofProps = {
+  initialProof: PublicSocialProof;
+};
+
 function count(value: number, available: boolean) {
   return available ? value.toLocaleString("en-US") : "—";
 }
 
-function loadPublicProof() {
-  if (cachedProof) return Promise.resolve(cachedProof);
+function refreshPublicProof() {
   if (pendingProof) return pendingProof;
 
   pendingProof = fetch("/api/public/social-proof", {
@@ -45,26 +48,30 @@ function loadPublicProof() {
   return pendingProof;
 }
 
-function usePublicProof() {
-  const [proof, setProof] = useState<PublicSocialProof>(cachedProof ?? EMPTY_PROOF);
+function usePublicProof(initialProof: PublicSocialProof) {
+  const [proof, setProof] = useState<PublicSocialProof>(cachedProof ?? initialProof ?? EMPTY_PROOF);
 
   useEffect(() => {
     let active = true;
 
-    void loadPublicProof().then((nextProof) => {
+    if (!cachedProof && initialProof.available) {
+      cachedProof = initialProof;
+    }
+
+    void refreshPublicProof().then((nextProof) => {
       if (active) setProof(nextProof);
     });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialProof]);
 
   return proof;
 }
 
-export function V6HeroProof() {
-  const proof = usePublicProof();
+export function V6HeroProof({ initialProof }: V6ProofProps) {
+  const proof = usePublicProof(initialProof);
 
   return (
     <div className="pc-v6-shell pc-v6-hero-stats" aria-live="polite">
@@ -75,8 +82,8 @@ export function V6HeroProof() {
   );
 }
 
-export function V6FinalProof() {
-  const proof = usePublicProof();
+export function V6FinalProof({ initialProof }: V6ProofProps) {
+  const proof = usePublicProof(initialProof);
 
   return (
     <div className="pc-v6-final-stats" aria-live="polite">

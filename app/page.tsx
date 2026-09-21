@@ -5,6 +5,7 @@ import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
 import { ArrowUpRight, Shield, Spark, Trend } from "@/components/icons";
+import { getPublicSocialProof } from "@/lib/social-proof";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -23,7 +24,9 @@ const ranks = [
   { id: "resonance", name: "Resonance", note: "Reach the highest stage" },
 ] as const;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const initialProof = await getPublicSocialProof();
+
   return (
     <main className="pc-v6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
@@ -55,7 +58,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <V6HeroProof />
+        <V6HeroProof initialProof={initialProof} />
       </section>
 
       <section className="pc-v6-section pc-v6-pillars" id="about">
@@ -149,7 +152,7 @@ export default function HomePage() {
         <div className="pc-v6-shell pc-v6-final-grid">
           <div className="pc-v6-final-mantra">One Pulse<br />at a<br />time</div>
           <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>Start With<br />One Pulse.</h2><p>Start free. Come back when you&apos;re ready.</p><FunnelLink className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard" eventLabel="home_final_signup">Create free account <ArrowUpRight /></FunnelLink></div>
-          <V6FinalProof />
+          <V6FinalProof initialProof={initialProof} />
         </div>
       </section>
 
