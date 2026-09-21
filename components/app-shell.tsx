@@ -16,6 +16,7 @@ const adminLinks = [
   { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
   { id: "faucetpay-admin", href: "/admin/faucetpay", label: "Payments", Icon: Wallet },
   { id: "support-admin", href: "/admin/support", label: "Support", Icon: Users },
+  { id: "ads-admin", href: "/admin/ads", label: "Ads", Icon: Bolt },
   { id: "advanced", href: "/admin/advanced", label: "Advanced", Icon: Shield },
 ];
 
@@ -41,7 +42,7 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
 
   const admin = isAdminEmail(user?.email);
   const sidebarLinks = admin ? [...links, ...adminLinks] : links;
-  const utilityMobileActive = ["account", "support", "proof"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
+  const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
 
   return (
     <div className="app-frame">
@@ -58,6 +59,7 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
           <div className="sidebar-tools">
             <Link className={active === "account" ? "active" : ""} aria-current={active === "account" ? "page" : undefined} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
             <Link className={active === "proof" ? "active" : ""} aria-current={active === "proof" ? "page" : undefined} href="/proof">Proof</Link>
+            <Link className={active === "ads" ? "active" : ""} aria-current={active === "ads" ? "page" : undefined} href="/advertise">Advertise</Link>
             <Link className={active === "support" ? "active" : ""} aria-current={active === "support" ? "page" : undefined} href="/support">Help</Link>
           </div>
           {user ? <form action={signOut}><button className="sidebar-signout" type="submit">Sign out</button></form> : null}
@@ -80,6 +82,7 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
             </div>
             <Link className={active === "account" ? "active" : ""} aria-current={active === "account" ? "page" : undefined} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
             <Link className={active === "proof" ? "active" : ""} aria-current={active === "proof" ? "page" : undefined} href="/proof">Proof</Link>
+            <Link className={active === "ads" ? "active" : ""} aria-current={active === "ads" ? "page" : undefined} href="/advertise">Advertise</Link>
             <Link className={active === "support" ? "active" : ""} aria-current={active === "support" ? "page" : undefined} href="/support">Help</Link>
             {admin ? adminLinks.map(({ id, href, label: navLabel, Icon }) => (
               <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon />{navLabel}</Link>

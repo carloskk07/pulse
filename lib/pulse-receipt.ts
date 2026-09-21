@@ -1,6 +1,7 @@
 import { getCurrentUserContext } from "@/lib/current-user-context";
 
 export type RecentPulseReceipt = {
+  id: string;
   createdAt: string;
   rewardCredits: number;
 };
@@ -13,13 +14,13 @@ export async function getRecentPulseReceipt(): Promise<RecentPulseReceipt | null
 
   const { data } = await supabase
     .from("pulse_claims")
-    .select("created_at,reward_credits")
+    .select("id,created_at,reward_credits")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (!data?.created_at) return null;
+  if (!data?.id || !data?.created_at) return null;
 
   const createdAt = String(data.created_at);
   const createdMs = new Date(createdAt).getTime();
@@ -27,5 +28,5 @@ export async function getRecentPulseReceipt(): Promise<RecentPulseReceipt | null
   if (!Number.isFinite(createdMs) || ageMs < -30_000 || ageMs > RECENT_CLAIM_WINDOW_MS) return null;
 
   const rewardCredits = Math.max(0, Number(data.reward_credits) || 0);
-  return { createdAt, rewardCredits };
+  return { id: String(data.id), createdAt, rewardCredits };
 }
