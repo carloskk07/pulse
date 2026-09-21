@@ -28,6 +28,9 @@ requireAll("supabase/migrations/0082_referral_network_cycle_guard.sql", [
   "pg_advisory_xact_lock(hashtextextended('referral-graph', 0))",
   "'cycle_rejected'",
   "v_beneficiary = any(v_seen)",
+  "max_reward_share_of_margin_bps',5000",
+  "v_reward_cost_usd_micros > v_reward_budget_usd_micros",
+  "verified_margin_usd_micros",
   "release_referral_network_integrity_contract",
   "canonical release schema v55",
 ]);
