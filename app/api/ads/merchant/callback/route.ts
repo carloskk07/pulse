@@ -7,6 +7,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{8,256}$/;
+const MAX_CALLBACK_BODY_BYTES = 8_192;
+const MERCHANT_VERIFY_TIMEOUT_MS = 7_000;
 
 type PersistedCallback = {
   state?: string | null;
@@ -86,12 +88,23 @@ export async function POST(request: NextRequest) {
   const admin = createSupabaseAdminClient();
   if (!admin) return NextResponse.json({ status: "unavailable" }, { status: 503 });
 
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_CALLBACK_BODY_BYTES) {
+    return NextResponse.json({ status: "payload-too-large" }, { status: 413 });
+  }
+
   const form = await request.formData();
   const token = String(form.get("token") ?? "").trim();
   const callbackTransactionId = String(form.get("transaction_id") ?? "").trim().slice(0, 160);
   const callbackCustom = String(form.get("custom") ?? "").trim().slice(0, 220);
+  const callbackAuthority = verifyPulseAdsCheckoutCustom(callbackCustom);
 
-  if (!TOKEN_RE.test(token)) return NextResponse.json({ status: "invalid" }, { status: 400 });
+  // FaucetPay echoes the checkout custom value in the server callback. Require
+  // Pulsercuit's HMAC authority before any database write or provider lookup so
+  // arbitrary public POSTs cannot turn this route into an outbound-call/storage amplifier.
+  if (!TOKEN_RE.test(token) || !callbackAuthority) {
+    return NextResponse.json({ status: "invalid" }, { status: 400 });
+  }
   const hash = tokenHash(token);
 
   const { data: existingData, error: existingError } = await admin
@@ -111,18 +124,14 @@ export async function POST(request: NextRequest) {
 
   const retryProof = persistedProof(existing);
   if (retryProof) {
+    if (
+      retryProof.campaignId !== callbackAuthority.campaignId
+      || retryProof.checkoutReference !== callbackAuthority.checkoutReference
+    ) {
+      return NextResponse.json({ status: "authority-mismatch" }, { status: 409 });
+    }
     return settlePersistedAuthority(admin, hash, retryProof);
   }
-
-  const { error: pendingError } = await admin.from("pulse_ads_merchant_callbacks").upsert({
-    token_hash: hash,
-    provider_transaction_id: callbackTransactionId || null,
-    custom_reference: callbackCustom || null,
-    state: "pending",
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "token_hash" });
-
-  if (pendingError) return NextResponse.json({ status: "unavailable" }, { status: 503 });
 
   const merchantUsername = process.env.PULSE_ADS_MERCHANT_USERNAME?.trim();
   if (!merchantUsername) {
@@ -135,6 +144,7 @@ export async function POST(request: NextRequest) {
       method: "GET",
       cache: "no-store",
       headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(MERCHANT_VERIFY_TIMEOUT_MS),
     });
     if (!response.ok) return NextResponse.json({ status: "verify-unavailable" }, { status: 503 });
     verified = await response.json() as Record<string, unknown>;
@@ -155,22 +165,23 @@ export async function POST(request: NextRequest) {
     && pricingCurrency === "USDT"
     && amountUsdMicros !== null
     && custom !== null
-    && (!callbackTransactionId || callbackTransactionId === verifiedTransactionId)
-    && (!callbackCustom || callbackCustom === verifiedCustom);
+    && custom.campaignId === callbackAuthority.campaignId
+    && custom.checkoutReference === callbackAuthority.checkoutReference
+    && callbackTransactionId === verifiedTransactionId
+    && callbackCustom === verifiedCustom;
 
   if (!authoritative || !custom || amountUsdMicros === null) {
-    await admin.from("pulse_ads_merchant_callbacks").update({
-      state: "rejected",
-      reason: "verification_mismatch",
-      updated_at: new Date().toISOString(),
-    }).eq("token_hash", hash);
     return NextResponse.json({ status: "rejected" }, { status: 200 });
   }
 
+  // The provider token is single-use. Persist only authoritative provider proof,
+  // then allow internal settlement to retry from that durable record without
+  // consuming the token again.
   const providerVerifiedAt = new Date().toISOString();
   const { error: proofError } = await admin
     .from("pulse_ads_merchant_callbacks")
-    .update({
+    .upsert({
+      token_hash: hash,
       state: "pending",
       provider_transaction_id: verifiedTransactionId,
       custom_reference: verifiedCustom,
@@ -181,8 +192,7 @@ export async function POST(request: NextRequest) {
       provider_verified_at: providerVerifiedAt,
       reason: "provider_verified",
       updated_at: providerVerifiedAt,
-    })
-    .eq("token_hash", hash);
+    }, { onConflict: "token_hash" });
 
   if (proofError) {
     return NextResponse.json({ status: "proof-persistence-unavailable" }, { status: 503 });
