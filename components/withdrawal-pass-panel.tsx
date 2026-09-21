@@ -1,4 +1,4 @@
-import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
+import { getPulseEcosystemSnapshot, type PulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 
 function compact(value: string | null) {
   if (!value) return null;
@@ -10,8 +10,8 @@ function compact(value: string | null) {
   }).format(new Date(value));
 }
 
-export async function WithdrawalPassPanel() {
-  const ecosystem = await getPulseEcosystemSnapshot();
+export async function WithdrawalPassPanel({ snapshot }: { snapshot?: PulseEcosystemSnapshot }) {
+  const ecosystem = snapshot ?? await getPulseEcosystemSnapshot();
   const nextFree = compact(ecosystem.nextFreeWithdrawalAt);
 
   return (
