@@ -94,14 +94,13 @@ function parse(value: unknown): HourlyValueSnapshot {
   };
 }
 
-export async function getHourlyValueSnapshot(): Promise<HourlyValueSnapshot> {
+export async function getHourlyValueSnapshot(days = 7): Promise<HourlyValueSnapshot> {
   const admin = createSupabaseAdminClient();
   if (!admin) return EMPTY;
 
-  const from = new Date();
-  from.setUTCHours(0, 0, 0, 0);
-  const to = new Date(from);
-  to.setUTCDate(to.getUTCDate() + 1);
+  const boundedDays = Math.max(1, Math.min(30, Math.floor(days)));
+  const to = new Date();
+  const from = new Date(to.getTime() - boundedDays * 24 * 60 * 60_000);
 
   const { data, error } = await admin.rpc("admin_hourly_value_snapshot", {
     p_from: from.toISOString(),
