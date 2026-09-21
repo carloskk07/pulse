@@ -43,6 +43,11 @@ forbidAll("supabase/migrations/0082_referral_network_cycle_guard.sql", [
   "schema_version = 56",
 ]);
 
+const migration0082 = read("supabase/migrations/0082_referral_network_cycle_guard.sql");
+if (/\nas \$\n/.test(migration0082) || /\n\$;\n/.test(migration0082)) {
+  throw new Error("Migration 0082 contains an invalid single-dollar PL/pgSQL delimiter.");
+}
+
 requireAll("app/api/direct/start/route.ts", [
   "isTrustedSameOriginMutation(request)",
   'return json(401, { status: "auth-required" })',
