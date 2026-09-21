@@ -29,6 +29,10 @@ type ReservedWithdrawal = {
   amount_credits?: number;
   payout_amount_units?: number;
   service_fee_credits?: number;
+  payout_authority_version?: number;
+  payout_authority_asset?: string;
+  payout_authority_credits?: number;
+  payout_authority_units?: number;
 };
 
 type ActiveWithdrawalRow = {
@@ -38,6 +42,10 @@ type ActiveWithdrawalRow = {
   asset: string;
   amount_credits: number;
   payout_amount_units: number | null;
+  payout_authority_version: number | null;
+  payout_authority_asset: string | null;
+  payout_authority_credits: number | null;
+  payout_authority_units: number | null;
   status: "requested" | "held" | "submitted";
 };
 
@@ -101,6 +109,28 @@ async function reservedMatchesCanonicalPayoutAuthority(
   return hasCanonicalFaucetPayPackAuthority(admin, config);
 }
 
+async function reservedHasStoredPayoutAuthority(
+  admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
+  reserved: ReservedWithdrawal,
+) {
+  if (!reserved.withdrawal_id) return false;
+
+  const version = Number(reserved.payout_authority_version);
+  const asset = String(reserved.payout_authority_asset ?? "").trim().toUpperCase();
+  const credits = Number(reserved.payout_authority_credits);
+  const units = Number(reserved.payout_authority_units);
+
+  if (!Number.isSafeInteger(version) || version <= 0) return false;
+  if (!asset || asset !== String(reserved.asset ?? "").trim().toUpperCase()) return false;
+  if (!Number.isSafeInteger(credits) || credits !== Number(reserved.amount_credits)) return false;
+  if (!Number.isSafeInteger(units) || units !== Number(reserved.payout_amount_units)) return false;
+
+  const { data, error } = await admin.rpc("withdrawal_payout_authority_snapshot_valid", {
+    p_withdrawal_id: reserved.withdrawal_id,
+  });
+  return !error && data === true;
+}
+
 async function matchesCurrentPayoutAuthority(
   admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>,
   reserved: ReservedWithdrawal,
@@ -136,7 +166,11 @@ async function executeReservedPayout(
   if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) {
     return walletRedirect(request, "reserve-failed");
   }
-  if (!(await reservedMatchesCanonicalPayoutAuthority(admin, reserved))) {
+  const submittedRecovery = recovery && reserved.status === "submitted";
+  const authorityValid = submittedRecovery
+    ? await reservedHasStoredPayoutAuthority(admin, reserved)
+    : await reservedMatchesCanonicalPayoutAuthority(admin, reserved);
+  if (!authorityValid) {
     return walletRedirect(request, "payout-not-configured");
   }
 
@@ -208,7 +242,7 @@ export async function POST(request: NextRequest) {
 
   const { data: activeData, error: activeError } = await admin
     .from("withdrawals")
-    .select("id,idempotency_key,destination,asset,amount_credits,payout_amount_units,status")
+    .select("id,idempotency_key,destination,asset,amount_credits,payout_amount_units,payout_authority_version,payout_authority_asset,payout_authority_credits,payout_authority_units,status")
     .eq("user_id", user.id)
     .in("status", ["requested", "held", "submitted"])
     .order("created_at", { ascending: false })
@@ -223,19 +257,32 @@ export async function POST(request: NextRequest) {
     if (!process.env.FAUCETPAY_SCOPED_KEY?.trim()) return walletRedirect(request, "payout-not-configured");
     if (!(await hasCurrentFaucetPaySendScopeProof(admin))) return walletRedirect(request, "payout-not-configured");
 
-    const config = getFaucetPayPackConfig();
-    const packStillMatches = Boolean(
-      config.ready
-      && config.amountCredits === active.amount_credits
-      && config.amountSmallestUnits === active.payout_amount_units
-      && config.asset === active.asset,
-    );
-    if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
-    if (!(await hasCanonicalFaucetPayPackAuthority(admin, config))) {
-      return walletRedirect(request, "payout-not-configured");
-    }
+    const reserved: ReservedWithdrawal = {
+      status: active.status,
+      withdrawal_id: active.id,
+      idempotency_key: active.idempotency_key,
+      destination: active.destination,
+      asset: active.asset,
+      amount_credits: active.amount_credits,
+      payout_amount_units: active.payout_amount_units ?? undefined,
+      payout_authority_version: active.payout_authority_version ?? undefined,
+      payout_authority_asset: active.payout_authority_asset ?? undefined,
+      payout_authority_credits: active.payout_authority_credits ?? undefined,
+      payout_authority_units: active.payout_authority_units ?? undefined,
+    };
 
     if (active.status === "requested") {
+      const config = getFaucetPayPackConfig();
+      const packStillMatches = Boolean(
+        config.ready
+        && config.amountCredits === active.amount_credits
+        && config.amountSmallestUnits === active.payout_amount_units
+        && config.asset === active.asset,
+      );
+      if (!packStillMatches) return walletRedirect(request, "payout-not-configured");
+      if (!(await hasCanonicalFaucetPayPackAuthority(admin, config))) {
+        return walletRedirect(request, "payout-not-configured");
+      }
       if (!(await hasCurrentFaucetPayReadProof(admin))) return walletRedirect(request, "payout-not-configured");
       if (!(await hasLivePayoutPreflight(config))) return walletRedirect(request, "provider-temporary");
 
@@ -245,17 +292,9 @@ export async function POST(request: NextRequest) {
         if (error instanceof FaucetPayApiError && error.retryable) return walletRedirect(request, "provider-temporary");
         return walletRedirect(request, "invalid-destination");
       }
+    } else if (!(await reservedHasStoredPayoutAuthority(admin, reserved))) {
+      return walletRedirect(request, "payout-not-configured");
     }
-
-    const reserved: ReservedWithdrawal = {
-      status: active.status,
-      withdrawal_id: active.id,
-      idempotency_key: active.idempotency_key,
-      destination: active.destination,
-      asset: active.asset,
-      amount_credits: active.amount_credits,
-      payout_amount_units: active.payout_amount_units ?? undefined,
-    };
 
     return executeReservedPayout(request, admin, new FaucetPayProvider(), user.id, reserved, ip, true);
   }
@@ -294,6 +333,11 @@ export async function POST(request: NextRequest) {
   if (reserved.status === "free_window_used") return walletRedirect(request, "free-pass-used");
   if (reserved.status === "held") return walletRedirect(request, "held");
   if (reserved.status === "pilot_restricted") return walletRedirect(request, "pilot-restricted");
+  if (
+    reserved.status === "payout_authority_missing"
+    || reserved.status === "payout_authority_mismatch"
+    || reserved.status === "unsupported_provider"
+  ) return walletRedirect(request, "payout-not-configured");
 
   return executeReservedPayout(request, admin, provider, user.id, reserved, ip, reserved.status === "active");
 }

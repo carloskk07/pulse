@@ -137,13 +137,14 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, withdrawalPassIntegrityResult] = await Promise.all([
+  const [snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult] = await Promise.all([
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
     admin.rpc("release_stacked_incentive_budget_contract"),
     admin.rpc("release_cashback_budget_contract"),
     admin.rpc("release_variable_reward_budget_contract"),
     admin.rpc("release_withdrawal_pass_integrity_contract"),
+    admin.rpc("release_withdrawal_recovery_authority_contract"),
   ]);
 
   if (referralIntegrityResult.error || referralIntegrityResult.data !== true) {
@@ -160,6 +161,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (withdrawalPassIntegrityResult.error || withdrawalPassIntegrityResult.data !== true) {
     setupBlockers.push("withdrawal-pass-integrity");
+  }
+  if (withdrawalRecoveryAuthorityResult.error || withdrawalRecoveryAuthorityResult.data !== true) {
+    setupBlockers.push("withdrawal-recovery-authority");
   }
 
   const { data, error } = snapshotResult;

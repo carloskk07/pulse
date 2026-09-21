@@ -104,6 +104,23 @@ forbidAll("supabase/migrations/0087_withdrawal_pass_anchor_authority.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0088_withdrawal_recovery_authority.sql", [
+  "payout_authority_version",
+  "withdrawal_payout_authority_snapshot_guard",
+  "faucetpay_payout_pack_authority",
+  "payout_authority_mismatch",
+  "withdrawal_payout_authority_snapshot_valid",
+  "release_withdrawal_recovery_authority_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0088_withdrawal_recovery_authority.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 requireAll("lib/pulse-ecosystem.ts", [
   "XP is non-monetary",
   "current_ecosystem_snapshot",
@@ -144,6 +161,10 @@ requireAll("components/withdrawal-pass-panel.tsx", [
 requireAll("app/api/withdrawals/route.ts", [
   'reserved.status === "free_window_used"',
   '"free-pass-used"',
+  "reservedHasStoredPayoutAuthority",
+  'reserved.status === "submitted"',
+  '"withdrawal_payout_authority_snapshot_valid"',
+  "payout_authority_version",
 ]);
 
 requireAll("app/wallet/page.tsx", [
