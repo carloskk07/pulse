@@ -166,4 +166,17 @@ requireAll("lib/marketing-funnel.ts", [
   '"faucet_proof"',
 ]);
 
+requireAll("lib/faucetpay-listing-readiness.ts", [
+  '.eq("status", "paid")',
+  '.eq("payout_provider", "faucetpay")',
+  "uniqueUsersPaidLast7d >= 5",
+  "allTimeUniqueUsersPaid >= 2",
+]);
+forbidAll("lib/faucetpay-listing-readiness.ts", [
+  ".insert(",
+  ".update(",
+  ".upsert(",
+  ".delete(",
+]);
+
 console.log("Pulse Ads + faucet-first contract PASS");
