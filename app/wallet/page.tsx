@@ -3,6 +3,7 @@ import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { WithdrawalPassPanel } from "@/components/withdrawal-pass-panel";
 import { getWalletPresentation } from "@/lib/experience-presentation";
+import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 import { getWalletState } from "@/lib/wallet-state";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -23,6 +24,7 @@ const withdrawalCopy: Record<string, string> = {
   "payout-not-configured": "Withdrawals are temporarily unavailable. Your balance is safe.",
   "pilot-restricted": "Withdrawals are opening gradually. Your balance remains available.",
   "service-not-configured": "The payout service is temporarily unavailable.",
+  "free-pass-used": "Your fee-free withdrawal was already used in the current 24-hour window. Extra withdrawals remain locked until expanded payout authority is active.",
   "reserve-failed": "The payout could not continue. Your balance remains protected.",
   failed: "The payout failed and the reserved credits were restored.",
 };
@@ -46,8 +48,9 @@ function maskDestination(value: string) {
 }
 
 export default async function WalletPage({ searchParams }: Props) {
-  const [wallet, params] = await Promise.all([
+  const [wallet, ecosystem, params] = await Promise.all([
     getWalletState(),
+    getPulseEcosystemSnapshot(),
     searchParams,
   ]);
   const {
@@ -90,7 +93,8 @@ export default async function WalletPage({ searchParams }: Props) {
     && sendScopeProofReady
     && turnstileReady
     && serviceReady
-    && state.availableCredits >= payoutCredits,
+    && (ecosystem.freeWithdrawalAvailable || ecosystem.extraWithdrawalsEnabled)
+    && state.availableCredits >= payoutCredits + (ecosystem.freeWithdrawalAvailable ? 0 : ecosystem.extraWithdrawalFeeCredits),
   );
   const missingCredits = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
   const payoutPercent = payoutCredits ? Math.max(0, Math.min(100, Math.round((state.availableCredits / payoutCredits) * 100))) : 0;
@@ -148,7 +152,7 @@ export default async function WalletPage({ searchParams }: Props) {
         </div>
       </section>
 
-      <WithdrawalPassPanel />
+      <WithdrawalPassPanel snapshot={ecosystem} />
 
       <section className="withdrawal-panel pc-luxe-vault-action">
         <div>
