@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -17,7 +17,8 @@ function json(status: number, body: Record<string, unknown>) {
 export async function POST(request: NextRequest) {
   if (!isTrustedSameOriginMutation(request)) return json(403, { status: "origin-rejected" });
 
-  const formData = await request.formData();
+  const formData = await readUrlEncodedFormWithLimit(request, 4_096);
+  if (!formData) return json(400, { status: "invalid" });
   const campaignId = String(formData.get("campaign") ?? "").trim();
   const sourcePulseClaimId = String(formData.get("source_pulse_claim_id") ?? "").trim();
   const cleanSourcePulseClaimId = UUID_RE.test(sourcePulseClaimId) ? sourcePulseClaimId : null;
