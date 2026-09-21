@@ -228,7 +228,7 @@ export default async function AdminEconomicsPage() {
         </div>
 
         <div className="app-section-head">
-          <div><span className="app-eyebrow">Hourly value loop</span><h2>Measure what each Pulse earns back.</h2></div>
+          <div><span className="app-eyebrow">Hourly value loop</span><h2>Measure what each Pulse earns back over 7 days.</h2></div>
           <span className={"admin-badge " + (hourlyValue.selfSufficiencyRatio >= 1 ? "" : "setup")}>
             {hourlyValue.available ? (hourlyValue.selfSufficiencyRatio * 100).toFixed(0) + "% COVERED" : "NO DATA"}
           </span>
@@ -236,7 +236,7 @@ export default async function AdminEconomicsPage() {
         {hourlyValue.available ? (
           <>
             <div className="admin-secondary-grid">
-              <article><span>Pulse sessions today</span><strong>{hourlyValue.claims.toLocaleString("en-US")}</strong></article>
+              <article><span>Pulse sessions · 7d</span><strong>{hourlyValue.claims.toLocaleString("en-US")}</strong></article>
               <article><span>Base Pulse cost</span><strong>{moneyFromMicros(hourlyValue.basePulseCostUsdMicros)}</strong><small>{moneyFromMicros(hourlyValue.baseCostPerClaimUsdMicros)} / claim</small></article>
               <article><span>Sponsored fill</span><strong>{(hourlyValue.sponsoredFillRate * 100).toFixed(1)}%</strong><small>{hourlyValue.sponsoredServes} served · {hourlyValue.unfilledClaims} unfilled</small></article>
               <article><span>Sponsored CTR</span><strong>{(hourlyValue.sponsoredCtr * 100).toFixed(1)}%</strong><small>{hourlyValue.sponsoredClicks} billable click{hourlyValue.sponsoredClicks === 1 ? "" : "s"}</small></article>
@@ -246,7 +246,7 @@ export default async function AdminEconomicsPage() {
               <article><span>Monetized Pulses</span><strong>{(hourlyValue.monetizedClaimRate * 100).toFixed(1)}%</strong><small>{hourlyValue.monetizedClaims} / {hourlyValue.claims}</small></article>
               <article><span>Support generated</span><strong>{moneyFromMicros(hourlyValue.pulseSupportUsdMicros)}</strong><small>Ads + Direct contribution after Direct rewards</small></article>
               <article><span>Support / Pulse</span><strong>{moneyFromMicros(hourlyValue.supportPerClaimUsdMicros)}</strong><small>Target ≥ {moneyFromMicros(hourlyValue.baseCostPerClaimUsdMicros)}</small></article>
-              <article><span>Self-sufficiency</span><strong>{hourlyValue.selfSufficiencyRatio.toFixed(2)}×</strong><small>1.00× = optional monetization pays the base Pulse</small></article>
+              <article><span>Self-sufficiency · 7d</span><strong>{hourlyValue.selfSufficiencyRatio.toFixed(2)}×</strong><small>1.00× = optional monetization pays the base Pulse</small></article>
               <article><span>Hourly contribution</span><strong>{moneyFromMicros(hourlyValue.grossContributionUsdMicros)}</strong><small>After base Pulse + Direct user rewards</small></article>
             </div>
             <p className="admin-panel-note">This is claim-bound evidence, not attribution by time alone. Pulse Ads revenue is tied to the exact claim that unlocked the placement; Pulse Direct is counted only when a protected session carries a recent verified claim identity.</p>
