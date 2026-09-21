@@ -86,7 +86,6 @@ requireAll("supabase/migrations/0091_faucetpay_webhook_causal_binding.sql", [
   "p_event_created_at between",
   "dae.claimed_at - interval '5 minutes'",
   "dae.claimed_at + interval '15 minutes'",
-  "outside",
   "release_faucetpay_webhook_reconciliation_contract",
   "canonical release schema v55",
 ]);
