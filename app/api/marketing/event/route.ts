@@ -8,7 +8,7 @@ import {
   MARKETING_SESSION_MAX_AGE_SECONDS,
   recordMarketingEvent,
 } from "@/lib/marketing-funnel";
-import { isTrustedSameOriginMutation } from "@/lib/request-security";
+import { isTrustedSameOriginMutation, readRequestTextWithLimit } from "@/lib/request-security";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,9 @@ export async function POST(request: NextRequest) {
 
   let body: EventBody;
   try {
-    body = await request.json() as EventBody;
+    const rawBody = await readRequestTextWithLimit(request, 4_096);
+    if (!rawBody) throw new Error("invalid_body");
+    body = JSON.parse(rawBody) as EventBody;
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
