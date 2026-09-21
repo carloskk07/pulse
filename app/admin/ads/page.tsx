@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Shield } from "@/components/icons";
 import { formatUsdMicros, getPulseAdsAdminSnapshot } from "@/lib/pulse-ads";
+import { getAdvertiserDemandSnapshot } from "@/lib/advertiser-demand";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { reviewPulseAd } from "./actions";
 
@@ -27,7 +28,7 @@ export default async function AdsAdminPage({ searchParams }: Props) {
   if (!user) redirect("/auth?next=/admin/ads");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const ads = await getPulseAdsAdminSnapshot();
+  const [ads, demand] = await Promise.all([getPulseAdsAdminSnapshot(), getAdvertiserDemandSnapshot()]);
 
   return (
     <AppShell active="ads-admin">
@@ -48,6 +49,27 @@ export default async function AdsAdminPage({ searchParams }: Props) {
         <article className="admin-kpi positive"><span>Live</span><strong>{ads.activeCount}</strong><small>funded and approved</small></article>
         <article className="admin-kpi"><span>Advertiser funding</span><strong>{formatUsdMicros(ads.fundedUsdMicros)}</strong><small>verified campaign funding</small></article>
         <article className="admin-kpi"><span>Sponsored spend</span><strong>{formatUsdMicros(ads.spentUsdMicros)}</strong><small>{ads.clicks} billable clicks</small></article>
+      </section>
+
+      <section className="admin-decision-card">
+        <span className="app-eyebrow">Demand engine · ${demand.stage.replaceAll("_"," ")}</span>
+        <h2>${demand.nextAction}</h2>
+        <div className="admin-secondary-grid">
+          <article><span>Inbound interest</span><strong>${demand.inboundTotal}</strong><small>${demand.inboundNew} new</small></article>
+          <article><span>Traffic interest</span><strong>${demand.pulseAdsInterest}</strong><small>Pulse Ads</small></article>
+          <article><span>Verified-action interest</span><strong>${demand.directInterest}</strong><small>Pulse Direct</small></article>
+          <article><span>Ready prospects</span><strong>${demand.prospectsReady}</strong><small>${demand.readyWithPublicEmail} with public email</small></article>
+          <article><span>Contacted / replied</span><strong>${demand.prospectsContacted} / ${demand.prospectsReplied}</strong></article>
+          <article><span>Pilots</span><strong>${demand.prospectsPilot}</strong></article>
+          <article><span>Pending campaigns</span><strong>${demand.campaignsPending}</strong></article>
+          <article><span>Approved / live</span><strong>${demand.campaignsApproved} / ${demand.campaignsActive}</strong></article>
+        </div>
+        <div className="account-links">
+          <Link className="button button-secondary" href="/admin/leads">Inbound leads</Link>
+          <Link className="button button-secondary" href="/admin/prospects">Outbound prospects</Link>
+          <Link className="button" href="/advertise">Advertiser funnel <ArrowUpRight /></Link>
+        </div>
+        <p className="admin-panel-note">This funnel counts only stored inbound leads, researched company prospects and real campaign states. It never treats a researched company as interested or an approved campaign as revenue.</p>
       </section>
 
       <section className="admin-panel">
