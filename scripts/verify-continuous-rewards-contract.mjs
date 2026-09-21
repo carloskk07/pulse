@@ -75,6 +75,16 @@ requireAll("supabase/migrations/0078_v13_fk_index_hardening.sql", [
   "release_schema",
 ]);
 
+requireAll("supabase/migrations/0079_natural_hourly_ceiling_authority.sql", [
+  "pilot_mode=true",
+  "v_windows <> 24",
+  "v_ceiling <> 24",
+  "max_user_daily_credits=v_ceiling",
+  "arbitrary_user_quota_enabled",
+  "faucet_continuous_launch_policy",
+  "cadence migration changed forbidden Treasury authority",
+]);
+
 requireAll("lib/pulse-ecosystem.ts", [
   "XP is non-monetary",
   "current_ecosystem_snapshot",
