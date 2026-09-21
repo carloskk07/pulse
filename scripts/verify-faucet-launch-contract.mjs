@@ -70,6 +70,16 @@ requireAll("app/faucet/page.tsx", [
   "Public claiming stays closed until funded capacity and fair-share are ready.",
 ]);
 
+requireAll("lib/product-readiness.ts", [
+  "getTreasuryBackingGuard",
+  'id: "public-backing"',
+  'publicBackingStatus === "backing_ready"',
+  'new Set(["public-access", "public-fair-share", "public-backing"])',
+]);
+requireAll("lib/product-launch-readiness.ts", [
+  'new Set(["public-access", "public-fair-share", "public-backing"])',
+]);
+
 if (runway.includes("INITIAL_PAID_USER_TARGET = 2")) {
   throw new Error("Internal strong initial evidence target must not regress to the documentary minimum.");
 }
