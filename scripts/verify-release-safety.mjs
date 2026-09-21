@@ -1472,3 +1472,15 @@ requireText("scripts/verify-home-proof-bootstrap.mjs", [
   "Home collapsed a positive",
   "--self-test",
 ]);
+
+
+requireText(".github/workflows/ci.yml", [
+  "Verify Home prerender result",
+  "node scripts/verify-home-prerender-contract.mjs",
+]);
+requireText("scripts/verify-home-prerender-contract.mjs", [
+  "verifyHomePrerenderManifest",
+  'manifest.routes?.["/"]',
+  "Home is not present in the Next prerender manifest.",
+  "--self-test",
+]);
