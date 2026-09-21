@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ContinuousEarnHub } from "@/components/continuous-earn-hub";
+import { DirectStartButton } from "@/components/direct-start-button";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
@@ -100,11 +101,10 @@ export default async function EarnPage({ searchParams }: Props) {
           </div>
 
           {best?.pulseProtected ? (
-            <form action="/api/direct/start" method="post" className="direct-start-form">
-              <input type="hidden" name="campaign" value={best.externalId} />
-              {sourcePulseClaimId ? <input type="hidden" name="source_pulse_claim_id" value={sourcePulseClaimId} /> : null}
-              <button className="button button-light direct-primary-action" type="submit">Start extra reward <ArrowUpRight /></button>
-            </form>
+            <DirectStartButton
+              campaignId={best.externalId}
+              sourcePulseClaimId={sourcePulseClaimId}
+            />
           ) : primaryChannel ? (
             <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open extra rewards <ArrowUpRight /></a>
           ) : (
@@ -136,11 +136,13 @@ export default async function EarnPage({ searchParams }: Props) {
                 <div className="reward-metric"><small>Time</small><strong>{item.estimatedMinutes ? item.estimatedMinutes + "m" : "—"}</strong></div>
                 <div className="reward-metric"><small>Verification</small><strong>{item.pulseProtected ? "Protected" : Math.round(item.confidence * 100) + "%"}</strong></div>
                 {item.pulseProtected ? (
-                  <form action="/api/direct/start" method="post" className="direct-start-form compact">
-                    <input type="hidden" name="campaign" value={item.externalId} />
-                    {sourcePulseClaimId ? <input type="hidden" name="source_pulse_claim_id" value={sourcePulseClaimId} /> : null}
-                    <button className="direct-row-action" type="submit" aria-label={"Start " + item.title}>Start <ArrowUpRight /></button>
-                  </form>
+                  <DirectStartButton
+                    campaignId={item.externalId}
+                    sourcePulseClaimId={sourcePulseClaimId}
+                    compact
+                    label="Start"
+                    ariaLabel={"Start " + item.title}
+                  />
                 ) : null}
               </article>
             ))}

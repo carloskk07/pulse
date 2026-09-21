@@ -137,7 +137,16 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const { data, error } = await admin.rpc("controlled_technical_readiness_snapshot");
+  const [snapshotResult, referralIntegrityResult] = await Promise.all([
+    admin.rpc("controlled_technical_readiness_snapshot"),
+    admin.rpc("release_referral_network_integrity_contract"),
+  ]);
+
+  if (referralIntegrityResult.error || referralIntegrityResult.data !== true) {
+    setupBlockers.push("referral-network-integrity");
+  }
+
+  const { data, error } = snapshotResult;
   if (error || !data) {
     setupBlockers.push("database-snapshot");
     return {
