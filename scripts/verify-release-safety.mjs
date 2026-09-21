@@ -1416,9 +1416,25 @@ requireText("app/api/return-reminder/route.ts", ["export async function POST", "
 forbidText("app/api/return-reminder/route.ts", ["export async function GET"]);
 requireText("app/api/direct/start/route.ts", ["isTrustedSameOriginMutation(request)", 'admin.rpc("start_direct_campaign_session"', 'target.protocol !== "https:"']);
 forbidText("app/api/direct/start/route.ts", ['request.headers.get("origin")']);
-requireText("app/api/direct/callback/route.ts", ["invalid_occurred_at", 'admin.rpc("settle_direct_campaign_completion"', 'p_occurred_at: occurredAt.toISOString()']);
+requireText("app/api/direct/callback/route.ts", ["invalid_occurred_at", "readRequestTextWithLimit(request, 32_768)", 'admin.rpc("settle_direct_campaign_completion"', 'p_occurred_at: occurredAt.toISOString()']);
 requireText("components/next-circuit-panel.tsx", ['action="/api/return-reminder"', 'method="post"', 'type="submit"']);
-requireText("app/api/business/leads/route.ts", ["POSITIVE_INTEGER_RE", "url.username || url.password"]);
+requireText("app/api/business/leads/route.ts", ["isTrustedSameOriginMutation(request)", "POSITIVE_INTEGER_RE", "url.username || url.password"]);
+requireText("supabase/migrations/0092_admin_user_allowlist_reproducibility.sql", [
+  "create table if not exists public.admin_users",
+  "alter table public.admin_users enable row level security",
+  "revoke all on table public.admin_users from public, anon, authenticated",
+  "grant all privileges on table public.admin_users to service_role",
+  "No administrative identity is provisioned by migrations",
+  "admin_users client privilege contract drifted",
+]);
+forbidText("supabase/migrations/0092_admin_user_allowlist_reproducibility.sql", [
+  "insert into public.admin_users",
+  "update public.app_config",
+  "release_schema",
+  "fund_reward_treasury",
+  "update public.withdrawals",
+  "insert into public.ledger_entries",
+]);
 requireText("app/auth/page.tsx", ["safeAuthNext(params.next)", 'params.mode === "signup"', "authModeHref", '<TurnstileField action="signin" />', '<TurnstileField action="signup" />', 'params.message === "password-updated"', "Sign in with your new password to finish account recovery."]);
 requireText("components/circuit-share-studio.tsx", ["copyTextToClipboard", "isNativeShareAbort"]);
 requireText("app/admin/prospects/actions.ts", ["normalizeProspectUrl", "UUID_RE", "LOCAL_DATETIME_RE", "new Date(`${value}:00Z`)"]);
