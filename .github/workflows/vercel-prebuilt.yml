@@ -149,6 +149,7 @@ jobs:
       - name: Build prebuilt Vercel output
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          PULSECIRCUIT_BUILD_PROOF_URL: https://pulsercuit.pro/api/public/social-proof
         run: npx --yes vercel@59.17.0 build --prod --scope=carloskk07s-projects --token="$VERCEL_TOKEN"
 
       - name: Reconfirm current main HEAD before deploy
