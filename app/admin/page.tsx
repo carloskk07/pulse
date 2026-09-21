@@ -7,6 +7,7 @@ import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
 import { getPulseAdsAdminSnapshot } from "@/lib/pulse-ads";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
 import { getFaucetPayListingReadiness } from "@/lib/faucetpay-listing-readiness";
+import { getFaucetLaunchRunway } from "@/lib/faucet-launch-runway";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTreasurySnapshot } from "@/lib/treasury";
@@ -62,13 +63,14 @@ export default async function AdminEconomicsPage() {
   if (!user) redirect("/auth?next=/admin");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [launchReadiness, treasuries, direct, ads, faucet, faucetListing] = await Promise.all([
+  const [launchReadiness, treasuries, direct, ads, faucet, faucetListing, faucetRunway] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasurySnapshot(),
     getDirectCampaignSnapshot(),
     getPulseAdsAdminSnapshot(),
     getFaucetLaunchState(),
     getFaucetPayListingReadiness(),
+    getFaucetLaunchRunway(),
   ]);
   const readiness = launchReadiness.release;
   const product = launchReadiness.product;
@@ -234,8 +236,29 @@ export default async function AdminEconomicsPage() {
           <article><span>Ads contribution today</span><strong>{moneyFromMicros(ads.spentTodayUsdMicros)}</strong></article>
           <article><span>Funded claim capacity</span><strong>{faucet.availableClaims.toLocaleString("en-US")}</strong></article>
           <article><span>Remaining daily claims</span><strong>{faucet.remainingDailyClaims.toLocaleString("en-US")}</strong></article>
+          <article><span>Backing proof</span><strong>{faucet.backingReady ? "FRESH" : "REFRESH REQUIRED"}</strong><small>{faucet.backingStatus.replaceAll("_", " ")}</small></article>
+          <article><span>Public faucet authority</span><strong>{faucet.publicClaimsOpen ? "OPEN" : "CONTROLLED"}</strong><small>{faucet.reason.replaceAll("_", " ")}</small></article>
         </div>
         <p className="admin-panel-note">Self-sufficiency compares today&apos;s confirmed provider/direct gross contribution plus billable Pulse Ads clicks with today&apos;s base Pulse reward cost. It is an operating signal, not net profit.</p>
+
+        {faucetRunway.available ? (
+          <>
+            <div className="app-section-head">
+              <div><span className="app-eyebrow">Five-user payout runway</span><h2>Fund the evidence before opening the floodgate.</h2></div>
+              <span className={"admin-badge " + (faucetRunway.treasuryCreditGap === 0 && faucet.backingReady ? "" : "setup")}>
+                {faucetRunway.paidUsers} / {faucetRunway.targetPaidUsers} PAID
+              </span>
+            </div>
+            <div className="admin-secondary-grid">
+              <article><span>Paid users achieved</span><strong>{faucetRunway.paidUsers} / {faucetRunway.targetPaidUsers}</strong></article>
+              <article><span>Users still needed</span><strong>{faucetRunway.remainingPaidUsers}</strong></article>
+              <article><span>Minimum claim credits needed</span><strong>{faucetRunway.minimumClaimCreditsNeeded.toLocaleString("en-US")} P</strong><small>Conservative path to the remaining payout packs</small></article>
+              <article><span>Treasury claim capacity</span><strong>{faucetRunway.treasuryAvailableCredits.toLocaleString("en-US")} P</strong></article>
+              <article><span>Incremental Treasury gap</span><strong>{faucetRunway.treasuryCreditGap.toLocaleString("en-US")} P</strong><small>{moneyFromCredits(faucetRunway.treasuryCreditGap)} at the current credit value</small></article>
+              <article><span>Payout pack</span><strong>{faucetRunway.payoutPackCredits.toLocaleString("en-US")} P</strong></article>
+            </div>
+          </>
+        ) : <div className="empty-ledger">Five-user payout runway is unavailable. No funding gap is inferred.</div>}
 
         <div className="app-section-head">
           <div><span className="app-eyebrow">FaucetPay listing evidence</span><h2>Earn the directory position with real payouts.</h2></div>

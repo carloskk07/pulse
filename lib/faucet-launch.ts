@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
+import { getTreasuryBackingGuard, type TreasuryBackingStatus } from "@/lib/treasury-backing";
 
 export type FaucetLaunchState = {
   available: boolean;
@@ -11,7 +12,9 @@ export type FaucetLaunchState = {
   intervalMinutes: number;
   availableClaims: number;
   remainingDailyClaims: number;
-  reason: "ready" | "pilot" | "treasury" | "fair_share" | "unavailable";
+  backingStatus: TreasuryBackingStatus;
+  backingReady: boolean;
+  reason: "ready" | "pilot" | "backing" | "treasury" | "fair_share" | "unavailable";
 };
 
 function asInt(value: unknown, fallback: number) {
@@ -30,6 +33,8 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       intervalMinutes: 60,
       availableClaims: 0,
       remainingDailyClaims: 0,
+      backingStatus: "backing_unavailable",
+      backingReady: false,
       reason: "unavailable",
     };
   }
@@ -49,6 +54,8 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       intervalMinutes: 60,
       availableClaims: 0,
       remainingDailyClaims: 0,
+      backingStatus: "backing_unavailable",
+      backingReady: false,
       reason: "unavailable",
     };
   }
@@ -58,7 +65,11 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
   const intervalMinutes = Math.max(15, asInt(config.interval_minutes, 60));
   const treasuryCode = String(config.treasury_code ?? "launch");
   const pilotMode = ["true", "1", "yes", "on"].includes(String(config.pilot_mode ?? "false").toLowerCase());
-  const treasury = await getTreasuryDailyFundingState(treasuryCode);
+  const [treasury, backingStatus] = await Promise.all([
+    getTreasuryDailyFundingState(treasuryCode),
+    getTreasuryBackingGuard(treasuryCode, admin),
+  ]);
+  const backingReady = backingStatus === "backing_ready";
 
   if (!treasury) {
     return {
@@ -69,6 +80,8 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       intervalMinutes,
       availableClaims: 0,
       remainingDailyClaims: 0,
+      backingStatus,
+      backingReady,
       reason: "treasury",
     };
   }
@@ -85,12 +98,14 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
 
   return {
     available: true,
-    publicClaimsOpen: !pilotMode && fairShareReady && treasuryReady,
+    publicClaimsOpen: !pilotMode && backingReady && fairShareReady && treasuryReady,
     pilotMode,
     rewardCredits,
     intervalMinutes,
     availableClaims,
     remainingDailyClaims,
-    reason: pilotMode ? "pilot" : !fairShareReady ? "fair_share" : !treasuryReady ? "treasury" : "ready",
+    backingStatus,
+    backingReady,
+    reason: pilotMode ? "pilot" : !backingReady ? "backing" : !fairShareReady ? "fair_share" : !treasuryReady ? "treasury" : "ready",
   };
 }
