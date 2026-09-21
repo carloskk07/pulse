@@ -61,3 +61,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - name: Verify Home prerender result
+        run: node scripts/verify-home-prerender-contract.mjs
