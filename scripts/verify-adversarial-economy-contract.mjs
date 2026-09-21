@@ -73,7 +73,10 @@ if (earn.includes('action="/api/direct/start"')) {
 }
 
 const csp = read("next.config.ts");
-if (csp.includes("form-action 'self' https:")) {
+if (!csp.includes(`"form-action 'self' https://faucetpay.io"`)) {
+  throw new Error("CSP must allow only the explicit FaucetPay merchant form destination alongside self.");
+}
+if (/[\`"]form-action 'self' https:[\`"]/.test(csp)) {
   throw new Error("CSP form-action must not be widened to arbitrary HTTPS origins.");
 }
 
