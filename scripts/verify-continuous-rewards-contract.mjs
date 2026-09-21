@@ -83,8 +83,8 @@ requireAll("components/continuous-earn-hub.tsx", [
 
 requireAll("components/network-depth-panel.tsx", [
   "Three levels. Real activity only.",
-  "Network progress",
-].filter(Boolean));
+  "Commission engine",
+]);
 
 requireAll("components/withdrawal-pass-panel.tsx", [
   "Withdrawal Pass",
