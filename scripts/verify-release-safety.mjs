@@ -1429,8 +1429,9 @@ requireText("supabase/migrations/0092_admin_user_allowlist_reproducibility.sql",
 ]);
 forbidText("supabase/migrations/0092_admin_user_allowlist_reproducibility.sql", [
   "insert into public.admin_users",
+  "insert into public.app_config",
   "update public.app_config",
-  "release_schema",
+  "'release_schema'",
   "fund_reward_treasury",
   "update public.withdrawals",
   "insert into public.ledger_entries",
