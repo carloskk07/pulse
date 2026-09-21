@@ -59,7 +59,7 @@ requireAll("lib/hourly-value.ts", [
 ]);
 
 requireAll("app/dashboard/claimed/page.tsx", [
-  '"Earn while you wait"',
+  "Earn while you wait",
   '"/earn?claim=" + encodeURIComponent(receipt.id)',
 ]);
 
