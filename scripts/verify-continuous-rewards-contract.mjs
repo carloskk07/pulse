@@ -85,6 +85,25 @@ requireAll("supabase/migrations/0079_natural_hourly_ceiling_authority.sql", [
   "cadence migration changed forbidden Treasury authority",
 ]);
 
+requireAll("supabase/migrations/0087_withdrawal_pass_anchor_authority.sql", [
+  "free_pass_anchor_at",
+  "withdrawals_free_pass_anchor_integrity_chk",
+  "withdrawals_free_pass_anchor_idx",
+  "max(free_pass_anchor_at)",
+  "service_fee_credits,0)=0",
+  "max(w.free_pass_anchor_at)",
+  "release_withdrawal_pass_integrity_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0087_withdrawal_pass_anchor_authority.sql", [
+  "'extra_withdrawals_enabled', true",
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 requireAll("lib/pulse-ecosystem.ts", [
   "XP is non-monetary",
   "current_ecosystem_snapshot",
