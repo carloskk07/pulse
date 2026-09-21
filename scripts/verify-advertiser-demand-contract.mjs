@@ -77,7 +77,7 @@ requireAll("lib/advertiser-demand.ts", [
   '"FUNDING_READY"',
   '"LIVE_INVENTORY"',
   "Contact the",
-  "real campaign states",
+  "Measure fill, CTR and support per Pulse",
 ].filter(Boolean));
 
 requireAll("app/admin/ads/page.tsx", [
