@@ -4,6 +4,7 @@ import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { formatUsdMicros, getUserPulseAds } from "@/lib/pulse-ads";
+import { buildPulseAdsCheckoutCustom } from "@/lib/pulse-ads-checkout";
 import { getCanonicalSiteUrl } from "@/lib/site-url";
 
 export const metadata = {
@@ -120,6 +121,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
                   {campaigns.map((campaign) => {
                     const remaining = Math.max(0, campaign.fundedUsdMicros - campaign.spentUsdMicros);
                     const ctr = campaign.served > 0 ? (campaign.clicks / campaign.served) * 100 : 0;
+                    const checkoutCustom = buildPulseAdsCheckoutCustom(campaign.id, campaign.checkoutReference);
                     return (
                       <article className="pc-ads-campaign" key={campaign.id}>
                         <div className="pc-ads-campaign-head">
@@ -135,13 +137,13 @@ export default async function AdvertisePage({ searchParams }: Props) {
                         </div>
 
                         {campaign.status === "approved" ? (
-                          merchantUsername ? (
+                          merchantUsername && checkoutCustom ? (
                             <form className="pc-ads-funding" action="https://faucetpay.io/merchant/webscr" method="post">
                               <input type="hidden" name="merchant_username" value={merchantUsername} />
                               <input type="hidden" name="item_description" value={"Pulse Ads — " + campaign.title} />
                               <input type="hidden" name="amount1" value={decimalUsd(campaign.budgetUsdMicros)} />
                               <input type="hidden" name="currency1" value="USDT" />
-                              <input type="hidden" name="custom" value={"ad:" + campaign.id + ":" + campaign.checkoutReference} />
+                              <input type="hidden" name="custom" value={checkoutCustom} />
                               <input type="hidden" name="callback_url" value={origin + "/api/ads/merchant/callback"} />
                               <input type="hidden" name="success_url" value={origin + "/advertise?state=payment-returned"} />
                               <input type="hidden" name="cancel_url" value={origin + "/advertise?state=payment-cancelled"} />
@@ -149,7 +151,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
                               <button className="button" type="submit">Fund {formatUsdMicros(campaign.budgetUsdMicros)} with FaucetPay <ArrowUpRight /></button>
                             </form>
                           ) : (
-                            <div className="pc-ads-waiting"><Shield /><span><strong>Approved.</strong><small>Merchant checkout is awaiting Pulsercuit configuration. No payment is requested yet.</small></span></div>
+                            <div className="pc-ads-waiting"><Shield /><span><strong>Approved.</strong><small>Merchant checkout is awaiting signed Pulsercuit configuration. No payment is requested yet.</small></span></div>
                           )
                         ) : null}
 
