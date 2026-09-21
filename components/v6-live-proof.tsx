@@ -74,7 +74,15 @@ export function V6HeroProof({ initialProof }: V6ProofProps) {
   const proof = usePublicProof(initialProof);
 
   return (
-    <div className="pc-v6-shell pc-v6-hero-stats" aria-live="polite">
+    <div
+      className="pc-v6-shell pc-v6-hero-stats"
+      aria-live="polite"
+      data-proof-source="server-bootstrap"
+      data-proof-available={proof.available ? "true" : "false"}
+      data-proof-member-count={proof.available ? proof.memberCount : undefined}
+      data-proof-reward-event-count={proof.available ? proof.rewardEventCount : undefined}
+      data-proof-paid-withdrawal-count={proof.available ? proof.paidWithdrawalCount : undefined}
+    >
       <div><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
       <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Reward events</span></div>
       <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
