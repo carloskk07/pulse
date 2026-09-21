@@ -84,6 +84,33 @@ forbidAll("supabase/migrations/0075_pulse_ads_callback_durability.sql", [
   "update public.app_config",
 ]);
 
+requireAll("supabase/migrations/0076_pulse_ads_claim_bound_delivery.sql", [
+  "pulse_claim_id uuid references public.pulse_claims(id)",
+  "pulse_ads_events_claim_type_unique",
+  "p_pulse_claim_id uuid",
+  "pc.id = p_pulse_claim_id",
+  "pc.user_id = p_user_id",
+  "status','already_served",
+  "grant execute on function public.serve_pulse_ad(uuid,uuid,text,text) to service_role",
+]);
+forbidAll("supabase/migrations/0076_pulse_ads_claim_bound_delivery.sql", [
+  "update public.reward_treasuries",
+  "insert into public.pulse_claims",
+  "insert into public.ledger_entries",
+  "update public.withdrawals",
+  "update public.app_config",
+]);
+
+requireAll("lib/pulse-receipt.ts", [
+  "id: string;",
+  '.select("id,created_at,reward_credits")',
+  "id: String(data.id)",
+]);
+requireAll("lib/pulse-ads.ts", [
+  "pulseClaimId: string;",
+  "p_pulse_claim_id: input.pulseClaimId",
+]);
+
 requireAll("app/api/ads/campaigns/route.ts", [
   "export async function POST",
   "isTrustedSameOriginMutation(request)",
@@ -153,6 +180,7 @@ if (!advertised.includes("users are never paid to click") && !advertised.include
 
 const claimed = requireAll("app/dashboard/claimed/page.tsx", [
   "getPulseAdPlacement",
+  "pulseClaimId: receipt.id",
   'aria-label="Sponsored placement"',
   'action="/api/ads/click"',
   "Sponsored · Pulse Ads",
