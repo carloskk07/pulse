@@ -154,7 +154,7 @@ requireAll("next.config.ts", [
   `"form-action 'self' https://faucetpay.io"`,
 ]);
 
-requireAll("app/api/ads/merchant/callback/route.ts", [
+const merchantCallback = requireAll("app/api/ads/merchant/callback/route.ts", [
   'createHash("sha256")',
   "pulse_ads_merchant_callbacks",
   "PULSE_ADS_MERCHANT_USERNAME",
@@ -164,6 +164,15 @@ requireAll("app/api/ads/merchant/callback/route.ts", [
   "verified_amount_usd_micros",
   "provider_verified",
   "https://faucetpay.io/merchant/get-payment/",
+  "MAX_CALLBACK_BODY_BYTES",
+  "MERCHANT_VERIFY_TIMEOUT_MS",
+  "const callbackAuthority = verifyPulseAdsCheckoutCustom(callbackCustom)",
+  "!TOKEN_RE.test(token) || !callbackAuthority",
+  "retryProof.campaignId !== callbackAuthority.campaignId",
+  "signal: AbortSignal.timeout(MERCHANT_VERIFY_TIMEOUT_MS)",
+  "custom.campaignId === callbackAuthority.campaignId",
+  "custom.checkoutReference === callbackAuthority.checkoutReference",
+  "callbackCustom === verifiedCustom",
   "verified.valid === true",
   "verifiedMerchant === merchantUsername",
   'pricingCurrency === "USDT"',
@@ -175,6 +184,31 @@ forbidAll("app/api/ads/merchant/callback/route.ts", [
   "raw_token",
   "funded_usd_micros:",
   "update({ funded",
+  "custom_reference: callbackCustom || null",
+]);
+
+const callbackAuthorityIndex = merchantCallback.indexOf(
+  "const callbackAuthority = verifyPulseAdsCheckoutCustom(callbackCustom)",
+);
+const providerLookupIndex = merchantCallback.indexOf(
+  "https://faucetpay.io/merchant/get-payment/",
+);
+const providerProofIndex = merchantCallback.indexOf(
+  "provider_verified_at: providerVerifiedAt",
+);
+if (
+  callbackAuthorityIndex < 0
+  || providerLookupIndex < 0
+  || providerProofIndex < 0
+  || callbackAuthorityIndex >= providerLookupIndex
+  || providerProofIndex <= providerLookupIndex
+) {
+  throw new Error("Pulse Ads callback must prove local authority before provider I/O and persist only provider-verified proof.");
+}
+
+requireAll(".env.example", [
+  "PULSE_ADS_MERCHANT_USERNAME=",
+  "PULSE_ADS_CHECKOUT_SECRET=",
 ]);
 
 const advertised = requireAll("app/advertise/page.tsx", [
