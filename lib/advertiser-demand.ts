@@ -50,12 +50,6 @@ const EMPTY: AdvertiserDemandSnapshot = {
 };
 
 function stageFor(input: Omit<AdvertiserDemandSnapshot, "available" | "stage" | "nextAction">) {
-  if (input.campaignsActive > 0) {
-    return {
-      stage: "LIVE_INVENTORY" as const,
-      nextAction: "Measure fill, CTR and support per Pulse before changing pricing or reward economics.",
-    };
-  }
   if (input.campaignsPending > 0) {
     return {
       stage: "CAMPAIGN_REVIEW" as const,
@@ -74,7 +68,7 @@ function stageFor(input: Omit<AdvertiserDemandSnapshot, "available" | "stage" | 
       nextAction: "Qualify new inbound advertiser interest and choose Pulse Ads, Pulse Direct or reject the fit.",
     };
   }
-  if (input.prospectsContacted > 0 || input.prospectsReplied > 0) {
+  if (input.prospectsReplied > 0 || input.prospectsContacted > 0) {
     return {
       stage: "OUTREACH_ACTIVE" as const,
       nextAction: "Follow the active conversations. Convert one clean reply into a small, verifiable pilot.",
@@ -84,6 +78,12 @@ function stageFor(input: Omit<AdvertiserDemandSnapshot, "available" | "stage" | 
     return {
       stage: "OUTREACH_READY" as const,
       nextAction: `Contact the ${input.prospectsReady} ready prospect${input.prospectsReady === 1 ? "" : "s"} before researching more companies.`,
+    };
+  }
+  if (input.campaignsActive > 0) {
+    return {
+      stage: "LIVE_INVENTORY" as const,
+      nextAction: "Measure fill, CTR and support per Pulse before changing pricing or reward economics.",
     };
   }
   return {
