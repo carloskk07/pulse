@@ -4,6 +4,8 @@ import { AppShell } from "@/components/app-shell";
 import { getDirectCampaignSnapshot } from "@/lib/direct-campaigns";
 import { getOperatorNextAction } from "@/lib/experience-presentation";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
+import { getPulseAdsAdminSnapshot } from "@/lib/pulse-ads";
+import { getFaucetLaunchState } from "@/lib/faucet-launch";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTreasurySnapshot } from "@/lib/treasury";
@@ -59,10 +61,12 @@ export default async function AdminEconomicsPage() {
   if (!user) redirect("/auth?next=/admin");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [launchReadiness, treasuries, direct] = await Promise.all([
+  const [launchReadiness, treasuries, direct, ads, faucet] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasurySnapshot(),
     getDirectCampaignSnapshot(),
+    getPulseAdsAdminSnapshot(),
+    getFaucetLaunchState(),
   ]);
   const readiness = launchReadiness.release;
   const product = launchReadiness.product;
@@ -92,6 +96,9 @@ export default async function AdminEconomicsPage() {
   const chargebacks = Number(snapshot.chargebacks ?? 0);
   const margin = revenue > 0 ? (contribution / revenue) * 100 : 0;
   const contributionDau = active > 0 ? contribution / 1_000_000 / active : 0;
+  const pulseCostMicros = Number(snapshot.claim_credits ?? 0) * 1000;
+  const ownedContributionMicros = contribution + ads.spentTodayUsdMicros;
+  const selfSufficiency = pulseCostMicros > 0 ? ownedContributionMicros / pulseCostMicros : null;
   const launchTreasury = treasuries.find((item) => item.code === "launch") ?? treasuries[0] ?? null;
   const faucetReadReady = product.checks.find((item) => item.id === "faucetpay-read-proof")?.pass === true;
   const faucetSendReady = product.checks.find((item) => item.id === "faucetpay-send-scope-proof")?.pass === true;
@@ -211,7 +218,35 @@ export default async function AdminEconomicsPage() {
         <div className="account-links">
           <Link className="button button-secondary" href="/admin/marketing">Acquisition funnel</Link>
           <Link className="button button-secondary" href="/admin/retention">Return funnel</Link>
+          <Link className="button button-secondary" href="/admin/ads">Pulse Ads</Link>
         </div>
+
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">Faucet economic loop</span><h2>Acquisition must earn its way toward sustainability.</h2></div>
+          <span className={"admin-badge " + (faucet.publicClaimsOpen ? "" : "setup")}>{faucet.publicClaimsOpen ? "PUBLIC READY" : "CONTROLLED"}</span>
+        </div>
+        <div className="admin-secondary-grid">
+          <article><span>Self-sufficiency today</span><strong>{selfSufficiency === null ? "—" : selfSufficiency.toFixed(2) + "×"}</strong></article>
+          <article><span>Owned contribution today</span><strong>{moneyFromMicros(ownedContributionMicros)}</strong></article>
+          <article><span>Pulse cost today</span><strong>{moneyFromMicros(pulseCostMicros)}</strong></article>
+          <article><span>Ads contribution today</span><strong>{moneyFromMicros(ads.spentTodayUsdMicros)}</strong></article>
+          <article><span>Funded claim capacity</span><strong>{faucet.availableClaims.toLocaleString("en-US")}</strong></article>
+          <article><span>Remaining daily claims</span><strong>{faucet.remainingDailyClaims.toLocaleString("en-US")}</strong></article>
+        </div>
+        <p className="admin-panel-note">Self-sufficiency compares today&apos;s confirmed provider/direct gross contribution plus billable Pulse Ads clicks with today&apos;s base Pulse reward cost. It is an operating signal, not net profit.</p>
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">Pulse Ads</span><h2>Owned sponsored inventory.</h2></div>
+          <span className={"admin-badge " + (ads.activeCount > 0 ? "" : "setup")}>{ads.activeCount} ADS ACTIVE</span>
+        </div>
+        <div className="admin-secondary-grid">
+          <article><span>Advertiser funding</span><strong>{moneyFromMicros(ads.fundedUsdMicros)}</strong></article>
+          <article><span>Sponsored spend</span><strong>{moneyFromMicros(ads.spentUsdMicros)}</strong></article>
+          <article><span>Served</span><strong>{ads.served.toLocaleString("en-US")}</strong></article>
+          <article><span>Clicks</span><strong>{ads.clicks.toLocaleString("en-US")}</strong></article>
+          <article><span>Pending review</span><strong>{ads.pendingReview}</strong></article>
+          <article><span>Campaigns</span><strong>{ads.campaignCount}</strong></article>
+        </div>
+
         <div className="app-section-head">
           <div><span className="app-eyebrow">Pulse Direct</span><h2>Real campaigns only.</h2></div>
         </div>
