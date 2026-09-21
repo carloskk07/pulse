@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
+import { WithdrawalPassPanel } from "@/components/withdrawal-pass-panel";
 import { getWalletPresentation } from "@/lib/experience-presentation";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 import { getWalletState } from "@/lib/wallet-state";
@@ -146,6 +147,8 @@ export default async function WalletPage({ searchParams }: Props) {
           <strong>{payoutPackLabel}</strong>
         </div>
       </section>
+
+      <WithdrawalPassPanel />
 
       <section className="withdrawal-panel pc-luxe-vault-action">
         <div>
