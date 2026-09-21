@@ -34,6 +34,7 @@ export type PublicSocialProof = {
 };
 
 const SOCIAL_PROOF_DATA_CACHE_SECONDS = 30;
+const SOCIAL_PROOF_TRANSPORT_RETRY_DELAYS_MS = [200, 500] as const;
 
 const EMPTY_PROOF: PublicSocialProof = {
   stage: "early",
@@ -65,14 +66,32 @@ function stageFor(memberCount: number, rewardEventCount: number, paidWithdrawalC
   return "early";
 }
 
-async function queryPublicSocialProof(): Promise<PublicSocialProof> {
+function socialProofErrorCode(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return "";
+  return String((error as { code?: unknown }).code ?? "").trim();
+}
+
+async function queryPublicSocialProofOnce(): Promise<PublicSocialProof> {
   const supabase = createSupabaseAdminClient();
-  if (!supabase) throw new Error("social-proof database not configured");
+  if (!supabase) {
+    const failure = new Error("social-proof database not configured");
+    Object.assign(failure, { code: "CONFIG_MISSING" });
+    throw failure;
+  }
 
   const { data, error } = await supabase.rpc("public_social_proof_snapshot");
-  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
-    const failure = new Error("social-proof snapshot RPC failed");
-    Object.assign(failure, { code: error?.code });
+  if (error) {
+    const failure = new Error(
+      error.message
+        ? `social-proof snapshot RPC failed: ${error.message}`
+        : "social-proof snapshot RPC failed",
+    );
+    Object.assign(failure, { code: error.code ?? "" });
+    throw failure;
+  }
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    const failure = new Error("social-proof snapshot RPC returned an invalid payload");
+    Object.assign(failure, { code: "INVALID_SNAPSHOT" });
     throw failure;
   }
 
@@ -94,6 +113,31 @@ async function queryPublicSocialProof(): Promise<PublicSocialProof> {
     recentActivity,
     available: true,
   };
+}
+
+async function queryPublicSocialProof(): Promise<PublicSocialProof> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= SOCIAL_PROOF_TRANSPORT_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await queryPublicSocialProofOnce();
+    } catch (error) {
+      lastError = error;
+      const code = socialProofErrorCode(error);
+      const retryDelay = SOCIAL_PROOF_TRANSPORT_RETRY_DELAYS_MS[attempt];
+
+      if (code || retryDelay === undefined) throw error;
+
+      console.warn("[social-proof] transient snapshot retry", {
+        attempt: attempt + 1,
+        nextDelayMs: retryDelay,
+        message: error instanceof Error ? error.message : "unknown",
+      });
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("social-proof snapshot unavailable");
 }
 
 const getCachedPublicSocialProof = unstable_cache(
