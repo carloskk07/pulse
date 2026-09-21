@@ -26,7 +26,8 @@ requireAll("app/api/faucetpay/webhook/route.ts", [
   'request.headers.get("x-faucetpay-signature")',
   'createHmac("sha256", secret).update(rawBody).digest("hex")',
   "timingSafeEqual",
-  "await request.text()",
+  "readRequestBytesWithLimit(request, MAX_BODY_BYTES)",
+  "raw request bytes",
   "verifySignature(rawBody, signature, secret)",
   '"payout.sent"',
   '"payout.failed"',
@@ -39,9 +40,14 @@ requireAll("app/api/faucetpay/webhook/route.ts", [
 
 forbidAll("app/api/faucetpay/webhook/route.ts", [
   "request.json()",
+  "request.text()",
   "NEXT_PUBLIC_FAUCETPAY_WEBHOOK_SECRET",
   "FAUCETPAY_SCOPED_KEY",
   "FAUCETPAY_READ_KEY",
+]);
+
+requireAll(".env.example", [
+  "FAUCETPAY_WEBHOOK_SECRET=",
 ]);
 
 requireAll("supabase/migrations/0090_faucetpay_webhook_reconciliation.sql", [
