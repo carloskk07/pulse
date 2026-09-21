@@ -79,7 +79,7 @@ forbidText(".github/workflows/vercel-prebuilt.yml", [
   'echo "| Canonical commit | `$GITHUB_SHA` |"',
   "Staged controlled technical readiness"
 ]);
-requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Require deployment-safe technical state before promotion", "/api/deployment-readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt", "verify-deployment-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
+requireText(".github/workflows/vercel-prebuilt.yml", ["Stamp exact release identity", "public/release.json", "process.env.GITHUB_SHA", "Stage production deployment without domain promotion", "--prod --skip-domain", "Verify exact staged release identity", "Exact staged release PASS", "Verify staged Home proof bootstrap", "verify-home-proof-bootstrap.mjs", "Staged Home proof bootstrap PASS.", "Staged Home did not contain authoritative server-bootstrapped proof", "Require deployment-safe technical state before promotion", "/api/deployment-readiness?deploy=$GITHUB_RUN_ID&attempt=$attempt", "verify-deployment-readiness-gate.mjs", "Reconfirm current main HEAD before promotion", "Promote verified deployment to production aliases", "vercel@59.17.0 promote", "Verify exact canonical production release", "release.git_sha !== expectedSha", "max_attempts=6", "sleep 4", "Production aliases remain unchanged.", "exit 1"]);
 requireText("vercel.json", [
   '"$schema": "https://openapi.vercel.sh/vercel.json"',
   '"regions": ["gru1"]',
@@ -1463,3 +1463,24 @@ for (const icon of manifest.icons) {
 }
 
 console.log("Release safety contracts PASS");
+
+requireText("scripts/verify-home-proof-bootstrap.mjs", [
+  "verifyHomeProofBootstrap",
+  "data-proof-source",
+  "server-bootstrap",
+  "Home overstates",
+  "Home collapsed a positive",
+  "--self-test",
+]);
+
+
+requireText(".github/workflows/ci.yml", [
+  "Verify Home prerender result",
+  "node scripts/verify-home-prerender-contract.mjs",
+]);
+requireText("scripts/verify-home-prerender-contract.mjs", [
+  "verifyHomePrerenderManifest",
+  'manifest.routes?.["/"]',
+  "Home is not present in the Next prerender manifest.",
+  "--self-test",
+]);

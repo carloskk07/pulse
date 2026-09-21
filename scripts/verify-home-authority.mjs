@@ -253,6 +253,11 @@ for (const fragment of [
   "initialProof: PublicSocialProof",
   "useState<PublicSocialProof>(cachedProof ?? initialProof ?? EMPTY_PROOF)",
   "void refreshPublicProof().then",
+  'data-proof-source="server-bootstrap"',
+  'data-proof-available={proof.available ? "true" : "false"}',
+  "data-proof-member-count",
+  "data-proof-reward-event-count",
+  "data-proof-paid-withdrawal-count",
 ]) {
   if (!liveProof.includes(fragment)) {
     throw new Error(`Live proof lost server bootstrap/background refresh contract: ${fragment}`);
