@@ -30,7 +30,7 @@
 @import "./styles/share-studio.css";
 @import "./styles/next-circuit.css";
 @import "./styles/post-claim.css";
-@import "./styles/luxe.css";
+@import "./styles/luxe.css";\n@import "./styles/continuous-rewards.css";
 
 /* Current public homepage system — one authority controls the fragment order. */
 @import "./styles/home.css";
