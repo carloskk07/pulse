@@ -64,16 +64,21 @@ requireAll("app/dashboard/claimed/page.tsx", [
 ]);
 
 requireAll("app/earn/page.tsx", [
-  "source_pulse_claim_id",
   "sourcePulseClaimId",
   "UUID_RE.test(params.claim)",
+  "DirectStartButton",
+]);
+
+requireAll("components/direct-start-button.tsx", [
+  "source_pulse_claim_id",
+  "sourcePulseClaimId",
 ]);
 
 requireAll("app/api/direct/start/route.ts", [
   "source_pulse_claim_id",
   "cleanSourcePulseClaimId",
   'admin.rpc("attach_direct_session_to_pulse_claim"',
-  "Attribution must never block a funded user action.",
+  "Attribution is evidence only. It must never block a funded reservation.",
 ]);
 
 requireAll("app/admin/page.tsx", [
