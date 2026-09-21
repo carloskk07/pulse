@@ -356,10 +356,19 @@ requireText("lib/social-proof.ts", [
   "SOCIAL_PROOF_TRANSPORT_RETRY_DELAYS_MS = [200, 500]",
   "queryPublicSocialProofOnce",
   "socialProofErrorCode",
-  "if (code || retryDelay === undefined) throw error;",
+  "retryableSocialProofTransportFailure",
+  "if (code || !retryableSocialProofTransportFailure(error) || retryDelay === undefined) throw error;",
   'code: "CONFIG_MISSING"',
   'code: "INVALID_SNAPSHOT"',
   '"[social-proof] transient snapshot retry"',
+  'HOME_BUILD_PROOF_URL = "https://pulsercuit.pro/api/public/social-proof"',
+  "HOME_BUILD_PROOF_RETRY_DELAYS_MS = [250, 750]",
+  "getHomeBootstrapProof",
+  'process.env.PULSECIRCUIT_BUILD_PROOF_URL',
+  'configuredBuildUrl !== HOME_BUILD_PROOF_URL',
+  'next: { revalidate: SOCIAL_PROOF_DATA_CACHE_SECONDS }',
+  'AbortSignal.timeout(5_000)',
+  '"[social-proof] build bootstrap retry"',
   '["public-social-proof-v1"]',
   "revalidate: SOCIAL_PROOF_DATA_CACHE_SECONDS",
   "socialProofInFlight",
@@ -1490,4 +1499,13 @@ requireText("scripts/verify-home-prerender-contract.mjs", [
   'manifest.routes?.["/"]',
   "Home is not present in the Next prerender manifest.",
   "--self-test",
+]);
+
+
+requireText(".github/workflows/vercel-prebuilt.yml", [
+  "PULSECIRCUIT_BUILD_PROOF_URL: https://pulsercuit.pro/api/public/social-proof",
+  "Build prebuilt Vercel output",
+]);
+forbidText(".github/workflows/vercel-prebuilt.yml", [
+  "PULSECIRCUIT_BUILD_PROOF_URL: http://",
 ]);

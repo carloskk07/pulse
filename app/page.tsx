@@ -5,7 +5,7 @@ import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
 import { ArrowUpRight, Shield, Spark, Trend } from "@/components/icons";
-import { getPublicSocialProof } from "@/lib/social-proof";
+import { getHomeBootstrapProof } from "@/lib/social-proof";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -25,7 +25,7 @@ const ranks = [
 ] as const;
 
 export default async function HomePage() {
-  const initialProof = await getPublicSocialProof();
+  const initialProof = await getHomeBootstrapProof();
 
   return (
     <main className="pc-v6">
