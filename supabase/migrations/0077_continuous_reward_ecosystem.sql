@@ -20,7 +20,7 @@ values (
     'version', 13,
     'hourly_windows_per_day', 24,
     'user_daily_cap_mode', 'natural_hourly_ceiling',
-    'user_daily_cap_enabled', true,
+    'user_daily_cap_enabled', false,
     'variable_reward_enabled', false,
     'variable_reward_review_required', true,
     'reward_bands', jsonb_build_array(
