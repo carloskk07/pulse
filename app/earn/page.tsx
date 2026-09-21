@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ContinuousEarnHub } from "@/components/continuous-earn-hub";\nimport { DirectStartButton } from "@/components/direct-start-button";
+import { ContinuousEarnHub } from "@/components/continuous-earn-hub";
+import { DirectStartButton } from "@/components/direct-start-button";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
