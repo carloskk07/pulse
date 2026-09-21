@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { ContinuousPulsePanel } from "@/components/continuous-pulse-panel";
 import { ArrowUpRight, Bolt, Shield, Spark, Users } from "@/components/icons";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { PulseCountdown } from "@/components/pulse-countdown";
@@ -154,6 +155,8 @@ export default async function DashboardPage({ searchParams }: Props) {
             </div>
           </div>
         </section>
+
+        <ContinuousPulsePanel />
 
         <section className="app-section pc-luxe-momentum-section pc-v9-momentum">
           <div className="app-section-head">
