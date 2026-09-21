@@ -110,7 +110,7 @@ begin
 
   -- Uniform 0..9999 draw. Reject 60000..65535 before modulo to avoid bias.
   loop
-    v_entropy := gen_random_bytes(2);
+    v_entropy := extensions.gen_random_bytes(2);
     v_sample := get_byte(v_entropy,0) * 256 + get_byte(v_entropy,1);
     exit when v_sample < 60000;
   end loop;
