@@ -137,6 +137,7 @@ export async function getUserPulseAds(userId: string): Promise<PulseAdCampaign[]
 
 export async function getPulseAdPlacement(input: {
   userId: string;
+  pulseClaimId: string;
   countryCode?: string | null;
   devicePlatform?: "mobile" | "desktop" | null;
 }): Promise<PulseAdPlacement | null> {
@@ -145,6 +146,7 @@ export async function getPulseAdPlacement(input: {
 
   const { data, error } = await admin.rpc("serve_pulse_ad", {
     p_user_id: input.userId,
+    p_pulse_claim_id: input.pulseClaimId,
     p_country_code: input.countryCode ?? null,
     p_device_platform: input.devicePlatform ?? null,
   });
