@@ -170,7 +170,7 @@ requireAll("app/advertising-policy/page.tsx", [
 ]);
 
 requireAll("app/faucet/page.tsx", [
-  'sourceOverride="faucetpay"',
+  '<FunnelBeacon event="home_view" />',
   "launch.publicClaimsOpen",
   "No ad wall before claim",
   "Public claiming stays closed",
@@ -184,6 +184,10 @@ requireAll("lib/marketing-funnel.ts", [
   'MARKETING_EXPERIENCE_VERSION = "faucet-ads-v12"',
   '"faucet_signup"',
   '"faucet_proof"',
+]);
+
+requireAll("app/admin/page.tsx", [
+  "https://pulsercuit.pro/faucet?utm_source=faucetpay&amp;utm_medium=faucet-directory&amp;utm_campaign=listing",
 ]);
 
 requireAll("lib/faucetpay-listing-readiness.ts", [
