@@ -124,12 +124,6 @@ export default async function AdvertisePage({ searchParams }: Props) {
             </section>
           </>
         ) : (
-          <section className="pc-ads-signin">
-            <Spark />
-            <div><span className="app-eyebrow">Advertiser access</span><h2>Use the same Pulsercuit account.</h2><p>Sign in, create the campaign, and keep funding and performance in one place.</p></div>
-            <Link className="button button-light" href="/auth?next=/advertise">Sign in to advertise <ArrowUpRight /></Link>
-          </section>
-        ) : (
           <>
             <section className="pc-ads-builder" id="campaign-builder">
               <div className="pc-ads-builder-copy">
