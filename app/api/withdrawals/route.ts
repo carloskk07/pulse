@@ -210,12 +210,28 @@ async function executeReservedPayout(
     }
     return walletRedirect(request, "paid");
   } catch (error) {
+    const message = error instanceof Error
+      ? error.message
+      : "Payout dispatch requires authoritative reconciliation";
+
+    if (error instanceof FaucetPayApiError && !error.retryable) {
+      const failed = await finalize(
+        admin,
+        reserved.withdrawal_id,
+        "failed",
+        null,
+        message,
+      );
+      if (failed.error) return walletRedirect(request, "processing");
+      return walletRedirect(request, "failed");
+    }
+
     await finalize(
       admin,
       reserved.withdrawal_id,
       "submitted",
       null,
-      error instanceof Error ? error.message : "Payout dispatch requires authoritative reconciliation",
+      message,
     );
     return walletRedirect(request, "processing");
   }

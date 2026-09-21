@@ -121,6 +121,23 @@ forbidAll("supabase/migrations/0088_withdrawal_recovery_authority.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0089_withdrawal_retry_backoff.sql", [
+  "v_effective_retry_seconds",
+  "power(2::numeric",
+  "least(",
+  "900",
+  "backoff_seconds",
+  "release_withdrawal_retry_backoff_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0089_withdrawal_retry_backoff.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 requireAll("lib/pulse-ecosystem.ts", [
   "XP is non-monetary",
   "current_ecosystem_snapshot",
@@ -165,6 +182,9 @@ requireAll("app/api/withdrawals/route.ts", [
   'reserved.status === "submitted"',
   '"withdrawal_payout_authority_snapshot_valid"',
   "payout_authority_version",
+  "error instanceof FaucetPayApiError && !error.retryable",
+  '"failed"',
+  '"submitted"',
 ]);
 
 requireAll("app/wallet/page.tsx", [

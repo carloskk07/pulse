@@ -137,7 +137,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult] = await Promise.all([
+  const [snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult] = await Promise.all([
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
     admin.rpc("release_stacked_incentive_budget_contract"),
@@ -145,6 +145,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     admin.rpc("release_variable_reward_budget_contract"),
     admin.rpc("release_withdrawal_pass_integrity_contract"),
     admin.rpc("release_withdrawal_recovery_authority_contract"),
+    admin.rpc("release_withdrawal_retry_backoff_contract"),
   ]);
 
   if (referralIntegrityResult.error || referralIntegrityResult.data !== true) {
@@ -164,6 +165,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (withdrawalRecoveryAuthorityResult.error || withdrawalRecoveryAuthorityResult.data !== true) {
     setupBlockers.push("withdrawal-recovery-authority");
+  }
+  if (withdrawalRetryBackoffResult.error || withdrawalRetryBackoffResult.data !== true) {
+    setupBlockers.push("withdrawal-retry-backoff");
   }
 
   const { data, error } = snapshotResult;
