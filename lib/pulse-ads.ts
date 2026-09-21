@@ -44,6 +44,7 @@ export type PulseAdsAdminSnapshot = {
   activeCount: number;
   fundedUsdMicros: number;
   spentUsdMicros: number;
+  spentTodayUsdMicros: number;
   served: number;
   clicks: number;
   campaigns: PulseAdCampaign[];
@@ -214,25 +215,43 @@ export async function getPulseAdsAdminSnapshot(): Promise<PulseAdsAdminSnapshot>
     activeCount: 0,
     fundedUsdMicros: 0,
     spentUsdMicros: 0,
+    spentTodayUsdMicros: 0,
     served: 0,
     clicks: 0,
     campaigns: [],
   };
 
-  const { data, error } = await admin.rpc("admin_pulse_ads_snapshot");
-  if (error || !data || typeof data !== "object") return {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const [snapshotResult, todayResult] = await Promise.all([
+    admin.rpc("admin_pulse_ads_snapshot"),
+    admin
+      .from("pulse_ads_events")
+      .select("billable_usd_micros")
+      .eq("event_type", "click")
+      .gte("created_at", today.toISOString()),
+  ]);
+
+  const { data, error } = snapshotResult;
+  if (error || todayResult.error || !data || typeof data !== "object") return {
     available: false,
     campaignCount: 0,
     pendingReview: 0,
     activeCount: 0,
     fundedUsdMicros: 0,
     spentUsdMicros: 0,
+    spentTodayUsdMicros: 0,
     served: 0,
     clicks: 0,
     campaigns: [],
   };
 
   const snapshot = data as Record<string, unknown>;
+  const spentTodayUsdMicros = (todayResult.data ?? []).reduce(
+    (total, row) => total + Math.max(0, asNumber(row.billable_usd_micros)),
+    0,
+  );
   return {
     available: snapshot.status === "ok",
     campaignCount: asNumber(snapshot.campaign_count),
@@ -240,6 +259,7 @@ export async function getPulseAdsAdminSnapshot(): Promise<PulseAdsAdminSnapshot>
     activeCount: asNumber(snapshot.active_count),
     fundedUsdMicros: asNumber(snapshot.funded_usd_micros),
     spentUsdMicros: asNumber(snapshot.spent_usd_micros),
+    spentTodayUsdMicros,
     served: asNumber(snapshot.served),
     clicks: asNumber(snapshot.clicks),
     campaigns: Array.isArray(snapshot.campaigns) ? snapshot.campaigns.map(parseCampaign) : [],
