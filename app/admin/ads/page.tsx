@@ -52,17 +52,17 @@ export default async function AdsAdminPage({ searchParams }: Props) {
       </section>
 
       <section className="admin-decision-card">
-        <span className="app-eyebrow">Demand engine · ${demand.stage.replaceAll("_"," ")}</span>
-        <h2>${demand.nextAction}</h2>
+        <span className="app-eyebrow">Demand engine · {demand.stage.replaceAll("_"," ")}</span>
+        <h2>{demand.nextAction}</h2>
         <div className="admin-secondary-grid">
-          <article><span>Inbound interest</span><strong>${demand.inboundTotal}</strong><small>${demand.inboundNew} new</small></article>
-          <article><span>Traffic interest</span><strong>${demand.pulseAdsInterest}</strong><small>Pulse Ads</small></article>
-          <article><span>Verified-action interest</span><strong>${demand.directInterest}</strong><small>Pulse Direct</small></article>
-          <article><span>Ready prospects</span><strong>${demand.prospectsReady}</strong><small>${demand.readyWithPublicEmail} with public email</small></article>
-          <article><span>Contacted / replied</span><strong>${demand.prospectsContacted} / ${demand.prospectsReplied}</strong></article>
-          <article><span>Pilots</span><strong>${demand.prospectsPilot}</strong></article>
-          <article><span>Pending campaigns</span><strong>${demand.campaignsPending}</strong></article>
-          <article><span>Approved / live</span><strong>${demand.campaignsApproved} / ${demand.campaignsActive}</strong></article>
+          <article><span>Inbound interest</span><strong>{demand.inboundTotal}</strong><small>{demand.inboundNew} new</small></article>
+          <article><span>Traffic interest</span><strong>{demand.pulseAdsInterest}</strong><small>Pulse Ads</small></article>
+          <article><span>Verified-action interest</span><strong>{demand.directInterest}</strong><small>Pulse Direct</small></article>
+          <article><span>Ready prospects</span><strong>{demand.prospectsReady}</strong><small>{demand.readyWithPublicEmail} with public email</small></article>
+          <article><span>Contacted / replied</span><strong>{demand.prospectsContacted} / {demand.prospectsReplied}</strong></article>
+          <article><span>Pilots</span><strong>{demand.prospectsPilot}</strong></article>
+          <article><span>Pending campaigns</span><strong>{demand.campaignsPending}</strong></article>
+          <article><span>Approved / live</span><strong>{demand.campaignsApproved} / {demand.campaignsActive}</strong></article>
         </div>
         <div className="account-links">
           <Link className="button button-secondary" href="/admin/leads">Inbound leads</Link>
