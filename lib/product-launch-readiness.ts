@@ -18,7 +18,7 @@ export async function getProductLaunchReadiness() {
   const governanceAdvisories = release.checks.filter(
     (item) => publicGovernanceIds.has(item.id) && item.status !== "pass",
   );
-  const publicProductIds = new Set(["public-access", "public-fair-share"]);
+  const publicProductIds = new Set(["public-access", "public-fair-share", "public-backing"]);
   const publicProductBlockers = product.checks.filter(
     (item) => publicProductIds.has(item.id) && !item.pass,
   );
