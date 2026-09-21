@@ -68,6 +68,22 @@ forbidAll("supabase/migrations/0074_pulse_ads_foundation.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0075_pulse_ads_callback_durability.sql", [
+  "provider_verified_at timestamptz",
+  "verified_campaign_id uuid",
+  "verified_checkout_reference uuid",
+  "verified_amount_usd_micros bigint",
+  "verified_pricing_currency text",
+  "pulse_ads_merchant_callbacks_provider_proof_check",
+]);
+forbidAll("supabase/migrations/0075_pulse_ads_callback_durability.sql", [
+  "update public.reward_treasuries",
+  "insert into public.pulse_claims",
+  "insert into public.ledger_entries",
+  "update public.withdrawals",
+  "release_schema",
+]);
+
 requireAll("app/api/ads/campaigns/route.ts", [
   "export async function POST",
   "isTrustedSameOriginMutation(request)",
@@ -104,6 +120,10 @@ requireAll("app/api/ads/merchant/callback/route.ts", [
   "pulse_ads_merchant_callbacks",
   "PULSE_ADS_MERCHANT_USERNAME",
   "verifyPulseAdsCheckoutCustom",
+  "provider_verified_at",
+  "settlePersistedAuthority",
+  "verified_amount_usd_micros",
+  "provider_verified",
   "https://faucetpay.io/merchant/get-payment/",
   "verified.valid === true",
   "verifiedMerchant === merchantUsername",
