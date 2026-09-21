@@ -6,6 +6,7 @@ import { getOperatorNextAction } from "@/lib/experience-presentation";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
 import { getPulseAdsAdminSnapshot } from "@/lib/pulse-ads";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
+import { getFaucetPayListingReadiness } from "@/lib/faucetpay-listing-readiness";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTreasurySnapshot } from "@/lib/treasury";
@@ -61,12 +62,13 @@ export default async function AdminEconomicsPage() {
   if (!user) redirect("/auth?next=/admin");
   if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
 
-  const [launchReadiness, treasuries, direct, ads, faucet] = await Promise.all([
+  const [launchReadiness, treasuries, direct, ads, faucet, faucetListing] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasurySnapshot(),
     getDirectCampaignSnapshot(),
     getPulseAdsAdminSnapshot(),
     getFaucetLaunchState(),
+    getFaucetPayListingReadiness(),
   ]);
   const readiness = launchReadiness.release;
   const product = launchReadiness.product;
@@ -234,6 +236,23 @@ export default async function AdminEconomicsPage() {
           <article><span>Remaining daily claims</span><strong>{faucet.remainingDailyClaims.toLocaleString("en-US")}</strong></article>
         </div>
         <p className="admin-panel-note">Self-sufficiency compares today&apos;s confirmed provider/direct gross contribution plus billable Pulse Ads clicks with today&apos;s base Pulse reward cost. It is an operating signal, not net profit.</p>
+
+        <div className="app-section-head">
+          <div><span className="app-eyebrow">FaucetPay listing evidence</span><h2>Earn the directory position with real payouts.</h2></div>
+          <span className={"admin-badge " + (faucetListing.strongInitialProofMet ? "" : "setup")}>
+            {faucetListing.strongInitialProofMet ? "INITIAL PROOF STRONG" : "BUILDING PROOF"}
+          </span>
+        </div>
+        {faucetListing.available ? (
+          <div className="admin-secondary-grid">
+            <article><span>Paid users · 7d</span><strong>{faucetListing.uniqueUsersPaidLast7d} / 5</strong><small>Internal launch target for stronger initial evidence</small></article>
+            <article><span>Paid withdrawals · 7d</span><strong>{faucetListing.paidLast7d}</strong><small>Real FaucetPay payouts only</small></article>
+            <article><span>Rewards paid · 7d</span><strong>{moneyFromCredits(faucetListing.creditsPaidLast7d)}</strong><small>Credits settled through FaucetPay</small></article>
+            <article><span>Unique paid · all time</span><strong>{faucetListing.allTimeUniqueUsersPaid}</strong><small>{faucetListing.documentationMinimumMet ? "Documentation minimum evidence reached" : "Below the documented 2-user floor"}</small></article>
+            <article><span>Paid · all time</span><strong>{faucetListing.allTimePaid}</strong></article>
+            <article><span>Public claim gate</span><strong>{faucet.publicClaimsOpen ? "OPEN" : "CONTROLLED"}</strong><small>Listing must not outrun funded capacity</small></article>
+          </div>
+        ) : <div className="empty-ledger">FaucetPay listing evidence is unavailable. No readiness is inferred.</div>}
         <div className="app-section-head">
           <div><span className="app-eyebrow">Pulse Ads</span><h2>Owned sponsored inventory.</h2></div>
           <span className={"admin-badge " + (ads.activeCount > 0 ? "" : "setup")}>{ads.activeCount} ADS ACTIVE</span>
