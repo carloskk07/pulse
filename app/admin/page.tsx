@@ -244,6 +244,7 @@ export default async function AdminEconomicsPage() {
           </span>
         </div>
         {faucetListing.available ? (
+          <>
           <div className="admin-secondary-grid">
             <article><span>Paid users · 7d</span><strong>{faucetListing.uniqueUsersPaidLast7d} / 5</strong><small>Internal launch target for stronger initial evidence</small></article>
             <article><span>Paid withdrawals · 7d</span><strong>{faucetListing.paidLast7d}</strong><small>Real FaucetPay payouts only</small></article>
@@ -252,6 +253,10 @@ export default async function AdminEconomicsPage() {
             <article><span>Paid · all time</span><strong>{faucetListing.allTimePaid}</strong></article>
             <article><span>Public claim gate</span><strong>{faucet.publicClaimsOpen ? "OPEN" : "CONTROLLED"}</strong><small>Listing must not outrun funded capacity</small></article>
           </div>
+          <div className="admin-panel-note">
+            FaucetPay listing URL: <code>https://pulsercuit.pro/faucet?utm_source=faucetpay&amp;utm_medium=faucet-directory&amp;utm_campaign=listing</code>
+          </div>
+          </>
         ) : <div className="empty-ledger">FaucetPay listing evidence is unavailable. No readiness is inferred.</div>}
         <div className="app-section-head">
           <div><span className="app-eyebrow">Pulse Ads</span><h2>Owned sponsored inventory.</h2></div>
