@@ -4,14 +4,15 @@ import { useEffect } from "react";
 
 type Props = {
   event: "home_view" | "proof_view" | "signup_view";
+  sourceOverride?: string;
 };
 
-export function FunnelBeacon({ event }: Props) {
+export function FunnelBeacon({ event, sourceOverride }: Props) {
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const payload = {
       event,
-      utmSource: query.get("utm_source"),
+      utmSource: sourceOverride ?? query.get("utm_source"),
       utmMedium: query.get("utm_medium"),
       utmCampaign: query.get("utm_campaign"),
     };
@@ -25,7 +26,7 @@ export function FunnelBeacon({ event }: Props) {
     }).catch(() => {
       // Acquisition telemetry is intentionally non-blocking.
     });
-  }, [event]);
+  }, [event, sourceOverride]);
 
   return null;
 }
