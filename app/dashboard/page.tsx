@@ -189,11 +189,11 @@ export default async function DashboardPage({ searchParams }: Props) {
             </article>
 
             <article className="pc-v9-progress-card unlock-card">
-              <span className="app-eyebrow">Invite</span>
+              <span className="app-eyebrow">Network</span>
               <div className="pc-v9-unlock-mark"><Users /></div>
-              <h3>Invite people into the loop.</h3>
-              <p>Referral progress starts after the first eligible activity.</p>
-              <Link href="/invite">Open Invite <ArrowUpRight /></Link>
+              <h3>Grow a real network.</h3>
+              <p>Each verified connection can extend your network without changing anyone else&apos;s reward.</p>
+              <Link href="/invite">Open Network <ArrowUpRight /></Link>
             </article>
           </div>
 
