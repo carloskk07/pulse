@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { calculateProspectFit, normalizeProspectDomain, normalizeProspectUrl, type ProspectSegment, type ProspectStatus } from "@/lib/outbound-prospects";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,16 +12,11 @@ const LOCAL_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const SEGMENTS = new Set<ProspectSegment>(["mobile_game", "consumer_app", "saas", "research", "other"]);
 const STATUSES = new Set<ProspectStatus>(["new", "researching", "ready", "contacted", "replied", "pilot", "rejected", "closed"]);
 
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
-}
-
 async function requireAdmin() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) throw new Error("Admin auth unavailable");
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email || !adminEmails().has(user.email.toLowerCase())) throw new Error("Unauthorized");
-  return user;
+  const access = await getAdminAccess();
+  if (access.status === "unavailable") throw new Error("Admin auth unavailable");
+  if (access.status !== "authorized") throw new Error("Unauthorized");
+  return access.user;
 }
 
 function checked(formData: FormData, key: string) {
