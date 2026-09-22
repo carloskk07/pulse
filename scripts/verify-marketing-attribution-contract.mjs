@@ -10,6 +10,7 @@ const faucetMigration = readFileSync("supabase/migrations/0093_faucet_acquisitio
 const required = [
   [funnel, '"cta_click"', "CTA event type"],
   [funnel, "cleanMarketingEventLabel", "CTA allowlist"],
+  [funnel, '"proof_metrics_signup"', "evidence-first Proof CTA allowlist"],
   [funnel, "user_id: userId", "signup user attribution"],
   [route, '"invalid_event_label"', "public label rejection"],
   [route, "isLikelyAutomation(request)", "automation exclusion"],
@@ -18,6 +19,7 @@ const required = [
   [actions, 'recordMarketingEvent(sessionId, "signup_created", {}, { userId })', "signup attribution write"],
   [actions, "recordSuccessfulSignup(data.user.id)", "Auth user binding"],
   [link, 'event: "cta_click"', "client CTA intent"],
+  [link, '"proof_metrics_signup"', "typed evidence-first Proof CTA"],
   [migration, "attributed_users as (", "attributed activation cohort"],
   [migration, "join attributed_users a on a.user_id = pc.user_id", "Pulse attribution join"],
   [migration, "join attributed_users a on a.user_id = w.user_id", "payout attribution join"],
