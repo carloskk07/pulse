@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
-import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
+import { V6FinalProof, V6HeroProof, V6RecentActivity } from "@/components/v6-live-proof";
 import { ArrowUpRight, Check, Clock, Shield, Spark, Wallet } from "@/components/icons";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
 import { getHomeBootstrapProof } from "@/lib/social-proof";
@@ -35,7 +35,6 @@ export default async function HomePage() {
   const pulseInterval = Math.max(15, launch.intervalMinutes || 60);
   const rewardCredits = Math.max(1, launch.rewardCredits || 1);
   const publicLive = launch.publicClaimsOpen;
-  const recent = initialProof.recentActivity.slice(0, 3);
 
   return (
     <main className="pc-v6 pc-home-lobby">
@@ -180,19 +179,7 @@ export default async function HomePage() {
                 <span><i /> Recent verified activity</span>
                 <Link href="/proof">View all <ArrowUpRight /></Link>
               </div>
-              <div className="pc-home-activity-list">
-                {recent.length ? recent.map((item, index) => (
-                  <div key={`${item.occurredAt}-${index}`}>
-                    <span className="pc-home-activity-pulse" aria-hidden="true" />
-                    <p><strong>{item.label}</strong><small>{item.credits > 0 ? `+${item.credits} P` : "Verified"}</small></p>
-                  </div>
-                )) : (
-                  <div className="pc-home-activity-empty">
-                    <Shield />
-                    <p><strong>Proof feed ready</strong><small>Verified production activity appears here as it happens.</small></p>
-                  </div>
-                )}
-              </div>
+              <V6RecentActivity initialProof={initialProof} />
             </div>
 
             <div className="pc-home-proof-card">

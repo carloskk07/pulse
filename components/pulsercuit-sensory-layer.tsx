@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { PUBLIC_PROOF_UPDATE_EVENT, type PublicProofUpdateDetail } from "@/lib/public-proof-events";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -33,6 +34,31 @@ export function PulsercuitSensoryLayer() {
     } else {
       revealTargets.forEach((target) => target.classList.add("pc-sensory-visible"));
     }
+
+    const coreStage = root.querySelector<HTMLElement>(".pc-home-core-stage");
+    let proofSignalTimer = 0;
+
+    const clearProofSignal = () => {
+      if (!coreStage) return;
+      coreStage.classList.remove("pc-home-proof-updated");
+      delete coreStage.dataset.proofSignal;
+    };
+
+    const onProofUpdate = (event: Event) => {
+      if (!coreStage || reducedMotion.matches) return;
+      const detail = (event as CustomEvent<PublicProofUpdateDetail>).detail;
+      if (!detail?.kind) return;
+
+      if (proofSignalTimer) window.clearTimeout(proofSignalTimer);
+      coreStage.classList.remove("pc-home-proof-updated");
+      coreStage.dataset.proofSignal = detail.kind;
+      void coreStage.offsetWidth;
+      coreStage.classList.add("pc-home-proof-updated");
+      proofSignalTimer = window.setTimeout(() => {
+        proofSignalTimer = 0;
+        clearProofSignal();
+      }, 1_600);
+    };
 
     let pointerEnabled = false;
     let targetX = 0;
@@ -113,10 +139,13 @@ export function PulsercuitSensoryLayer() {
     window.addEventListener("resize", onResize, { passive: true });
     finePointer.addEventListener("change", syncPointerMode);
     reducedMotion.addEventListener("change", syncPointerMode);
+    window.addEventListener(PUBLIC_PROOF_UPDATE_EVENT, onProofUpdate);
 
     return () => {
       observer?.disconnect();
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
+      if (proofSignalTimer) window.clearTimeout(proofSignalTimer);
+      clearProofSignal();
       root.classList.remove("pc-sensory-pointer", "pc-sensory-reveal-ready");
       root.style.removeProperty("--pc-sx");
       root.style.removeProperty("--pc-sy");
@@ -130,6 +159,7 @@ export function PulsercuitSensoryLayer() {
       window.removeEventListener("resize", onResize);
       finePointer.removeEventListener("change", syncPointerMode);
       reducedMotion.removeEventListener("change", syncPointerMode);
+      window.removeEventListener(PUBLIC_PROOF_UPDATE_EVENT, onProofUpdate);
     };
   }, []);
 

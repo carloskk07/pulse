@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Spark, Users } from "@/components/icons";
+import { Check, Shield, Spark, Users } from "@/components/icons";
+import {
+  PUBLIC_PROOF_UPDATE_EVENT,
+  type PublicProofUpdateDetail,
+  type PublicProofUpdateKind,
+} from "@/lib/public-proof-events";
 import type { PublicSocialProof } from "@/lib/social-proof";
 
 const EMPTY_PROOF: PublicSocialProof = {
@@ -13,8 +18,12 @@ const EMPTY_PROOF: PublicSocialProof = {
   available: false,
 };
 
+const PUBLIC_PROOF_REFRESH_FLOOR_MS = 45_000;
+const PUBLIC_PROOF_POLL_MS = 60_000;
+
 let cachedProof: PublicSocialProof | null = null;
 let pendingProof: Promise<PublicSocialProof> | null = null;
+let lastRefreshAt = 0;
 
 type V6ProofProps = {
   initialProof: PublicSocialProof;
@@ -28,22 +37,66 @@ function countLabel(value: number, available: boolean, singular: string, plural:
   return available && value === 1 ? singular : plural;
 }
 
+function positiveDelta(next: number, previous: number) {
+  return Math.max(0, next - previous);
+}
+
+function proofUpdateKind(detail: Omit<PublicProofUpdateDetail, "kind">): PublicProofUpdateKind | null {
+  if (detail.paidWithdrawalDelta > 0) return "payout";
+  if (detail.rewardEventDelta > 0) return "reward";
+  if (detail.memberDelta > 0) return "member";
+  return null;
+}
+
+function announceProofUpdate(previous: PublicSocialProof | null, next: PublicSocialProof) {
+  if (
+    typeof window === "undefined"
+    || !previous?.available
+    || !next.available
+  ) {
+    return;
+  }
+
+  const deltas = {
+    memberDelta: positiveDelta(next.memberCount, previous.memberCount),
+    rewardEventDelta: positiveDelta(next.rewardEventCount, previous.rewardEventCount),
+    paidWithdrawalDelta: positiveDelta(next.paidWithdrawalCount, previous.paidWithdrawalCount),
+  };
+  const kind = proofUpdateKind(deltas);
+  if (!kind) return;
+
+  const detail: PublicProofUpdateDetail = { kind, ...deltas };
+  window.dispatchEvent(new CustomEvent<PublicProofUpdateDetail>(PUBLIC_PROOF_UPDATE_EVENT, { detail }));
+}
+
 function refreshPublicProof() {
   if (pendingProof) return pendingProof;
+
+  if (
+    cachedProof
+    && lastRefreshAt > 0
+    && Date.now() - lastRefreshAt < PUBLIC_PROOF_REFRESH_FLOOR_MS
+  ) {
+    return Promise.resolve(cachedProof);
+  }
 
   pendingProof = fetch("/api/public/social-proof", {
     method: "GET",
     headers: { accept: "application/json" },
   })
     .then(async (response) => {
-      if (!response.ok) return EMPTY_PROOF;
+      if (!response.ok) return cachedProof ?? EMPTY_PROOF;
+
       const proof = (await response.json()) as PublicSocialProof;
+      const previous = cachedProof;
       cachedProof = proof;
+      lastRefreshAt = Date.now();
+      announceProofUpdate(previous, proof);
       return proof;
     })
     .catch(() => {
       console.error("[v6-proof] runtime refresh failed");
-      return EMPTY_PROOF;
+      return cachedProof ?? EMPTY_PROOF;
     })
     .finally(() => {
       pendingProof = null;
@@ -62,12 +115,21 @@ function usePublicProof(initialProof: PublicSocialProof) {
       cachedProof = initialProof;
     }
 
-    void refreshPublicProof().then((nextProof) => {
-      if (active) setProof(nextProof);
-    });
+    const applyRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshPublicProof().then((nextProof) => {
+        if (active) setProof(nextProof);
+      });
+    };
+
+    applyRefresh();
+    const poll = window.setInterval(applyRefresh, PUBLIC_PROOF_POLL_MS);
+    document.addEventListener("visibilitychange", applyRefresh);
 
     return () => {
       active = false;
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", applyRefresh);
     };
   }, [initialProof]);
 
@@ -90,6 +152,33 @@ export function V6HeroProof({ initialProof }: V6ProofProps) {
       <div><strong>{count(proof.memberCount, proof.available)}</strong><span>{countLabel(proof.memberCount, proof.available, "Member", "Members")}</span></div>
       <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>{countLabel(proof.rewardEventCount, proof.available, "Reward event", "Reward events")}</span></div>
       <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>{countLabel(proof.paidWithdrawalCount, proof.available, "Paid withdrawal", "Paid withdrawals")}</span></div>
+    </div>
+  );
+}
+
+export function V6RecentActivity({ initialProof }: V6ProofProps) {
+  const proof = usePublicProof(initialProof);
+  const recent = proof.recentActivity.slice(0, 3);
+
+  return (
+    <div className="pc-home-activity-list" aria-live="polite">
+      {recent.length ? recent.map((item, index) => (
+        <div key={`${item.occurredAt}-${index}`}>
+          <span className="pc-home-activity-pulse" aria-hidden="true" />
+          <p>
+            <strong>{item.label}</strong>
+            <small>{item.credits > 0 ? `+${item.credits} P` : "Verified"}</small>
+          </p>
+        </div>
+      )) : (
+        <div className="pc-home-activity-empty">
+          <Shield />
+          <p>
+            <strong>Proof feed ready</strong>
+            <small>Verified production activity appears here as it happens.</small>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
