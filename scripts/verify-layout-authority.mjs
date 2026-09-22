@@ -211,6 +211,23 @@ requireText("app/styles/auth.css", [
   ".auth-circuit-core{",
   ".auth-circuit-node.node-pulse",
 ]);
+requireText("app/styles/faucet-entry.css", [
+  ".pc-faucet-copy h1 em{",
+  "var(--pc7-gold-hi,#fff0ad)",
+  ".pc-faucet-final{",
+  "var(--pc7-gold,#e6bd5d)",
+]);
+requireText("app/styles/auth.css", [
+  ".auth-mode-switch a.active{",
+  "var(--pc7-gold-hi,#fff0ad)",
+]);
+requireText("app/faucet/page.tsx", [
+  'className="button button-light button-lg"',
+]);
+requireText("app/proof/page.tsx", [
+  'className="button button-light"',
+]);
+
 requireText("app/styles/completion.css", [
   "/* Support evidence guidance belongs to the light support surface. */",
   ".completion-page .support-proof-note{",

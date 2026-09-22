@@ -39,7 +39,7 @@ export default async function FaucetPage() {
           <p>Claim a simple recurring Pulse, watch your Vault grow, and keep your payout path in view. No ad wall before the reward.</p>
 
           <div className="hero-actions">
-            <FunnelLink className="button button-lg" href="/auth?mode=signup&next=/dashboard" eventLabel="faucet_signup">
+            <FunnelLink className="button button-light button-lg" href="/auth?mode=signup&next=/dashboard" eventLabel="faucet_signup">
               {launch.publicClaimsOpen ? "Claim your first Pulse" : "Create free account"} <ArrowUpRight />
             </FunnelLink>
             <FunnelLink className="button button-ghost button-lg" href="/proof" eventLabel="faucet_proof">
@@ -116,7 +116,7 @@ export default async function FaucetPage() {
       <section className="pc-faucet-final shell">
         <div><span className="section-kicker">Pulsercuit</span><h2>Claim. Return. Build toward payout.</h2><p>A cleaner reward loop for people who already know faucets — and expect better.</p></div>
         {launch.publicClaimsOpen ? (
-          <FunnelLink className="button button-lg button-dark" href="/auth?mode=signup&next=/dashboard" eventLabel="faucet_signup">
+          <FunnelLink className="button button-light button-lg button-dark" href="/auth?mode=signup&next=/dashboard" eventLabel="faucet_signup">
             Start with one Pulse <ArrowUpRight />
           </FunnelLink>
         ) : <FunnelLink className="button button-lg button-dark" href="/proof" eventLabel="faucet_proof">See live proof <ArrowUpRight /></FunnelLink>}
