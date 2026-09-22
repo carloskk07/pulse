@@ -237,6 +237,7 @@ const homePage = read("app/page.tsx");
 for (const fragment of [
   'import { getFaucetLaunchState } from "@/lib/faucet-launch";',
   'import { getHomeBootstrapProof } from "@/lib/social-proof";',
+  "export const revalidate = 60;",
   "export default async function HomePage()",
   "getHomeBootstrapProof()",
   "getFaucetLaunchState()",
