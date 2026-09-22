@@ -48,7 +48,7 @@ export default async function FaucetPage() {
           <div className="eyebrow"><span className="live-dot" /> Free crypto faucet</div>
           <h1>{!launch.publicClaimsOpen ? <>A clearer way to <em>earn free crypto.</em></> : rewardVariable ? <>Claim every hour. <em>Reveal your reward.</em></> : <>Earn crypto <em>every hour.</em></>}</h1>
           <p>
-            {rewardVariable ? <>The live faucet range is <strong>{rewardDisplay}</strong>. Each eligible claim reveals one value from that published range.</> : <>The current live rule is <strong>{rewardDisplay}</strong> per eligible claim, but Pulsercuit is not tied to one permanent prize amount.</>}
+            {rewardVariable ? <>{launch.publicClaimsOpen ? "The live" : "The launch"} faucet range is <strong>{rewardDisplay}</strong>. Each eligible claim reveals one value from that published range.</> : <>The current reward rule is <strong>{rewardDisplay}</strong> per eligible claim.</>}
             {" "}Your balance stays visible in money terms, and payouts use {payoutAsset} through FaucetPay.
           </p>
 
@@ -70,7 +70,7 @@ export default async function FaucetPage() {
 
         <aside className={"pc-faucet-live-card " + (launch.publicClaimsOpen ? "is-open" : "is-limited")}>
           <div className="pc-faucet-live-head">
-            <span>{rewardVariable ? "Live reward range" : "Current reward rule"}</span>
+            <span>{rewardVariable ? (launch.publicClaimsOpen ? "Live reward range" : "Launch reward range") : "Current reward rule"}</span>
             <i />
           </div>
           <PulseCoreVisual
@@ -96,6 +96,25 @@ export default async function FaucetPage() {
         </aside>
       </section>
 
+      {rewardVariable && launch.rewardBands.length > 0 ? (
+        <section className="pc-faucet-bands shell" aria-label="Variable faucet reward bands">
+          <div className="pc-faucet-bands-head">
+            <span className="section-kicker">{launch.publicClaimsOpen ? "Live reward bands" : "Launch reward bands"}</span>
+            <h2>One claim. Different possible rewards.</h2>
+            <p>Every eligible claim resolves one value from the published distribution.</p>
+          </div>
+          <div className="pc-faucet-band-grid">
+            {launch.rewardBands.map((band) => (
+              <article key={band.credits} className={band.credits === launch.rewardMaxCredits ? "is-top" : ""}>
+                <small>{band.credits === launch.rewardMaxCredits ? "Top reward" : "Possible reward"}</small>
+                <strong>{formatUsdFromCredits(band.credits)}</strong>
+                <span>{(band.probabilityBps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}% chance</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="pc-faucet-path shell" aria-label="Faucet journey">
         <article><span>01</span><Spark /><h2>Claim</h2><p>Take the recurring faucet reward when your personal timer is open.</p></article>
         <article><span>02</span><Check /><h2>Earn more</h2><p>Use optional tasks, referrals and other verified rewards when they are worth your time.</p></article>
@@ -109,7 +128,7 @@ export default async function FaucetPage() {
           <h2>A faucet should make the reward obvious.</h2>
         </div>
         <div className="pc-faucet-difference-grid">
-          <article><strong>Not one permanent prize</strong><p>Pulsercuit can publish variable reward bands. When variable mode is active, each eligible claim is resolved from the live range shown before claiming.</p></article>
+          <article><strong>Variable reward draw</strong><p>Each eligible claim can reveal a different value from the published reward range. The result is settled before it reaches your balance.</p></article>
           <article><strong>Optional earning paths</strong><p>The hourly faucet stays central. Higher-value tasks and partner rewards are separate choices, not a wall before your claim.</p></article>
           <article><strong>Public payout evidence</strong><p>The Proof Center separates credited rewards from completed withdrawals instead of blending both into one marketing number.</p></article>
         </div>

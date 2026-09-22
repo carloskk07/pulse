@@ -13,6 +13,7 @@ import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { getPulseAdPlacement } from "@/lib/pulse-ads";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
+import { getFaucetLaunchState } from "@/lib/faucet-launch";
 
 export const metadata = { title: "Reward claimed" };
 export const dynamic = "force-dynamic";
@@ -25,11 +26,12 @@ function remainingCopy(remaining: number, unit: "Pulse" | "day" | "Signal point"
 }
 
 export default async function ClaimedPage() {
-  const [state, receipt, userContext, requestHeaders] = await Promise.all([
+  const [state, receipt, userContext, requestHeaders, launch] = await Promise.all([
     getRewardSnapshot(),
     getRecentPulseReceipt(),
     getCurrentUserContext(),
     headers(),
+    getFaucetLaunchState(),
   ]);
   if (!state.signedIn || !userContext.user) redirect("/auth?next=/dashboard");
   if (!receipt) redirect("/dashboard");
@@ -60,24 +62,43 @@ export default async function ClaimedPage() {
   const payout = getFaucetPayPackConfig();
   const payoutTargetCredits = payout.amountCredits && payout.amountCredits > 0 ? payout.amountCredits : null;
   const payoutRemaining = payoutTargetCredits ? Math.max(0, payoutTargetCredits - state.availableCredits) : null;
+  const rewardValue = formatUsdFromCredits(receipt.rewardCredits);
+  const variableReward = launch.rewardVariable && launch.rewardBands.length > 1;
+  const matchedBand = launch.rewardBands.find((band) => band.credits === receipt.rewardCredits) ?? null;
+  const topReward = variableReward && receipt.rewardCredits === launch.rewardMaxCredits;
+  const boostedReward = variableReward && receipt.rewardCredits > launch.rewardMinCredits && !topReward;
+  const rewardTone = topReward ? "top" : boostedReward ? "boosted" : "standard";
+  const probabilityLabel = matchedBand
+    ? `${(matchedBand.probabilityBps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}% launch chance`
+    : null;
+  const revealLabel = topReward ? "Top reward hit" : boostedReward ? "Higher reward hit" : variableReward ? "Reward revealed" : "Reward claimed";
+  const revealLead = topReward
+    ? "You hit the highest configured faucet reward in the current launch range."
+    : boostedReward
+      ? "This claim landed above the minimum reward band and is already reflected in your balance."
+      : variableReward
+        ? "This claim was resolved from the live variable reward range and is already reflected in your balance."
+        : "Your verified reward is already reflected in your balance and progress.";
 
   return (
     <AppShell active="home">
       <main className="pc-claim-handoff pc-v8-claim-handoff">
-        <section className="pc-v8-victory" aria-labelledby="claim-victory-title">
+        <section className={`pc-v8-victory pc-v8-reveal is-${rewardTone}-reward`} aria-labelledby="claim-victory-title" aria-live="polite">
           <div className="pc-v8-victory-aurora" aria-hidden="true" />
           <div className="pc-v8-victory-grid">
             <div className="pc-v8-victory-copy">
               <div className="pc-v8-victory-kicker">
                 <span className="pc-v8-success-mark"><Check /></span>
-                <span>Reward claimed</span>
+                <span>{revealLabel}</span>
               </div>
-              <span className="app-eyebrow">Done</span>
-              <h1 id="claim-victory-title">Reward added.<br />Your next claim is scheduled.</h1>
-              <p className="pc-v8-victory-lead">Your verified reward is already reflected in your balance and progress.</p>
+              <span className="app-eyebrow">{variableReward ? "Your draw" : "Done"}</span>
+              <h1 id="claim-victory-title">
+                {variableReward ? <>You revealed.<br /><span className="pc-v8-reveal-value">+{rewardValue}</span></> : <>Reward added.<br />Your next claim is scheduled.</>}
+              </h1>
+              <p className="pc-v8-victory-lead">{revealLead}</p>
 
               <div className="pc-v8-reward-line">
-                <div><small>Added now</small><strong>+{formatUsdFromCredits(receipt.rewardCredits)}</strong></div>
+                <div><small>{variableReward ? "Revealed now" : "Added now"}</small><strong>+{rewardValue}</strong>{probabilityLabel ? <span className="pc-v8-band-odds">{probabilityLabel}</span> : null}</div>
                 <div><small>Available balance</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div>
                 {payoutTargetCredits ? <div><small>To payout target</small><strong>{payoutRemaining && payoutRemaining > 0 ? formatUsdFromCredits(payoutRemaining) : "Ready"}</strong></div> : null}
               </div>
@@ -88,8 +109,9 @@ export default async function ClaimedPage() {
               </div>
 
               <div className="pc-v8-proof-pills" aria-label="Claim integrity">
+                {variableReward ? <span><Spark /> Variable draw settled</span> : null}
+                {topReward ? <span><Spark /> Highest launch reward</span> : null}
                 <span><Shield /> Funded reward</span>
-                <span>Real history</span>
                 <span>Balance updated</span>
               </div>
             </div>
@@ -97,13 +119,13 @@ export default async function ClaimedPage() {
             <div className="pc-v8-vault-orbit" aria-label="Updated reward balance">
               <div className="pc-v8-orbit-ring">
                 <div className="pc-v8-orbit-core">
-                  <span>Balance updated</span>
-                  <strong>{formatUsdFromCredits(state.availableCredits)}</strong>
-                  <small>available now</small>
+                  <span>{variableReward ? "This claim" : "Balance updated"}</span>
+                  <strong>{variableReward ? `+${rewardValue}` : formatUsdFromCredits(state.availableCredits)}</strong>
+                  <small>{variableReward ? (topReward ? "top launch reward" : boostedReward ? "above minimum band" : "reward revealed") : "available now"}</small>
                 </div>
               </div>
               <div className="pc-v8-orbit-meta">
-                <span><b>+{formatUsdFromCredits(receipt.rewardCredits)}</b> this claim</span>
+                <span><b>{formatUsdFromCredits(state.availableCredits)}</b> balance now</span>
                 <span><b>{signal.stage}</b> current rank</span>
               </div>
             </div>

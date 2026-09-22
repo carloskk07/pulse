@@ -68,8 +68,8 @@ export default async function HomePage() {
               <em>Know what it is worth.</em>
             </h1>
             <p>
-              Claim a recurring faucet reward without being locked to one permanent prize. The live reward rule can
-              change, and variable draws show their active range before you claim. No purchase is required to join.
+              Claim a recurring faucet reward where each eligible claim can reveal a different value from the published
+              range. See the money value clearly before and after every draw. No purchase is required to join.
             </p>
 
             <div className="pc-home-actions">
@@ -106,7 +106,7 @@ export default async function HomePage() {
             </PulseCoreVisual>
             <div className="pc-home-core-status">
               <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Hourly reward available" : "Account access is open"}</span>
-              <small>{rewardVariable ? (publicLive ? "Each eligible claim reveals one value from the live range." : "The variable reward model is prepared; public claiming is still closed.") : "The current rule is visible now and is not a permanent prize amount."}</small>
+              <small>{rewardVariable ? (publicLive ? "Each eligible claim reveals one value from the live range." : "The launch reward range is prepared; public claiming is still closed.") : "The active reward rule is shown before every eligible claim."}</small>
             </div>
           </aside>
         </div>

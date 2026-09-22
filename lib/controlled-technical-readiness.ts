@@ -136,13 +136,14 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
     admin.from("admin_users").select("user_id").limit(1).maybeSingle(),
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
     admin.rpc("release_stacked_incentive_budget_contract"),
     admin.rpc("release_cashback_budget_contract"),
     admin.rpc("release_variable_reward_budget_contract"),
+    admin.rpc("release_variable_reward_execution_contract"),
     admin.rpc("release_withdrawal_pass_integrity_contract"),
     admin.rpc("release_withdrawal_recovery_authority_contract"),
     admin.rpc("release_withdrawal_retry_backoff_contract"),
@@ -164,6 +165,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (variableRewardBudgetResult.error || variableRewardBudgetResult.data !== true) {
     setupBlockers.push("variable-reward-budget");
+  }
+  if (variableRewardExecutionResult.error || variableRewardExecutionResult.data !== true) {
+    setupBlockers.push("variable-reward-execution");
   }
   if (withdrawalPassIntegrityResult.error || withdrawalPassIntegrityResult.data !== true) {
     setupBlockers.push("withdrawal-pass-integrity");

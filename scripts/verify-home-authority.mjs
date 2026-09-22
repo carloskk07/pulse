@@ -291,7 +291,7 @@ for (const fragment of [
   '<PulseCoreVisual',
   'state={publicLive ? "ready" : "limited"}',
   'className="pulse-core-word pc-home-money-value"',
-  "without being locked to one permanent prize",
+  "each eligible claim can reveal a different value",
   "rewardVariable",
   "rewardDisplay",
   "Claim. Earn more.<br />Cash out.",

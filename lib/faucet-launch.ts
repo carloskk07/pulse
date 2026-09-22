@@ -12,6 +12,7 @@ export type FaucetLaunchState = {
   rewardVariable: boolean;
   rewardMinCredits: number;
   rewardMaxCredits: number;
+  rewardBands: Array<{ credits: number; probabilityBps: number }>;
   intervalMinutes: number;
   availableClaims: number;
   remainingDailyClaims: number;
@@ -36,6 +37,7 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       rewardVariable: false,
       rewardMinCredits: 0,
       rewardMaxCredits: 0,
+      rewardBands: [],
       intervalMinutes: 60,
       availableClaims: 0,
       remainingDailyClaims: 0,
@@ -62,6 +64,7 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       rewardVariable: false,
       rewardMinCredits: 0,
       rewardMaxCredits: 0,
+      rewardBands: [],
       intervalMinutes: 60,
       availableClaims: 0,
       remainingDailyClaims: 0,
@@ -76,12 +79,17 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
     ? economyRow.value as Record<string, unknown>
     : {};
   const rewardCredits = Math.max(1, asInt(config.credits, 1));
-  const rewardBands = Array.isArray(economy.reward_bands)
+  const configuredBands = Array.isArray(economy.reward_bands)
     ? economy.reward_bands.filter((band): band is Record<string, unknown> => Boolean(band) && typeof band === "object" && !Array.isArray(band))
     : [];
-  const validBandCredits = rewardBands
-    .map((band) => asInt(band.credits, 0))
-    .filter((value) => value > 0);
+  const rewardBands = configuredBands
+    .map((band) => ({
+      credits: asInt(band.credits, 0),
+      probabilityBps: asInt(band.probability_bps, 0),
+    }))
+    .filter((band) => band.credits > 0 && band.probabilityBps > 0)
+    .sort((left, right) => left.credits - right.credits);
+  const validBandCredits = rewardBands.map((band) => band.credits);
   const variableEnabled = ["true", "1", "yes", "on"].includes(String(economy.variable_reward_enabled ?? "false").toLowerCase());
   const variableReviewRequired = !["false", "0", "no", "off"].includes(String(economy.variable_reward_review_required ?? "true").toLowerCase());
   const rewardVariable = variableEnabled && !variableReviewRequired && validBandCredits.length > 0;
@@ -105,6 +113,7 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       rewardVariable,
       rewardMinCredits,
       rewardMaxCredits,
+      rewardBands,
       intervalMinutes,
       availableClaims: 0,
       remainingDailyClaims: 0,
@@ -133,6 +142,7 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
     rewardVariable,
     rewardMinCredits,
     rewardMaxCredits,
+    rewardBands,
     intervalMinutes,
     availableClaims,
     remainingDailyClaims,

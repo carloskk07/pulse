@@ -178,6 +178,8 @@ requireText("app/styles/next-circuit.css", [
 requireText("app/styles/post-claim.css", [
   "/* Pulsercuit V8 — premium post-claim progress experience */",
   ".pc-v8-victory{",
+  ".pc-v8-reveal.is-top-reward{",
+  ".pc-v8-reveal-value{",
   ".pc-v8-progress-zone{",
   ".pc-v8-return-stage{",
 ]);
@@ -224,6 +226,8 @@ requireText("app/styles/faucet-entry.css", [
   '.pc-faucet-copy h1{max-width:880px;margin:16px 0 22px;font-family:Georgia,"Times New Roman",serif',
   ".pc-faucet-copy h1 em{",
   "var(--pc7-gold-hi,#fff0ad)",
+  ".pc-faucet-band-grid{",
+  ".pc-faucet-band-grid article.is-top{",
   ".pc-faucet-final{",
   "var(--pc7-gold,#e6bd5d)",
 ]);

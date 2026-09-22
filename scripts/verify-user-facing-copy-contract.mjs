@@ -13,6 +13,7 @@ const surfacePaths = [
   "app/invite/page.tsx",
   "app/earn/page.tsx",
   "app/support/page.tsx",
+  "app/dashboard/claimed/page.tsx",
   "lib/experience-presentation.ts",
   "components/v6-live-proof.tsx",
 ];
@@ -65,9 +66,9 @@ const requiredBySurface = new Map([
   ["app/page.tsx", [
     "Earn crypto.",
     "Know what it is worth.",
-    "without being locked to one permanent prize",
+    "each eligible claim can reveal a different value",
     "Live reward range",
-    "not a permanent prize amount.",
+    "The active reward rule is shown before every eligible claim.",
     "Claim. Earn more.",
     "Cash out.",
     "More reasons to earn. Fewer reasons to guess.",
@@ -77,11 +78,12 @@ const requiredBySurface = new Map([
     "in real value.",
   ]],
   ["app/proof/page.tsx", ["Claims, rewards and payouts — shown separately.", "How these numbers work", "Ready to earn?", "Start with the free hourly faucet."]],
-  ["app/faucet/page.tsx", ["not tied to one permanent prize amount", "Not one permanent prize", "A faucet should make the reward obvious.", "Current availability", "Create free account"]],
+  ["app/faucet/page.tsx", ["Each eligible claim reveals one value", "Variable reward draw", "One claim. Different possible rewards.", "A faucet should make the reward obvious.", "Current availability", "Create free account"]],
   ["app/progress/page.tsx", ["See what your activity has built.", "Five ranks. One clear path."]],
   ["app/invite/page.tsx", ["Invite friends. See the reward before you share."]],
   ["app/earn/page.tsx", ["More ways to earn between faucet claims."]],
   ["app/support/page.tsx", ["Tell us what happened. Keep one reference."]],
+  ["app/dashboard/claimed/page.tsx", ["You revealed.", "Variable draw settled", "rewardTone", "probabilityLabel"]],
 ]);
 
 for (const [path, phrases] of requiredBySurface) {
