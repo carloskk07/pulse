@@ -1,4 +1,5 @@
-import { getPulseEcosystemSnapshot, type PulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";\nimport { formatUsdFromCredits } from "@/lib/reward-state";
+import { getPulseEcosystemSnapshot, type PulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
+import { formatUsdFromCredits } from "@/lib/reward-state";
 
 function compact(value: string | null) {
   if (!value) return null;
