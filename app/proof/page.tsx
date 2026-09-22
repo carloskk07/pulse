@@ -58,7 +58,7 @@ export default async function ProofPage() {
         <article><Shield /><div><h2>Recorded activity only.</h2><p>Counts come from recorded claim, reward and payout events.</p></div></article>
       </details>
 
-      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one Pulse. Build from there.</h2></div><FunnelLink className="button" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
+      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one Pulse. Build from there.</h2></div><FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
     </main>
   );
 }
