@@ -4,6 +4,7 @@ import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { ArrowUpRight, Check, Shield, Spark, Wallet } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
+import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function FaucetPage() {
 
   return (
     <main className="marketing-page pc-faucet-page">
-      <FunnelBeacon event="home_view" />
+      <FunnelBeacon event="faucet_view" />
       <SiteHeader />
 
       <section className="pc-faucet-hero shell">
@@ -38,15 +39,9 @@ export default async function FaucetPage() {
           <p>Claim a simple recurring Pulse, watch your Vault grow, and keep your payout path in view. No ad wall before the reward.</p>
 
           <div className="hero-actions">
-            {launch.publicClaimsOpen ? (
-              <FunnelLink className="button button-lg" href="/auth?mode=signup&next=/dashboard" eventLabel="faucet_signup">
-                Claim your first Pulse <ArrowUpRight />
-              </FunnelLink>
-            ) : (
-              <FunnelLink className="button button-lg" href="/proof" eventLabel="faucet_proof">
-                See live proof <ArrowUpRight />
-              </FunnelLink>
-            )}
+            <FunnelLink className="button button-lg" href="/auth?mode=signup&next=/dashboard" eventLabel="faucet_signup">
+              {launch.publicClaimsOpen ? "Claim your first Pulse" : "Create free account"} <ArrowUpRight />
+            </FunnelLink>
             <FunnelLink className="button button-ghost button-lg" href="/proof" eventLabel="faucet_proof">
               Proof & payouts
             </FunnelLink>
@@ -59,26 +54,28 @@ export default async function FaucetPage() {
           </div>
         </div>
 
-        <aside className={"pc-faucet-live-card " + (launch.publicClaimsOpen ? "is-open" : "is-pilot")}>
+        <aside className={"pc-faucet-live-card " + (launch.publicClaimsOpen ? "is-open" : "is-limited")}>
           <div className="pc-faucet-live-head">
-            <span>{launch.publicClaimsOpen ? "Public faucet" : "Launch status"}</span>
+            <span>Pulse status</span>
             <i />
           </div>
-          <div className="pc-faucet-live-core">
-            <small>Pulse reward</small>
-            <strong>+{launch.rewardCredits || 1} P</strong>
-            <span>{intervalLabel}</span>
-          </div>
+          <PulseCoreVisual
+            state={launch.publicClaimsOpen ? "ready" : "paused"}
+            eyebrow="Hourly Pulse"
+            caption={`Returns ${intervalLabel}`}
+          >
+            <span className="pulse-core-word">+{launch.rewardCredits || 1} P</span>
+          </PulseCoreVisual>
           <div className="pc-faucet-live-foot">
             {launch.publicClaimsOpen ? (
               <>
-                <b>OPEN</b>
-                <span>Current funded capacity is live.</span>
+                <b>CLAIMING OPEN</b>
+                <span>Sign in to see your personal eligibility and claim state.</span>
               </>
             ) : (
               <>
-                <b>PREPARING</b>
-                <span>Public claiming stays closed until funded capacity and fair-share are ready.</span>
+                <b>ACCESS LIMITED</b>
+                <span>Create your account now. Claim availability appears in your account when access is open.</span>
               </>
             )}
           </div>
@@ -95,7 +92,7 @@ export default async function FaucetPage() {
       <section className="pc-faucet-difference shell">
         <div>
           <span className="section-kicker">Why Pulsercuit</span>
-          <h2>The faucet is the entry point.<br />Not the obstacle course.</h2>
+          <h2>The faucet is the entry point.<br />Everything else builds around it.</h2>
         </div>
         <div className="pc-faucet-difference-grid">
           <article><strong>No ad wall before claim</strong><p>Sponsored inventory is placed after successful Pulse activity, not between the visitor and the core reward.</p></article>
@@ -108,11 +105,11 @@ export default async function FaucetPage() {
         <section className="pc-faucet-launch-note shell">
           <Shield />
           <div>
-            <span className="section-kicker">Controlled launch</span>
-            <h2>We are not opening the faucet before the economics can support it.</h2>
-            <p>The public entry is ready for validation, but claims remain controlled while Treasury capacity and fair-share are prepared for real FaucetPay traffic.</p>
+            <span className="section-kicker">Current availability</span>
+            <h2>Public claiming is currently limited.</h2>
+            <p>You can create an account and inspect live proof now. Claim availability is shown inside your account when access is open.</p>
           </div>
-          <Link className="button button-secondary" href="/proof">Inspect current proof <ArrowUpRight /></Link>
+          <Link className="button button-secondary" href="/proof">Inspect live proof <ArrowUpRight /></Link>
         </section>
       ) : null}
 

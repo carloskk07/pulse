@@ -16,6 +16,12 @@ function percent(numerator: number, denominator: number) {
   return `${rate(numerator, denominator).toFixed(1)}%`;
 }
 
+function ctaDenominator(label: string, funnel: Awaited<ReturnType<typeof getMarketingFunnelSnapshot>>) {
+  if (label.startsWith("faucet_")) return { label: "Faucet", sessions: funnel.faucetSessions };
+  if (label.startsWith("proof_")) return { label: "Proof", sessions: funnel.proofSessions };
+  return { label: "Home", sessions: funnel.homeSessions };
+}
+
 export default async function MarketingAdminPage() {
   const adminAccess = await getAdminAccess();
   if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/marketing");
@@ -42,17 +48,22 @@ export default async function MarketingAdminPage() {
         <article className="admin-kpi primary">
           <span>Home sessions</span>
           <strong>{funnel.homeSessions.toLocaleString("en-US")}</strong>
-          <small>unique first-party sessions · last {funnel.days} days</small>
+          <small>unique first-party Home sessions · last {funnel.days} days</small>
+        </article>
+        <article className="admin-kpi primary">
+          <span>Faucet sessions</span>
+          <strong>{funnel.faucetSessions.toLocaleString("en-US")}</strong>
+          <small>dedicated /faucet entry sessions · last {funnel.days} days</small>
         </article>
         <article className="admin-kpi">
           <span>Proof sessions</span>
           <strong>{funnel.proofSessions.toLocaleString("en-US")}</strong>
-          <small>{percent(funnel.proofSessions, funnel.homeSessions)} of Home sessions</small>
+          <small>trust-path sessions measured independently</small>
         </article>
         <article className="admin-kpi">
           <span>Signup views</span>
           <strong>{funnel.signupSessions.toLocaleString("en-US")}</strong>
-          <small>{percent(funnel.signupSessions, funnel.homeSessions)} of Home sessions</small>
+          <small>all measured entry surfaces → signup</small>
         </article>
         <article className="admin-kpi positive">
           <span>Accounts created</span>
@@ -67,15 +78,18 @@ export default async function MarketingAdminPage() {
           <span className="admin-badge">{funnel.ctaClicks} CLICKS</span>
         </div>
         <div className="admin-provider-table">
-          <div className="admin-provider-row header"><span>Surface</span><span>Unique clicks</span><span>Home share</span><span>Signal</span></div>
-          {funnel.ctaSurfaces.length ? funnel.ctaSurfaces.map((cta) => (
-            <div className="admin-provider-row" key={cta.label}>
-              <strong>{cta.label.replaceAll("_", " ")}</strong>
-              <span>{cta.clicks.toLocaleString("en-US")}</span>
-              <span>{percent(cta.clicks, funnel.homeSessions)}</span>
-              <span>{cta.label.includes("proof") ? "trust" : "signup"}</span>
-            </div>
-          )) : <div className="empty-ledger">No measured CTA intent yet. Page views alone are not treated as conversion intent.</div>}
+          <div className="admin-provider-row header"><span>Surface</span><span>Unique clicks</span><span>Entry share</span><span>Signal</span></div>
+          {funnel.ctaSurfaces.length ? funnel.ctaSurfaces.map((cta) => {
+            const denominator = ctaDenominator(cta.label, funnel);
+            return (
+              <div className="admin-provider-row" key={cta.label}>
+                <strong>{cta.label.replaceAll("_", " ")}</strong>
+                <span>{cta.clicks.toLocaleString("en-US")}</span>
+                <span>{percent(cta.clicks, denominator.sessions)} · {denominator.label}</span>
+                <span>{cta.label.includes("proof") ? "trust" : "signup"}</span>
+              </div>
+            );
+          }) : <div className="empty-ledger">No measured CTA intent yet. Page views alone are not treated as conversion intent.</div>}
         </div>
       </section>
 

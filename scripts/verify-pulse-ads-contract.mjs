@@ -248,10 +248,11 @@ requireAll("app/advertising-policy/page.tsx", [
 ]);
 
 requireAll("app/faucet/page.tsx", [
-  '<FunnelBeacon event="home_view" />',
+  '<FunnelBeacon event="faucet_view" />',
   "launch.publicClaimsOpen",
+  "PulseCoreVisual",
   "No ad wall before claim",
-  "Public claiming stays closed",
+  "ACCESS LIMITED",
 ]);
 requireAll("lib/faucet-launch.ts", [
   "pilotMode",
@@ -259,7 +260,8 @@ requireAll("lib/faucet-launch.ts", [
   "publicClaimsOpen: !pilotMode && backingReady && fairShareReady && treasuryReady",
 ]);
 requireAll("lib/marketing-funnel.ts", [
-  'MARKETING_EXPERIENCE_VERSION = "faucet-lobby-v13"',
+  'MARKETING_EXPERIENCE_VERSION = "pulse-identity-v14-2"',
+  '"faucet_view"',
   '"faucet_signup"',
   '"faucet_proof"',
 ]);

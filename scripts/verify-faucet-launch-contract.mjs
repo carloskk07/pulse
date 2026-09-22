@@ -67,7 +67,9 @@ requireAll("app/admin/page.tsx", [
 
 requireAll("app/faucet/page.tsx", [
   "launch.publicClaimsOpen",
-  "Public claiming stays closed until funded capacity and fair-share are ready.",
+  'state={launch.publicClaimsOpen ? "ready" : "paused"}',
+  "Public claiming is currently limited.",
+  "Claim availability is shown inside your account when access is open.",
 ]);
 
 requireAll("lib/product-readiness.ts", [

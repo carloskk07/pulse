@@ -303,12 +303,23 @@ body{min-width:320px}
   .proof-cta{align-items:flex-start!important;flex-direction:column!important}
 }
 
+@media(max-width:860px){
+  .pc-v6-header .pc-v6-login{
+    display:inline-flex!important;
+    min-height:40px!important;
+    align-items:center;
+    justify-content:center;
+    padding-inline:8px!important;
+    font-size:10px!important;
+    white-space:nowrap;
+  }
+}
+
 @media(max-width:560px){
   .pc-v6-header.is-flow{min-height:68px!important}
   .pc-v6-header-inner{min-height:64px!important;gap:8px!important}
-  .pc-v6:not(.pc-home-lobby) .pc-v6-login{display:none!important}
-  .pc-home-lobby .pc-v6-login{display:inline-flex!important}
-  .pc-v6-header-actions .pc-v6-button{min-height:40px!important;padding-inline:12px!important;font-size:10px!important}
+  .pc-v6-header .pc-v6-login{min-height:38px!important;padding-inline:5px!important;font-size:9px!important}
+  .pc-v6-header-actions .pc-v6-button{min-height:40px!important;padding-inline:10px!important;font-size:9px!important;white-space:nowrap}
   .pc-v6-header .brand-word{font-size:13px!important}
 
   .app-content{padding-inline:16px!important}

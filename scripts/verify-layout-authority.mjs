@@ -275,8 +275,9 @@ requireText("app/styles/layout-authority.css", [
   ".completion-page::before,.completion-page::after",
   ".auth-shell{grid-template-columns:1fr!important",
   ".pc-v6-pillar-grid,.pc-v6-share-cards{grid-template-columns:1fr!important",
-  ".pc-v6:not(.pc-home-lobby) .pc-v6-login{display:none!important}",
-  ".pc-home-lobby .pc-v6-login{display:inline-flex!important}",
+  "@media(max-width:860px)",
+  ".pc-v6-header .pc-v6-login{",
+  "display:inline-flex!important",
 ]);
 requireText("app/styles/touch-foundation.css", [
   "@media(max-width:1120px)",
@@ -286,8 +287,12 @@ requireText("app/styles/touch-foundation.css", [
   "env(safe-area-inset-bottom)",
 ]);
 
-if (/(^|\\n)\\s*\\.pc-v6-login\\{display:none!important\\}/.test(readFileSync("app/styles/layout-authority.css", "utf8"))) {
-  throw new Error("Canonical layout must not suppress the Home login with a global mobile rule.");
+const layoutAuthority = readFileSync("app/styles/layout-authority.css", "utf8");
+if (/(^|\\n)\\s*\\.pc-v6-login\\{display:none!important\\}/.test(layoutAuthority)) {
+  throw new Error("Canonical layout must not globally suppress the public mobile login.");
+}
+if (!layoutAuthority.includes(".pc-v6-header .pc-v6-login{") || !layoutAuthority.includes("display:inline-flex!important")) {
+  throw new Error("Canonical layout must preserve the returning-user path on compact public headers.");
 }
 
 console.log("Canonical CSS/layout architecture PASS");

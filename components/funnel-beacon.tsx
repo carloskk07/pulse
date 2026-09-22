@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 type Props = {
-  event: "home_view" | "proof_view" | "signup_view";
+  event: "home_view" | "faucet_view" | "proof_view" | "signup_view";
   sourceOverride?: string;
 };
 

@@ -7,6 +7,7 @@ const surfacePaths = [
   "app/auth/page.tsx",
   "app/dashboard/page.tsx",
   "app/proof/page.tsx",
+  "app/faucet/page.tsx",
   "app/progress/page.tsx",
   "app/wallet/page.tsx",
   "app/invite/page.tsx",
@@ -46,6 +47,10 @@ const forbidden = [
   "Withdraw when you're ready",
   "Withdraw when you&apos;re ready",
   "Public access preparing",
+  "Treasury capacity",
+  "fair-share",
+  "Launch status",
+  "Controlled launch",
 ];
 
 for (const [path, source] of surfaces) {
@@ -71,6 +76,7 @@ const requiredBySurface = new Map([
     "Create your circuit",
   ]],
   ["app/proof/page.tsx", ["Live activity. Clear outcomes.", "How these numbers work"]],
+  ["app/faucet/page.tsx", ["Pulse status", "Everything else builds around it.", "Current availability", "Create free account"]],
   ["app/progress/page.tsx", ["See your rhythm take shape.", "Five ranks. One clear path."]],
   ["app/invite/page.tsx", ["Build a network that grows from real activity."]],
   ["app/earn/page.tsx", ["More ways to earn between Pulses."]],

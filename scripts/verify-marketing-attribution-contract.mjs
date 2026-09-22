@@ -5,6 +5,7 @@ const route = readFileSync("app/api/marketing/event/route.ts", "utf8");
 const actions = readFileSync("app/auth/actions.ts", "utf8");
 const link = readFileSync("components/funnel-link.tsx", "utf8");
 const migration = readFileSync("supabase/migrations/0073_attributed_marketing_funnel.sql", "utf8");
+const faucetMigration = readFileSync("supabase/migrations/0093_faucet_acquisition_telemetry.sql", "utf8");
 
 const required = [
   [funnel, '"cta_click"', "CTA event type"],
@@ -22,6 +23,9 @@ const required = [
   [migration, "join attributed_users a on a.user_id = w.user_id", "payout attribution join"],
   [migration, "marketing_funnel_events_user_attribution_check", "signup-only UUID constraint"],
   [migration, "marketing_funnel_events_event_label_check", "CTA-label constraint"],
+  [faucetMigration, "'faucet_view'::text", "dedicated Faucet page-view event"],
+  [faucetMigration, "faucet_sessions", "separate Faucet session aggregate"],
+  [faucetMigration, "security invoker", "invoker growth snapshot"],
 ];
 
 for (const [source, fragment, label] of required) {
@@ -34,6 +38,10 @@ const forbidden = [
   [migration, "insert into public.pulse_claims", "claim mutation"],
   [migration, "update public.withdrawals", "withdrawal mutation"],
   [migration, "insert into public.ledger_entries", "ledger mutation"],
+  [faucetMigration, "update public.reward_treasuries", "Faucet telemetry Treasury mutation"],
+  [faucetMigration, "insert into public.pulse_claims", "Faucet telemetry claim mutation"],
+  [faucetMigration, "update public.withdrawals", "Faucet telemetry withdrawal mutation"],
+  [faucetMigration, "insert into public.ledger_entries", "Faucet telemetry ledger mutation"],
 ];
 
 for (const [source, fragment, label] of forbidden) {
