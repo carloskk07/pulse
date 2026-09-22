@@ -105,6 +105,24 @@ forbidAll("supabase/migrations/0095_variable_reward_public_open_guard.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0096_variable_reward_pilot_execution.sql", [
+  "resolve_hourly_pulse_reward",
+  "variable_reward_model_valid",
+  "variable_reward_public_open_ready",
+  "v_pilot_mode",
+  "extensions.gen_random_bytes",
+  "v_sample < 60000",
+  "release_variable_reward_execution_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0096_variable_reward_pilot_execution.sql", [
+  "fund_reward_treasury(",
+  "pilot_mode = false",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 forbidAll("supabase/migrations/0086_variable_reward_budget_readiness.sql", [
   "'variable_reward_enabled', true",
   "'variable_reward_review_required', false",
