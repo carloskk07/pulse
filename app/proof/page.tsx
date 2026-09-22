@@ -38,7 +38,7 @@ export default async function ProofPage() {
           {proof.available && generatedAt ? <small>Updated {generatedAt}</small> : null}
         </div>
         <div className="pc-v10-proof-actions">
-          <FunnelLink className="button" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_hero_signup">Create free account <ArrowUpRight /></FunnelLink>
+          <FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_hero_signup">Create free account <ArrowUpRight /></FunnelLink>
           <Link className="inline-action" href="/rewards-policy">How rewards work</Link>
         </div>
       </section>
