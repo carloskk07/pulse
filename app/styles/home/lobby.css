@@ -217,7 +217,7 @@
   border-radius:50%;
   opacity:0;
   pointer-events:none;
-  box-shadow:0 0 28px color-mix(in srgb,var(--home-proof-signal) 46%,transparent);
+  box-shadow:0 0 28px var(--home-proof-signal);
 }
 
 .pc-home-core-stage.pc-home-proof-updated:after{
