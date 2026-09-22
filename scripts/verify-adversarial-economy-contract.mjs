@@ -80,7 +80,7 @@ requireAll("supabase/migrations/0094_variable_reward_launch_preparation.sql", [
   "variable_reward_enabled",
   "variable_reward_review_required",
   "release_variable_reward_budget_contract",
-  "canonical release schema remains v55/0055",
+  "Canonical release schema remains v55/0055",
 ]);
 
 forbidAll("supabase/migrations/0094_variable_reward_launch_preparation.sql", [
