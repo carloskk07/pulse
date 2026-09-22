@@ -55,11 +55,11 @@ export default async function EarnPage({ searchParams }: Props) {
     <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="app-page-head pc-luxe-turbo-head">
         <div>
-          <span className="app-eyebrow">Earn · optional</span>
-          <h1>More ways to earn between Pulses.</h1>
-          <p>Pulse stays at the center. Missions, verified actions, cashback and partner routes add value without blocking the hourly faucet.</p>
+          <span className="app-eyebrow">Extra rewards · optional</span>
+          <h1>More ways to earn between faucet claims.</h1>
+          <p>Compare tasks, verified actions, cashback and partner rewards by value and time. The hourly faucet remains separate and does not require any of them.</p>
         </div>
-        <div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
+        <div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
 
       <div className="pc-v10-turbo-criteria" aria-label="Earn ranking criteria">
@@ -82,14 +82,14 @@ export default async function EarnPage({ searchParams }: Props) {
           <div className="pc-turbo-orb" aria-hidden="true" />
 
           <div className="drop-card-main">
-            <h2>{best ? best.title : primaryChannel ? "Open the available extra-reward route." : "Nothing worth interrupting your Pulse for right now."}</h2>
+            <h2>{best ? best.title : primaryChannel ? "Open the available extra-reward route." : "No extra reward is worth your time right now."}</h2>
             <p>{best?.pulseProtected
               ? "This reward reserves funded capacity before you leave PulseCircuit."
               : best
                 ? "Ranked from reward, time and completion confidence."
                 : primaryChannel
                   ? "Use it only if you want an extra earning path."
-                  : "Return to Pulse. The base experience remains independent."}</p>
+                  : "Return to the hourly faucet. Extra rewards remain optional."}</p>
           </div>
 
           <div className="drop-card-foot">
