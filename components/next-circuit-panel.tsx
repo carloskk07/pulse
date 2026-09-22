@@ -5,8 +5,9 @@ import type { CircuitAchievement } from "@/lib/circuit-achievements";
 
 function remainingLabel(achievement: CircuitAchievement) {
   const remaining = Math.max(0, achievement.remaining);
+  const displayUnit = achievement.unit === "Pulse" ? "claim" : achievement.unit;
   const plural = remaining === 1 ? "" : "s";
-  return `${remaining} ${achievement.unit}${plural}`;
+  return `${remaining} ${displayUnit}${plural}`;
 }
 
 export function NextCircuitPanel({
@@ -39,24 +40,24 @@ export function NextCircuitPanel({
   const primary = !pulseFundingReady
     ? {
         eyebrow: "Standby",
-        title: "Your circuit is holding position.",
-        detail: "History stays intact until funded rewards return.",
-        action: "Check Pulse",
+        title: "Hourly rewards are paused.",
+        detail: "Your balance and history stay unchanged until rewards reopen.",
+        action: "Check rewards",
         icon: Shield,
       }
     : claimReady
       ? {
           eyebrow: "Ready now",
-          title: "Your funded Pulse is waiting.",
-          detail: `The ${claimIntervalMinutes}-minute rolling window is open.`,
-          action: "Claim Pulse",
+          title: "Your hourly reward is ready.",
+          detail: `Your ${claimIntervalMinutes}-minute reward window is open.`,
+          action: "Claim reward",
           icon: Spark,
         }
       : {
           eyebrow: "Next return",
-          title: "Your next Pulse is forming.",
-          detail: "The timer follows your last real claim.",
-          action: "Open Pulse",
+          title: "Your next claim is scheduled.",
+          detail: "The timer follows your last successful claim.",
+          action: "View rewards",
           icon: Trend,
         };
   const PrimaryIcon = primary.icon;
@@ -65,8 +66,8 @@ export function NextCircuitPanel({
     <section className="pc-next-circuit pc-luxe-next-move" aria-labelledby="next-circuit-title">
       <div className="pc-next-circuit-head">
         <div>
-          <span className="app-eyebrow">Next move</span>
-          <h2 id="next-circuit-title">Keep the climb obvious.</h2>
+          <span className="app-eyebrow">What&apos;s next</span>
+          <h2 id="next-circuit-title">One clear next action.</h2>
         </div>
       </div>
 
@@ -88,7 +89,7 @@ export function NextCircuitPanel({
 
         <div className="pc-next-secondary-stack">
           <article className="pc-next-secondary">
-            <div className="pc-next-secondary-label"><Check /> Next seal</div>
+            <div className="pc-next-secondary-label"><Check /> Next milestone</div>
             {nextAchievement ? (
               <>
                 <div className="pc-next-secondary-title"><strong>{nextAchievement.title}</strong><span>{remainingLabel(nextAchievement)} left</span></div>
@@ -104,7 +105,7 @@ export function NextCircuitPanel({
 
           <article className="pc-next-secondary">
             <div className="pc-next-secondary-label"><Spark /> Rank</div>
-            <div className="pc-next-secondary-title"><strong>{signalStage}</strong><span>{nextStageAt === null ? "top rank" : `${signalRemaining} Signal to rise`}</span></div>
+            <div className="pc-next-secondary-title"><strong>{signalStage}</strong><span>{nextStageAt === null ? "top rank" : `${signalRemaining} points to next rank`}</span></div>
             <div className="pc-next-progress"><span style={{ width: `${Math.max(0, Math.min(100, signal))}%` }} /></div>
           </article>
         </div>
