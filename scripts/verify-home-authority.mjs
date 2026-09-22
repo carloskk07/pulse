@@ -242,7 +242,7 @@ for (const fragment of [
   "getFaucetLaunchState()",
   'className="pc-v6 pc-home-lobby"',
   'className="pc-home-core"',
-  "No fake global countdown.",
+  "Your return window follows your own claim history",
   "<V6HeroProof initialProof={initialProof} />",
   "<V6FinalProof initialProof={initialProof} />",
 ]) {
