@@ -8,7 +8,7 @@ import { formatUsdFromCredits } from "@/lib/reward-state";
 import { getWalletState } from "@/lib/wallet-state";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
-export const metadata = { title: "Vault" };
+export const metadata = { title: "Balance & payout" };
 
 type Props = { searchParams: Promise<{ withdraw?: string }> };
 const withdrawalCopy: Record<string, string> = {
@@ -121,9 +121,9 @@ export default async function WalletPage({ searchParams }: Props) {
     <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="app-page-head pc-luxe-vault-head">
         <div>
-          <span className="app-eyebrow">Vault</span>
-          <h1>Your balance. Your next payout in view.</h1>
-          <p>See what is available, how close the target is, and what happens after withdrawal starts.</p>
+          <span className="app-eyebrow">Balance & payout</span>
+          <h1>Your money. Your next payout in view.</h1>
+          <p>See your available reward value, how close you are to payout, and what happens after a withdrawal starts.</p>
         </div>
       </div>
 
@@ -211,7 +211,7 @@ export default async function WalletPage({ searchParams }: Props) {
               </div>
             );
           }) : (
-            <div className="empty-ledger">{state.preview ? "Live activity appears after connection." : "Your first reward starts the history here."}</div>
+            <div className="empty-ledger">{state.preview ? "Live activity appears after connection." : "Your first verified reward starts the history here."}</div>
           )}
         </section>
 
