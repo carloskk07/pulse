@@ -9,6 +9,9 @@ export type FaucetLaunchState = {
   publicClaimsOpen: boolean;
   pilotMode: boolean;
   rewardCredits: number;
+  rewardVariable: boolean;
+  rewardMinCredits: number;
+  rewardMaxCredits: number;
   intervalMinutes: number;
   availableClaims: number;
   remainingDailyClaims: number;
@@ -30,6 +33,9 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       publicClaimsOpen: false,
       pilotMode: true,
       rewardCredits: 0,
+      rewardVariable: false,
+      rewardMinCredits: 0,
+      rewardMaxCredits: 0,
       intervalMinutes: 60,
       availableClaims: 0,
       remainingDailyClaims: 0,
@@ -41,16 +47,21 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
 
   const { data, error } = await admin
     .from("app_config")
-    .select("value")
-    .eq("key", "hourly_pulse")
-    .maybeSingle();
+    .select("key,value")
+    .in("key", ["hourly_pulse", "pulse_economy_v13"]);
 
-  if (error || !data?.value || typeof data.value !== "object") {
+  const pulseRow = data?.find((row) => row.key === "hourly_pulse");
+  const economyRow = data?.find((row) => row.key === "pulse_economy_v13");
+
+  if (error || !pulseRow?.value || typeof pulseRow.value !== "object") {
     return {
       available: false,
       publicClaimsOpen: false,
       pilotMode: true,
       rewardCredits: 0,
+      rewardVariable: false,
+      rewardMinCredits: 0,
+      rewardMaxCredits: 0,
       intervalMinutes: 60,
       availableClaims: 0,
       remainingDailyClaims: 0,
@@ -60,8 +71,22 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
     };
   }
 
-  const config = data.value as Record<string, unknown>;
+  const config = pulseRow.value as Record<string, unknown>;
+  const economy = economyRow?.value && typeof economyRow.value === "object"
+    ? economyRow.value as Record<string, unknown>
+    : {};
   const rewardCredits = Math.max(1, asInt(config.credits, 1));
+  const rewardBands = Array.isArray(economy.reward_bands)
+    ? economy.reward_bands.filter((band): band is Record<string, unknown> => Boolean(band) && typeof band === "object" && !Array.isArray(band))
+    : [];
+  const validBandCredits = rewardBands
+    .map((band) => asInt(band.credits, 0))
+    .filter((value) => value > 0);
+  const variableEnabled = ["true", "1", "yes", "on"].includes(String(economy.variable_reward_enabled ?? "false").toLowerCase());
+  const variableReviewRequired = !["false", "0", "no", "off"].includes(String(economy.variable_reward_review_required ?? "true").toLowerCase());
+  const rewardVariable = variableEnabled && !variableReviewRequired && validBandCredits.length > 0;
+  const rewardMinCredits = rewardVariable ? Math.min(...validBandCredits) : rewardCredits;
+  const rewardMaxCredits = rewardVariable ? Math.max(...validBandCredits) : rewardCredits;
   const intervalMinutes = Math.max(15, asInt(config.interval_minutes, 60));
   const treasuryCode = String(config.treasury_code ?? "launch");
   const pilotMode = ["true", "1", "yes", "on"].includes(String(config.pilot_mode ?? "false").toLowerCase());
@@ -77,6 +102,9 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
       publicClaimsOpen: false,
       pilotMode,
       rewardCredits,
+      rewardVariable,
+      rewardMinCredits,
+      rewardMaxCredits,
       intervalMinutes,
       availableClaims: 0,
       remainingDailyClaims: 0,
@@ -89,18 +117,22 @@ export async function getFaucetLaunchState(): Promise<FaucetLaunchState> {
   const fairShareReady = treasury.maxUserDailyCredits > 0
     && treasury.dailyBudgetCredits > 0
     && treasury.maxUserDailyCredits * 2 <= treasury.dailyBudgetCredits;
-  const availableClaims = Math.floor(treasury.availableCredits / rewardCredits);
-  const remainingDailyClaims = Math.floor(treasury.remainingDailyBudgetCredits / rewardCredits);
+  const budgetUnitCredits = rewardVariable ? rewardMaxCredits : rewardCredits;
+  const availableClaims = Math.floor(treasury.availableCredits / budgetUnitCredits);
+  const remainingDailyClaims = Math.floor(treasury.remainingDailyBudgetCredits / budgetUnitCredits);
   const treasuryReady = treasury.enabled
     && !treasury.killSwitch
-    && treasury.availableCredits >= rewardCredits
-    && treasury.remainingDailyBudgetCredits >= rewardCredits;
+    && treasury.availableCredits >= budgetUnitCredits
+    && treasury.remainingDailyBudgetCredits >= budgetUnitCredits;
 
   return {
     available: true,
     publicClaimsOpen: !pilotMode && backingReady && fairShareReady && treasuryReady,
     pilotMode,
     rewardCredits,
+    rewardVariable,
+    rewardMinCredits,
+    rewardMaxCredits,
     intervalMinutes,
     availableClaims,
     remainingDailyClaims,

@@ -1,6 +1,6 @@
 {
   "schema": "pulsercuit-legal-policy-bundle-v1",
-  "revision": "2026-09-22.1",
+  "revision": "2026-09-22.2",
   "files": [
     {
       "path": "app/terms/page.tsx",
@@ -16,7 +16,7 @@
     },
     {
       "path": "app/rewards-policy/page.tsx",
-      "gitBlobSha": "92914a1fc5a81df3b90514464ab541091330ac19"
+      "gitBlobSha": "b8b64653447ebd048ebe47a124fc14f48ba6b726"
     },
     {
       "path": "components/legal-operator-disclosure.tsx",

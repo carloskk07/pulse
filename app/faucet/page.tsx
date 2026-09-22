@@ -30,7 +30,11 @@ export default async function FaucetPage() {
     ? hours === 1 ? "every hour" : `every ${hours} hours`
     : `every ${launch.intervalMinutes} minutes`;
   const rewardCredits = Math.max(1, launch.rewardCredits || 1);
+  const rewardVariable = launch.rewardVariable;
   const rewardValue = formatUsdFromCredits(rewardCredits);
+  const rewardMinValue = formatUsdFromCredits(Math.max(1, launch.rewardMinCredits || rewardCredits));
+  const rewardMaxValue = formatUsdFromCredits(Math.max(1, launch.rewardMaxCredits || rewardCredits));
+  const rewardDisplay = rewardVariable ? `${rewardMinValue}–${rewardMaxValue}` : rewardValue;
   const payout = getFaucetPayPackConfig();
   const payoutAsset = payout.asset || "USDT";
 
@@ -42,10 +46,10 @@ export default async function FaucetPage() {
       <section className="pc-faucet-hero shell">
         <div className="pc-faucet-copy">
           <div className="eyebrow"><span className="live-dot" /> Free crypto faucet</div>
-          <h1>{launch.publicClaimsOpen ? <>Earn crypto <em>every hour.</em></> : <>A clearer way to <em>earn free crypto.</em></>}</h1>
+          <h1>{rewardVariable ? <>Claim every hour. <em>Reveal your reward.</em></> : launch.publicClaimsOpen ? <>Earn crypto <em>every hour.</em></> : <>A clearer way to <em>earn free crypto.</em></>}</h1>
           <p>
-            The current faucet reward is <strong>{rewardValue}</strong> per eligible claim. Your balance is shown in
-            real-dollar value, your next claim time stays visible, and payouts use {payoutAsset} through FaucetPay.
+            {rewardVariable ? <>The live faucet range is <strong>{rewardDisplay}</strong>. Each eligible claim reveals one value from that published range.</> : <>The current live rule is <strong>{rewardDisplay}</strong> per eligible claim, but Pulsercuit is not tied to one permanent prize amount.</>}
+            {" "}Your balance stays visible in money terms, and payouts use {payoutAsset} through FaucetPay.
           </p>
 
           <div className="hero-actions">
@@ -58,7 +62,7 @@ export default async function FaucetPage() {
           </div>
 
           <div className="pc-faucet-trust">
-            <span><Check /> Reward value shown in dollars</span>
+            <span><Check /> {rewardVariable ? "Live reward range shown before claim" : "Current reward rule shown before claim"}</span>
             <span><Wallet /> {payoutAsset} through FaucetPay</span>
             <span><Shield /> No purchase required</span>
           </div>
@@ -66,21 +70,21 @@ export default async function FaucetPage() {
 
         <aside className={"pc-faucet-live-card " + (launch.publicClaimsOpen ? "is-open" : "is-limited")}>
           <div className="pc-faucet-live-head">
-            <span>Current faucet reward</span>
+            <span>{rewardVariable ? "Live reward range" : "Current reward rule"}</span>
             <i />
           </div>
           <PulseCoreVisual
             state={launch.publicClaimsOpen ? "ready" : "limited"}
-            eyebrow="Per eligible claim"
-            caption={`${payoutAsset} value · returns ${intervalLabel}`}
+            eyebrow={rewardVariable ? "Variable reward draw" : "Per eligible claim"}
+            caption={rewardVariable ? `Published range · returns ${intervalLabel}` : `${payoutAsset} value · returns ${intervalLabel}`}
           >
-            <span className="pulse-core-word pc-faucet-money-value">+{rewardValue}</span>
+            <span className="pulse-core-word pc-faucet-money-value">+{rewardDisplay}</span>
           </PulseCoreVisual>
           <div className="pc-faucet-live-foot">
             {launch.publicClaimsOpen ? (
               <>
                 <b>CLAIMING OPEN</b>
-                <span>Sign in to see your personal timer and claim the current reward.</span>
+                <span>{rewardVariable ? "Sign in to see your timer and reveal the reward for this claim." : "Sign in to see your timer and claim under the current live rule."}</span>
               </>
             ) : (
               <>
@@ -105,7 +109,7 @@ export default async function FaucetPage() {
           <h2>A faucet should make the reward obvious.</h2>
         </div>
         <div className="pc-faucet-difference-grid">
-          <article><strong>Real value first</strong><p>The configured reward value is shown in dollars, while the payout asset and route stay clear.</p></article>
+          <article><strong>Not one permanent prize</strong><p>Pulsercuit can publish variable reward bands. When variable mode is active, each eligible claim is resolved from the live range shown before claiming.</p></article>
           <article><strong>Optional earning paths</strong><p>The hourly faucet stays central. Higher-value tasks and partner rewards are separate choices, not a wall before your claim.</p></article>
           <article><strong>Public payout evidence</strong><p>The Proof Center separates credited rewards from completed withdrawals instead of blending both into one marketing number.</p></article>
         </div>
