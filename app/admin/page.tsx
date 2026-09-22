@@ -10,7 +10,7 @@ import { getFaucetPayListingReadiness } from "@/lib/faucetpay-listing-readiness"
 import { getFaucetLaunchRunway } from "@/lib/faucet-launch-runway";
 import { getHourlyValueSnapshot } from "@/lib/hourly-value";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { getTreasurySnapshot } from "@/lib/treasury";
 
 export const metadata = { title: "Operations" };
@@ -35,10 +35,6 @@ type Snapshot = {
   providers?: ProviderRow[];
 };
 
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
-
 function moneyFromMicros(value: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(value / 1_000_000);
 }
@@ -58,11 +54,9 @@ function badgeClass(state: string) {
 }
 
 export default async function AdminEconomicsPage() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin");
+  if (adminAccess.status !== "authorized") notFound();
 
   const [launchReadiness, treasuries, direct, ads, faucet, faucetListing, faucetRunway, hourlyValue] = await Promise.all([
     getProductLaunchReadiness(),

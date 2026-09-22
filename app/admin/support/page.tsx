@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { updateSupportCase } from "./actions";
 
 export const metadata = { title: "Support Ops" };
@@ -11,17 +11,11 @@ type Props = { searchParams: Promise<{ state?: string }> };
 
 type CaseRow = { id: string; email: string; category: string; subject: string; message: string; status: string; created_at: string; updated_at: string };
 
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
-
 export default async function AdminSupportPage({ searchParams }: Props) {
   const params = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/support");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/support");
+  if (adminAccess.status !== "authorized") notFound();
 
   const admin = createSupabaseAdminClient();
   const { data } = admin ? await admin.from("support_cases").select("id,email,category,subject,message,status,created_at,updated_at").order("created_at", { ascending: false }).limit(80) : { data: [] };

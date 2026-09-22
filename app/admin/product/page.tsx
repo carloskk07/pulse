@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
 import { getFaucetContinuousLaunchPlan } from "@/lib/faucet-continuous-launch";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { fundLaunchTreasury, verifyPasswordBreachProtection } from "./actions";
 
@@ -12,16 +12,10 @@ export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ security?: string; funding?: string }> };
 
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
-
 export default async function ProductReadinessPage({ searchParams }: Props) {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/product");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/product");
+  if (adminAccess.status !== "authorized") notFound();
 
   const [readiness, launchTreasury, continuousLaunch, params] = await Promise.all([
     getProductLaunchReadiness(),

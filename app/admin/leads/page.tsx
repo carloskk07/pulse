@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getBusinessLeadSnapshot } from "@/lib/business-leads";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { updateBusinessLead } from "./actions";
 
 export const metadata = { title: "Business Leads" };
@@ -14,10 +14,6 @@ const stateCopy: Record<string, string> = {
   invalid: "The lead status, date or note was invalid.",
   unavailable: "Lead storage is temporarily unavailable. No change was recorded.",
 };
-
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
 
 function objectiveLabel(value: string) {
   return ({
@@ -57,11 +53,9 @@ function datetimeLocalUtc(value: string | null) {
 
 export default async function BusinessLeadsPage({ searchParams }: Props) {
   const params = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/leads");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/leads");
+  if (adminAccess.status !== "authorized") notFound();
 
   const leads = await getBusinessLeadSnapshot();
 

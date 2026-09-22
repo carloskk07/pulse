@@ -4,24 +4,19 @@ import { redirect } from "next/navigation";
 import { probePwnedPasswordProtection } from "@/lib/pwned-passwords";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getFaucetPayBalanceReadOnly } from "@/providers/faucetpay-read";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
-
 async function requireAdmin() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) redirect("/auth?next=/admin/product");
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/product");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) redirect("/dashboard");
-  return user;
+  const access = await getAdminAccess();
+  if (access.status === "unauthenticated") redirect("/auth?next=/admin/product");
+  if (access.status === "unavailable") redirect("/auth?next=/admin/product");
+  if (access.status !== "authorized") redirect("/dashboard");
+  return access.user;
 }
 
 export async function verifyPasswordBreachProtection() {

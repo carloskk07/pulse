@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Shield } from "@/components/icons";
 import { formatUsdMicros, getPulseAdsAdminSnapshot } from "@/lib/pulse-ads";
 import { getAdvertiserDemandSnapshot } from "@/lib/advertiser-demand";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { reviewPulseAd } from "./actions";
 
 export const metadata = { title: "Pulse Ads Operations" };
@@ -12,21 +12,14 @@ export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ state?: string }> };
 
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
-}
-
 function percent(numerator: number, denominator: number) {
   return denominator > 0 ? ((numerator / denominator) * 100).toFixed(1) + "%" : "—";
 }
 
 export default async function AdsAdminPage({ searchParams }: Props) {
-  const [supabase, params] = await Promise.all([createSupabaseServerClient(), searchParams]);
-  if (!supabase) notFound();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/ads");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const [adminAccess, params] = await Promise.all([getAdminAccess(), searchParams]);
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/ads");
+  if (adminAccess.status !== "authorized") notFound();
 
   const [ads, demand] = await Promise.all([getPulseAdsAdminSnapshot(), getAdvertiserDemandSnapshot()]);
 

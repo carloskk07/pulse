@@ -3,26 +3,19 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight } from "@/components/icons";
 import { getRetentionFunnel } from "@/lib/retention-attribution";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 
 export const metadata = { title: "Return Intelligence" };
 export const dynamic = "force-dynamic";
-
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
 
 function percent(value: number) {
   return `${value.toFixed(1)}%`;
 }
 
 export default async function RetentionAdminPage() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/retention");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/retention");
+  if (adminAccess.status !== "authorized") notFound();
 
   const funnel = await getRetentionFunnel(30);
 

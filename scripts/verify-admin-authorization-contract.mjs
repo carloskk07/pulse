@@ -1,0 +1,44 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+const root = process.cwd();
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+async function collectSourceFiles(directory) {
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await collectSourceFiles(target));
+    } else if (/\.(ts|tsx)$/.test(entry.name)) {
+      files.push(target);
+    }
+  }
+  return files;
+}
+
+const helperPath = path.join(root, "lib", "admin-authorization.ts");
+const helper = await fs.readFile(helperPath, "utf8");
+
+assert(helper.includes('import "server-only";'), "Admin authorization must remain server-only.");
+assert(helper.includes("supabase.auth.getUser()"), "Admin authorization must validate a fresh Auth user.");
+assert(helper.includes('.from("admin_users")'), "Admin authorization must use the database allowlist.");
+assert(helper.includes("createSupabaseAdminClient"), "Admin allowlist lookup must use trusted server authority.");
+
+const adminFiles = await collectSourceFiles(path.join(root, "app", "admin"));
+for (const file of adminFiles) {
+  const source = await fs.readFile(file, "utf8");
+  assert(!source.includes("ADMIN_EMAILS"), `Legacy ADMIN_EMAILS authority returned in ${path.relative(root, file)}`);
+  assert(!source.includes("adminEmails("), `Local email allowlist returned in ${path.relative(root, file)}`);
+}
+
+const adminClient = await fs.readFile(path.join(root, "lib", "supabase", "admin.ts"), "utf8");
+const serverClient = await fs.readFile(path.join(root, "lib", "supabase", "server.ts"), "utf8");
+assert(adminClient.includes('import "server-only";'), "Service-role Supabase client must remain server-only.");
+assert(serverClient.includes('import "server-only";'), "SSR Supabase server client must remain server-only.");
+
+console.log(`Admin authorization contract OK (${adminFiles.length} admin source files checked).`);

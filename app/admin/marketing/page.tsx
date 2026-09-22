@@ -3,14 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight } from "@/components/icons";
 import { getMarketingFunnelSnapshot } from "@/lib/marketing-funnel";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 
 export const metadata = { title: "Growth Funnel" };
 export const dynamic = "force-dynamic";
-
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
 
 function rate(numerator: number, denominator: number) {
   return denominator > 0 ? (numerator / denominator) * 100 : 0;
@@ -21,12 +17,9 @@ function percent(numerator: number, denominator: number) {
 }
 
 export default async function MarketingAdminPage() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/marketing");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/marketing");
+  if (adminAccess.status !== "authorized") notFound();
 
   const funnel = await getMarketingFunnelSnapshot(30);
 
