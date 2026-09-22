@@ -170,7 +170,7 @@ requireAll("components/network-depth-panel.tsx", [
 ]);
 
 requireAll("components/withdrawal-pass-panel.tsx", [
-  "Withdrawal Pass",
+  "Withdrawal access",
   "free withdrawal",
   "extraWithdrawalsEnabled",
 ]);
@@ -201,12 +201,12 @@ requireAll("lib/reward-state.ts", [
 ]);
 
 requireAll("app/dashboard/page.tsx", [
-  'state.claimRewardVariable ? "Reveal Pulse"',
+  'state.claimRewardVariable ? "Reveal reward"',
 ]);
 
 requireAll("components/app-shell.tsx", [
   'label: "Earn"',
-  'label: "Network"',
+  'label: "Referrals"',
 ]);
 
 const dashboard = read("app/dashboard/page.tsx");
