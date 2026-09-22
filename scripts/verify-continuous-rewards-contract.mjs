@@ -152,9 +152,9 @@ requireAll("lib/pulse-ecosystem.ts", [
 ]);
 
 requireAll("components/continuous-pulse-panel.tsx", [
-  "Every hour can open another Pulse.",
-  "Up to 24/day",
-  "global funding and fraud controls",
+  "Every hour can open another reward.",
+  "24/day available",
+  "There is no artificial daily claim cap.",
 ]);
 
 requireAll("components/continuous-earn-hub.tsx", [
@@ -165,8 +165,8 @@ requireAll("components/continuous-earn-hub.tsx", [
 ]);
 
 requireAll("components/network-depth-panel.tsx", [
-  "Three levels. Real activity only.",
-  "Commission engine",
+  "Three levels of referral activity.",
+  "Referral rewards",
 ]);
 
 requireAll("components/withdrawal-pass-panel.tsx", [
