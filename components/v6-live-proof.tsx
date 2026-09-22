@@ -193,13 +193,21 @@ export function V6RecentActivity({ initialProof }: V6ProofProps) {
   const recent = proof.recentActivity.slice(0, 3);
 
   return (
-    <div className="pc-home-activity-list" aria-live="polite">
+    <div
+      className="pc-home-activity-list"
+      aria-live="polite"
+      data-proof-source="server-bootstrap"
+      data-proof-available={proof.available ? "true" : "false"}
+      data-proof-member-count={proof.available ? proof.memberCount : undefined}
+      data-proof-reward-event-count={proof.available ? proof.rewardEventCount : undefined}
+      data-proof-paid-withdrawal-count={proof.available ? proof.paidWithdrawalCount : undefined}
+    >
       {recent.length ? recent.map((item, index) => (
         <div key={`${item.occurredAt}-${index}`}>
           <span className="pc-home-activity-pulse" aria-hidden="true" />
           <p>
             <strong>{item.label}</strong>
-            <small>{item.credits > 0 ? `+${item.credits} P` : "Verified"}</small>
+            <small>{item.credits > 0 ? "Verified reward" : "Verified"}</small>
           </p>
         </div>
       )) : (
