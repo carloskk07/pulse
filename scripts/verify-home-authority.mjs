@@ -287,7 +287,9 @@ for (const fragment of [
   "PUBLIC_PROOF_POLL_MS = 60_000",
   'document.visibilityState !== "visible"',
   "cachedProof ?? EMPTY_PROOF",
-  "announceProofUpdate(previous, proof)",
+  "usableRuntimeProof(payload)",
+  "lastRefreshAttemptAt = Date.now()",
+  "announceProofUpdate(previous, payload)",
   "positiveDelta(next.rewardEventCount, previous.rewardEventCount)",
   "export function V6RecentActivity",
 ]) {
@@ -297,6 +299,9 @@ for (const fragment of [
 }
 if (liveProof.includes("if (cachedProof) return Promise.resolve(cachedProof);")) {
   throw new Error("Live proof must refresh authoritative runtime data even when bootstrapped.");
+}
+if (liveProof.includes("cachedProof = proof") || liveProof.includes("cachedProof = EMPTY_PROOF")) {
+  throw new Error("Unavailable or unvalidated runtime proof must not replace the last valid snapshot.");
 }
 
 const proofEvents = read("lib/public-proof-events.ts");

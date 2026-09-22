@@ -23,7 +23,7 @@ const PUBLIC_PROOF_POLL_MS = 60_000;
 
 let cachedProof: PublicSocialProof | null = null;
 let pendingProof: Promise<PublicSocialProof> | null = null;
-let lastRefreshAt = 0;
+let lastRefreshAttemptAt = 0;
 
 type V6ProofProps = {
   initialProof: PublicSocialProof;
@@ -35,6 +35,35 @@ function count(value: number, available: boolean) {
 
 function countLabel(value: number, available: boolean, singular: string, plural: string) {
   return available && value === 1 ? singular : plural;
+}
+
+function usableRuntimeProof(value: unknown): value is PublicSocialProof {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const proof = value as Partial<PublicSocialProof>;
+
+  if (
+    proof.available !== true
+    || (proof.stage !== "early" && proof.stage !== "growing" && proof.stage !== "established")
+    || !Number.isSafeInteger(proof.memberCount)
+    || Number(proof.memberCount) < 0
+    || !Number.isSafeInteger(proof.rewardEventCount)
+    || Number(proof.rewardEventCount) < 0
+    || !Number.isSafeInteger(proof.paidWithdrawalCount)
+    || Number(proof.paidWithdrawalCount) < 0
+    || !Array.isArray(proof.recentActivity)
+  ) {
+    return false;
+  }
+
+  return proof.recentActivity.every((item) => (
+    item
+    && typeof item === "object"
+    && typeof item.label === "string"
+    && typeof item.credits === "number"
+    && Number.isFinite(item.credits)
+    && item.credits >= 0
+    && typeof item.occurredAt === "string"
+  ));
 }
 
 function positiveDelta(next: number, previous: number) {
@@ -74,11 +103,13 @@ function refreshPublicProof() {
 
   if (
     cachedProof
-    && lastRefreshAt > 0
-    && Date.now() - lastRefreshAt < PUBLIC_PROOF_REFRESH_FLOOR_MS
+    && lastRefreshAttemptAt > 0
+    && Date.now() - lastRefreshAttemptAt < PUBLIC_PROOF_REFRESH_FLOOR_MS
   ) {
     return Promise.resolve(cachedProof);
   }
+
+  lastRefreshAttemptAt = Date.now();
 
   pendingProof = fetch("/api/public/social-proof", {
     method: "GET",
@@ -87,12 +118,13 @@ function refreshPublicProof() {
     .then(async (response) => {
       if (!response.ok) return cachedProof ?? EMPTY_PROOF;
 
-      const proof = (await response.json()) as PublicSocialProof;
+      const payload: unknown = await response.json();
+      if (!usableRuntimeProof(payload)) return cachedProof ?? EMPTY_PROOF;
+
       const previous = cachedProof;
-      cachedProof = proof;
-      lastRefreshAt = Date.now();
-      announceProofUpdate(previous, proof);
-      return proof;
+      cachedProof = payload;
+      announceProofUpdate(previous, payload);
+      return payload;
     })
     .catch(() => {
       console.error("[v6-proof] runtime refresh failed");
