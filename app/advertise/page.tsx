@@ -60,25 +60,25 @@ export default async function AdvertisePage({ searchParams }: Props) {
       <div className="pc-ads-page">
         <header className="pc-ads-hero">
           <div>
-            <span className="app-eyebrow">Pulse Ads · sponsored</span>
-            <h1>Put something worth seeing <em>inside the circuit.</em></h1>
-            <p>Create a native sponsored placement with a fixed budget. Pulsercuit reviews it first, then FaucetPay handles funding. Claims stay separate and users are never paid to click.</p>
+            <span className="app-eyebrow">Pulsercuit Ads · qualified traffic</span>
+            <h1>Reach crypto earners. <em>Pay for qualified clicks.</em></h1>
+            <p>Start from $5 at the current $0.05 launch rate. Pulsercuit reviews the destination first, FaucetPay handles funding, reward claims stay separate from advertising, and users are never paid to click.</p>
             <div className="pc-ads-principles" aria-label="Pulse Ads principles">
-              <span><Check /> After the claim</span>
-              <span><Shield /> Prepaid budget</span>
+              <span><Check /> Native placement after the claim</span>
+              <span><Shield /> Prepaid, capped budget</span>
               <span><Trend /> One billable click per user/day</span>
             </div>
             <div className="pc-ads-hero-actions">
               <Link className="button button-light" href={user ? "#campaign-builder" : "#launch-interest"}>
-                {user ? "Create a campaign" : "Describe a small test"} <ArrowUpRight />
+                {user ? "Create a campaign" : "Plan a $5 test"} <ArrowUpRight />
               </Link>
               <Link className="button button-secondary" href="/business">Need verified actions?</Link>
             </div>
           </div>
           <aside className="pc-ads-economics">
-            <span>Starting budget</span>
+            <span>Start testing from</span>
             <strong>$5</strong>
-            <small>Current launch price · $0.05 per qualified click</small>
+            <small>$0.05 per qualified click at the current launch rate</small>
             <div><b>100</b><span>maximum billable clicks from a $5 campaign</span></div>
           </aside>
         </header>
@@ -214,8 +214,8 @@ export default async function AdvertisePage({ searchParams }: Props) {
         )}
 
         <section className="pc-ads-boundary">
-          <div><span className="app-eyebrow">Faucet-first rule</span><h2>Advertising funds the ecosystem. It does not get in the way of the faucet.</h2></div>
-          <p>Sponsored placements live after successful Pulse activity. The core claim remains a direct reward action, while Pulse Direct remains the higher-value path for advertisers that want verified outcomes instead of traffic.</p>
+          <div><span className="app-eyebrow">Faucet-first rule</span><h2>Ads appear after the reward, not in front of it.</h2></div>
+          <p>Sponsored placements appear after successful reward activity. The faucet claim stays direct, while verified-action campaigns remain a separate path for advertisers that need outcomes instead of traffic.</p>
         </section>
       </div>
     </AppShell>
