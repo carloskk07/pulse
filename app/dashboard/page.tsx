@@ -12,12 +12,12 @@ import { getCurrentUserContext } from "@/lib/current-user-context";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
-export const metadata = { title: "Pulse" };
+export const metadata = { title: "Rewards" };
 
 type Props = { searchParams: Promise<{ claim?: string }> };
 
 const claimCopy: Record<string, string> = {
-  success: "Pulse secured. Your balance and progress were updated.",
+  success: "Reward claimed. Your balance and progress were updated.",
   "not-ready": "Your next Pulse is not ready yet.",
   "budget-paused": "Pulse is temporarily unavailable. Your balance did not change.",
   "backing-refreshing": "Pulse backing is refreshing. Your balance did not change; try again in a moment.",
@@ -70,8 +70,8 @@ export default async function DashboardPage({ searchParams }: Props) {
       ? "Rewards paused"
       : state.claimReady
         ? state.claimRewardVariable
-          ? `Reveal ${state.claimRewardMinCredits}–${state.claimRewardMaxCredits} P`
-          : `+${state.claimRewardCredits} P available`
+          ? `${formatUsdFromCredits(state.claimRewardMinCredits)}–${formatUsdFromCredits(state.claimRewardMaxCredits)} reward`
+          : `${formatUsdFromCredits(state.claimRewardCredits)} available`
         : "Next window";
   const payoutTargetLabel = payout.ready && payout.display ? payout.display : "Target preparing";
 
@@ -80,15 +80,15 @@ export default async function DashboardPage({ searchParams }: Props) {
       <div className="pc-v9-dashboard">
         <div className="app-page-head pulse-page-head pc-luxe-dashboard-head pc-v9-head">
           <div className="pc-v9-head-copy">
-            <div className="pulse-line">Your circuit</div>
-            <h1>{state.signedIn ? <>Know the <em>next move.</em></> : "Start with one Pulse."}</h1>
+            <div className="pulse-line">Your rewards</div>
+            <h1>{state.signedIn ? <>Know what you can <em>earn next.</em></> : "Start earning free crypto."}</h1>
             <p>{state.signedIn
-              ? "Your Pulse, Vault and progress stay focused on what matters now."
-              : "Sign in to see your Pulse, progress and Vault."}</p>
+              ? "Your next reward, balance and payout progress stay visible in one place."
+              : "Sign in to see your reward timing, balance and payout progress."}</p>
           </div>
 
           <Link href="/wallet" className="balance-chip balance-chip-v2 pc-luxe-vault-chip pc-v9-vault-chip" aria-label="Open Vault">
-            <div className="pc-v9-vault-chip-head"><small>Vault</small><span>{vaultPercent}%</span></div>
+            <div className="pc-v9-vault-chip-head"><small>Balance</small><span>{vaultPercent}%</span></div>
             <strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong>
             {!state.preview ? <span>{away === null ? payoutTargetLabel : away <= 0 ? "Payout target reached" : `${formatUsdFromCredits(away)} to payout`}</span> : null}
             <div className="pc-v9-vault-mini-track" aria-hidden="true"><i style={{ width: `${state.preview ? 0 : vaultPercent}%` }} /></div>
@@ -118,14 +118,14 @@ export default async function DashboardPage({ searchParams }: Props) {
                 <form action="/api/pulse/claim" method="post" className="claim-form">
                   <TurnstileField action="hourly_pulse" />
                   <button className="button button-light pulse-claim-button pc-luxe-claim pc-v9-primary-cta" type="submit">
-                    {state.claimRewardVariable ? "Reveal Pulse" : `Claim +${state.claimRewardCredits} P`} <ArrowUpRight />
+                    {state.claimRewardVariable ? "Reveal reward" : `Claim ${formatUsdFromCredits(state.claimRewardCredits)}`} <ArrowUpRight />
                   </button>
                 </form>
               ) : state.claimReady ? (
-                <button className="button button-light pulse-claim-button" disabled>Pulse temporarily unavailable</button>
+                <button className="button button-light pulse-claim-button" disabled>Reward temporarily unavailable</button>
               ) : (
                 <div className="pc-next-action-row">
-                  <button className="button button-light pulse-claim-button" disabled>Waiting for next Pulse</button>
+                  <button className="button button-light pulse-claim-button" disabled>Waiting for next claim</button>
                   {canScheduleReturn ? (
                     <form action="/api/return-reminder" method="post">
                       <button className="button button-secondary" type="submit">Set reminder</button>
@@ -136,7 +136,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             </div>
 
             <div className="pulse-core-panel pc-luxe-core-panel pc-v9-core-panel" aria-label="Live Pulse state">
-              <PulseCoreVisual state={visualState} eyebrow="Pulse" caption={pulseCaption}>
+              <PulseCoreVisual state={visualState} eyebrow="Hourly reward" caption={pulseCaption}>
                 {state.pulseFundingReady && !state.claimReady
                   ? <PulseCountdown target={state.nextClaimAt} />
                   : <span className="pulse-core-word">{state.claimReady && state.pulseFundingReady ? "READY" : "STANDBY"}</span>}
@@ -144,7 +144,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               {!state.preview && state.signedIn ? (
                 <div className="pulse-core-meta">
                   <div className="pulse-trust-mini"><Shield /><span>{signal.stage}</span><b>Signal {signal.signal}/100</b></div>
-                  <small className="pulse-rhythm-label">{state.streakDays > 0 ? `${state.streakDays}-day rhythm` : "First Pulse starts your rhythm"}</small>
+                  <small className="pulse-rhythm-label">{state.streakDays > 0 ? `${state.streakDays}-day return streak` : "Your first claim starts your progress"}</small>
                 </div>
               ) : null}
             </div>
@@ -164,14 +164,14 @@ export default async function DashboardPage({ searchParams }: Props) {
           <div className="app-section-head">
             <div>
               <span className="app-eyebrow">Your progress</span>
-              <h2>Your circuit at a glance.</h2>
-              <p className="pc-v9-section-sub">Momentum, Vault and Invite stay visible without crowding your next Pulse.</p>
+              <h2>Your account at a glance.</h2>
+              <p className="pc-v9-section-sub">Progress, balance and referrals stay visible without crowding your next reward.</p>
             </div>
           </div>
 
           <div className="pc-v9-progress-deck">
             <article className="pc-v9-progress-card signal-card">
-              <span className="app-eyebrow">Momentum</span>
+              <span className="app-eyebrow">Progress</span>
               <div className="pc-v9-progress-value"><strong>{state.preview ? "—" : signal.signal}</strong><span>/100</span></div>
               <h3>{state.preview ? "Waiting for live history" : signal.stage}</h3>
               <p>{state.preview ? "Your live progress appears after connection." : `${state.streakDays}-day rhythm · ${state.hourlyClaimCount} funded Pulse${state.hourlyClaimCount === 1 ? "" : "s"}`}</p>
@@ -179,7 +179,7 @@ export default async function DashboardPage({ searchParams }: Props) {
             </article>
 
             <article className="pc-v9-progress-card vault-card">
-              <span className="app-eyebrow">Vault</span>
+              <span className="app-eyebrow">Balance</span>
               <div className="pc-v9-progress-value"><strong>{state.preview ? "—" : `${vaultPercent}%`}</strong></div>
               <h3>{state.preview ? "Live after sign-in" : formatUsdFromCredits(state.availableCredits)}</h3>
               <p>{state.preview || away === null
@@ -191,10 +191,10 @@ export default async function DashboardPage({ searchParams }: Props) {
             </article>
 
             <article className="pc-v9-progress-card unlock-card">
-              <span className="app-eyebrow">Network</span>
+              <span className="app-eyebrow">Referrals</span>
               <div className="pc-v9-unlock-mark"><Users /></div>
-              <h3>Grow a real network.</h3>
-              <p>Each verified connection can extend your network without changing anyone else&apos;s reward.</p>
+              <h3>Earn through real referrals.</h3>
+              <p>Referral rewards, when active, are tied to verified eligible activity and shown before you share.</p>
               <Link href="/invite">Open Network <ArrowUpRight /></Link>
             </article>
           </div>
@@ -215,15 +215,15 @@ export default async function DashboardPage({ searchParams }: Props) {
             <div className="invite-icon">{liveTurboRoute ? <Bolt /> : <Shield />}</div>
             <div>
               <span className="app-eyebrow">Optional</span>
-              <h3>Turbo stays optional.</h3>
-              <p>{liveTurboRoute ? "Use extra reward routes only when they are worth your time." : "Your core Pulse works without extra offers."}</p>
+              <h3>Extra rewards stay optional.</h3>
+              <p>{liveTurboRoute ? "Choose extra reward routes only when the value is worth your time." : "The hourly faucet does not require extra offers."}</p>
             </div>
             <Link href="/earn" className="icon-button" aria-label="Open extra rewards"><ArrowUpRight /></Link>
           </article>
 
           <article className="progress-card pc-luxe-vault-progress">
             <div className="app-eyebrow">Proof</div>
-            <h3>See what the circuit has done.</h3>
+            <h3>See what has actually been credited and paid.</h3>
             <p>Claims and completed payouts are visible on the public Proof page.</p>
             <Link href="/proof" className="inline-action"><Shield /> View live proof</Link>
           </article>
