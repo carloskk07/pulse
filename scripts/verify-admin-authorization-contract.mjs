@@ -14,7 +14,7 @@ async function collectSourceFiles(directory) {
     const target = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       files.push(...await collectSourceFiles(target));
-    } else if (/\.(ts|tsx)$/.test(entry.name)) {
+    } else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) {
       files.push(target);
     }
   }
