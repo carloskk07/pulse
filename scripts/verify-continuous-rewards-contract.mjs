@@ -159,9 +159,9 @@ requireAll("components/continuous-pulse-panel.tsx", [
 
 requireAll("components/continuous-earn-hub.tsx", [
   "Cashback",
-  "Network",
-  "XP measures verified participation",
-  "Reversed purchases never become spendable rewards",
+  "Referrals",
+  "XP tracks account progress",
+  "eligible partner purchases can return part of the confirmed value"
 ]);
 
 requireAll("components/network-depth-panel.tsx", [
