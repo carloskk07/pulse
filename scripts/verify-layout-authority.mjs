@@ -281,6 +281,23 @@ requireText("components/pulse-core-visual.tsx", [
   'className="pulse-core-readout"',
   '"limited"',
 ]);
+requireText("components/site-footer.tsx", [
+  'className={footerClass}',
+  '"pc-v6-footer"',
+  '"pc-public-footer"',
+  'aria-label="Public footer"',
+  '<Link href="/">Home</Link>',
+  '<Link href="/faucet">Faucet</Link>',
+  '<Link href="/proof">Proof</Link>',
+  '<Link href="/business">Business</Link>',
+  '<Link href="/support">Help</Link>',
+  '<Link href="/privacy">Privacy</Link>',
+  '<Link href="/terms">Terms</Link>',
+]);
+requireText("app/page.tsx", ['<SiteFooter className="pc-home-footer" />']);
+requireText("app/faucet/page.tsx", ["<SiteFooter />"]);
+requireText("app/proof/page.tsx", ["<SiteFooter />"]);
+
 requireText("components/site-header.tsx", [
   'export function SiteHeader({ overlay = false }',
   'overlay ? "is-overlay" : "is-flow"',
@@ -325,6 +342,13 @@ requireText("app/styles/touch-foundation.css", [
   ".bottom-nav-menu{",
   "env(safe-area-inset-bottom)",
 ]);
+
+for (const path of ["app/page.tsx", "app/faucet/page.tsx", "app/proof/page.tsx"]) {
+  const source = read(path);
+  if (source.includes("<footer")) {
+    throw new Error(`${path} must use SiteFooter instead of a page-local footer implementation.`);
+  }
+}
 
 const proofPage = read("app/proof/page.tsx");
 if (!proofPage.includes('className="proof-principles-grid"')) {
