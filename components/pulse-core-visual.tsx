@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type PulseCoreState = "paused" | "ready" | "charging" | "preview";
+type PulseCoreState = "paused" | "ready" | "charging" | "preview" | "limited";
 
 export function PulseCoreVisual({
   state,
