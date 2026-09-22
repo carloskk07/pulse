@@ -241,7 +241,7 @@ requireText("app/not-found.tsx", [
 requireText("app/loading.tsx", [
   'className="system-state-page"',
   'className="system-state-progress"',
-  "Syncing your circuit.",
+  "Loading your account.",
 ]);
 requireText("app/error.tsx", [
   'className="system-state-page"',
