@@ -261,8 +261,8 @@ requireText("app/dashboard/claimed/page.tsx", [
   'className="pc-v8-vault-orbit"',
   'className="pc-v8-orbit-ring"',
   'className="pc-v8-orbit-core"',
-  'Vault updated',
-  'this Pulse',
+  'Balance updated',
+  'this claim',
   'current rank',
 ]);
 
