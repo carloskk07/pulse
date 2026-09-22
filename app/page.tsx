@@ -96,13 +96,13 @@ export default async function HomePage() {
             <PulseCoreVisual
               state={publicLive ? "ready" : "limited"}
               eyebrow="Reward per eligible claim"
-              caption={`1 Pulse · ${intervalLabel(pulseInterval)}`}
+              caption={`${payoutAsset} value · ${intervalLabel(pulseInterval)}`}
             >
               <span className="pulse-core-word pc-home-money-value">+{rewardValue}</span>
             </PulseCoreVisual>
             <div className="pc-home-core-status">
               <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Hourly reward available" : "Account access is open"}</span>
-              <small>Pulse is the internal reward unit. The dollar value is shown first.</small>
+              <small>Reward value and next claim timing stay visible at a glance.</small>
             </div>
           </aside>
         </div>
@@ -111,7 +111,7 @@ export default async function HomePage() {
           <article>
             <small>Current faucet reward</small>
             <strong>{rewardValue}</strong>
-            <span>per eligible Pulse</span>
+            <span>per eligible claim</span>
           </article>
           <article>
             <small>Return window</small>
@@ -146,7 +146,7 @@ export default async function HomePage() {
               <div className="pc-home-step-icon"><Spark /></div>
               <span>01</span>
               <h3>Claim the hourly reward</h3>
-              <p>When your timer opens, claim the faucet reward. We show its real-dollar value alongside the Pulse unit.</p>
+              <p>When your timer opens, claim the faucet reward. Its real-dollar value is visible before you claim.</p>
             </article>
             <article>
               <div className="pc-home-step-icon"><Clock /></div>

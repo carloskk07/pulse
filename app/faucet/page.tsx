@@ -72,7 +72,7 @@ export default async function FaucetPage() {
           <PulseCoreVisual
             state={launch.publicClaimsOpen ? "ready" : "limited"}
             eyebrow="Per eligible claim"
-            caption={`1 Pulse · returns ${intervalLabel}`}
+            caption={`${payoutAsset} value · returns ${intervalLabel}`}
           >
             <span className="pulse-core-word pc-faucet-money-value">+{rewardValue}</span>
           </PulseCoreVisual>
@@ -95,7 +95,7 @@ export default async function FaucetPage() {
       <section className="pc-faucet-path shell" aria-label="Faucet journey">
         <article><span>01</span><Spark /><h2>Claim</h2><p>Take the recurring faucet reward when your personal timer is open.</p></article>
         <article><span>02</span><Check /><h2>Earn more</h2><p>Use optional tasks, referrals and other verified rewards when they are worth your time.</p></article>
-        <article><span>03</span><Wallet /><h2>Build balance</h2><p>See your money value and payout distance instead of guessing what internal points mean.</p></article>
+        <article><span>03</span><Wallet /><h2>Build balance</h2><p>See your balance value and payout distance in plain money terms.</p></article>
         <article><span>04</span><Shield /><h2>Withdraw</h2><p>Use the protected FaucetPay payout path when your current payout target is reached.</p></article>
       </section>
 
@@ -105,7 +105,7 @@ export default async function FaucetPage() {
           <h2>A faucet should make the reward obvious.</h2>
         </div>
         <div className="pc-faucet-difference-grid">
-          <article><strong>Money first, points second</strong><p>Pulse remains the ledger unit, but the real-dollar value is shown first wherever the reward matters.</p></article>
+          <article><strong>Real value first</strong><p>The configured reward value is shown in dollars, while the payout asset and route stay clear.</p></article>
           <article><strong>Optional earning paths</strong><p>The hourly faucet stays central. Higher-value tasks and partner rewards are separate choices, not a wall before your claim.</p></article>
           <article><strong>Public payout evidence</strong><p>The Proof Center separates credited rewards from completed withdrawals instead of blending both into one marketing number.</p></article>
         </div>

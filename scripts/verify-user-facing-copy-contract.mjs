@@ -66,7 +66,7 @@ const requiredBySurface = new Map([
     "Earn crypto.",
     "Know what it is worth.",
     "Reward per eligible claim",
-    "Pulse is the internal reward unit. The dollar value is shown first.",
+    "Reward value and next claim timing stay visible at a glance.",
     "Claim. Earn more.",
     "Cash out.",
     "More reasons to earn. Fewer reasons to guess.",
