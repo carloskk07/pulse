@@ -44,9 +44,9 @@ export default async function ProofPage() {
       </section>
 
       <section className="proof-grid shell" aria-label="Pulsercuit proof metrics">
-        <article><small>Pulse claims · 24h</small><strong>{proof.available ? proof.claims24h.toLocaleString("en-US") : "—"}</strong><span>Pulses claimed</span></article>
-        <article><small>Active members · 24h</small><strong>{proof.available ? proof.uniqueUsers24h.toLocaleString("en-US") : "—"}</strong><span>members with a Pulse</span></article>
-        <article><small>Rewards credited · 24h</small><strong>{proof.available ? formatUsdFromCredits(proof.credited24hCredits) : "—"}</strong><span>added to Vaults</span></article>
+        <article><small>Faucet claims · 24h</small><strong>{proof.available ? proof.claims24h.toLocaleString("en-US") : "—"}</strong><span>verified claims</span></article>
+        <article><small>Active earners · 24h</small><strong>{proof.available ? proof.uniqueUsers24h.toLocaleString("en-US") : "—"}</strong><span>members with verified claim activity</span></article>
+        <article><small>Rewards credited · 24h</small><strong>{proof.available ? formatUsdFromCredits(proof.credited24hCredits) : "—"}</strong><span>added to member balances</span></article>
         <article><small>Rewards credited · all time</small><strong>{proof.available ? formatUsdFromCredits(proof.creditedAllTimeCredits) : "—"}</strong><span>credited reward value</span></article>
         <article><small>Extra rewards · 24h</small><strong>{proof.available ? proof.confirmedTurbos24h.toLocaleString("en-US") : "—"}</strong><span>verified completions</span></article>
         <article><small>Paid withdrawals</small><strong>{proof.available ? proof.paidWithdrawalsAllTime.toLocaleString("en-US") : "—"}</strong><span>{proof.available ? `${formatUsdFromCredits(proof.paidWithdrawalCreditsAllTime)} completed` : "payout records unavailable"}</span></article>
@@ -65,7 +65,7 @@ export default async function ProofPage() {
 
       <details className="proof-principles shell" open><summary><strong>How these numbers work</strong></summary>
         <div className="proof-principles-grid">
-          <article><Spark /><div><h2>Credited and paid are different.</h2><p>Rewards can appear in a Vault before a payout is completed. This page keeps those stages separate.</p></div></article>
+          <article><Spark /><div><h2>Credited and paid are different.</h2><p>A reward can reach your balance before a payout is completed. This page keeps those stages separate.</p></div></article>
           <article><Check /><div><h2>Zero stays zero.</h2><p>If no completed event exists, this page shows zero.</p></div></article>
           <article><Shield /><div><h2>Recorded activity only.</h2><p>Counts come from recorded claim, reward and payout events.</p></div></article>
         </div>
