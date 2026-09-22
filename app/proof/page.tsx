@@ -37,8 +37,7 @@ export default async function ProofPage() {
           <span>{proof.available ? "Live proof available" : "Live proof unavailable"}</span>
           {proof.available && generatedAt ? <small>Updated {generatedAt}</small> : null}
         </div>
-        <div className="pc-v10-proof-actions">
-          <FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_hero_signup">Create free account <ArrowUpRight /></FunnelLink>
+        <div className="pc-v10-proof-actions is-evidence-first">
           <Link className="inline-action" href="/rewards-policy">How rewards work</Link>
         </div>
       </section>
@@ -50,6 +49,17 @@ export default async function ProofPage() {
         <article><small>Rewards credited · all time</small><strong>{proof.available ? formatUsdFromCredits(proof.creditedAllTimeCredits) : "—"}</strong><span>credited reward value</span></article>
         <article><small>Extra rewards · 24h</small><strong>{proof.available ? proof.confirmedTurbos24h.toLocaleString("en-US") : "—"}</strong><span>verified completions</span></article>
         <article><small>Paid withdrawals</small><strong>{proof.available ? proof.paidWithdrawalsAllTime.toLocaleString("en-US") : "—"}</strong><span>{proof.available ? `${formatUsdFromCredits(proof.paidWithdrawalCreditsAllTime)} completed` : "payout records unavailable"}</span></article>
+      </section>
+
+      <section className="proof-evidence-next shell">
+        <div>
+          <span className="section-kicker">Evidence first</span>
+          <h2>Seen the activity? Enter the circuit.</h2>
+          <p>Your account keeps your personal Pulse timing, Vault progress and payout path in one place.</p>
+        </div>
+        <FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_metrics_signup">
+          Create free account <ArrowUpRight />
+        </FunnelLink>
       </section>
 
       <details className="proof-principles shell" open><summary><strong>How these numbers work</strong></summary>
