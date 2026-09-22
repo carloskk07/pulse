@@ -246,7 +246,7 @@ body{min-width:320px}
   .integration-flow>i{display:none!important}
   .business-principles,.business-value-grid{grid-template-columns:1fr!important}
   .business-flow{grid-template-columns:1fr!important}
-  .proof-principles{grid-template-columns:1fr!important}
+  .proof-principles-grid{grid-template-columns:1fr!important}
 }
 
 @media(max-width:760px){
