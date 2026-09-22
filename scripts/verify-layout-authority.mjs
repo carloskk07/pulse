@@ -210,6 +210,7 @@ requireText("app/styles/auth.css", [
   ".auth-circuit-visual{",
   ".auth-circuit-core{",
   ".auth-circuit-node.node-pulse",
+  ".auth-glow{right:-120px;bottom:0;width:420px;height:420px}",
   '.turnstile-field[data-turnstile-size="compact"]{min-height:140px}',
   '.turnstile-field[data-turnstile-size="flexible"]{min-height:70px}',
   ".turnstile-status{display:flex;align-items:center;gap:8px;padding-top:9px",
