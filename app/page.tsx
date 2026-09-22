@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
+import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { V6FinalProof, V6HeroProof, V6RecentActivity } from "@/components/v6-live-proof";
 import { ArrowUpRight, Check, Clock, Shield, Spark, Wallet } from "@/components/icons";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
@@ -83,16 +84,13 @@ export default async function HomePage() {
           </div>
 
           <aside className="pc-home-core-stage" aria-label="Pulse rhythm">
-            <div className="pc-home-core-radar" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </div>
-            <div className="pc-home-core">
-              <span className="pc-home-core-label">Hourly Pulse</span>
-              <strong>+{rewardCredits} P</strong>
-              <small>{intervalLabel(pulseInterval)} after a successful claim</small>
-            </div>
+            <PulseCoreVisual
+              state={publicLive ? "ready" : "limited"}
+              eyebrow="Hourly Pulse"
+              caption={`${intervalLabel(pulseInterval)} after a successful claim`}
+            >
+              <span className="pulse-core-word">+{rewardCredits} P</span>
+            </PulseCoreVisual>
             <div className="pc-home-core-status">
               <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Claiming open" : "Personal claim rhythm"}</span>
               <small>Your personal timer lives inside the app.</small>
