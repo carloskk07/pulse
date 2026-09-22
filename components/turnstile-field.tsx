@@ -18,6 +18,8 @@ declare global {
   }
 }
 
+const TURNSTILE_COMPACT_MAX_WIDTH = 260;
+
 const statusCopy: Record<TurnstileStatus, string> = {
   loading: "Preparing human verification…",
   waiting: "Complete the verification before continuing.",
@@ -44,7 +46,8 @@ export function TurnstileField({ action, theme = "dark" }: { action: string; the
 
     try {
       const availableWidth = container.getBoundingClientRect().width;
-      const size = availableWidth > 0 && availableWidth < 300 ? "compact" : "flexible";
+      const size = availableWidth > 0 && availableWidth < TURNSTILE_COMPACT_MAX_WIDTH ? "compact" : "flexible";
+      container.dataset.turnstileSize = size;
 
       widgetIdRef.current = api.render(container, {
         sitekey: siteKey,
