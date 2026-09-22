@@ -99,23 +99,23 @@ export default async function HomePage() {
           <aside className="pc-home-core-stage pc-home-money-stage" aria-label="Current faucet reward">
             <PulseCoreVisual
               state={publicLive ? "ready" : "limited"}
-              eyebrow={rewardVariable ? "Live reward range" : "Current reward rule"}
-              caption={rewardVariable ? `Variable draw · ${intervalLabel(pulseInterval)}` : `${payoutAsset} value · ${intervalLabel(pulseInterval)}`}
+              eyebrow={rewardVariable ? (publicLive ? "Live reward range" : "Launch reward range") : "Current reward rule"}
+              caption={rewardVariable ? `${publicLive ? "Variable draw" : "Prepared for launch"} · ${intervalLabel(pulseInterval)}` : `${payoutAsset} value · ${intervalLabel(pulseInterval)}`}
             >
               <span className="pulse-core-word pc-home-money-value">+{rewardDisplay}</span>
             </PulseCoreVisual>
             <div className="pc-home-core-status">
               <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Hourly reward available" : "Account access is open"}</span>
-              <small>{rewardVariable ? "Each eligible claim reveals one value from the live range." : "The current rule is visible now and is not a permanent prize amount."}</small>
+              <small>{rewardVariable ? (publicLive ? "Each eligible claim reveals one value from the live range." : "The variable reward model is prepared; public claiming is still closed.") : "The current rule is visible now and is not a permanent prize amount."}</small>
             </div>
           </aside>
         </div>
 
         <div className="pc-v6-shell pc-home-value-strip" aria-label="Pulsercuit reward summary">
           <article>
-            <small>{rewardVariable ? "Live reward range" : "Current reward rule"}</small>
+            <small>{rewardVariable ? (publicLive ? "Live reward range" : "Launch reward range") : "Current reward rule"}</small>
             <strong>{rewardDisplay}</strong>
-            <span>{rewardVariable ? "one value is revealed per eligible claim" : "the active rule can change over time"}</span>
+            <span>{rewardVariable ? (publicLive ? "one value is revealed per eligible claim" : "ready for public claiming when access opens") : "the active rule can change over time"}</span>
           </article>
           <article>
             <small>Return window</small>

@@ -73,6 +73,38 @@ requireAll("supabase/migrations/0086_variable_reward_budget_readiness.sql", [
   "canonical release schema v55",
 ]);
 
+requireAll("supabase/migrations/0094_variable_reward_launch_preparation.sql", [
+  "variable_reward_model_valid",
+  "variable reward launch preparation requires pilot isolation",
+  "if not v_pilot_mode and not public.variable_reward_budget_ready(new.value)",
+  "variable_reward_enabled",
+  "variable_reward_review_required",
+  "release_variable_reward_budget_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0094_variable_reward_launch_preparation.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("supabase/migrations/0095_variable_reward_public_open_guard.sql", [
+  "variable_reward_public_open_ready",
+  "variable_reward_public_open_not_ready",
+  "if new.key = 'hourly_pulse'",
+  "public-open guard failed to reject unsafe transition",
+  "release_variable_reward_budget_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0095_variable_reward_public_open_guard.sql", [
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 forbidAll("supabase/migrations/0086_variable_reward_budget_readiness.sql", [
   "'variable_reward_enabled', true",
   "'variable_reward_review_required', false",

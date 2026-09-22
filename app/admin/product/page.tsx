@@ -79,7 +79,7 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
               <article><span>Day-one gap</span><strong>{continuousLaunch.dayOneFundingGapCredits} P</strong><small>{continuousLaunch.dayOneFundingGapCredits === 0 ? "COVERED" : "FUND BEFORE OPEN"}</small></article>
               <article><span>Payout pack</span><strong>{continuousLaunch.payoutPackCredits} P</strong><small>Current canonical provider pack</small></article>
             </div>
-            <p className="admin-panel-note"><strong>{continuousLaunch.cadenceUnrestricted ? "A genuine member can use every hourly window without hitting an artificial account quota." : "Current per-account authority would still interrupt a fully active member."}</strong> Variable monetary rewards remain separately gated until their budget and jurisdictional review are ready.</p>
+            <p className="admin-panel-note"><strong>{continuousLaunch.variableRewardsEnabled ? "The variable reward model is configured for launch." : "The variable reward model is not configured yet."}</strong> {continuousLaunch.pilotMode ? "Public access remains isolated by pilot mode; Treasury and public-release gates are resolved when opening access, not while preparing the product." : "Public mode is active, so live funding and release gates must remain satisfied."}</p>
           </>
         ) : null}
       </section>
