@@ -194,3 +194,35 @@
     font-size:34px;
   }
 }
+
+
+/* Faucet: make monetary value the dominant visual cue. */
+.pc-value-first-faucet .pc-faucet-copy>p strong{
+  color:#e4ff99;
+  font-weight:800;
+}
+
+.pc-value-first-faucet .pc-faucet-live-card{
+  border-color:rgba(217,255,114,.16);
+  background:
+    radial-gradient(circle at 50% 32%,rgba(217,255,114,.08),transparent 33%),
+    linear-gradient(155deg,rgba(14,20,16,.96),rgba(6,9,7,.98));
+  box-shadow:0 34px 110px rgba(0,0,0,.36),0 0 70px rgba(217,255,114,.025);
+}
+
+.pc-value-first-faucet .pc-faucet-money-value{
+  display:block;
+  font-size:clamp(34px,4vw,56px);
+  letter-spacing:-.07em;
+  white-space:nowrap;
+}
+
+.pc-value-first-faucet .pc-faucet-difference-grid strong{
+  color:#f1ede2;
+}
+
+@media(max-width:560px){
+  .pc-value-first-faucet .pc-faucet-money-value{
+    font-size:34px;
+  }
+}
