@@ -246,6 +246,7 @@ requireText("components/pulse-core-visual.tsx", [
   'className="pulse-core-ring ring-four"',
   'className="pulse-core-heart"',
   'className="pulse-core-readout"',
+  '"limited"',
 ]);
 requireText("components/site-header.tsx", [
   'export function SiteHeader({ overlay = false }',
