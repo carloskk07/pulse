@@ -46,7 +46,7 @@ export default async function FaucetPage() {
       <section className="pc-faucet-hero shell">
         <div className="pc-faucet-copy">
           <div className="eyebrow"><span className="live-dot" /> Free crypto faucet</div>
-          <h1>{rewardVariable ? <>Claim every hour. <em>Reveal your reward.</em></> : launch.publicClaimsOpen ? <>Earn crypto <em>every hour.</em></> : <>A clearer way to <em>earn free crypto.</em></>}</h1>
+          <h1>{!launch.publicClaimsOpen ? <>A clearer way to <em>earn free crypto.</em></> : rewardVariable ? <>Claim every hour. <em>Reveal your reward.</em></> : <>Earn crypto <em>every hour.</em></>}</h1>
           <p>
             {rewardVariable ? <>The live faucet range is <strong>{rewardDisplay}</strong>. Each eligible claim reveals one value from that published range.</> : <>The current live rule is <strong>{rewardDisplay}</strong> per eligible claim, but Pulsercuit is not tied to one permanent prize amount.</>}
             {" "}Your balance stays visible in money terms, and payouts use {payoutAsset} through FaucetPay.
@@ -89,7 +89,7 @@ export default async function FaucetPage() {
             ) : (
               <>
                 <b>EARLY ACCESS</b>
-                <span>Create your account now. Your live eligibility appears inside the app as access opens.</span>
+                <span>{rewardVariable ? `Launch reward range: ${rewardDisplay}. Claiming remains closed until public access opens.` : "Create your account now. Your live eligibility appears inside the app as access opens."}</span>
               </>
             )}
           </div>
