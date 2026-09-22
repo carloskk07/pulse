@@ -253,6 +253,9 @@ requireAll("app/faucet/page.tsx", [
   "PulseCoreVisual",
   "No ad wall before claim",
   "ACCESS LIMITED",
+  'className="pc-faucet-final shell"',
+  'eventLabel="faucet_signup"',
+  '{launch.publicClaimsOpen ? "Start with one Pulse" : "Create free account"}',
 ]);
 requireAll("lib/faucet-launch.ts", [
   "pilotMode",
@@ -260,7 +263,7 @@ requireAll("lib/faucet-launch.ts", [
   "publicClaimsOpen: !pilotMode && backingReady && fairShareReady && treasuryReady",
 ]);
 requireAll("lib/marketing-funnel.ts", [
-  'MARKETING_EXPERIENCE_VERSION = "pulse-identity-v14-2"',
+  'MARKETING_EXPERIENCE_VERSION = "public-conversion-v14-9"',
   '"faucet_view"',
   '"faucet_signup"',
   '"faucet_proof"',
