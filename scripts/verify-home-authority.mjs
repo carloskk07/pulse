@@ -253,8 +253,7 @@ for (const fragment of [
   ".pc-home-lobby .pc-v6-header-actions .pc-v6-login",
   "display:inline-flex",
   "@keyframes pcHomeMetalSweep",
-  ".pc-home-core-radar",
-  "conic-gradient(",
+  ".pc-home-core-stage .pulse-core-visual",
   ".pc-home-proof-strip:before",
   '.pc-home-lobby :where(a,button):focus-visible',
 ]) {
@@ -272,7 +271,10 @@ for (const fragment of [
   "getHomeBootstrapProof()",
   "getFaucetLaunchState()",
   'className="pc-v6 pc-home-lobby"',
-  'className="pc-home-core"',
+  'import { PulseCoreVisual } from "@/components/pulse-core-visual";',
+  '<PulseCoreVisual',
+  'state={publicLive ? "ready" : "limited"}',
+  'className="pulse-core-word"',
   "Personal claim rhythm",
   "Your return window follows your own claim history",
   "Three moves.<br />One clear loop.",
@@ -287,6 +289,12 @@ for (const fragment of [
 }
 if (homePage.includes('export const dynamic = "force-dynamic"')) {
   throw new Error("Home social-proof bootstrap must not force dynamic rendering.");
+}
+if (homePage.includes("pc-home-core-radar") || homePage.includes('className="pc-home-core"')) {
+  throw new Error("Home must not reintroduce a duplicate Pulse Core visual authority.");
+}
+if (/\.pc-home-core-radar|\.pc-home-core(?:\{|:before|:after| strong| small)/.test(lobbyCss)) {
+  throw new Error("Home CSS must not recreate a private Pulse Core implementation.");
 }
 
 const liveProof = read("components/v6-live-proof.tsx");
@@ -347,6 +355,7 @@ for (const fragment of [
 
 for (const fragment of [
   ".pc-home-core-stage.pc-home-proof-updated:after",
+  ".pc-home-core-stage.pc-home-proof-updated .pulse-core-visual",
   "@keyframes pcHomeProofSignal",
   "@keyframes pcHomeCoreSignal",
   '[data-proof-signal="payout"]',
