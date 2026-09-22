@@ -14,7 +14,7 @@ async function collectSourceFiles(directory) {
     const target = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       files.push(...await collectSourceFiles(target));
-    } else if (/\.(ts|tsx)$/.test(entry.name)) {
+    } else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) {
       files.push(target);
     }
   }
@@ -30,10 +30,25 @@ assert(helper.includes('.from("admin_users")'), "Admin authorization must use th
 assert(helper.includes("createSupabaseAdminClient"), "Admin allowlist lookup must use trusted server authority.");
 
 const adminFiles = await collectSourceFiles(path.join(root, "app", "admin"));
-for (const file of adminFiles) {
+const runtimeFiles = [
+  ...await collectSourceFiles(path.join(root, "app")),
+  ...await collectSourceFiles(path.join(root, "lib")),
+];
+
+for (const file of runtimeFiles) {
   const source = await fs.readFile(file, "utf8");
-  assert(!source.includes("ADMIN_EMAILS"), `Legacy ADMIN_EMAILS authority returned in ${path.relative(root, file)}`);
+  assert(!source.includes("ADMIN_EMAILS"), `Legacy ADMIN_EMAILS runtime authority returned in ${path.relative(root, file)}`);
   assert(!source.includes("adminEmails("), `Local email allowlist returned in ${path.relative(root, file)}`);
+}
+
+const envExample = await fs.readFile(path.join(root, ".env.example"), "utf8");
+assert(!envExample.includes("ADMIN_EMAILS"), "Legacy ADMIN_EMAILS configuration contract returned.");
+
+const operationalScripts = (await collectSourceFiles(path.join(root, "scripts")))
+  .filter((file) => path.basename(file) !== "verify-admin-authorization-contract.mjs");
+for (const file of operationalScripts) {
+  const source = await fs.readFile(file, "utf8");
+  assert(!source.includes("ADMIN_EMAILS"), `Legacy ADMIN_EMAILS operational dependency returned in ${path.relative(root, file)}`);
 }
 
 const adminClient = await fs.readFile(path.join(root, "lib", "supabase", "admin.ts"), "utf8");
@@ -41,4 +56,4 @@ const serverClient = await fs.readFile(path.join(root, "lib", "supabase", "serve
 assert(adminClient.includes('import "server-only";'), "Service-role Supabase client must remain server-only.");
 assert(serverClient.includes('import "server-only";'), "SSR Supabase server client must remain server-only.");
 
-console.log(`Admin authorization contract OK (${adminFiles.length} admin source files checked).`);
+console.log(`Admin authorization contract OK (${adminFiles.length} admin surfaces; ${runtimeFiles.length} runtime source files; ${operationalScripts.length} operational scripts checked).`);

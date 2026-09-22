@@ -103,7 +103,6 @@ function audit(envPath) {
     ["supabase-public", classifySupabasePublicConfig(values)],
     ["turnstile-public", classifyBuildVisibleGroup(values, ["NEXT_PUBLIC_TURNSTILE_SITE_KEY"])],
     ["service-role", classifyGroup(values, ["SUPABASE_SERVICE_ROLE_KEY"])],
-    ["admin-allowlist", classifyGroup(values, ["ADMIN_EMAILS"])],
     ["turnstile-secret", classifyGroup(values, ["TURNSTILE_SECRET_KEY"])],
     ["faucetpay", classifyGroup(values, [
       "FAUCETPAY_SCOPED_KEY",
