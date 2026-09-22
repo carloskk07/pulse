@@ -38,8 +38,12 @@ export default async function HomePage() {
 
   const pulseInterval = Math.max(15, launch.intervalMinutes || 60);
   const rewardCredits = Math.max(1, launch.rewardCredits || 1);
+  const rewardVariable = launch.rewardVariable;
   const publicLive = launch.publicClaimsOpen;
   const rewardValue = formatUsdFromCredits(rewardCredits);
+  const rewardMinValue = formatUsdFromCredits(Math.max(1, launch.rewardMinCredits || rewardCredits));
+  const rewardMaxValue = formatUsdFromCredits(Math.max(1, launch.rewardMaxCredits || rewardCredits));
+  const rewardDisplay = rewardVariable ? `${rewardMinValue}–${rewardMaxValue}` : rewardValue;
   const payout = getFaucetPayPackConfig();
   const payoutAsset = payout.asset || "USDT";
 
@@ -64,8 +68,8 @@ export default async function HomePage() {
               <em>Know what it is worth.</em>
             </h1>
             <p>
-              Claim a recurring faucet reward, grow a balance you can understand in dollars, and use extra earning
-              options when they are worth your time. No purchase is required to join.
+              Claim a recurring faucet reward without being locked to one permanent prize. The live reward rule can
+              change, and variable draws show their active range before you claim. No purchase is required to join.
             </p>
 
             <div className="pc-home-actions">
@@ -95,23 +99,23 @@ export default async function HomePage() {
           <aside className="pc-home-core-stage pc-home-money-stage" aria-label="Current faucet reward">
             <PulseCoreVisual
               state={publicLive ? "ready" : "limited"}
-              eyebrow="Reward per eligible claim"
-              caption={`${payoutAsset} value · ${intervalLabel(pulseInterval)}`}
+              eyebrow={rewardVariable ? "Live reward range" : "Current reward rule"}
+              caption={rewardVariable ? `Variable draw · ${intervalLabel(pulseInterval)}` : `${payoutAsset} value · ${intervalLabel(pulseInterval)}`}
             >
-              <span className="pulse-core-word pc-home-money-value">+{rewardValue}</span>
+              <span className="pulse-core-word pc-home-money-value">+{rewardDisplay}</span>
             </PulseCoreVisual>
             <div className="pc-home-core-status">
               <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Hourly reward available" : "Account access is open"}</span>
-              <small>Reward value and next claim timing stay visible at a glance.</small>
+              <small>{rewardVariable ? "Each eligible claim reveals one value from the live range." : "The current rule is visible now and is not a permanent prize amount."}</small>
             </div>
           </aside>
         </div>
 
         <div className="pc-v6-shell pc-home-value-strip" aria-label="Pulsercuit reward summary">
           <article>
-            <small>Current faucet reward</small>
-            <strong>{rewardValue}</strong>
-            <span>per eligible claim</span>
+            <small>{rewardVariable ? "Live reward range" : "Current reward rule"}</small>
+            <strong>{rewardDisplay}</strong>
+            <span>{rewardVariable ? "one value is revealed per eligible claim" : "the active rule can change over time"}</span>
           </article>
           <article>
             <small>Return window</small>
@@ -146,7 +150,9 @@ export default async function HomePage() {
               <div className="pc-home-step-icon"><Spark /></div>
               <span>01</span>
               <h3>Claim the hourly reward</h3>
-              <p>When your timer opens, claim the faucet reward. Its real-dollar value is visible before you claim.</p>
+              <p>{rewardVariable
+                ? "When your timer opens, claim and reveal one reward from the published live range."
+                : "When your timer opens, the current reward rule is shown before you claim; it is not a permanent prize amount."}</p>
             </article>
             <article>
               <div className="pc-home-step-icon"><Clock /></div>
