@@ -24,6 +24,10 @@ function count(value: number, available: boolean) {
   return available ? value.toLocaleString("en-US") : "—";
 }
 
+function countLabel(value: number, available: boolean, singular: string, plural: string) {
+  return available && value === 1 ? singular : plural;
+}
+
 function refreshPublicProof() {
   if (pendingProof) return pendingProof;
 
@@ -83,9 +87,9 @@ export function V6HeroProof({ initialProof }: V6ProofProps) {
       data-proof-reward-event-count={proof.available ? proof.rewardEventCount : undefined}
       data-proof-paid-withdrawal-count={proof.available ? proof.paidWithdrawalCount : undefined}
     >
-      <div><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
-      <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Reward events</span></div>
-      <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
+      <div><strong>{count(proof.memberCount, proof.available)}</strong><span>{countLabel(proof.memberCount, proof.available, "Member", "Members")}</span></div>
+      <div><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>{countLabel(proof.rewardEventCount, proof.available, "Reward event", "Reward events")}</span></div>
+      <div><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>{countLabel(proof.paidWithdrawalCount, proof.available, "Paid withdrawal", "Paid withdrawals")}</span></div>
     </div>
   );
 }
@@ -95,9 +99,9 @@ export function V6FinalProof({ initialProof }: V6ProofProps) {
 
   return (
     <div className="pc-v6-final-stats" aria-live="polite">
-      <div><Users /><strong>{count(proof.memberCount, proof.available)}</strong><span>Members</span></div>
-      <div><Spark /><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>Reward events</span></div>
-      <div><Check /><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>Paid withdrawals</span></div>
+      <div><Users /><strong>{count(proof.memberCount, proof.available)}</strong><span>{countLabel(proof.memberCount, proof.available, "Member", "Members")}</span></div>
+      <div><Spark /><strong>{count(proof.rewardEventCount, proof.available)}</strong><span>{countLabel(proof.rewardEventCount, proof.available, "Reward event", "Reward events")}</span></div>
+      <div><Check /><strong>{count(proof.paidWithdrawalCount, proof.available)}</strong><span>{countLabel(proof.paidWithdrawalCount, proof.available, "Paid withdrawal", "Paid withdrawals")}</span></div>
     </div>
   );
 }
