@@ -291,7 +291,7 @@ for (const fragment of [
   '<PulseCoreVisual',
   'state={publicLive ? "ready" : "limited"}',
   'className="pulse-core-word pc-home-money-value"',
-  "Pulse is the internal reward unit. The dollar value is shown first.",
+  "Reward value and next claim timing stay visible at a glance.",
   "Claim. Earn more.<br />Cash out.",
   "The hourly faucet is the entry point.",
   "Real records.<br />No inflated counters.",
