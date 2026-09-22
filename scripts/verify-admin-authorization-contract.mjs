@@ -44,9 +44,16 @@ for (const file of runtimeFiles) {
 const envExample = await fs.readFile(path.join(root, ".env.example"), "utf8");
 assert(!envExample.includes("ADMIN_EMAILS"), "Legacy ADMIN_EMAILS configuration contract returned.");
 
+const operationalScripts = (await collectSourceFiles(path.join(root, "scripts")))
+  .filter((file) => path.basename(file) !== "verify-admin-authorization-contract.mjs");
+for (const file of operationalScripts) {
+  const source = await fs.readFile(file, "utf8");
+  assert(!source.includes("ADMIN_EMAILS"), `Legacy ADMIN_EMAILS operational dependency returned in ${path.relative(root, file)}`);
+}
+
 const adminClient = await fs.readFile(path.join(root, "lib", "supabase", "admin.ts"), "utf8");
 const serverClient = await fs.readFile(path.join(root, "lib", "supabase", "server.ts"), "utf8");
 assert(adminClient.includes('import "server-only";'), "Service-role Supabase client must remain server-only.");
 assert(serverClient.includes('import "server-only";'), "SSR Supabase server client must remain server-only.");
 
-console.log(`Admin authorization contract OK (${adminFiles.length} admin surfaces; ${runtimeFiles.length} runtime source files checked).`);
+console.log(`Admin authorization contract OK (${adminFiles.length} admin surfaces; ${runtimeFiles.length} runtime source files; ${operationalScripts.length} operational scripts checked).`);
