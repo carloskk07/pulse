@@ -67,7 +67,7 @@ requireAll("app/admin/page.tsx", [
 
 requireAll("app/faucet/page.tsx", [
   "launch.publicClaimsOpen",
-  'state={launch.publicClaimsOpen ? "ready" : "paused"}',
+  'state={launch.publicClaimsOpen ? "ready" : "limited"}',
   "Public claiming is currently limited.",
   "Claim availability is shown inside your account when access is open.",
 ]);
