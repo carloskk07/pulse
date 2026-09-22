@@ -70,6 +70,8 @@ requireAll("app/faucet/page.tsx", [
   'state={launch.publicClaimsOpen ? "ready" : "limited"}',
   "Public claiming is currently limited.",
   "Claim availability is shown inside your account when access is open.",
+  'eventLabel="faucet_signup"',
+  '{launch.publicClaimsOpen ? "Start with one Pulse" : "Create free account"}',
 ]);
 
 requireAll("lib/product-readiness.ts", [
