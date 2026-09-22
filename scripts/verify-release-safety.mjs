@@ -1432,7 +1432,7 @@ requireText("lib/experience-presentation.ts", [
   "submitEnabled: false",
   '"Complete FaucetPay connection."'
 ]);
-requireText("app/dashboard/page.tsx", ["getUserNextAction", "nextAction", "Waiting for next Pulse", "getCurrentUserContext"]);
+requireText("app/dashboard/page.tsx", ["getUserNextAction", "nextAction", "Waiting for next claim", "getCurrentUserContext"]);
 requireText("app/admin/page.tsx", ["getOperatorNextAction", "One blocker at a time.", "Growth systems", "getProductLaunchReadiness"]);
 requireText("app/admin/advanced/page.tsx", ["/admin/product", "/admin/retention", "/admin/leads", "/admin/prospects"]);
 requireText("app/wallet/page.tsx", ["getWalletPresentation", "getWalletState", "withdrawalPilotAllowed", '"pilot-restricted"', "sendScopeProofReady", "canWithdraw", "TurnstileField", 'activeWithdrawal.status === "held"', 'action="withdrawal-retry"', "presentation.submitEnabled", "value={maskDestination(activeWithdrawal.destination)} disabled readOnly"]);
