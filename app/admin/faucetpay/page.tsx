@@ -5,7 +5,7 @@ import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { getFaucetPayTestPlan } from "@/lib/faucetpay-test-plan";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
 import { completeFaucetPayConnection, confirmFaucetPayReceipt, reconcileFaucetPayPayoutProof } from "./actions";
@@ -14,10 +14,6 @@ export const metadata = { title: "FaucetPay connection" };
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ proof?: string }> };
-
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
 
 function statusTone(state: string) {
   if (state === "READ_ONLY_VERIFIED") return "admin-badge";
@@ -87,11 +83,9 @@ const proofCopy: Record<string, string> = {
 
 export default async function FaucetPayPreflightPage({ searchParams }: Props) {
   const params = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/faucetpay");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/faucetpay");
+  if (adminAccess.status !== "authorized") notFound();
 
   const [probe, plan] = await Promise.all([
     getFaucetPayReadOnlyPreflight(),
