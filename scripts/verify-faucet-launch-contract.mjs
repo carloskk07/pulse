@@ -116,7 +116,8 @@ requireAll("app/admin/product/page.tsx", [
   "Natural user ceiling",
   "NO ARTIFICIAL USER CAP",
   "Global daily budget",
-  "Variable monetary rewards remain separately gated",
+  "The variable reward model is configured for launch.",
+  "Public access remains isolated by pilot mode",
 ]);
 
 if (runway.includes("INITIAL_PAID_USER_TARGET = 2")) {
