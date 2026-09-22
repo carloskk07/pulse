@@ -60,7 +60,7 @@ export default async function FaucetPage() {
             <i />
           </div>
           <PulseCoreVisual
-            state={launch.publicClaimsOpen ? "ready" : "paused"}
+            state={launch.publicClaimsOpen ? "ready" : "limited"}
             eyebrow="Hourly Pulse"
             caption={`Returns ${intervalLabel}`}
           >
