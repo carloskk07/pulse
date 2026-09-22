@@ -225,14 +225,19 @@ requireText("app/faucet/page.tsx", [
   'className="button button-light button-lg"',
 ]);
 requireText("app/proof/page.tsx", [
-  'eventLabel="proof_hero_signup"',
+  'className="pc-v10-proof-actions is-evidence-first"',
+  'eventLabel="proof_metrics_signup"',
   'eventLabel="proof_final_signup"',
+  "Evidence first",
   'className="button button-light"',
 ]);
 
 requireText("app/styles/pulse-core.css", [
   ".proof-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}",
   ".proof-grid article{min-height:150px;padding:18px}",
+  ".proof-evidence-next{",
+  ".proof-hero{padding-top:58px;padding-bottom:28px}",
+  ".proof-evidence-next .button{width:100%;justify-content:center}",
 ]);
 requireText("app/styles/completion.css", [
   "/* Support evidence guidance belongs to the light support surface. */",

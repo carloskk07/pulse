@@ -14,6 +14,7 @@ type Props = Omit<ComponentProps<typeof Link>, "href" | "onClick"> & {
     | "home_chamber_signup"
     | "home_final_signup"
     | "proof_hero_signup"
+    | "proof_metrics_signup"
     | "proof_final_signup"
     | "faucet_signup"
     | "faucet_proof";
