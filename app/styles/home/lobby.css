@@ -796,8 +796,12 @@
 @media(min-width:360px) and (max-width:560px){
   .pc-home-trust-row{
     display:grid;
-    grid-template-columns:repeat(3,max-content);
+    grid-template-columns:repeat(2,max-content);
     justify-content:space-between;
+    row-gap:8px;
+  }
+  .pc-home-trust-row span:last-child{
+    grid-column:1 / -1;
   }
 }
 
