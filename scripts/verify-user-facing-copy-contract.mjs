@@ -65,7 +65,7 @@ const requiredBySurface = new Map([
   ["app/page.tsx", [
     "Earn crypto.",
     "Know what it is worth.",
-    "not being locked to one permanent prize",
+    "without being locked to one permanent prize",
     "Live reward range",
     "not a permanent prize amount.",
     "Claim. Earn more.",
