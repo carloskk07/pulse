@@ -75,7 +75,7 @@ const requiredBySurface = new Map([
     "Proof before promises.",
     "Create your circuit",
   ]],
-  ["app/proof/page.tsx", ["Live activity. Clear outcomes.", "How these numbers work"]],
+  ["app/proof/page.tsx", ["Live activity. Clear outcomes.", "How these numbers work", "Evidence first", "Seen the activity? Enter the circuit."]],
   ["app/faucet/page.tsx", ["Pulse status", "Everything else builds around it.", "Current availability", "Create free account"]],
   ["app/progress/page.tsx", ["See your rhythm take shape.", "Five ranks. One clear path."]],
   ["app/invite/page.tsx", ["Build a network that grows from real activity."]],
