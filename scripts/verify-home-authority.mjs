@@ -233,6 +233,21 @@ if (!home.includes("one authority controls the fragment order") && !home.include
 }
 
 
+const lobbyCss = read("app/styles/home/lobby.css");
+for (const fragment of [
+  "@media(min-width:360px) and (max-width:560px)",
+  "grid-template-columns:repeat(2,max-content)",
+  ".pc-home-trust-row span:last-child",
+  "grid-column:1 / -1;",
+]) {
+  if (!lobbyCss.includes(fragment)) {
+    throw new Error(`Home mobile trust layout contract missing: ${fragment}`);
+  }
+}
+if (lobbyCss.includes("grid-template-columns:repeat(3,max-content)")) {
+  throw new Error("Home mobile trust row must not force all three labels into one clipped line.");
+}
+
 const homePage = read("app/page.tsx");
 for (const fragment of [
   'import { getFaucetLaunchState } from "@/lib/faucet-launch";',
