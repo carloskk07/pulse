@@ -249,6 +249,21 @@ if (lobbyCss.includes("grid-template-columns:repeat(3,max-content)")) {
 }
 
 for (const fragment of [
+  "grid-template-columns:42px minmax(0,1fr) auto",
+  "grid-template-rows:auto auto",
+  ".pc-home-loop-grid article>span{",
+  "position:static;",
+  "grid-row:1 / 3",
+  ".pc-home-loop-grid article:not(:last-child):after",
+  ".pc-home-loop-grid article:not(:first-child):before",
+  "min-height:0;",
+]) {
+  if (!lobbyCss.includes(fragment)) {
+    throw new Error(`Home compact mobile loop contract missing: ${fragment}`);
+  }
+}
+
+for (const fragment of [
   "Premium acquisition refinement",
   ".pc-home-lobby .pc-v6-header-actions .pc-v6-login",
   "display:inline-flex",
