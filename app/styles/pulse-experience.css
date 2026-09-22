@@ -202,6 +202,16 @@
 .pulse-core-visual.is-paused .pulse-core-heart{animation:none;background:#89929f;box-shadow:0 0 0 8px rgba(255,255,255,.018),0 0 22px rgba(255,255,255,.06)}
 .pulse-core-visual.is-paused .pulse-core-word{color:#eef1f5;font-size:clamp(2rem,3.5vw,3.6rem)}
 .pulse-core-visual.is-preview:before{background:radial-gradient(circle,rgba(160,140,255,.14),rgba(160,140,255,.02) 42%,transparent 70%)}
+.pulse-core-visual.is-limited:before{background:radial-gradient(circle,rgba(255,216,125,.13),rgba(207,255,103,.025) 40%,transparent 70%)}
+.pulse-core-visual.is-limited:after{border-color:rgba(255,216,125,.16);background:radial-gradient(circle at 38% 28%,rgba(255,255,255,.15),transparent 13%),radial-gradient(circle at 50% 48%,rgba(255,216,125,.075),rgba(10,14,18,.95) 65%)}
+.pulse-core-visual.is-limited .pulse-core-ring.ring-one{border-color:rgba(255,216,125,.2);animation-duration:36s}
+.pulse-core-visual.is-limited .pulse-core-ring.ring-two{border-color:rgba(207,255,103,.095);animation-duration:31s}
+.pulse-core-visual.is-limited .pulse-core-ring.ring-three{opacity:.55;animation-duration:39s}
+.pulse-core-visual.is-limited .pulse-core-horizon{background:linear-gradient(90deg,transparent,rgba(255,216,125,.10),rgba(255,216,125,.32),rgba(207,255,103,.08),transparent);animation-duration:6.8s}
+.pulse-core-visual.is-limited .pulse-core-scan{opacity:.45;animation-duration:11s}
+.pulse-core-visual.is-limited .pulse-core-node{animation-duration:5.5s}
+.pulse-core-visual.is-limited .pulse-core-heart{background:var(--pulse-v3-warm);box-shadow:0 0 0 8px rgba(255,216,125,.025),0 0 32px rgba(255,216,125,.26);animation-duration:4.2s}
+.pulse-core-visual.is-limited .pulse-core-value{color:#ffe3a0;text-shadow:0 0 30px rgba(255,216,125,.09)}
 
 /* Factual integrity rail and feedback. */
 .pc-v9-dashboard .pulse-integrity-rail{
