@@ -14,10 +14,10 @@ export const dynamic = "force-dynamic";
 const ranks = ["Spark", "Flow", "Rhythm", "Circuit", "Resonance"] as const;
 
 function trendCopy(trend: "starting" | "rising" | "steady" | "cooling") {
-  if (trend === "rising") return "Momentum is rising.";
-  if (trend === "steady") return "Your rhythm is holding.";
-  if (trend === "cooling") return "One real Pulse starts the next climb.";
-  return "Your first funded Pulse starts the pattern.";
+  if (trend === "rising") return "Your activity is increasing.";
+  if (trend === "steady") return "Your return streak is holding.";
+  if (trend === "cooling") return "One verified claim starts the next streak.";
+  return "Your first verified claim starts the pattern.";
 }
 
 export default async function ProgressPage() {
@@ -57,8 +57,8 @@ export default async function ProgressPage() {
           <div className="pc-luxe-rank-name">{state.preview ? "—" : signal.stage}</div>
           <div className="pc-identity-score"><strong>{state.preview ? "—" : signal.signal}</strong><span>/100</span></div>
           <div className="pc-identity-meta">
-            <span><small>Rhythm</small><strong>{state.preview ? "—" : state.streakDays + "d"}</strong></span>
-            <span><small>Pulses</small><strong>{state.preview ? "—" : state.hourlyClaimCount}</strong></span>
+            <span><small>Return streak</small><strong>{state.preview ? "—" : state.streakDays + "d"}</strong></span>
+            <span><small>Claims</small><strong>{state.preview ? "—" : state.hourlyClaimCount}</strong></span>
             <span><small>Next mark</small><strong>{state.preview ? "—" : nextAchievement?.title ?? "Current set complete"}</strong></span>
           </div>
         </article>
@@ -108,18 +108,18 @@ export default async function ProgressPage() {
             <h2 id="share-studio-placeholder-title">{state.signedIn ? "Your share card appears when your verified history is ready." : "Sign in to share your progress."}</h2>
             <p>Cards share progress, never your balance.</p>
           </div>
-          <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"}>{state.signedIn ? "Return to Pulse" : "Sign in"} <ArrowUpRight /></Link>
+          <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"}>{state.signedIn ? "View rewards" : "Sign in"} <ArrowUpRight /></Link>
         </section>
       )}
 
       <details className="admin-panel pc-luxe-seals-section">
-        <summary><strong>Progress details</strong> · ranks, weekly history and milestone seals</summary>
+        <summary><strong>Progress details</strong> · ranks, weekly history and milestones</summary>
 
         <div className="pc-weekly-stack">
           <article className="pc-weekly-card pc-luxe-weekly-card">
             <div className="pc-card-label"><Trend /> Last 7 days</div>
             <div className="pc-weekly-numbers">
-              <span><strong>{weekly.available ? weekly.claims7d : "—"}</strong><small>Pulses</small></span>
+              <span><strong>{weekly.available ? weekly.claims7d : "—"}</strong><small>claims</small></span>
               <span><strong>{weekly.available ? weekly.activeDays7d : "—"}</strong><small>active days</small></span>
               <span><strong>{weekly.available ? weekly.previousClaims7d : "—"}</strong><small>prior 7d</small></span>
             </div>
@@ -140,7 +140,7 @@ export default async function ProgressPage() {
           </div>
         </section>
 
-        <div className="app-section-head"><div><span className="app-eyebrow">Milestone seals</span><h2>{state.preview ? "Real history unlocks the collection." : unlockedAchievements.length + " / " + achievements.length + " unlocked"}</h2></div></div>
+        <div className="app-section-head"><div><span className="app-eyebrow">Milestones</span><h2>{state.preview ? "Verified activity unlocks the collection." : unlockedAchievements.length + " / " + achievements.length + " unlocked"}</h2></div></div>
         <div className="pc-achievement-grid pc-luxe-seal-grid">
           {achievements.map((achievement) => (
             <article className={"pc-achievement pc-luxe-seal " + (achievement.unlocked && !state.preview ? "unlocked " : "locked ") + "tone-" + achievement.tone} key={achievement.id}>
