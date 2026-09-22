@@ -117,7 +117,6 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     setupBlockers.push("supabase-auth");
   }
   if (!configured("SUPABASE_SERVICE_ROLE_KEY")) setupBlockers.push("service-role");
-  if (!configured("ADMIN_EMAILS")) setupBlockers.push("admin-allowlist");
   if (!configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY")) {
     setupBlockers.push("turnstile-config");
   }
@@ -137,7 +136,8 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+    admin.from("admin_users").select("user_id").limit(1).maybeSingle(),
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
     admin.rpc("release_stacked_incentive_budget_contract"),
@@ -148,6 +148,10 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     admin.rpc("release_withdrawal_retry_backoff_contract"),
     admin.rpc("release_faucetpay_webhook_reconciliation_contract"),
   ]);
+
+  if (adminAllowlistResult.error || !adminAllowlistResult.data?.user_id) {
+    setupBlockers.push("admin-allowlist");
+  }
 
   if (referralIntegrityResult.error || referralIntegrityResult.data !== true) {
     setupBlockers.push("referral-network-integrity");
