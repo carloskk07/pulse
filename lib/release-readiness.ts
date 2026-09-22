@@ -84,8 +84,24 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
   const serviceRoleConfigured = configured("SUPABASE_SERVICE_ROLE_KEY");
   checks.push(check("service-role", "Server financial authority", serviceRoleConfigured ? "pass" : "fail", serviceRoleConfigured ? "Service-role authority is available server-side." : "SUPABASE_SERVICE_ROLE_KEY is required for trusted financial writes."));
 
-  const adminsConfigured = configured("ADMIN_EMAILS");
-  checks.push(check("admin-allowlist", "Admin allowlist", adminsConfigured ? "pass" : "fail", adminsConfigured ? "Private operations access is allowlisted." : "ADMIN_EMAILS must contain at least one operator email."));
+  const admin = createSupabaseAdminClient();
+  let adminAllowlistConfigured = false;
+  if (admin) {
+    const { data: allowlistedAdmin, error: adminAllowlistError } = await admin
+      .from("admin_users")
+      .select("user_id")
+      .limit(1)
+      .maybeSingle();
+    adminAllowlistConfigured = !adminAllowlistError && Boolean(allowlistedAdmin?.user_id);
+  }
+  checks.push(check(
+    "admin-allowlist",
+    "Admin allowlist",
+    adminAllowlistConfigured ? "pass" : "fail",
+    adminAllowlistConfigured
+      ? "Private operations access is backed by the database operator allowlist."
+      : "Add at least one valid Auth user to the protected admin_users allowlist.",
+  ));
 
   const turnstileConfigured = configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY");
   checks.push(check("turnstile", "Human verification", turnstileConfigured ? "pass" : "fail", turnstileConfigured ? "Turnstile public and server keys are configured." : "Configure both Turnstile keys before enabling claims, signup and withdrawals."));
@@ -125,7 +141,6 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       : "Configure distinct read/send credentials and a valid payout pack before attesting send authority.",
   ));
 
-  const admin = createSupabaseAdminClient();
   if (!admin) {
     checks.push(check("database", "Database connectivity", "fail", "Database authority cannot be created until Supabase server configuration is complete."));
     checks.push(check("schema", "Schema version", "fail", `Migration ${RELEASE_SCHEMA_MIGRATION} has not been proven.`));
