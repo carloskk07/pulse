@@ -225,9 +225,15 @@ requireText("app/faucet/page.tsx", [
   'className="button button-light button-lg"',
 ]);
 requireText("app/proof/page.tsx", [
+  'eventLabel="proof_hero_signup"',
+  'eventLabel="proof_final_signup"',
   'className="button button-light"',
 ]);
 
+requireText("app/styles/pulse-core.css", [
+  ".proof-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}",
+  ".proof-grid article{min-height:150px;padding:18px}",
+]);
 requireText("app/styles/completion.css", [
   "/* Support evidence guidance belongs to the light support surface. */",
   ".completion-page .support-proof-note{",
@@ -293,6 +299,10 @@ requireText("app/styles/layout-authority.css", [
   ".completion-page::before,.completion-page::after",
   ".auth-shell{grid-template-columns:1fr!important",
   ".pc-v6-pillar-grid,.pc-v6-share-cards{grid-template-columns:1fr!important",
+  ".proof-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}",
+  ".proof-grid article{min-height:150px!important;padding:18px!important}",
+  "@media(max-width:359px)",
+  ".proof-grid{grid-template-columns:1fr!important}",
   "@media(max-width:860px)",
   ".pc-v6-header .pc-v6-login{",
   "display:inline-flex!important",
