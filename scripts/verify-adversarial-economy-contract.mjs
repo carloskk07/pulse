@@ -90,6 +90,21 @@ forbidAll("supabase/migrations/0094_variable_reward_launch_preparation.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0095_variable_reward_public_open_guard.sql", [
+  "variable_reward_public_open_ready",
+  "variable_reward_public_open_not_ready",
+  "if new.key = 'hourly_pulse'",
+  "public-open guard failed to reject unsafe transition",
+  "release_variable_reward_budget_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0095_variable_reward_public_open_guard.sql", [
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 forbidAll("supabase/migrations/0086_variable_reward_budget_readiness.sql", [
   "'variable_reward_enabled', true",
   "'variable_reward_review_required', false",
