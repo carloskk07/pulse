@@ -45,6 +45,7 @@ const forbidden = [
   "Security checks run before sensitive account actions.",
   "Withdraw when you're ready",
   "Withdraw when you&apos;re ready",
+  "Public access preparing",
 ];
 
 for (const [path, source] of surfaces) {
@@ -61,6 +62,7 @@ const requiredBySurface = new Map([
     "Get closer to payout.",
     "Hourly Pulse",
     "Your personal timer lives inside the app.",
+    "Personal claim rhythm",
     "Three moves.",
     "No obstacle course.",
     "The faucet is only the first layer.",

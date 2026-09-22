@@ -763,13 +763,13 @@
   .pc-home-hero{padding-top:96px}
   .pc-home-live-kicker{font-size:9px}
   .pc-home-hero-copy h1{margin-top:18px;font-size:clamp(46px,14.5vw,64px)}
-  .pc-home-actions{display:grid;grid-template-columns:1fr}
-  .pc-home-actions .pc-v6-button{width:100%}
-  .pc-home-trust-row{gap:10px 14px;font-size:10px}
-  .pc-home-core-stage{width:min(94vw,340px);margin-top:0}
-  .pc-home-core{width:190px;height:190px}
-  .pc-home-core strong{font-size:45px}
-  .pc-home-core-status{width:260px;bottom:7px}
+  .pc-home-actions{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr);gap:8px}
+  .pc-home-actions .pc-v6-button{width:100%;min-width:0;padding-inline:12px;font-size:10px}
+  .pc-home-trust-row{gap:8px 10px;margin-top:20px;font-size:10px}
+  .pc-home-core-stage{width:min(88vw,320px);margin-top:-4px}
+  .pc-home-core{width:180px;height:180px}
+  .pc-home-core strong{font-size:43px}
+  .pc-home-core-status{width:252px;bottom:6px}
   .pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats{
     grid-template-columns:1fr;
   }
@@ -787,6 +787,18 @@
   .pc-home-proof-card{padding:22px}
   .pc-home-final{min-height:360px}
   .pc-home-final-grid{padding-block:58px}
+}
+
+@media(max-width:359px){
+  .pc-home-actions{grid-template-columns:1fr}
+}
+
+@media(min-width:360px) and (max-width:560px){
+  .pc-home-trust-row{
+    display:grid;
+    grid-template-columns:repeat(3,max-content);
+    justify-content:space-between;
+  }
 }
 
 @media(prefers-reduced-motion:reduce){
