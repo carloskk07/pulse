@@ -1,0 +1,795 @@
+/* Pulsercuit Home Lobby V13 — live product-entry authority.
+   This layer intentionally replaces the old cinematic story on app/page.tsx
+   without changing reward, payout or launch authority. */
+
+.pc-home-lobby{
+  --home-bg:#020404;
+  --home-panel:#090d0b;
+  --home-panel-2:#0d120f;
+  --home-line:rgba(231,221,188,.12);
+  --home-line-strong:rgba(238,211,132,.26);
+  --home-ivory:#f7f2e6;
+  --home-muted:#9da59f;
+  --home-gold:#efd17b;
+  --home-lime:#d9ff72;
+  --home-green:#87f66d;
+  background:
+    radial-gradient(circle at 72% 8%,rgba(217,255,114,.055),transparent 24%),
+    radial-gradient(circle at 22% 0%,rgba(239,209,123,.055),transparent 19%),
+    var(--home-bg);
+}
+
+.pc-home-lobby .pc-v6-header{
+  background:linear-gradient(180deg,rgba(2,4,4,.96),rgba(2,4,4,.66));
+  border-bottom-color:rgba(255,255,255,.065);
+}
+
+.pc-home-hero{
+  position:relative;
+  min-height:760px;
+  padding:132px 0 36px;
+  overflow:hidden;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  background:
+    radial-gradient(circle at 70% 36%,rgba(214,255,105,.08),transparent 22%),
+    linear-gradient(180deg,#030505 0%,#020404 100%);
+}
+
+.pc-home-grid{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.24;
+  background-image:
+    linear-gradient(rgba(255,255,255,.027) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.027) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:linear-gradient(180deg,rgba(0,0,0,.85),transparent 88%);
+}
+
+.pc-home-grid:after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:42%;
+  width:760px;
+  height:760px;
+  transform:translate(-12%,-50%);
+  border:1px solid rgba(217,255,114,.06);
+  border-radius:50%;
+  box-shadow:
+    0 0 0 90px rgba(217,255,114,.012),
+    0 0 0 180px rgba(239,209,123,.008);
+}
+
+.pc-home-hero-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(380px,.72fr);
+  gap:72px;
+  align-items:center;
+  min-height:470px;
+}
+
+.pc-home-hero-copy{
+  position:relative;
+  z-index:3;
+  max-width:720px;
+}
+
+.pc-home-live-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  min-height:30px;
+  padding:0 12px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:999px;
+  background:rgba(8,11,9,.7);
+  color:#d9ddd7;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+.pc-home-live-kicker>span,
+.pc-home-core-status i,
+.pc-home-panel-head i{
+  display:inline-block;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--home-gold);
+  box-shadow:0 0 16px rgba(239,209,123,.5);
+}
+
+.pc-home-live-kicker>span.is-live,
+.pc-home-core-status i.is-live{
+  background:var(--home-green);
+  box-shadow:0 0 18px rgba(135,246,109,.68);
+}
+
+.pc-home-live-kicker>span.is-preparing,
+.pc-home-core-status i.is-preparing{
+  background:var(--home-gold);
+}
+
+.pc-home-hero-copy h1{
+  margin:22px 0 22px;
+  max-width:760px;
+  font-size:clamp(58px,6.5vw,92px);
+  line-height:.91;
+  letter-spacing:-.066em;
+  color:var(--home-ivory);
+  text-wrap:balance;
+}
+
+.pc-home-hero-copy h1 em{
+  display:inline-block;
+  font-style:normal;
+  color:transparent;
+  background:linear-gradient(180deg,#fff0ad 0%,#edcd70 50%,#aa7c32 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+}
+
+.pc-home-hero-copy>p{
+  max-width:620px;
+  margin:0;
+  color:#bdc4be;
+  font-size:17px;
+  line-height:1.65;
+}
+
+.pc-home-actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:30px;
+}
+
+.pc-home-primary{
+  min-width:190px;
+}
+
+.pc-home-trust-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:18px;
+  margin-top:27px;
+  color:#9ea69f;
+  font-size:11px;
+}
+
+.pc-home-trust-row span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+
+.pc-home-trust-row svg{
+  width:14px;
+  height:14px;
+  color:#d8e6bd;
+}
+
+.pc-home-core-stage{
+  position:relative;
+  justify-self:end;
+  width:min(100%,450px);
+  aspect-ratio:1;
+  display:grid;
+  place-items:center;
+  isolation:isolate;
+}
+
+.pc-home-core-stage:before{
+  content:"";
+  position:absolute;
+  inset:5%;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(217,255,114,.07),rgba(0,0,0,0) 62%);
+  filter:blur(8px);
+}
+
+.pc-home-core-radar{
+  position:absolute;
+  inset:4%;
+  border:1px solid rgba(217,255,114,.1);
+  border-radius:50%;
+  animation:pcHomeRotate 28s linear infinite;
+}
+
+.pc-home-core-radar:before,
+.pc-home-core-radar:after,
+.pc-home-core-radar i{
+  content:"";
+  position:absolute;
+  inset:11%;
+  border:1px solid rgba(239,209,123,.08);
+  border-radius:50%;
+}
+
+.pc-home-core-radar:after{inset:26%;border-color:rgba(217,255,114,.12)}
+.pc-home-core-radar i:nth-child(1){inset:42%;background:#d9ff72;border:0;box-shadow:0 0 28px rgba(217,255,114,.5)}
+.pc-home-core-radar i:nth-child(2){inset:0;clip-path:polygon(49.8% 0,50.2% 0,50.2% 100%,49.8% 100%);background:rgba(239,209,123,.12);border:0;border-radius:0}
+.pc-home-core-radar i:nth-child(3){inset:0;clip-path:polygon(0 49.8%,100% 49.8%,100% 50.2%,0 50.2%);background:rgba(239,209,123,.08);border:0;border-radius:0}
+
+.pc-home-core{
+  position:relative;
+  z-index:3;
+  width:230px;
+  height:230px;
+  border-radius:50%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  border:1px solid rgba(232,220,177,.23);
+  background:
+    radial-gradient(circle at 35% 27%,rgba(255,255,255,.12),transparent 20%),
+    radial-gradient(circle,rgba(25,35,25,.96),#050806 70%);
+  box-shadow:
+    0 0 0 12px rgba(217,255,114,.018),
+    0 0 0 34px rgba(239,209,123,.012),
+    0 34px 90px rgba(0,0,0,.62),
+    0 0 72px rgba(181,255,87,.13),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.pc-home-core:after{
+  content:"";
+  position:absolute;
+  inset:12px;
+  border-radius:50%;
+  border:1px dashed rgba(217,255,114,.18);
+  animation:pcHomeRotate 18s linear infinite reverse;
+}
+
+.pc-home-core-label{
+  position:relative;
+  z-index:2;
+  color:#b7bfb8;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+}
+
+.pc-home-core strong{
+  position:relative;
+  z-index:2;
+  margin:7px 0 5px;
+  font-size:52px;
+  line-height:1;
+  letter-spacing:-.07em;
+  color:var(--home-lime);
+  text-shadow:0 0 30px rgba(217,255,114,.15);
+}
+
+.pc-home-core small{
+  position:relative;
+  z-index:2;
+  max-width:150px;
+  color:#a6afa8;
+  font-size:10px;
+  line-height:1.45;
+}
+
+.pc-home-core-status{
+  position:absolute;
+  left:50%;
+  bottom:15px;
+  z-index:4;
+  width:300px;
+  transform:translateX(-50%);
+  padding:11px 14px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  background:rgba(7,10,8,.82);
+  backdrop-filter:blur(12px);
+  box-shadow:0 18px 50px rgba(0,0,0,.32);
+}
+
+.pc-home-core-status>span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  color:#e5e7df;
+  font-size:11px;
+  font-weight:700;
+}
+
+.pc-home-core-status>small{
+  display:block;
+  margin-top:4px;
+  text-align:center;
+  color:#8f9992;
+  font-size:9px;
+}
+
+.pc-home-proof-strip{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(250px,.48fr);
+  gap:22px;
+  align-items:stretch;
+  margin-top:30px;
+}
+
+.pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats{
+  width:100%;
+  margin:0;
+  padding:0;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  border:1px solid rgba(255,255,255,.075)!important;
+  border-radius:16px;
+  overflow:hidden;
+  background:rgba(8,11,9,.7)!important;
+}
+
+.pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats>div{
+  margin:0;
+  min-height:94px;
+  padding:20px 22px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  border-right:1px solid rgba(255,255,255,.07);
+}
+
+.pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats strong{
+  font-size:24px;
+}
+
+.pc-home-proof-note{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:17px 20px;
+  border:1px solid rgba(239,209,123,.14);
+  border-radius:16px;
+  background:linear-gradient(145deg,rgba(19,20,15,.82),rgba(8,10,8,.9));
+}
+
+.pc-home-proof-note>span{
+  color:#aeb5ae;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+
+.pc-home-proof-note strong{
+  margin-top:6px;
+  color:#eeeadd;
+  font-size:14px;
+}
+
+.pc-home-proof-note a,
+.pc-home-inline-link,
+.pc-home-panel-head a,
+.pc-home-proof-cta{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  width:max-content;
+  margin-top:11px;
+  color:#f0d78d;
+  font-size:10px;
+  font-weight:800;
+}
+
+.pc-home-proof-note svg,
+.pc-home-inline-link svg,
+.pc-home-panel-head svg,
+.pc-home-proof-cta svg{
+  width:13px;
+  height:13px;
+}
+
+.pc-home-section{
+  padding:104px 0;
+  background:
+    radial-gradient(circle at 82% 0%,rgba(217,255,114,.028),transparent 24%),
+    #030505!important;
+}
+
+.pc-home-section:nth-of-type(even){
+  background:#040706!important;
+}
+
+.pc-home-section-head{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(280px,.5fr);
+  gap:60px;
+  align-items:end;
+  margin-bottom:44px;
+}
+
+.pc-home-eyebrow{
+  color:#b8beb8;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+}
+
+.pc-home-section-head h2,
+.pc-home-return-copy h2,
+.pc-home-final h2{
+  margin:10px 0 0;
+  color:var(--home-ivory);
+  font-size:clamp(42px,5vw,68px);
+  line-height:.94;
+  letter-spacing:-.055em;
+}
+
+.pc-home-section-head>p{
+  max-width:430px;
+  margin:0;
+  color:#9ca69f;
+  font-size:14px;
+  line-height:1.7;
+}
+
+.pc-home-loop-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  border:1px solid var(--home-line);
+  border-radius:20px;
+  overflow:hidden;
+  background:rgba(8,11,9,.72);
+}
+
+.pc-home-loop-grid article{
+  position:relative;
+  min-height:315px;
+  padding:32px;
+  border-right:1px solid var(--home-line);
+  background:
+    radial-gradient(circle at 100% 0%,rgba(239,209,123,.04),transparent 28%),
+    linear-gradient(180deg,rgba(255,255,255,.012),transparent);
+}
+
+.pc-home-loop-grid article:last-child{border-right:0}
+
+.pc-home-loop-grid article>span{
+  position:absolute;
+  right:28px;
+  top:28px;
+  color:#69736d;
+  font-size:11px;
+  letter-spacing:.14em;
+}
+
+.pc-home-step-icon{
+  width:58px;
+  height:58px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(239,209,123,.18);
+  border-radius:16px;
+  color:#efd27f;
+  background:rgba(239,209,123,.04);
+}
+
+.pc-home-step-icon svg{width:24px;height:24px}
+
+.pc-home-loop-grid h3{
+  margin:44px 0 10px;
+  font-size:25px;
+  color:#f1ede2;
+}
+
+.pc-home-loop-grid p{
+  max-width:310px;
+  margin:0;
+  color:#9aa49d;
+  font-size:12px;
+  line-height:1.7;
+}
+
+.pc-home-return-grid{
+  display:grid;
+  grid-template-columns:minmax(270px,.68fr) minmax(0,1.32fr);
+  gap:86px;
+  align-items:center;
+}
+
+.pc-home-return-copy p{
+  max-width:470px;
+  margin:20px 0 0;
+  color:#a1aaa4;
+  font-size:14px;
+  line-height:1.72;
+}
+
+.pc-home-return-board{
+  border:1px solid var(--home-line);
+  border-radius:20px;
+  overflow:hidden;
+  background:linear-gradient(145deg,#0b100d,#060907);
+  box-shadow:0 36px 110px rgba(0,0,0,.38);
+}
+
+.pc-home-return-board article{
+  display:grid;
+  grid-template-columns:58px 1fr;
+  gap:18px;
+  align-items:center;
+  min-height:92px;
+  padding:16px 23px;
+  border-bottom:1px solid rgba(255,255,255,.065);
+}
+
+.pc-home-return-board article:last-child{border-bottom:0}
+
+.pc-home-return-board article>span{
+  display:grid;
+  place-items:center;
+  width:38px;
+  height:38px;
+  border:1px solid rgba(217,255,114,.13);
+  border-radius:50%;
+  color:#b6c29f;
+  font-size:9px;
+}
+
+.pc-home-return-board strong{
+  display:block;
+  color:#ece9df;
+  font-size:14px;
+}
+
+.pc-home-return-board small{
+  display:block;
+  margin-top:3px;
+  color:#919b94;
+  font-size:10px;
+  line-height:1.5;
+}
+
+.pc-home-live-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);
+  gap:20px;
+}
+
+.pc-home-activity-panel,
+.pc-home-proof-card{
+  min-height:360px;
+  border:1px solid var(--home-line);
+  border-radius:20px;
+  background:linear-gradient(155deg,rgba(14,18,15,.92),rgba(6,9,7,.96));
+  overflow:hidden;
+}
+
+.pc-home-panel-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:64px;
+  padding:0 22px;
+  border-bottom:1px solid rgba(255,255,255,.065);
+}
+
+.pc-home-panel-head>span{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:#cfd5cf;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+
+.pc-home-panel-head i{
+  width:6px;
+  height:6px;
+  background:var(--home-green);
+  box-shadow:0 0 14px rgba(135,246,109,.5);
+}
+
+.pc-home-panel-head a{margin:0}
+
+.pc-home-activity-list{
+  display:grid;
+  padding:8px 22px;
+}
+
+.pc-home-activity-list>div{
+  min-height:86px;
+  display:grid;
+  grid-template-columns:32px 1fr;
+  gap:12px;
+  align-items:center;
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+
+.pc-home-activity-list>div:last-child{border-bottom:0}
+
+.pc-home-activity-pulse{
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  background:#d9ff72;
+  box-shadow:0 0 0 6px rgba(217,255,114,.035),0 0 20px rgba(217,255,114,.22);
+}
+
+.pc-home-activity-list p{margin:0}
+
+.pc-home-activity-list strong{
+  display:block;
+  color:#ebe8df;
+  font-size:13px;
+}
+
+.pc-home-activity-list small{
+  display:block;
+  margin-top:4px;
+  color:#8f9a92;
+  font-size:10px;
+}
+
+.pc-home-activity-empty svg{
+  width:21px;
+  color:#d9ff72;
+}
+
+.pc-home-proof-card{
+  padding:28px;
+}
+
+.pc-home-lobby .pc-home-proof-card .pc-v6-final-stats{
+  margin:24px 0 18px;
+  padding:0;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  display:grid;
+  grid-template-columns:1fr;
+}
+
+.pc-home-lobby .pc-home-proof-card .pc-v6-final-stats>div{
+  min-height:56px;
+  display:grid;
+  grid-template-columns:26px 72px 1fr;
+  align-items:center;
+  gap:12px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+
+.pc-home-lobby .pc-home-proof-card .pc-v6-final-stats>div:last-child{border-bottom:0}
+
+.pc-home-lobby .pc-home-proof-card .pc-v6-final-stats svg{width:16px;height:16px;color:#d8e6bd}
+.pc-home-lobby .pc-home-proof-card .pc-v6-final-stats strong{font-size:17px;color:#f0ede4}
+.pc-home-lobby .pc-home-proof-card .pc-v6-final-stats span{font-size:10px;color:#909b93}
+
+.pc-home-proof-card>p{
+  margin:0;
+  color:#99a39c;
+  font-size:11px;
+  line-height:1.65;
+}
+
+.pc-home-proof-cta{
+  margin-top:20px;
+  min-height:42px;
+  padding:0 15px;
+  border:1px solid rgba(239,209,123,.22);
+  border-radius:12px;
+  background:rgba(239,209,123,.045);
+}
+
+.pc-home-final{
+  position:relative;
+  min-height:410px;
+  display:flex;
+  align-items:center;
+  overflow:hidden;
+  background:#020404!important;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+
+.pc-home-final-glow{
+  position:absolute;
+  right:8%;
+  top:50%;
+  width:420px;
+  height:420px;
+  transform:translateY(-50%);
+  border:1px solid rgba(217,255,114,.08);
+  border-radius:50%;
+  box-shadow:
+    0 0 0 70px rgba(217,255,114,.013),
+    0 0 0 140px rgba(239,209,123,.008),
+    inset 0 0 90px rgba(217,255,114,.025);
+}
+
+.pc-home-final-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:50px;
+  align-items:center;
+  padding-block:72px;
+}
+
+.pc-home-final p{
+  max-width:580px;
+  margin:18px 0 0;
+  color:#99a39c;
+  font-size:14px;
+  line-height:1.65;
+}
+
+.pc-home-footer{
+  border-top:1px solid rgba(255,255,255,.06);
+}
+
+@keyframes pcHomeRotate{
+  to{transform:rotate(360deg)}
+}
+
+@media(max-width:980px){
+  .pc-home-hero{padding-top:118px}
+  .pc-home-hero-grid{grid-template-columns:1fr;gap:18px}
+  .pc-home-core-stage{justify-self:center;width:min(78vw,410px);margin-top:10px}
+  .pc-home-proof-strip{grid-template-columns:1fr}
+  .pc-home-return-grid{grid-template-columns:1fr;gap:44px}
+  .pc-home-live-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:760px){
+  .pc-home-hero{min-height:auto;padding-bottom:28px}
+  .pc-home-hero-copy h1{font-size:clamp(50px,14vw,72px)}
+  .pc-home-hero-copy>p{font-size:15px}
+  .pc-home-core-stage{width:min(88vw,380px)}
+  .pc-home-proof-strip{margin-top:20px}
+  .pc-home-section{padding:76px 0}
+  .pc-home-section-head{grid-template-columns:1fr;gap:18px;align-items:start}
+  .pc-home-loop-grid{grid-template-columns:1fr}
+  .pc-home-loop-grid article{min-height:230px;border-right:0;border-bottom:1px solid var(--home-line)}
+  .pc-home-loop-grid article:last-child{border-bottom:0}
+  .pc-home-loop-grid h3{margin-top:30px}
+  .pc-home-final-grid{grid-template-columns:1fr;justify-items:start}
+  .pc-home-final-glow{right:-180px}
+}
+
+@media(max-width:560px){
+  .pc-home-hero{padding-top:96px}
+  .pc-home-live-kicker{font-size:9px}
+  .pc-home-hero-copy h1{margin-top:18px;font-size:clamp(46px,14.5vw,64px)}
+  .pc-home-actions{display:grid;grid-template-columns:1fr}
+  .pc-home-actions .pc-v6-button{width:100%}
+  .pc-home-trust-row{gap:10px 14px;font-size:10px}
+  .pc-home-core-stage{width:min(94vw,340px);margin-top:0}
+  .pc-home-core{width:190px;height:190px}
+  .pc-home-core strong{font-size:45px}
+  .pc-home-core-status{width:260px;bottom:7px}
+  .pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats{
+    grid-template-columns:1fr;
+  }
+  .pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats>div{
+    min-height:64px;
+    padding:13px 17px;
+    border-right:0;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats>div:last-child{border-bottom:0}
+  .pc-home-section{padding:64px 0}
+  .pc-home-section-head h2,.pc-home-return-copy h2,.pc-home-final h2{font-size:42px}
+  .pc-home-loop-grid article{padding:24px}
+  .pc-home-return-board article{grid-template-columns:44px 1fr;padding-inline:16px}
+  .pc-home-proof-card{padding:22px}
+  .pc-home-final{min-height:360px}
+  .pc-home-final-grid{padding-block:58px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pc-home-core-radar,
+  .pc-home-core:after{animation:none!important}
+}
