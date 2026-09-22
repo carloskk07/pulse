@@ -248,6 +248,21 @@ if (lobbyCss.includes("grid-template-columns:repeat(3,max-content)")) {
   throw new Error("Home mobile trust row must not force all three labels into one clipped line.");
 }
 
+for (const fragment of [
+  "Premium acquisition refinement",
+  ".pc-home-lobby .pc-v6-header-actions .pc-v6-login",
+  "display:inline-flex",
+  "@keyframes pcHomeMetalSweep",
+  ".pc-home-core-radar",
+  "conic-gradient(",
+  ".pc-home-proof-strip:before",
+  '.pc-home-lobby :where(a,button):focus-visible',
+]) {
+  if (!lobbyCss.includes(fragment)) {
+    throw new Error(`Home premium acquisition contract missing: ${fragment}`);
+  }
+}
+
 const homePage = read("app/page.tsx");
 for (const fragment of [
   'import { getFaucetLaunchState } from "@/lib/faucet-launch";',
@@ -260,6 +275,8 @@ for (const fragment of [
   'className="pc-home-core"',
   "Personal claim rhythm",
   "Your return window follows your own claim history",
+  "Three moves.<br />One clear loop.",
+  "The core reward stays simple.",
   "<V6HeroProof initialProof={initialProof} />",
   "<V6RecentActivity initialProof={initialProof} />",
   "<V6FinalProof initialProof={initialProof} />",

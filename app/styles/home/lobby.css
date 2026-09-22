@@ -858,3 +858,264 @@
   .pc-home-core-stage.pc-home-proof-updated:after,
   .pc-home-core-stage.pc-home-proof-updated .pc-home-core{animation:none!important}
 }
+
+
+/* Premium acquisition refinement — same Home authority, no new skin.
+   Improves return friction, material depth and interaction hierarchy. */
+.pc-home-lobby .pc-v6-header-actions{
+  gap:10px;
+}
+
+.pc-home-lobby .pc-v6-login{
+  transition:border-color .2s ease,background .2s ease,color .2s ease,transform .2s ease;
+}
+
+.pc-home-lobby .pc-v6-login:hover{
+  color:#fff4cf;
+  border-color:rgba(239,209,123,.28);
+  background:rgba(239,209,123,.045);
+  transform:translateY(-1px);
+}
+
+.pc-home-lobby .pc-v6-button.primary{
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg,#fff0b5 0%,#efd27f 46%,#c99b3d 100%);
+  border-color:rgba(255,239,177,.92);
+  box-shadow:
+    0 11px 30px rgba(214,172,66,.22),
+    inset 0 1px 0 rgba(255,255,255,.82),
+    inset 0 -1px 0 rgba(115,77,18,.3);
+}
+
+.pc-home-lobby .pc-v6-button.primary:after{
+  content:"";
+  position:absolute;
+  inset:-60% auto -60% -34%;
+  width:34%;
+  pointer-events:none;
+  transform:rotate(17deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent);
+  opacity:0;
+}
+
+.pc-home-lobby .pc-v6-button.primary:hover:after{
+  animation:pcHomeMetalSweep .72s ease;
+}
+
+.pc-home-lobby :where(a,button):focus-visible{
+  outline:2px solid #f4d884;
+  outline-offset:4px;
+}
+
+.pc-home-hero-grid:before{
+  content:"";
+  position:absolute;
+  z-index:1;
+  left:48%;
+  top:17%;
+  width:31%;
+  height:58%;
+  opacity:.28;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(239,209,123,.14),transparent 54%) 0 31%/100% 1px no-repeat,
+    linear-gradient(90deg,transparent,rgba(217,255,114,.16) 48%,transparent) 0 72%/100% 1px no-repeat;
+  transform:skewY(-7deg);
+  mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent);
+}
+
+.pc-home-core-stage:before{
+  background:
+    radial-gradient(circle,rgba(217,255,114,.095),rgba(217,255,114,.018) 39%,rgba(0,0,0,0) 66%);
+  filter:blur(9px);
+}
+
+.pc-home-core-radar{
+  border-color:rgba(217,255,114,.14);
+  background:
+    conic-gradient(
+      from 198deg,
+      transparent 0 12%,
+      rgba(239,209,123,.055) 12.5% 13%,
+      transparent 13.5% 39%,
+      rgba(217,255,114,.06) 39.5% 40.3%,
+      transparent 41% 72%,
+      rgba(239,209,123,.045) 72.5% 73.2%,
+      transparent 74% 100%
+    );
+  box-shadow:
+    inset 0 0 70px rgba(217,255,114,.018),
+    0 0 70px rgba(217,255,114,.025);
+}
+
+.pc-home-core{
+  border-color:rgba(239,220,161,.31);
+  background:
+    radial-gradient(circle at 36% 26%,rgba(255,255,255,.15),transparent 19%),
+    radial-gradient(circle at 50% 54%,rgba(217,255,114,.045),transparent 38%),
+    radial-gradient(circle,#151c14 0%,#070a08 63%,#030504 100%);
+  box-shadow:
+    0 0 0 1px rgba(239,209,123,.04),
+    0 0 0 12px rgba(217,255,114,.018),
+    0 0 0 34px rgba(239,209,123,.012),
+    0 34px 90px rgba(0,0,0,.62),
+    0 0 82px rgba(181,255,87,.15),
+    inset 0 1px 0 rgba(255,255,255,.11),
+    inset 0 -24px 45px rgba(0,0,0,.18);
+}
+
+.pc-home-core:before{
+  content:"";
+  position:absolute;
+  z-index:1;
+  inset:6px;
+  border-radius:50%;
+  pointer-events:none;
+  border-top:1px solid rgba(255,244,199,.12);
+  border-right:1px solid rgba(217,255,114,.035);
+  transform:rotate(-18deg);
+}
+
+.pc-home-proof-strip{
+  position:relative;
+}
+
+.pc-home-proof-strip:before{
+  content:"";
+  position:absolute;
+  z-index:3;
+  left:16px;
+  right:16px;
+  top:-1px;
+  height:1px;
+  pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(239,209,123,.38) 24%,rgba(217,255,114,.2) 68%,transparent);
+}
+
+.pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats,
+.pc-home-proof-note{
+  box-shadow:
+    0 20px 54px rgba(0,0,0,.18),
+    inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats>div{
+  position:relative;
+}
+
+.pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats>div:after{
+  content:"";
+  position:absolute;
+  left:22px;
+  bottom:13px;
+  width:18px;
+  height:1px;
+  background:linear-gradient(90deg,rgba(217,255,114,.45),transparent);
+}
+
+@media(hover:hover) and (pointer:fine){
+  .pc-home-loop-grid article,
+  .pc-home-return-board article,
+  .pc-home-activity-panel,
+  .pc-home-proof-card{
+    transition:transform .22s ease,border-color .22s ease,background .22s ease;
+  }
+
+  .pc-home-loop-grid article:hover,
+  .pc-home-return-board article:hover{
+    transform:translateY(-2px);
+    border-color:rgba(239,209,123,.18);
+    background-color:rgba(255,255,255,.008);
+  }
+
+  .pc-home-activity-panel:hover,
+  .pc-home-proof-card:hover{
+    transform:translateY(-2px);
+    border-color:rgba(239,209,123,.19);
+  }
+}
+
+@media(max-width:860px){
+  .pc-home-lobby .pc-v6-header-inner{
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:10px;
+  }
+
+  .pc-home-lobby .pc-v6-header-actions{
+    gap:6px;
+  }
+
+  .pc-home-lobby .pc-v6-header-actions .pc-v6-login{
+    display:inline-flex;
+    min-height:40px;
+    align-items:center;
+    justify-content:center;
+    padding:0 8px;
+    border-color:transparent;
+    background:transparent;
+    font-size:10px;
+    white-space:nowrap;
+  }
+
+  .pc-home-hero-grid:before{
+    display:none;
+  }
+}
+
+@media(max-width:560px){
+  .pc-home-lobby .pc-v6-header-actions .pc-v6-login{
+    min-height:38px;
+    padding-inline:5px;
+    font-size:9px;
+  }
+
+  .pc-home-lobby .pc-v6-header-actions .pc-v6-button.compact{
+    padding-inline:10px;
+    font-size:9px;
+    letter-spacing:-.02em;
+    white-space:nowrap;
+  }
+
+  .pc-home-lobby .pc-home-proof-strip .pc-v6-hero-stats>div:after{
+    left:17px;
+    bottom:9px;
+  }
+}
+
+@media(max-width:340px){
+  .pc-home-lobby .pc-v6-header-actions{
+    gap:3px;
+  }
+
+  .pc-home-lobby .pc-v6-header-actions .pc-v6-login{
+    padding-inline:3px;
+    font-size:9px;
+  }
+
+  .pc-home-lobby .pc-v6-header-actions .pc-v6-button.compact{
+    padding-inline:7px;
+    font-size:8.5px;
+  }
+}
+
+@keyframes pcHomeMetalSweep{
+  0%{left:-34%;opacity:0}
+  22%{opacity:.55}
+  100%{left:118%;opacity:0}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .pc-home-lobby .pc-v6-button.primary:hover:after{
+    animation:none!important;
+  }
+
+  .pc-home-lobby .pc-v6-login,
+  .pc-home-loop-grid article,
+  .pc-home-return-board article,
+  .pc-home-activity-panel,
+  .pc-home-proof-card{
+    transition:none!important;
+  }
+}

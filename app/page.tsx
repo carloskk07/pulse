@@ -115,9 +115,9 @@ export default async function HomePage() {
           <div className="pc-home-section-head">
             <div>
               <span className="pc-home-eyebrow">The loop</span>
-              <h2>Three moves.<br />No obstacle course.</h2>
+              <h2>Three moves.<br />One clear loop.</h2>
             </div>
-            <p>The faucet is the entry point, not a maze of ads before the reward.</p>
+            <p>The core reward stays simple. Optional earning paths live around it instead of blocking the claim.</p>
           </div>
 
           <div className="pc-home-loop-grid">
