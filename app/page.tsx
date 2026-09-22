@@ -4,9 +4,11 @@ import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
-import { ArrowUpRight, Check, Clock, Shield, Spark, Trend, Wallet } from "@/components/icons";
+import { ArrowUpRight, Check, Clock, Shield, Spark, Wallet } from "@/components/icons";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
 import { getHomeBootstrapProof } from "@/lib/social-proof";
+
+export const revalidate = 60;
 
 const structuredData = {
   "@context": "https://schema.org",
