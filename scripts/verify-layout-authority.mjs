@@ -210,6 +210,14 @@ requireText("app/styles/auth.css", [
   ".auth-circuit-visual{",
   ".auth-circuit-core{",
   ".auth-circuit-node.node-pulse",
+  '.turnstile-field[data-turnstile-size="compact"]{min-height:140px}',
+  '.turnstile-field[data-turnstile-size="flexible"]{min-height:70px}',
+  ".turnstile-status{display:flex;align-items:center;gap:8px;padding-top:9px",
+]);
+requireText("components/turnstile-field.tsx", [
+  "const TURNSTILE_COMPACT_MAX_WIDTH = 260",
+  'availableWidth < TURNSTILE_COMPACT_MAX_WIDTH ? "compact" : "flexible"',
+  "container.dataset.turnstileSize = size",
 ]);
 requireText("app/styles/faucet-entry.css", [
   '.pc-faucet-copy h1{max-width:880px;margin:16px 0 22px;font-family:Georgia,"Times New Roman",serif',
