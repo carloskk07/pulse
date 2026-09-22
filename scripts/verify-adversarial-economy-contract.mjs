@@ -123,6 +123,22 @@ forbidAll("supabase/migrations/0096_variable_reward_pilot_execution.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0097_variable_reward_contract_alignment.sql", [
+  "release_variable_reward_budget_contract",
+  "variable_reward_public_open_ready",
+  "variable_reward_model_valid",
+  "release_variable_reward_execution_contract",
+  "aligned variable reward readiness contract failed",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0097_variable_reward_contract_alignment.sql", [
+  "fund_reward_treasury(",
+  "pilot_mode = false",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 forbidAll("supabase/migrations/0086_variable_reward_budget_readiness.sql", [
   "'variable_reward_enabled', true",
   "'variable_reward_review_required', false",
