@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Check, Shield, Spark } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { getPulseProof } from "@/lib/pulse-proof";
@@ -71,6 +72,7 @@ export default async function ProofPage() {
       </details>
 
       <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one Pulse. Build from there.</h2></div><FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
+      <SiteFooter />
     </main>
   );
 }

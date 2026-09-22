@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
@@ -210,20 +211,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="pc-v6-footer pc-home-footer">
-        <div className="pc-v6-shell">
-          <strong>Pulsercuit</strong>
-          <span>© 2026 · Faucet-first rewards.</span>
-          <nav>
-            <Link href="/faucet">Faucet</Link>
-            <Link href="/proof">Proof</Link>
-            <Link href="/business">Business</Link>
-            <Link href="/support">Help</Link>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter className="pc-home-footer" />
     </main>
   );
 }
