@@ -47,7 +47,7 @@ for (const [path, active] of appShellRoutes) {
 }
 
 const publicRouteContracts = new Map([
-  ["app/page.tsx", ['className="pc-v6"', "<SiteHeader overlay />"]],
+  ["app/page.tsx", ['className="pc-v6 pc-home-lobby"', "<SiteHeader overlay />"]],
   ["app/proof/page.tsx", ['className="proof-page"', 'className="proof-hero shell"', "<SiteHeader />"]],
   ["app/business/page.tsx", ['className="marketing-page business-page"', 'className="business-hero shell"', "<SiteHeader />"]],
   ["app/business/integration/page.tsx", ['className="marketing-page integration-page"', 'className="integration-hero shell"', "<SiteHeader />"]],

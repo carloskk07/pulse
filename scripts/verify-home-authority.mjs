@@ -38,6 +38,7 @@ const fragments = [
   ["./home/cinematic.css", "app/styles/home/cinematic.css", "Pulsercuit V6.3 — ultra-cinematic brand layer", ".pc-v6-chamber-body:after"],
   ["./home/material.css", "app/styles/home/material.css", "Pulsercuit V6.4 — physical material depth", ".pc-v6-vault-art:after"],
   ["./home/sensory.css", "app/styles/home/sensory.css", "Pulsercuit V6.5 — adaptive sensory motion", ".pc-sensory-progress"],
+  ["./home/lobby.css", "app/styles/home/lobby.css", "Pulsercuit Home Lobby V13", ".pc-home-hero{"],
 ];
 
 const expectedImports = fragments.map(([relative]) => `@import "${relative}";`);
@@ -234,9 +235,15 @@ if (!home.includes("one authority controls the fragment order") && !home.include
 
 const homePage = read("app/page.tsx");
 for (const fragment of [
+  'import { getFaucetLaunchState } from "@/lib/faucet-launch";',
   'import { getHomeBootstrapProof } from "@/lib/social-proof";',
+  "export const revalidate = 60;",
   "export default async function HomePage()",
-  "const initialProof = await getHomeBootstrapProof();",
+  "getHomeBootstrapProof()",
+  "getFaucetLaunchState()",
+  'className="pc-v6 pc-home-lobby"',
+  'className="pc-home-core"',
+  "Your return window follows your own claim history",
   "<V6HeroProof initialProof={initialProof} />",
   "<V6FinalProof initialProof={initialProof} />",
 ]) {
