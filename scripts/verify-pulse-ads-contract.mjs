@@ -263,7 +263,7 @@ requireAll("lib/faucet-launch.ts", [
   "publicClaimsOpen: !pilotMode && backingReady && fairShareReady && treasuryReady",
 ]);
 requireAll("lib/marketing-funnel.ts", [
-  'MARKETING_EXPERIENCE_VERSION = "public-conversion-v14-9"',
+  'MARKETING_EXPERIENCE_VERSION = "public-conversion-v14-10"',
   '"faucet_view"',
   '"faucet_signup"',
   '"faucet_proof"',
