@@ -8,26 +8,20 @@ import {
 } from "@/lib/faucetpay-receipt-proof";
 import { recordReleaseEvidence, releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
-
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
 
 function resultUrl(code: string) {
   return `/admin/faucetpay?proof=${encodeURIComponent(code)}`;
 }
 
 async function requireAdmin() {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) redirect(resultUrl("auth-unavailable"));
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/faucetpay");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) redirect("/dashboard");
-  return user;
+  const access = await getAdminAccess();
+  if (access.status === "unauthenticated") redirect("/auth?next=/admin/faucetpay");
+  if (access.status === "unavailable") redirect(resultUrl("auth-unavailable"));
+  if (access.status !== "authorized") redirect("/dashboard");
+  return access.user;
 }
 
 export async function completeFaucetPayConnection(formData: FormData) {
