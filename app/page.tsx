@@ -95,7 +95,7 @@ export default async function HomePage() {
               <small>{intervalLabel(pulseInterval)} after a successful claim</small>
             </div>
             <div className="pc-home-core-status">
-              <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Claiming open" : "Public access preparing"}</span>
+              <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Claiming open" : "Personal claim rhythm"}</span>
               <small>Your personal timer lives inside the app.</small>
             </div>
           </aside>
