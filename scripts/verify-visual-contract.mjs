@@ -273,7 +273,9 @@ requireText("app/earn/page.tsx", [
 requireText("components/turnstile-field.tsx", [
   'type TurnstileTheme = "dark" | "light" | "auto";',
   'theme = "dark"',
-  'const size = availableWidth > 0 && availableWidth < 300 ? "compact" : "flexible";',
+  "const TURNSTILE_COMPACT_MAX_WIDTH = 260;",
+  'const size = availableWidth > 0 && availableWidth < TURNSTILE_COMPACT_MAX_WIDTH ? "compact" : "flexible";',
+  "container.dataset.turnstileSize = size;",
   "theme,",
   "size,",
 ]);
