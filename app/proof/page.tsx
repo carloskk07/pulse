@@ -9,7 +9,7 @@ import { formatUsdFromCredits } from "@/lib/reward-state";
 
 export const metadata = {
   title: "Pulsercuit Proof",
-  description: "Live aggregate activity across Pulse claims, credited rewards, optional extras and completed payouts.",
+  description: "Live production evidence for faucet claims, credited rewards, extra rewards and completed payouts." ,
 };
 
 export const dynamic = "force-dynamic";
@@ -30,9 +30,9 @@ export default async function ProofPage() {
       <FunnelBeacon event="proof_view" />
       <SiteHeader />
       <section className="proof-hero shell">
-        <span className="section-kicker">Pulsercuit Proof</span>
-        <h1>Live activity. Clear outcomes.</h1>
-        <p>See recent Pulse activity, credited rewards and completed payouts in one place.</p>
+        <span className="section-kicker">Live production proof</span>
+        <h1>Claims, rewards and payouts — shown separately.</h1>
+        <p>No decorative counters. If activity is zero, it stays zero. Credited rewards and completed payouts are never blended into one marketing number.</p>
         <div className={`proof-status ${proof.available ? "live" : "offline"}`}>
           <Shield />
           <span>{proof.available ? "Live proof available" : "Live proof unavailable"}</span>
@@ -54,9 +54,9 @@ export default async function ProofPage() {
 
       <section className="proof-evidence-next shell">
         <div>
-          <span className="section-kicker">Evidence first</span>
-          <h2>Seen the activity? Enter the circuit.</h2>
-          <p>Your account keeps your personal Pulse timing, Vault progress and payout path in one place.</p>
+          <span className="section-kicker">Ready to earn?</span>
+          <h2>Start with the free hourly faucet.</h2>
+          <p>Your account keeps your claim timer, balance, extra rewards and payout progress in one place.</p>
         </div>
         <FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_metrics_signup">
           Create free account <ArrowUpRight />
@@ -71,7 +71,7 @@ export default async function ProofPage() {
         </div>
       </details>
 
-      <section className="proof-cta shell"><div><span className="section-kicker">The circuit</span><h2>Start with one Pulse. Build from there.</h2></div><FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
+      <section className="proof-cta shell"><div><span className="section-kicker">Start free</span><h2>Claim a reward. See what it is worth.</h2></div><FunnelLink className="button button-light" href="/auth?mode=signup&next=/dashboard" eventLabel="proof_final_signup">Create free account <ArrowUpRight /></FunnelLink></section>
       <SiteFooter />
     </main>
   );
