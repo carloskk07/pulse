@@ -275,6 +275,8 @@ requireText("app/styles/layout-authority.css", [
   ".completion-page::before,.completion-page::after",
   ".auth-shell{grid-template-columns:1fr!important",
   ".pc-v6-pillar-grid,.pc-v6-share-cards{grid-template-columns:1fr!important",
+  ".pc-v6:not(.pc-home-lobby) .pc-v6-login{display:none!important}",
+  ".pc-home-lobby .pc-v6-login{display:inline-flex!important}",
 ]);
 requireText("app/styles/touch-foundation.css", [
   "@media(max-width:1120px)",
@@ -283,5 +285,9 @@ requireText("app/styles/touch-foundation.css", [
   ".bottom-nav-menu{",
   "env(safe-area-inset-bottom)",
 ]);
+
+if (/(^|\\n)\\s*\\.pc-v6-login\\{display:none!important\\}/.test(readFileSync("app/styles/layout-authority.css", "utf8"))) {
+  throw new Error("Canonical layout must not suppress the Home login with a global mobile rule.");
+}
 
 console.log("Canonical CSS/layout architecture PASS");
