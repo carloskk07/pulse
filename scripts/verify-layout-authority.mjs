@@ -212,6 +212,7 @@ requireText("app/styles/auth.css", [
   ".auth-circuit-node.node-pulse",
 ]);
 requireText("app/styles/faucet-entry.css", [
+  '.pc-faucet-copy h1{max-width:880px;margin:16px 0 22px;font-family:Georgia,"Times New Roman",serif',
   ".pc-faucet-copy h1 em{",
   "var(--pc7-gold-hi,#fff0ad)",
   ".pc-faucet-final{",
@@ -233,6 +234,7 @@ requireText("app/proof/page.tsx", [
 ]);
 
 requireText("app/styles/pulse-core.css", [
+  '.proof-hero h1{font-family:Georgia,"Times New Roman",serif',
   ".proof-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}",
   ".proof-grid article{min-height:150px;padding:18px}",
   ".proof-evidence-next{",
