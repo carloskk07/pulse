@@ -9,12 +9,12 @@ import { SponsoredVisitButton } from "@/components/sponsored-visit-button";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getRecentPulseReceipt } from "@/lib/pulse-receipt";
-import { getRewardSnapshot } from "@/lib/reward-state";
+import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { getPulseAdPlacement } from "@/lib/pulse-ads";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
-export const metadata = { title: "Pulse secured" };
+export const metadata = { title: "Reward claimed" };
 export const dynamic = "force-dynamic";
 
 function remainingCopy(remaining: number, unit: "Pulse" | "day" | "Signal point" | "Trust level") {
@@ -70,21 +70,21 @@ export default async function ClaimedPage() {
             <div className="pc-v8-victory-copy">
               <div className="pc-v8-victory-kicker">
                 <span className="pc-v8-success-mark"><Check /></span>
-                <span>Pulse secured</span>
+                <span>Reward claimed</span>
               </div>
               <span className="app-eyebrow">Done</span>
-              <h1 id="claim-victory-title">Reward added.<br />Next Pulse scheduled.</h1>
-              <p className="pc-v8-victory-lead">This funded Pulse is already reflected in your real balance and progress.</p>
+              <h1 id="claim-victory-title">Reward added.<br />Your next claim is scheduled.</h1>
+              <p className="pc-v8-victory-lead">Your verified reward is already reflected in your balance and progress.</p>
 
               <div className="pc-v8-reward-line">
-                <div><small>Added now</small><strong>+{receipt.rewardCredits.toLocaleString("en-US")} P</strong></div>
-                <div><small>Available</small><strong>{state.availableCredits.toLocaleString("en-US")} P</strong></div>
-                {payoutTargetCredits ? <div><small>To payout target</small><strong>{payoutRemaining && payoutRemaining > 0 ? payoutRemaining.toLocaleString("en-US") + " P" : "Ready"}</strong></div> : null}
+                <div><small>Added now</small><strong>+{formatUsdFromCredits(receipt.rewardCredits)}</strong></div>
+                <div><small>Available balance</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div>
+                {payoutTargetCredits ? <div><small>To payout target</small><strong>{payoutRemaining && payoutRemaining > 0 ? formatUsdFromCredits(payoutRemaining) : "Ready"}</strong></div> : null}
               </div>
 
               <div className="pc-v8-hero-actions">
-                <Link href="/dashboard" className="button button-light">Track next Pulse <ArrowUpRight /></Link>
-                <Link href="/wallet" className="pc-v8-text-action">Open Vault <ArrowUpRight /></Link>
+                <Link href="/dashboard" className="button button-light">Track next claim <ArrowUpRight /></Link>
+                <Link href="/wallet" className="pc-v8-text-action">View balance <ArrowUpRight /></Link>
               </div>
 
               <div className="pc-v8-proof-pills" aria-label="Claim integrity">
@@ -94,16 +94,16 @@ export default async function ClaimedPage() {
               </div>
             </div>
 
-            <div className="pc-v8-vault-orbit" aria-label="Updated Pulse state">
+            <div className="pc-v8-vault-orbit" aria-label="Updated reward balance">
               <div className="pc-v8-orbit-ring">
                 <div className="pc-v8-orbit-core">
-                  <span>Vault updated</span>
-                  <strong>{state.availableCredits.toLocaleString("en-US")} P</strong>
+                  <span>Balance updated</span>
+                  <strong>{formatUsdFromCredits(state.availableCredits)}</strong>
                   <small>available now</small>
                 </div>
               </div>
               <div className="pc-v8-orbit-meta">
-                <span><b>+{receipt.rewardCredits.toLocaleString("en-US")} P</b> this Pulse</span>
+                <span><b>+{formatUsdFromCredits(receipt.rewardCredits)}</b> this claim</span>
                 <span><b>{signal.stage}</b> current rank</span>
               </div>
             </div>
@@ -113,12 +113,12 @@ export default async function ClaimedPage() {
         <section className="pc-v8-return-stage" aria-labelledby="return-stage-title">
           <div className="pc-v8-return-core">
             <span className="app-eyebrow">Next action</span>
-            <h2 id="return-stage-title">{state.nextClaimAt ? "Come back when the next Pulse opens." : "Your next Pulse is ready."}</h2>
+            <h2 id="return-stage-title">{state.nextClaimAt ? "Come back when your next claim opens." : "Your next reward is ready."}</h2>
             <p>The timer follows your last real claim.</p>
             <div className="pc-v8-return-countdown">
               {state.nextClaimAt ? <PulseCountdown target={state.nextClaimAt} /> : <strong>READY</strong>}
             </div>
-            <Link href="/dashboard" className="button button-light">Return to Pulse <ArrowUpRight /></Link>
+            <Link href="/dashboard" className="button button-light">View next reward <ArrowUpRight /></Link>
             <Link href={"/earn?claim=" + encodeURIComponent(receipt.id)} className="button button-secondary">Earn while you wait <ArrowUpRight /></Link>
           </div>
 
@@ -147,11 +147,11 @@ export default async function ClaimedPage() {
         ) : null}
 
         <details className="admin-panel">
-          <summary><strong>What else changed</strong> · Momentum, history and the next milestone</summary>
+          <summary><strong>More progress details</strong> · history, rank and the next milestone</summary>
           <div className="pc-v8-change-grid">
-            <article className="pc-v8-change-card signal"><small>Momentum</small><strong>{signal.signal}<i>/100</i></strong><span>{signal.stage}</span></article>
-            <article className="pc-v8-change-card history"><small>Pulse history</small><strong>{state.hourlyClaimCount.toLocaleString("en-US")}</strong><span>{state.streakDays}d rhythm</span></article>
-            <article className="pc-v8-change-card vault"><small>Vault</small><strong>{state.availableCredits.toLocaleString("en-US")} P</strong><span>Current available balance</span></article>
+            <article className="pc-v8-change-card signal"><small>Progress score</small><strong>{signal.signal}<i>/100</i></strong><span>{signal.stage}</span></article>
+            <article className="pc-v8-change-card history"><small>Claim history</small><strong>{state.hourlyClaimCount.toLocaleString("en-US")}</strong><span>{state.streakDays}d return streak</span></article>
+            <article className="pc-v8-change-card vault"><small>Balance</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong><span>Current available value</span></article>
           </div>
 
           {nextAchievement ? (
@@ -164,7 +164,7 @@ export default async function ClaimedPage() {
           ) : null}
 
           <div className="pc-v8-share-panel">
-            <div><Spark /><span><strong>Share progress, not private balance.</strong><small>Rank and rhythm come from verified history.</small></span></div>
+            <div><Spark /><span><strong>Share progress, not private balance.</strong><small>Rank and return streak come from verified history.</small></span></div>
             <div>
               <ShareRhythmButton days={state.streakDays} signal={signal.signal} />
               <Link href="/progress#circuit-moments">Open share studio <ArrowUpRight /></Link>
