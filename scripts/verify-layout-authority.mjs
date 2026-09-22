@@ -228,7 +228,8 @@ requireText("app/styles/faucet-entry.css", [
   "var(--pc7-gold-hi,#fff0ad)",
   ".pc-faucet-band-grid{",
   ".pc-faucet-band-grid article.is-top{",
-  ".pc-faucet-live-card .pc-faucet-money-value{",
+  ".pc-faucet-live-card .pulse-core-readout{width:82%;max-width:270px}",
+  ".pc-faucet-live-card .pc-faucet-money-value{font-size:clamp(2rem,2.35vw,2.3rem)",
   ".pc-faucet-final{",
   "var(--pc7-gold,#e6bd5d)",
 ]);
