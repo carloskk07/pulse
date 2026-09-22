@@ -28,11 +28,14 @@ assert(helper.includes('import "server-only";'), "Admin authorization must remai
 assert(helper.includes("supabase.auth.getUser()"), "Admin authorization must validate a fresh Auth user.");
 assert(helper.includes('.from("admin_users")'), "Admin authorization must use the database allowlist.");
 assert(helper.includes("createSupabaseAdminClient"), "Admin allowlist lookup must use trusted server authority.");
+assert(helper.includes("getAdminAllowlistStatus"), "Admin navigation and route authorization must share one database allowlist helper.");
 
 const adminFiles = await collectSourceFiles(path.join(root, "app", "admin"));
 const runtimeFiles = [
   ...await collectSourceFiles(path.join(root, "app")),
+  ...await collectSourceFiles(path.join(root, "components")),
   ...await collectSourceFiles(path.join(root, "lib")),
+  ...await collectSourceFiles(path.join(root, "providers")),
 ];
 
 for (const file of runtimeFiles) {

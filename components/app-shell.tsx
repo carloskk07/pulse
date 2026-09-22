@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
+import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 import { Bolt, Home, Shield, Trend, Users, Wallet } from "./icons";
@@ -24,12 +25,6 @@ function initials(value: string) {
   return value.replace(/[^a-zA-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "PC";
 }
 
-function isAdminEmail(email: string | null | undefined) {
-  if (!email) return false;
-  const allowed = new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
-  return allowed.has(email.toLowerCase());
-}
-
 export async function AppShell({ children, active, userLabel }: { children: React.ReactNode; active: string; userLabel?: string | null }) {
   const { supabase, user } = await getCurrentUserContext();
   const suppliedLabel = userLabel?.trim();
@@ -40,7 +35,7 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
     label = profile?.handle || user.email?.split("@")[0] || "Member";
   }
 
-  const admin = isAdminEmail(user?.email);
+  const admin = user ? (await getAdminAllowlistStatus(user.id)) === "authorized" : false;
   const sidebarLinks = admin ? [...links, ...adminLinks] : links;
   const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
 
