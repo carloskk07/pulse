@@ -170,7 +170,24 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"faucet|/faucet"',
   '"advertise|/advertise"',
   '"/__visual-smoke-not-found__"',
+  '"scripts/capture-public-full-page.mjs"',
+  "Capture full-page public evidence",
   'test "$count" -eq 76',
+  'test "$count" -eq 84',
+]);
+
+requireText("scripts/capture-public-full-page.mjs", [
+  '["home", "/"]',
+  '["faucet", "/faucet"]',
+  '["proof", "/proof"]',
+  '["auth", "/auth"]',
+  '["desktop", 1440, 900]',
+  '["mobile", 390, 844]',
+  '"Page.getLayoutMetrics"',
+  '"Page.captureScreenshot"',
+  "captureBeyondViewport: true",
+  'name: "prefers-reduced-motion", value: "reduce"',
+  "captureHeight > 20000",
 ]);
 
 requireText("app/styles/theme.css", [
