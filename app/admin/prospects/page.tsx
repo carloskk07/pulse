@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { buildProspectOutreachHref, getOutboundProspects } from "@/lib/outbound-prospects";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminAccess } from "@/lib/admin-authorization";
 import { updateProspectStatus, upsertProspect } from "./actions";
 
 export const metadata = { title: "Advertiser Prospects" };
@@ -15,10 +15,6 @@ const stateCopy: Record<string, string> = {
   saved: "Prospect saved with validated public-source data.",
   updated: "Prospect stage updated.",
 };
-
-function adminEmails() {
-  return new Set((process.env.ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
-}
 
 function segmentLabel(value: string) {
   return ({ mobile_game: "Mobile game", consumer_app: "Consumer app", saas: "SaaS", research: "Research", other: "Other" } as Record<string, string>)[value] ?? value;
@@ -38,11 +34,9 @@ function datetimeLocalUtc(value: string | null) {
 
 export default async function AdvertiserProspectsPage({ searchParams }: Props) {
   const params = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) notFound();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth?next=/admin/prospects");
-  if (!user.email || !adminEmails().has(user.email.toLowerCase())) notFound();
+  const adminAccess = await getAdminAccess();
+  if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/prospects");
+  if (adminAccess.status !== "authorized") notFound();
 
   const prospects = await getOutboundProspects();
   const ready = prospects.filter((item) => item.status === "ready").length;
