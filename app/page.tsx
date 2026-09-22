@@ -4,7 +4,8 @@ import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { V6FinalProof, V6HeroProof } from "@/components/v6-live-proof";
-import { ArrowUpRight, Shield, Spark, Trend } from "@/components/icons";
+import { ArrowUpRight, Check, Clock, Shield, Spark, Trend, Wallet } from "@/components/icons";
+import { getFaucetLaunchState } from "@/lib/faucet-launch";
 import { getHomeBootstrapProof } from "@/lib/social-proof";
 
 const structuredData = {
@@ -13,150 +14,229 @@ const structuredData = {
   name: "Pulsercuit",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
-  description: "Pulsercuit is a simple reward loop built around Pulse, Vault and payout.",
+  description: "Pulsercuit is a faucet-first reward loop built around recurring Pulse claims, a visible Vault and FaucetPay payout.",
 };
 
-const ranks = [
-  { id: "spark", name: "Spark", note: "Start with one Pulse" },
-  { id: "flow", name: "Flow", note: "Build a return rhythm" },
-  { id: "rhythm", name: "Rhythm", note: "Build your history" },
-  { id: "circuit", name: "Circuit", note: "Keep the loop moving" },
-  { id: "resonance", name: "Resonance", note: "Reach the highest stage" },
-] as const;
+function intervalLabel(minutes: number) {
+  if (minutes === 60) return "Every 60 min";
+  if (minutes < 60) return `Every ${minutes} min`;
+  if (minutes % 60 === 0) return `Every ${minutes / 60}h`;
+  return `Every ${minutes} min`;
+}
 
 export default async function HomePage() {
-  const initialProof = await getHomeBootstrapProof();
+  const [initialProof, launch] = await Promise.all([
+    getHomeBootstrapProof(),
+    getFaucetLaunchState(),
+  ]);
+
+  const pulseInterval = Math.max(15, launch.intervalMinutes || 60);
+  const rewardCredits = Math.max(1, launch.rewardCredits || 1);
+  const publicLive = launch.publicClaimsOpen;
+  const recent = initialProof.recentActivity.slice(0, 3);
 
   return (
-    <main className="pc-v6">
+    <main className="pc-v6 pc-home-lobby">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <FunnelBeacon event="home_view" />
       <PulsercuitSensoryLayer />
       <SiteHeader overlay />
 
-      <section className="pc-v6-hero">
-        <div className="pc-v6-hero-bg" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-hero" /></div>
-        <div className="pc-v6-shell pc-v6-hero-grid">
-          <div className="pc-v6-hero-copy">
-            <span className="pc-v6-kicker">A simpler reward loop</span>
-            <h1>Return. <em>Rise.</em> Repeat.</h1>
-            <p>Claim a Pulse. Grow your Vault. Build toward payout.</p>
-            <div className="pc-v6-actions">
-              <FunnelLink className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard" eventLabel="home_hero_signup">Create free account <ArrowUpRight /></FunnelLink>
-              <FunnelLink className="pc-v6-button ghost" href="/proof" eventLabel="home_hero_proof">See live proof <span className="pc-v6-play">›</span></FunnelLink>
+      <section className="pc-home-hero">
+        <div className="pc-home-grid" aria-hidden="true" />
+        <div className="pc-v6-shell pc-home-hero-grid">
+          <div className="pc-home-hero-copy">
+            <div className="pc-home-live-kicker">
+              <span className={publicLive ? "is-live" : "is-preparing"} />
+              {publicLive ? "Public faucet live" : "Pulsercuit faucet"}
             </div>
-            <div className="pc-v10-hero-micro" aria-label="Entry benefits">
-              <span>Free to join</span><span>No purchase required</span><span>Payout safeguards</span>
+
+            <h1>Claim. Return.<br /><em>Get closer to payout.</em></h1>
+            <p>
+              A faucet built around one simple loop: claim a Pulse, come back when your personal timer reopens,
+              grow your Vault and withdraw through FaucetPay.
+            </p>
+
+            <div className="pc-home-actions">
+              <FunnelLink
+                className="pc-v6-button primary pc-home-primary"
+                href="/auth?mode=signup&next=/dashboard"
+                eventLabel="home_hero_signup"
+              >
+                {publicLive ? "Enter the circuit" : "Create free account"} <ArrowUpRight />
+              </FunnelLink>
+              <FunnelLink
+                className="pc-v6-button ghost"
+                href="/proof"
+                eventLabel="home_hero_proof"
+              >
+                See live proof
+              </FunnelLink>
+            </div>
+
+            <div className="pc-home-trust-row" aria-label="Pulsercuit entry benefits">
+              <span><Check /> Free to join</span>
+              <span><Shield /> No purchase required</span>
+              <span><Wallet /> FaucetPay payout path</span>
             </div>
           </div>
 
-          <div className="pc-v11-hero-thesis" aria-label="Pulsercuit path">
-            <small>Pulse → Vault → Payout</small>
-            <span><b>01</b><strong>Claim your Pulse</strong></span>
-            <span><b>02</b><strong>Grow your Vault</strong></span>
-            <span><b>03</b><strong>Reach payout</strong></span>
-          </div>
+          <aside className="pc-home-core-stage" aria-label="Pulse rhythm">
+            <div className="pc-home-core-radar" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </div>
+            <div className="pc-home-core">
+              <span className="pc-home-core-label">Hourly Pulse</span>
+              <strong>+{rewardCredits} P</strong>
+              <small>{intervalLabel(pulseInterval)} after a successful claim</small>
+            </div>
+            <div className="pc-home-core-status">
+              <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Claiming open" : "Public access preparing"}</span>
+              <small>Your personal timer lives inside the app.</small>
+            </div>
+          </aside>
         </div>
 
-        <V6HeroProof initialProof={initialProof} />
-      </section>
-
-      <section className="pc-v6-section pc-v6-pillars" id="about">
-        <div className="pc-v6-mountain-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-mountain" /></div>
-        <div className="pc-v6-shell pc-v6-section-grid">
-          <div className="pc-v6-section-intro">
-            <span className="pc-v6-kicker">How it works</span>
-            <h2>Simple by<br />design.</h2>
-            <p className="pc-v6-spaced">Pulse. Vault.<br />Payout.</p>
-            <i className="pc-v6-gold-line" />
-          </div>
-          <div className="pc-v6-pillar-grid pc-v12-pillar-grid">
-            <article><div className="pc-v6-orb lime"><Spark /></div><h3>Pulse</h3><p>Claim when your next<br />Pulse opens.</p><FunnelLink href="/auth?mode=signup&next=/dashboard" eventLabel="home_pillar_signup">Claim your first Pulse <ArrowUpRight /></FunnelLink></article>
-            <article><div className="pc-v6-orb gold"><Trend /></div><h3>Vault</h3><p>Keep your balance<br />easy to follow.</p><Link href="/wallet">See the Vault <ArrowUpRight /></Link></article>
-            <article><div className="pc-v6-orb green"><Shield /></div><h3>Payout</h3><p>Build toward your<br />payout target.</p><FunnelLink href="/proof" eventLabel="home_pillar_proof">See payout proof <ArrowUpRight /></FunnelLink></article>
+        <div className="pc-v6-shell pc-home-proof-strip">
+          <V6HeroProof initialProof={initialProof} />
+          <div className="pc-home-proof-note">
+            <span>Live circuit</span>
+            <strong>Real activity. Real payout evidence.</strong>
+            <Link href="/proof">Open proof center <ArrowUpRight /></Link>
           </div>
         </div>
       </section>
 
-      <section className="pc-v6-section pc-v6-chamber-section" id="how">
-        <div className="pc-v6-shell pc-v6-chamber-grid">
-          <div className="pc-v6-section-intro compact">
-            <span className="pc-v6-kicker">Your Pulse</span>
-            <h2>One clear<br />next move.</h2>
-            <p className="pc-v6-spaced">Claim. Return.<br />Keep moving.</p>
-            <Link className="pc-v6-outline-link" href="/dashboard">See the live experience <ArrowUpRight /></Link>
+      <section className="pc-v6-section pc-home-section pc-home-loop" id="how">
+        <div className="pc-v6-shell">
+          <div className="pc-home-section-head">
+            <div>
+              <span className="pc-home-eyebrow">The loop</span>
+              <h2>Three moves.<br />No obstacle course.</h2>
+            </div>
+            <p>The faucet is the entry point, not a maze of ads before the reward.</p>
           </div>
 
-          <div className="pc-v6-chamber-stage">
-            <div className="pc-v6-chamber">
-              <div className="pc-v6-chamber-head">
-                <div><span className="pc-v6-badge">✦</span><small>Public preview</small><strong>Pulse Chamber</strong></div>
-                <div className="pc-v6-live preview"><i /> Preview<br /><span>sign in for live state</span></div>
+          <div className="pc-home-loop-grid">
+            <article>
+              <div className="pc-home-step-icon"><Spark /></div>
+              <span>01</span>
+              <h3>Claim your Pulse</h3>
+              <p>When your personal Pulse is available, one clear action moves the reward into your circuit.</p>
+            </article>
+            <article>
+              <div className="pc-home-step-icon"><Clock /></div>
+              <span>02</span>
+              <h3>Come back on your rhythm</h3>
+              <p>Your next window is based on your own claim history. No fake global countdown.</p>
+            </article>
+            <article>
+              <div className="pc-home-step-icon"><Wallet /></div>
+              <span>03</span>
+              <h3>Grow the Vault</h3>
+              <p>Keep your balance and payout distance visible until you are ready to use the payout path.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="pc-v6-section pc-home-section pc-home-return">
+        <div className="pc-v6-shell pc-home-return-grid">
+          <div className="pc-home-return-copy">
+            <span className="pc-home-eyebrow">Why return?</span>
+            <h2>The faucet is only the first layer.</h2>
+            <p>
+              Pulsercuit keeps the core claim simple, then gives the rest of the product room to make each return more useful.
+            </p>
+            <Link className="pc-home-inline-link" href="/progress">Explore Momentum <ArrowUpRight /></Link>
+          </div>
+
+          <div className="pc-home-return-board">
+            <article><span>01</span><div><strong>Personal return rhythm</strong><small>Your next Pulse stays visible after sign-in.</small></div></article>
+            <article><span>02</span><div><strong>Momentum</strong><small>Ranks and milestones turn repeated visits into visible progress.</small></div></article>
+            <article><span>03</span><div><strong>Network</strong><small>Invite activity can build a deeper reward layer around your account.</small></div></article>
+            <article><span>04</span><div><strong>More earning paths</strong><small>Optional sponsored and verified opportunities can live between Pulses.</small></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section className="pc-v6-section pc-home-section pc-home-live-section">
+        <div className="pc-v6-shell">
+          <div className="pc-home-section-head">
+            <div>
+              <span className="pc-home-eyebrow">Live circuit</span>
+              <h2>Proof before promises.</h2>
+            </div>
+            <p>Public numbers come from the production system, not from decorative counters.</p>
+          </div>
+
+          <div className="pc-home-live-grid">
+            <div className="pc-home-activity-panel">
+              <div className="pc-home-panel-head">
+                <span><i /> Recent verified activity</span>
+                <Link href="/proof">View all <ArrowUpRight /></Link>
               </div>
-              <div className="pc-v6-chamber-body">
-                <div className="pc-v6-chamber-left">
-                  <div className="pc-v6-mini-card"><small>Rank path</small><strong>Start at Spark</strong><div className="pc-v6-preview-track" aria-hidden="true"><span /></div></div>
-                  <div className="pc-v6-mini-card"><small>Return rhythm</small><strong>Build your rhythm</strong><span>Grows as you return</span></div>
-                </div>
-
-                <div className="pc-v6-pulse-core">
-                  <div className="pc-v6-pulse-ring"><div className="pc-v6-wave">⌁</div><small>Pulse Chamber</small><strong>PREVIEW</strong></div>
-                  <FunnelLink href="/auth?mode=signup&next=/dashboard" eventLabel="home_chamber_signup">Create account</FunnelLink>
-                </div>
-
-                <div className="pc-v6-chamber-right">
-                  <div className="pc-v6-mini-card accent"><small>Next unlock</small><strong>Milestone seal</strong><span>Unlocks as you progress</span></div>
-                  <div className="pc-v6-mini-card vault"><small>Vault balance</small><strong>Visible after sign-in</strong><Link href="/wallet">View Vault <ArrowUpRight /></Link></div>
-                </div>
+              <div className="pc-home-activity-list">
+                {recent.length ? recent.map((item, index) => (
+                  <div key={`${item.occurredAt}-${index}`}>
+                    <span className="pc-home-activity-pulse" aria-hidden="true" />
+                    <p><strong>{item.label}</strong><small>{item.credits > 0 ? `+${item.credits} P` : "Verified"}</small></p>
+                  </div>
+                )) : (
+                  <div className="pc-home-activity-empty">
+                    <Shield />
+                    <p><strong>Proof feed ready</strong><small>Verified production activity appears here as it happens.</small></p>
+                  </div>
+                )}
               </div>
+            </div>
+
+            <div className="pc-home-proof-card">
+              <span className="pc-home-eyebrow">Public proof</span>
+              <V6FinalProof initialProof={initialProof} />
+              <p>Members, reward events and paid withdrawals are published from the same production evidence used by the proof center.</p>
+              <FunnelLink className="pc-home-proof-cta" href="/proof" eventLabel="home_hero_proof">
+                Inspect the proof <ArrowUpRight />
+              </FunnelLink>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="pc-v6-section pc-v6-momentum-section">
-        <div className="pc-v6-road-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-road" /></div>
-        <div className="pc-v6-shell pc-v6-momentum-grid pc-v12-momentum-grid">
-          <div className="pc-v6-section-intro compact">
-            <span className="pc-v6-kicker">Momentum</span>
-            <h2>Progress<br />you can feel.</h2>
-            <p className="pc-v6-spaced">Ranks and milestones grow<br />as you return.</p>
-            <Link className="pc-v6-outline-link" href="/progress">See Momentum <ArrowUpRight /></Link>
+      <section className="pc-v6-final pc-home-final">
+        <div className="pc-home-final-glow" aria-hidden="true" />
+        <div className="pc-v6-shell pc-home-final-grid">
+          <div>
+            <span className="pc-home-eyebrow">Pulsercuit</span>
+            <h2>Your next return<br />can mean something.</h2>
+            <p>Start with one account. Claim when your Pulse opens. Keep the payout path in view.</p>
           </div>
-          <div className="pc-v6-ranks">
-            {ranks.map((rank) => <article key={rank.id}><div className={`pc-v6-rank-art rank-${rank.id}`} /><strong>{rank.name}</strong><span>{rank.note}</span></article>)}
-          </div>
+          <FunnelLink
+            className="pc-v6-button primary pc-home-primary"
+            href="/auth?mode=signup&next=/dashboard"
+            eventLabel="home_final_signup"
+          >
+            Create your circuit <ArrowUpRight />
+          </FunnelLink>
         </div>
       </section>
 
-      <section className="pc-v6-section pc-v6-vault-section">
-        <div className="pc-v6-space-cut" aria-hidden="true"><div className="pc-v6-sprite pc-v6-sprite-space" /></div>
-        <div className="pc-v6-shell pc-v6-vault-grid">
-          <div className="pc-v6-section-intro compact">
-            <span className="pc-v6-kicker">The Vault</span>
-            <h2>Your balance.<br />In view.</h2>
-            <p>Know where you are and how close<br />you are to payout.</p>
-            <Link className="pc-v6-outline-link" href="/wallet">Open your vault <ArrowUpRight /></Link>
-          </div>
-          <div className="pc-v6-vault-art"><div className="pc-v6-sprite pc-v6-sprite-vault" /></div>
-          <div className="pc-v6-vault-benefits">
-            <div><span>◇</span><p><strong>Clear balance</strong><small>Everything in one place.</small></p></div>
-            <div><span className="lime">✓</span><p><strong>Payout in view</strong><small>See how close you are.</small></p></div>
-            <div><span>≋</span><p><strong>One simple request</strong><small>Request payout when available.</small></p></div>
-          </div>
+      <footer className="pc-v6-footer pc-home-footer">
+        <div className="pc-v6-shell">
+          <strong>Pulsercuit</strong>
+          <span>© 2026 · Faucet-first rewards.</span>
+          <nav>
+            <Link href="/faucet">Faucet</Link>
+            <Link href="/proof">Proof</Link>
+            <Link href="/business">Business</Link>
+            <Link href="/support">Help</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+          </nav>
         </div>
-      </section>
-
-      <section className="pc-v6-final">
-        <div className="pc-v6-eclipse" aria-hidden="true" />
-        <div className="pc-v6-shell pc-v6-final-grid">
-          <div className="pc-v6-final-mantra">One Pulse<br />at a<br />time</div>
-          <div className="pc-v6-final-copy"><span className="pc-v6-kicker">— Pulsercuit —</span><h2>Start With<br />One Pulse.</h2><p>Start free. Come back when you&apos;re ready.</p><FunnelLink className="pc-v6-button primary" href="/auth?mode=signup&next=/dashboard" eventLabel="home_final_signup">Create free account <ArrowUpRight /></FunnelLink></div>
-          <V6FinalProof initialProof={initialProof} />
-        </div>
-      </section>
-
-      <footer className="pc-v6-footer"><div className="pc-v6-shell"><strong>Pulsercuit</strong><span>© 2026 · Return. Rise. Repeat.</span><nav><Link href="/proof">Proof</Link><Link href="/business">Business</Link><Link href="/support">Help</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></nav></div></footer>
+      </footer>
     </main>
   );
 }
