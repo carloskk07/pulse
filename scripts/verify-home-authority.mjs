@@ -265,6 +265,7 @@ for (const fragment of [
   "data-proof-member-count",
   "data-proof-reward-event-count",
   "data-proof-paid-withdrawal-count",
+  "countLabel(proof.paidWithdrawalCount",
 ]) {
   if (!liveProof.includes(fragment)) {
     throw new Error(`Live proof lost server bootstrap/background refresh contract: ${fragment}`);
