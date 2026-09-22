@@ -219,6 +219,8 @@ requireAll("lib/controlled-technical-readiness.ts", [
   'setupBlockers.push("cashback-budget")',
   'admin.rpc("release_variable_reward_budget_contract")',
   'setupBlockers.push("variable-reward-budget")',
+  'admin.rpc("release_variable_reward_execution_contract")',
+  'setupBlockers.push("variable-reward-execution")',
 ]);
 
 const earn = requireAll("app/earn/page.tsx", [
