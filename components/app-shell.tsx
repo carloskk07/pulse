@@ -6,11 +6,11 @@ import { PulsercuitBrand } from "./pulsercuit-brand";
 import { Bolt, Home, Shield, Trend, Users, Wallet } from "./icons";
 
 const links = [
-  { id: "home", href: "/dashboard", label: "Pulse", Icon: Home },
-  { id: "progress", href: "/progress", label: "Momentum", Icon: Trend },
+  { id: "home", href: "/dashboard", label: "Rewards", Icon: Home },
+  { id: "progress", href: "/progress", label: "Progress", Icon: Trend },
   { id: "earn", href: "/earn", label: "Earn", Icon: Bolt },
-  { id: "wallet", href: "/wallet", label: "Vault", Icon: Wallet },
-  { id: "invite", href: "/invite", label: "Network", Icon: Users },
+  { id: "wallet", href: "/wallet", label: "Balance", Icon: Wallet },
+  { id: "invite", href: "/invite", label: "Referrals", Icon: Users },
 ];
 
 const adminLinks = [

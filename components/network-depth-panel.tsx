@@ -7,9 +7,9 @@ export async function NetworkDepthPanel() {
     <section className="pc-v13-network-panel">
       <div className="app-section-head">
         <div>
-          <span className="app-eyebrow">Your network</span>
-          <h2>Three levels. Real activity only.</h2>
-          <p>The graph grows from verified connections. Activity, not recruitment by itself, is what can create economic value.</p>
+          <span className="app-eyebrow">Referral network</span>
+          <h2>Three levels of referral activity.</h2>
+          <p>See how many referred members are active at each level. Monetary rewards apply only when the displayed referral rule is active.</p>
         </div>
         <strong className="pc-v13-rank-chip">{ecosystem.rank} · {ecosystem.xp} XP</strong>
       </div>
@@ -25,9 +25,9 @@ export async function NetworkDepthPanel() {
       </div>
 
       <div className="pc-v13-network-summary">
-        <span><small>Total network</small><strong>{ecosystem.networkMembers}</strong></span>
+        <span><small>Total referrals</small><strong>{ecosystem.networkMembers}</strong></span>
         <span><small>Active</small><strong>{ecosystem.networkActive}</strong></span>
-        <span><small>Commission engine</small><strong>{ecosystem.networkCommissionEnabled ? "Live" : "Protected"}</strong></span>
+        <span><small>Referral rewards</small><strong>{ecosystem.networkCommissionEnabled ? "Active" : "No active bonus"}</strong></span>
       </div>
     </section>
   );

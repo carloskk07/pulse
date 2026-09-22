@@ -39,12 +39,12 @@ export function getCircuitAchievements(input: {
   const signal = Math.max(0, Math.min(100, Math.floor(Number(input.signal) || 0)));
 
   return [
-    achievement({ id: "first-pulse", title: "First Pulse", description: "Complete one authoritative Hourly Pulse claim.", tone: "lime", current: claims, target: 1, unit: "Pulse" }),
-    achievement({ id: "rhythm-3", title: "Rhythm 3", description: "Build a three-day factual return rhythm.", tone: "cyan", current: streak, target: 3, unit: "day" }),
-    achievement({ id: "pulse-10", title: "Ten Pulses", description: "Complete ten funded Pulse claims.", tone: "violet", current: claims, target: 10, unit: "Pulse" }),
-    achievement({ id: "signal-40", title: "Signal 40", description: "Reach the Rhythm stage of Circuit Signal.", tone: "cyan", current: signal, target: 40, unit: "Signal point" }),
-    achievement({ id: "trust-3", title: "Verified Trust", description: "Reach Trust level 3 from real product history.", tone: "warm", current: trust, target: 3, unit: "Trust level" }),
-    achievement({ id: "rhythm-7", title: "Seven-day Circuit", description: "Maintain a seven-day factual rhythm.", tone: "lime", current: streak, target: 7, unit: "day" }),
+    achievement({ id: "first-pulse", title: "First Pulse", description: "Complete your first hourly faucet claim.", tone: "lime", current: claims, target: 1, unit: "Pulse" }),
+    achievement({ id: "rhythm-3", title: "Rhythm 3", description: "Return and claim on three different days.", tone: "cyan", current: streak, target: 3, unit: "day" }),
+    achievement({ id: "pulse-10", title: "Ten Pulses", description: "Complete ten hourly faucet claims.", tone: "violet", current: claims, target: 10, unit: "Pulse" }),
+    achievement({ id: "signal-40", title: "Signal 40", description: "Reach the Rhythm rank.", tone: "cyan", current: signal, target: 40, unit: "Signal point" }),
+    achievement({ id: "trust-3", title: "Verified Trust", description: "Reach account trust level 3 through verified activity.", tone: "warm", current: trust, target: 3, unit: "Trust level" }),
+    achievement({ id: "rhythm-7", title: "Seven-day Circuit", description: "Keep a seven-day return streak.", tone: "lime", current: streak, target: 7, unit: "day" }),
   ];
 }
 

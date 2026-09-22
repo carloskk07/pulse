@@ -8,7 +8,7 @@ import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getRewardSnapshot } from "@/lib/reward-state";
 import { getWeeklyPulseSummary } from "@/lib/retention-summary";
 
-export const metadata = { title: "Momentum" };
+export const metadata = { title: "Progress" };
 export const dynamic = "force-dynamic";
 
 const ranks = ["Spark", "Flow", "Rhythm", "Circuit", "Resonance"] as const;
@@ -43,9 +43,9 @@ export default async function ProgressPage() {
     <AppShell active="progress" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="app-page-head pc-progress-head pc-luxe-momentum-head">
         <div>
-          <span className="app-eyebrow">Momentum</span>
-          <h1>See your rhythm take shape.</h1>
-          <p>Ranks and milestones grow as your Pulse history builds.</p>
+          <span className="app-eyebrow">Progress</span>
+          <h1>See what your activity has built.</h1>
+          <p>Claims, return streaks and milestones turn verified activity into visible progress.</p>
         </div>
         <Link className="button pc-v5-primary" href={shareEntryHref}>{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
       </div>
@@ -66,15 +66,15 @@ export default async function ProgressPage() {
         {state.preview || !state.signedIn ? (
           <aside className="pc-visual-story pc-momentum-story" aria-labelledby="momentum-story-title">
             <div className="pc-visual-story-copy">
-              <span className="app-eyebrow">Your path</span>
+              <span className="app-eyebrow">Progress path</span>
               <h2 id="momentum-story-title">Five ranks. One clear path.</h2>
-              <p>Your live position appears after your first Pulse. Until then, you can see what comes next.</p>
+              <p>Your live position appears after your first eligible claim. Until then, you can see what comes next.</p>
               <div className="pc-v10-rank-preview" aria-label="Rank path">
                 {ranks.map((rank, index) => <span key={rank}><i>{index + 1}</i><strong>{rank}</strong></span>)}
               </div>
             </div>
             <div className="pc-visual-story-flow" aria-hidden="true">
-              <span>Pulse</span><i /><span>Rhythm</span><i /><span>Rank</span>
+              <span>Claim</span><i /><span>Streak</span><i /><span>Rank</span>
             </div>
           </aside>
         ) : (
@@ -105,7 +105,7 @@ export default async function ProgressPage() {
         <section className="pc-progress-cta pc-luxe-momentum-cta pc-share-studio-placeholder" id="circuit-moments" aria-labelledby="share-studio-placeholder-title">
           <div>
             <span className="app-eyebrow">Share progress</span>
-            <h2 id="share-studio-placeholder-title">{state.signedIn ? "Your share card appears when your live history is ready." : "Sign in to share your progress."}</h2>
+            <h2 id="share-studio-placeholder-title">{state.signedIn ? "Your share card appears when your verified history is ready." : "Sign in to share your progress."}</h2>
             <p>Cards share progress, never your balance.</p>
           </div>
           <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"}>{state.signedIn ? "Return to Pulse" : "Sign in"} <ArrowUpRight /></Link>

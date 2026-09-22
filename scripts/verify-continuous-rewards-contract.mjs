@@ -152,25 +152,25 @@ requireAll("lib/pulse-ecosystem.ts", [
 ]);
 
 requireAll("components/continuous-pulse-panel.tsx", [
-  "Every hour can open another Pulse.",
-  "Up to 24/day",
-  "global funding and fraud controls",
+  "Every hour can open another reward.",
+  "24/day available",
+  "There is no artificial daily claim cap.",
 ]);
 
 requireAll("components/continuous-earn-hub.tsx", [
   "Cashback",
-  "Network",
-  "XP measures verified participation",
-  "Reversed purchases never become spendable rewards",
+  "Referrals",
+  "XP tracks account progress",
+  "eligible partner purchases can return part of the confirmed value"
 ]);
 
 requireAll("components/network-depth-panel.tsx", [
-  "Three levels. Real activity only.",
-  "Commission engine",
+  "Three levels of referral activity.",
+  "Referral rewards",
 ]);
 
 requireAll("components/withdrawal-pass-panel.tsx", [
-  "Withdrawal Pass",
+  "Withdrawal access",
   "free withdrawal",
   "extraWithdrawalsEnabled",
 ]);
@@ -201,12 +201,12 @@ requireAll("lib/reward-state.ts", [
 ]);
 
 requireAll("app/dashboard/page.tsx", [
-  'state.claimRewardVariable ? "Reveal Pulse"',
+  'state.claimRewardVariable ? "Reveal reward"',
 ]);
 
 requireAll("components/app-shell.tsx", [
   'label: "Earn"',
-  'label: "Network"',
+  'label: "Referrals"',
 ]);
 
 const dashboard = read("app/dashboard/page.tsx");

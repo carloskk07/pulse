@@ -238,7 +238,7 @@ requireText("app/proof/page.tsx", [
   'className="pc-v10-proof-actions is-evidence-first"',
   'eventLabel="proof_metrics_signup"',
   'eventLabel="proof_final_signup"',
-  "Evidence first",
+  "Ready to earn?",
   'className="button button-light"',
 ]);
 

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Pulsercuit — Return. Rise. Repeat.";
+export const alt = "Pulsercuit — Free crypto rewards with clear value";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -15,10 +15,10 @@ export default function OpenGraphImage() {
           <span>Pulsercuit</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", maxWidth: 850 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", fontSize: 88, lineHeight: .9, letterSpacing: "-5px", fontWeight: 600 }}><span>Return.&nbsp;</span><span style={{ color: "#f1d27d" }}>Rise.</span><span>&nbsp;Repeat.</span></div>
-          <div style={{ display: "flex", fontFamily: "sans-serif", fontSize: 22, color: "#b7b4aa", marginTop: 28 }}><span>Pulse. Vault. Payout.</span></div>
+          <div style={{ display: "flex", flexWrap: "wrap", fontSize: 80, lineHeight: .92, letterSpacing: "-4px", fontWeight: 600 }}><span>Earn crypto.&nbsp;</span><span style={{ color: "#d9ff72" }}>Know what it is worth.</span></div>
+          <div style={{ display: "flex", fontFamily: "sans-serif", fontSize: 22, color: "#b7b4aa", marginTop: 28 }}><span>Hourly faucet · Extra rewards · FaucetPay payouts</span></div>
         </div>
-        <div style={{ display: "flex", gap: 25, color: "#9a9b91", fontFamily: "sans-serif", fontSize: 16 }}><span>Claim</span><span>•</span><span>Build</span><span>•</span><span>Reach payout</span></div>
+        <div style={{ display: "flex", gap: 25, color: "#9a9b91", fontFamily: "sans-serif", fontSize: 16 }}><span>Free to join</span><span>•</span><span>Money value first</span><span>•</span><span>Transparent proof</span></div>
       </div>
     </div>,
     size,

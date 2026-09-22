@@ -261,13 +261,13 @@ requireText("app/dashboard/claimed/page.tsx", [
   'className="pc-v8-vault-orbit"',
   'className="pc-v8-orbit-ring"',
   'className="pc-v8-orbit-core"',
-  'Vault updated',
-  'this Pulse',
+  'Balance updated',
+  'this claim',
   'current rank',
 ]);
 
 requireText("app/earn/page.tsx", [
-  '<div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>',
+  '<div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>',
 ]);
 
 requireText("components/turnstile-field.tsx", [

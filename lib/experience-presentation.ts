@@ -23,8 +23,8 @@ export function getUserNextAction(input: {
   if (input.preview) {
     return {
       kind: "standby",
-      eyebrow: "Pulse",
-      title: "Pulse is temporarily unavailable.",
+      eyebrow: "Hourly reward",
+      title: "Hourly rewards are temporarily unavailable.",
       detail: "Your account remains unchanged. Check back soon.",
       actionLabel: "Check back soon",
       href: "/dashboard",
@@ -35,8 +35,8 @@ export function getUserNextAction(input: {
     return {
       kind: "sign_in",
       eyebrow: "Start here",
-      title: "Enter your circuit.",
-      detail: "Sign in to see your Pulse, progress and Vault.",
+      title: "Sign in to see your rewards.",
+      detail: "See your next claim, balance, payout progress and extra earning options.",
       actionLabel: "Sign in",
       href: "/auth?next=/dashboard",
     };
@@ -45,10 +45,10 @@ export function getUserNextAction(input: {
   if (!input.pulseFundingReady) {
     return {
       kind: "standby",
-      eyebrow: "Pulse",
+      eyebrow: "Hourly reward",
       title: "Rewards are paused for now.",
       detail: "Your balance and history are unchanged. Check back later.",
-      actionLabel: "Refresh Pulse",
+      actionLabel: "Refresh rewards",
       href: "/dashboard",
     };
   }
@@ -57,21 +57,21 @@ export function getUserNextAction(input: {
     return {
       kind: "claim",
       eyebrow: "Ready now",
-      title: "Your next Pulse is ready.",
-      detail: "Claim it and keep moving.",
-      actionLabel: "Claim Pulse",
+      title: "Your next reward is ready.",
+      detail: "Claim it now and add the value to your balance.",
+      actionLabel: "Claim reward",
       href: "/dashboard",
     };
   }
 
   return {
     kind: "waiting",
-    eyebrow: "Next Pulse",
+    eyebrow: "Next claim",
     title: "Your next reward window is forming.",
     detail: input.nextClaimAt
       ? "Come back when the countdown reaches zero. Set a reminder if you want."
-      : "Your next Pulse will appear here automatically.",
-    actionLabel: "View Pulse",
+      : "Your next reward will appear here automatically.",
+    actionLabel: "View reward",
     href: "/dashboard",
   };
 }
@@ -124,8 +124,8 @@ export function getWalletPresentation(input: {
 
   if (!input.signedIn) {
     return {
-      eyebrow: "Vault",
-      title: "Sign in to use your Vault.",
+      eyebrow: "Balance",
+      title: "Sign in to view your balance and payouts.",
       detail: "Your balance and payout progress appear after sign-in.",
       buttonLabel: "Sign in",
       destinationEnabled: false,
@@ -146,7 +146,7 @@ export function getWalletPresentation(input: {
 
   if (input.preview || !input.payoutPackReady || !input.readProofReady || !input.sendScopeProofReady) {
     return {
-      eyebrow: "Vault",
+      eyebrow: "Payout",
       title: "Payouts are temporarily unavailable.",
       detail: "Your balance is unchanged. Try again later.",
       buttonLabel: "Withdrawal unavailable",
@@ -157,7 +157,7 @@ export function getWalletPresentation(input: {
 
   if (!input.payoutCredits || input.availableCredits < input.payoutCredits) {
     return {
-      eyebrow: "Vault progress",
+      eyebrow: "Payout progress",
       title: "Keep building toward your payout.",
       detail: input.formattedMissingAmount
         ? `${input.formattedMissingAmount} remains to reach the current withdrawal target.`
@@ -170,7 +170,7 @@ export function getWalletPresentation(input: {
 
   return {
     eyebrow: "Ready",
-    title: "Your Vault is ready to withdraw.",
+    title: "Your balance is ready to withdraw.",
     detail: "Enter your FaucetPay destination to continue.",
     buttonLabel: "Withdraw",
     destinationEnabled: true,

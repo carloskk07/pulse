@@ -6,7 +6,7 @@ import { MIN_PASSWORD_LENGTH, safeAuthNext } from "@/lib/auth-security";
 import { cleanReferralCode } from "@/lib/referrals";
 import { signIn, signUp } from "./actions";
 
-export const metadata = { title: "Enter Pulsercuit" };
+export const metadata = { title: "Sign in or create account" };
 
 type Props = { searchParams: Promise<{ error?: string; message?: string; next?: string; ref?: string; mode?: string }> };
 
@@ -54,9 +54,9 @@ export default async function AuthPage({ searchParams }: Props) {
 
       <section className="auth-shell shell pc-v5-auth-shell">
         <div className="auth-copy pc-v5-auth-copy pc-luxe-auth-copy">
-          <span className="section-kicker">One account</span>
-          <h1>{signingUp ? <>Start free. <em>Begin with one Pulse.</em></> : <>Welcome <em>back.</em></>}</h1>
-          <p>{signingUp ? "One account for your Pulse, Vault and progress." : "Your Pulse history, progress and Vault stay together across every device you use."}</p>
+          <span className="section-kicker">Free account</span>
+          <h1>{signingUp ? <>Start free. <em>See every reward in real value.</em></> : <>Welcome <em>back.</em></>}</h1>
+          <p>{signingUp ? "One account for the hourly faucet, extra rewards, referrals, balance and payouts." : "Your reward history, balance and payout progress stay together across every device you use."}</p>
           <div className="auth-trust pc-v5-auth-trust">
             <span>Free to join</span>
             <span>No purchase required</span>
@@ -67,7 +67,7 @@ export default async function AuthPage({ searchParams }: Props) {
         <div className="auth-card pc-v5-auth-card pc-luxe-auth-card">
           <div>
             <span className="app-eyebrow">{signingUp ? "Create account" : "Sign in"}</span>
-            <h2>{signingUp ? "Create your Pulsercuit account" : "Continue your circuit"}</h2>
+            <h2>{signingUp ? "Create your free account" : "Continue earning"}</h2>
           </div>
 
           <div className="auth-mode-switch" aria-label="Authentication mode">
@@ -102,8 +102,8 @@ export default async function AuthPage({ searchParams }: Props) {
           )}
 
           <div className="pc-v10-auth-reassurance">
-            <strong>{signingUp ? "No deposit. No purchase." : "Your Pulse, Vault and history stay with your account."}</strong>
-            <span>{signingUp ? "Your progress begins with your first Pulse." : "Sign in to continue where you left off."}</span>
+            <strong>{signingUp ? "No deposit. No purchase." : "Your rewards, balance and history stay with your account."}</strong>
+            <span>{signingUp ? "Your progress begins with your first eligible reward." : "Sign in to continue where you left off."}</span>
           </div>
           <small>By continuing you agree to the <Link href="/terms">Terms</Link>, <Link href="/privacy">Privacy</Link> and <Link href="/rewards-policy">Rewards policy</Link>.</small>
         </div>

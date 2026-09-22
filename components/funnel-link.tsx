@@ -9,6 +9,7 @@ type Props = Omit<ComponentProps<typeof Link>, "href" | "onClick"> & {
     | "header_signup"
     | "home_hero_signup"
     | "home_hero_proof"
+    | "home_hero_faucet"
     | "home_pillar_signup"
     | "home_pillar_proof"
     | "home_chamber_signup"

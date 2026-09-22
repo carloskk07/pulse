@@ -44,6 +44,7 @@
 
 /* Conversion and editorial system — scoped additions only; release hardening remains authoritative. */
 @import "./styles/conversion-system.css";
+@import "./styles/public-conversion.css";
 
 /* Release hardening and canonical geometry — these must remain last. */
 @import "./styles/visual-hardening.css";

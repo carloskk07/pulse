@@ -68,10 +68,10 @@ requireAll("app/admin/page.tsx", [
 requireAll("app/faucet/page.tsx", [
   "launch.publicClaimsOpen",
   'state={launch.publicClaimsOpen ? "ready" : "limited"}',
-  "Public claiming is currently limited.",
-  "Claim availability is shown inside your account when access is open.",
+  "Hourly faucet access is opening gradually.",
+  "Your account shows claim availability as soon as your access is open.",
   'eventLabel="faucet_signup"',
-  '{launch.publicClaimsOpen ? "Start with one Pulse" : "Create free account"}',
+  '{launch.publicClaimsOpen ? "Start earning free crypto" : "Create free account"}',
 ]);
 
 requireAll("lib/product-readiness.ts", [

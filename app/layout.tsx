@@ -5,22 +5,22 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: getCanonicalSiteUrl(),
   title: {
-    default: "Pulsercuit — Return. Rise. Repeat.",
+    default: "Pulsercuit — Free Crypto Rewards & FaucetPay Payouts",
     template: "%s · Pulsercuit",
   },
   description:
-    "Claim a Pulse, grow your Vault and build toward payout.",
+    "A free crypto rewards platform built around a recurring faucet, optional extra earning paths and FaucetPay payouts.",
   applicationName: "Pulsercuit",
   manifest: "/manifest.webmanifest",
-  keywords: ["reward platform", "gamified rewards", "recurring rewards", "reward streaks", "transparent payouts", "Pulsercuit", "Pulse rewards"],
+  keywords: ["free crypto faucet", "crypto rewards", "FaucetPay rewards", "earn crypto", "recurring rewards", "transparent payouts", "Pulsercuit"],
   twitter: {
     card: "summary_large_image",
-    title: "Pulsercuit — Return. Rise. Repeat.",
-    description: "Claim a Pulse, grow your Vault and keep moving.",
+    title: "Pulsercuit — Free Crypto Rewards",
+    description: "Claim recurring crypto rewards, see their real-dollar value and build toward FaucetPay payout.",
   },
   openGraph: {
-    title: "Pulsercuit — Return. Rise. Repeat.",
-    description: "A simpler reward loop built around Pulse, Vault and payout.",
+    title: "Pulsercuit — Free Crypto Rewards",
+    description: "Free crypto rewards with a recurring faucet, optional earning paths and transparent FaucetPay payouts.",
     type: "website",
     siteName: "Pulsercuit",
   },

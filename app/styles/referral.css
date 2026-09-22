@@ -7,3 +7,36 @@
 .pc-share-preview>summary::-webkit-details-marker,.pc-luxe-referral-milestones>summary::-webkit-details-marker{display:none}
 .pc-share-preview>summary:after,.pc-luxe-referral-milestones>summary:after{content:"+";font-size:18px;color:var(--lime)}
 .pc-share-preview[open]>summary:after,.pc-luxe-referral-milestones[open]>summary:after{content:"−"}
+
+
+/* Value-first referral acquisition card. */
+.pc-referral-value-card{
+  width:min(100%,430px);
+  display:grid;
+  gap:4px;
+  margin:10px 0 8px;
+  padding:18px 20px;
+  border:1px solid rgba(217,255,114,.2);
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 100% 0,rgba(217,255,114,.12),transparent 42%),
+    linear-gradient(145deg,rgba(20,27,20,.94),rgba(10,13,11,.94));
+  box-shadow:0 24px 70px rgba(0,0,0,.22);
+}
+.pc-referral-value-card small{
+  color:#8f9a91;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.pc-referral-value-card strong{
+  color:#dfff84;
+  font-size:36px;
+  line-height:1;
+  letter-spacing:-.055em;
+}
+.pc-referral-value-card span{
+  color:#a9b2aa;
+  font-size:11px;
+}

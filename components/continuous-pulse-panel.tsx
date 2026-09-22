@@ -8,19 +8,19 @@ export async function ContinuousPulsePanel() {
   return (
     <section className="pc-v13-continuous-panel">
       <div>
-        <span className="app-eyebrow">Continuous earning</span>
-        <h2>Every hour can open another Pulse.</h2>
-        <p>The product is built around cadence, not an arbitrary claim count. A genuine member can return through every hourly window while global funding and fraud controls protect the system.</p>
+        <span className="app-eyebrow">Hourly faucet</span>
+        <h2>Every hour can open another reward.</h2>
+        <p>There is no artificial daily claim cap. Return when each hourly window opens and keep building your balance at your own pace.</p>
       </div>
       <div className="pc-v13-continuous-metrics">
-        <span><small>Hourly windows</small><strong>Up to 24/day</strong></span>
+        <span><small>Hourly windows</small><strong>24/day available</strong></span>
         <span><small>Today</small><strong>{ecosystem.claimsToday} claimed</strong></span>
         <span><small>Rank</small><strong>{ecosystem.rank}</strong></span>
         <span><small>XP</small><strong>{ecosystem.xp}</strong></span>
       </div>
       <div className="pc-v13-continuous-actions">
-        <Link href="/earn" className="button button-secondary">Earn between Pulses <ArrowUpRight /></Link>
-        <Link href="/invite" className="inline-action">Grow Network <ArrowUpRight /></Link>
+        <Link href="/earn" className="button button-secondary">Explore extra rewards <ArrowUpRight /></Link>
+        <Link href="/invite" className="inline-action">Open referrals <ArrowUpRight /></Link>
       </div>
     </section>
   );

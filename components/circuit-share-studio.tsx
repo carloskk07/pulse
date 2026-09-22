@@ -30,8 +30,8 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
       return {
         eyebrow: "Milestone unlocked",
         headline: achievement,
-        detail: `${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"} behind this mark.`,
-        text: `Unlocked: ${achievement} on Pulsercuit. ${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}. Built from real history.`,
+        detail: `${normalizedPulses} verified claim${normalizedPulses === 1 ? "" : "s"} behind this milestone.`,
+        text: `Unlocked: ${achievement} on Pulsercuit after ${normalizedPulses} verified claim${normalizedPulses === 1 ? "" : "s"}.`,
       };
     }
 
@@ -39,18 +39,18 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
       return {
         eyebrow: "Circuit rank",
         headline: stage,
-        detail: `Signal ${normalizedSignal}/100 · real Pulse and Trust history.`,
-        text: `My Pulsercuit rank is ${stage} — Signal ${normalizedSignal}/100. Built from real Pulse history.`,
+        detail: `Progress ${normalizedSignal}/100 · based on verified account history.`,
+        text: `My Pulsercuit rank is ${stage} — progress ${normalizedSignal}/100 from verified activity.`,
       };
     }
 
     return {
-      eyebrow: "Return rhythm",
-      headline: normalizedDays > 0 ? `${normalizedDays}-day rhythm` : "Circuit started",
-      detail: `${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}. Still climbing.`,
+      eyebrow: "Return streak",
+      headline: normalizedDays > 0 ? `${normalizedDays}-day streak` : "Progress started",
+      detail: `${normalizedPulses} verified claim${normalizedPulses === 1 ? "" : "s"}.`,
       text: normalizedDays > 0
-        ? `${normalizedDays}-day Pulsercuit rhythm. ${normalizedPulses} funded Pulse${normalizedPulses === 1 ? "" : "s"}. Still climbing.`
-        : "My Pulsercuit circuit is live. Building momentum from real activity.",
+        ? `${normalizedDays}-day Pulsercuit return streak with ${normalizedPulses} verified claim${normalizedPulses === 1 ? "" : "s"}.`
+        : "My Pulsercuit progress has started with verified activity.",
     };
   }, [achievement, mode, normalizedDays, normalizedPulses, normalizedSignal, stage]);
 
@@ -79,17 +79,17 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
   }
 
   const options: { id: ShareMode; label: string; disabled?: boolean }[] = [
-    { id: "rhythm", label: "Rhythm" },
+    { id: "rhythm", label: "Streak" },
     { id: "signal", label: "Rank" },
-    { id: "achievement", label: "Seal", disabled: !achievement },
+    { id: "achievement", label: "Milestone", disabled: !achievement },
   ];
 
   return (
     <section className="pc-share-studio pc-luxe-share-studio" id="circuit-moments" aria-labelledby="share-studio-title">
       <div className="pc-share-studio-copy">
         <span className="app-eyebrow">Share studio</span>
-        <h2 id="share-studio-title">Turn progress into a statement.</h2>
-        <p>Pick one real moment. No balance. No fake flex.</p>
+        <h2 id="share-studio-title">Share a real milestone.</h2>
+        <p>Share a rank, streak or milestone without exposing your balance.</p>
         <div className="pc-share-mode-row" role="group" aria-label="Choose a share moment">
           {options.map((option) => (
             <button
@@ -107,14 +107,14 @@ export function CircuitShareStudio({ days, signal, stage, pulseCount, achievemen
 
       <article className={`pc-share-moment-card pc-luxe-moment-card mode-${mode}`}>
         <div className="pc-share-moment-orbit" aria-hidden="true"><i /><i /><i /></div>
-        <div className="pc-share-moment-brand"><span>Pulsercuit</span><small>moment / verified history</small></div>
+        <div className="pc-share-moment-brand"><span>Pulsercuit</span><small>progress / verified history</small></div>
         <div className="pc-share-moment-body">
           <small>{moment.eyebrow}</small>
           <strong>{moment.headline}</strong>
           <p>{moment.detail}</p>
         </div>
         <div className="pc-share-moment-foot">
-          <span>Real history · private balance hidden</span>
+          <span>Verified history · balance hidden</span>
           <button type="button" onClick={share} aria-live="polite">
             {status === "copied" ? "Copied" : status === "shared" ? "Shared" : status === "failed" ? "Copy unavailable" : "Share this moment"}
           </button>

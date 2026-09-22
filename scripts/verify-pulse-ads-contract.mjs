@@ -251,11 +251,11 @@ requireAll("app/faucet/page.tsx", [
   '<FunnelBeacon event="faucet_view" />',
   "launch.publicClaimsOpen",
   "PulseCoreVisual",
-  "No ad wall before claim",
-  "ACCESS LIMITED",
+  "The hourly faucet stays central.",
+  "EARLY ACCESS",
   'className="pc-faucet-final shell"',
   'eventLabel="faucet_signup"',
-  '{launch.publicClaimsOpen ? "Start with one Pulse" : "Create free account"}',
+  '{launch.publicClaimsOpen ? "Start earning free crypto" : "Create free account"}',
 ]);
 requireAll("lib/faucet-launch.ts", [
   "pilotMode",
@@ -263,7 +263,7 @@ requireAll("lib/faucet-launch.ts", [
   "publicClaimsOpen: !pilotMode && backingReady && fairShareReady && treasuryReady",
 ]);
 requireAll("lib/marketing-funnel.ts", [
-  'MARKETING_EXPERIENCE_VERSION = "public-conversion-v14-9"',
+  'MARKETING_EXPERIENCE_VERSION = "public-conversion-v14-10"',
   '"faucet_view"',
   '"faucet_signup"',
   '"faucet_proof"',

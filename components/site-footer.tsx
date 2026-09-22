@@ -11,7 +11,7 @@ export function SiteFooter({ className = "" }: SiteFooterProps) {
     <footer className={footerClass}>
       <div className="pc-v6-shell">
         <strong>Pulsercuit</strong>
-        <span>© 2026 · Faucet-first rewards.</span>
+        <span>© 2026 · Free crypto rewards · FaucetPay payouts.</span>
         <nav aria-label="Public footer">
           <Link href="/">Home</Link>
           <Link href="/faucet">Faucet</Link>
