@@ -15,6 +15,7 @@
 .pc-faucet-live-card .pulse-core-visual{position:relative;z-index:2;justify-self:center;align-self:center;width:min(100%,320px)}
 .pc-faucet-live-card .pulse-core-readout{width:62%}
 .pc-faucet-live-card .pulse-core-word{font-size:clamp(3rem,5.2vw,4.4rem)}
+.pc-faucet-live-card .pc-faucet-money-value{font-size:clamp(2.7rem,3vw,3rem);letter-spacing:-.09em;white-space:nowrap}
 .pc-faucet-live-card.is-limited .pulse-core-visual{filter:saturate(.7)}
 .pc-faucet-live-card.is-limited .pulse-core-readout>span{color:#8d958f}
 .pc-faucet-live-foot{position:relative;z-index:2;display:grid;align-self:end;gap:5px;padding-top:18px;border-top:1px solid rgba(255,255,255,.06)}
