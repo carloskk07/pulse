@@ -37,6 +37,13 @@ function countLabel(value: number, available: boolean, singular: string, plural:
   return available && value === 1 ? singular : plural;
 }
 
+function publicActivityLabel(label: string) {
+  const normalized = label.trim();
+  if (/^hourly pulse verified$/i.test(normalized)) return "Hourly reward verified";
+  if (/pulse claim/i.test(normalized)) return normalized.replace(/pulse claim/gi, "faucet claim");
+  return normalized;
+}
+
 function usableRuntimeProof(value: unknown): value is PublicSocialProof {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const proof = value as Partial<PublicSocialProof>;
@@ -206,7 +213,7 @@ export function V6RecentActivity({ initialProof }: V6ProofProps) {
         <div key={`${item.occurredAt}-${index}`}>
           <span className="pc-home-activity-pulse" aria-hidden="true" />
           <p>
-            <strong>{item.label}</strong>
+            <strong>{publicActivityLabel(item.label)}</strong>
             <small>{item.credits > 0 ? "Verified reward" : "Verified"}</small>
           </p>
         </div>
