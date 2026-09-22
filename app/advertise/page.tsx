@@ -62,7 +62,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
           <div>
             <span className="app-eyebrow">Pulsercuit Ads · qualified traffic</span>
             <h1>Reach crypto earners. <em>Pay for qualified clicks.</em></h1>
-            <p>Start from $5 at the current $0.05 launch rate. Pulsercuit reviews the destination first, FaucetPay handles funding, and reward claims stay separate from advertising.</p>
+            <p>Start from $5 at the current $0.05 launch rate. Pulsercuit reviews the destination first, FaucetPay handles funding, reward claims stay separate from advertising, and users are never paid to click.</p>
             <div className="pc-ads-principles" aria-label="Pulse Ads principles">
               <span><Check /> Native placement after the claim</span>
               <span><Shield /> Prepaid, capped budget</span>
