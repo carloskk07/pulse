@@ -1,4 +1,4 @@
-import { getPulseEcosystemSnapshot, type PulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
+import { getPulseEcosystemSnapshot, type PulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";\nimport { formatUsdFromCredits } from "@/lib/reward-state";
 
 function compact(value: string | null) {
   if (!value) return null;
@@ -17,7 +17,7 @@ export async function WithdrawalPassPanel({ snapshot }: { snapshot?: PulseEcosys
   return (
     <section className="pc-v13-withdraw-pass">
       <div>
-        <span className="app-eyebrow">Withdrawal Pass</span>
+        <span className="app-eyebrow">Withdrawal access</span>
         <h2>{ecosystem.freeWithdrawalAvailable ? "Your free withdrawal is available." : "Your next free withdrawal is already scheduled."}</h2>
         <p>{ecosystem.freeWithdrawalAvailable
           ? "One provider payout can be fee-free inside each 24-hour cycle once the expanded withdrawal policy is activated."
@@ -27,8 +27,8 @@ export async function WithdrawalPassPanel({ snapshot }: { snapshot?: PulseEcosys
       </div>
 
       <div className="pc-v13-withdraw-pass-metrics">
-        <span><small>Free pass</small><strong>{ecosystem.freeWithdrawalAvailable ? "READY" : "USED"}</strong></span>
-        <span><small>Extra withdrawal</small><strong>{ecosystem.extraWithdrawalsEnabled ? ecosystem.extraWithdrawalFeeCredits + " P fee" : "Locked"}</strong></span>
+        <span><small>Free withdrawal</small><strong>{ecosystem.freeWithdrawalAvailable ? "READY" : "USED"}</strong></span>
+        <span><small>Extra withdrawal</small><strong>{ecosystem.extraWithdrawalsEnabled ? formatUsdFromCredits(ecosystem.extraWithdrawalFeeCredits) + " fee" : "Locked"}</strong></span>
       </div>
     </section>
   );
