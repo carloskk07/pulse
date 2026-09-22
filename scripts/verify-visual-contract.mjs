@@ -267,7 +267,7 @@ requireText("app/dashboard/claimed/page.tsx", [
 ]);
 
 requireText("app/earn/page.tsx", [
-  '<div className="balance-chip"><small>Vault</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>',
+  '<div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>',
 ]);
 
 requireText("components/turnstile-field.tsx", [
