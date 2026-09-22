@@ -238,6 +238,9 @@ requireText("app/styles/pulse-core.css", [
   ".proof-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}",
   ".proof-grid article{min-height:150px;padding:18px}",
   ".proof-evidence-next{",
+  ".proof-principles-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}",
+  ".proof-principles-grid article{min-width:0;padding:24px",
+  ".proof-principles-grid{grid-template-columns:1fr}",
   ".proof-hero{padding-top:58px;padding-bottom:28px}",
   ".proof-evidence-next .button{width:100%;justify-content:center}",
 ]);
@@ -308,6 +311,7 @@ requireText("app/styles/layout-authority.css", [
   ".pc-v6-pillar-grid,.pc-v6-share-cards{grid-template-columns:1fr!important",
   ".proof-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}",
   ".proof-grid article{min-height:150px!important;padding:18px!important}",
+  ".proof-principles-grid{grid-template-columns:1fr!important}",
   "@media(max-width:359px)",
   ".proof-grid{grid-template-columns:1fr!important}",
   "@media(max-width:860px)",
@@ -321,6 +325,14 @@ requireText("app/styles/touch-foundation.css", [
   ".bottom-nav-menu{",
   "env(safe-area-inset-bottom)",
 ]);
+
+const proofPage = read("app/proof/page.tsx");
+if (!proofPage.includes('className="proof-principles-grid"')) {
+  throw new Error("Proof details must contain an explicit principles content grid.");
+}
+if (proofPage.includes('<details className="proof-principles shell" open><summary><strong>How these numbers work</strong></summary>\n        <article>')) {
+  throw new Error("Proof must not rely on details itself as the principles grid.");
+}
 
 const layoutAuthority = readFileSync("app/styles/layout-authority.css", "utf8");
 if (/(^|\\n)\\s*\\.pc-v6-login\\{display:none!important\\}/.test(layoutAuthority)) {
