@@ -130,7 +130,7 @@ export default async function HomePage() {
               <div className="pc-home-step-icon"><Clock /></div>
               <span>02</span>
               <h3>Come back on your rhythm</h3>
-              <p>Your next window is based on your own claim history. No fake global countdown.</p>
+              <p>Your return window follows your own claim history, so the rhythm stays personal to your account.</p>
             </article>
             <article>
               <div className="pc-home-step-icon"><Wallet /></div>
