@@ -4,6 +4,7 @@ import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { ArrowUpRight, Check, Shield, Spark, Wallet } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
 
@@ -122,10 +123,7 @@ export default async function FaucetPage() {
         ) : <FunnelLink className="button button-lg button-dark" href="/proof" eventLabel="faucet_proof">See live proof <ArrowUpRight /></FunnelLink>}
       </section>
 
-      <footer className="footer shell">
-        <div><strong>Pulsercuit</strong><span>© 2026 · Faucet-first rewards.</span></div>
-        <div><Link href="/">Home</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link></div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
