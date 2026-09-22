@@ -286,7 +286,7 @@ requireText("app/styles/touch-foundation.css", [
   "env(safe-area-inset-bottom)",
 ]);
 
-if (readFileSync("app/styles/layout-authority.css", "utf8").includes(".pc-v6-login{display:none!important}")) {
+if (/(^|\\n)\\s*\\.pc-v6-login\\{display:none!important\\}/.test(readFileSync("app/styles/layout-authority.css", "utf8"))) {
   throw new Error("Canonical layout must not suppress the Home login with a global mobile rule.");
 }
 
