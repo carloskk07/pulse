@@ -3,10 +3,10 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const MARKETING_SESSION_COOKIE = "pc_growth";
 export const MARKETING_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
-export const MARKETING_EXPERIENCE_VERSION = "faucet-lobby-v13";
+export const MARKETING_EXPERIENCE_VERSION = "pulse-identity-v14-2";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PUBLIC_EVENTS = new Set<MarketingEventType>(["home_view", "proof_view", "signup_view", "cta_click"]);
+const PUBLIC_EVENTS = new Set<MarketingEventType>(["home_view", "faucet_view", "proof_view", "signup_view", "cta_click"]);
 const CLICK_LABELS = new Set([
   "header_signup",
   "home_hero_signup",
@@ -21,7 +21,7 @@ const CLICK_LABELS = new Set([
   "faucet_proof",
 ]);
 
-export type MarketingEventType = "home_view" | "proof_view" | "signup_view" | "signup_created" | "cta_click";
+export type MarketingEventType = "home_view" | "faucet_view" | "proof_view" | "signup_view" | "signup_created" | "cta_click";
 
 export type MarketingAttribution = {
   utmSource?: string | null;
@@ -46,6 +46,7 @@ export type MarketingFunnelSnapshot = {
   fromDay: string | null;
   trackingStartedAt: string | null;
   homeSessions: number;
+  faucetSessions: number;
   proofSessions: number;
   signupSessions: number;
   signupCreatedSessions: number;
@@ -131,6 +132,7 @@ const EMPTY: MarketingFunnelSnapshot = {
   fromDay: null,
   trackingStartedAt: null,
   homeSessions: 0,
+  faucetSessions: 0,
   proofSessions: 0,
   signupSessions: 0,
   signupCreatedSessions: 0,
@@ -183,6 +185,7 @@ export async function getMarketingFunnelSnapshot(days = 30): Promise<MarketingFu
     fromDay: snapshot.from_day ? String(snapshot.from_day) : null,
     trackingStartedAt: snapshot.tracking_started_at ? String(snapshot.tracking_started_at) : null,
     homeSessions: Number(snapshot.home_sessions ?? 0),
+    faucetSessions: Number(snapshot.faucet_sessions ?? 0),
     proofSessions: Number(snapshot.proof_sessions ?? 0),
     signupSessions: Number(snapshot.signup_sessions ?? 0),
     signupCreatedSessions: Number(snapshot.signup_created_sessions ?? 0),
