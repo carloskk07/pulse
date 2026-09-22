@@ -261,6 +261,7 @@ for (const fragment of [
   "Personal claim rhythm",
   "Your return window follows your own claim history",
   "<V6HeroProof initialProof={initialProof} />",
+  "<V6RecentActivity initialProof={initialProof} />",
   "<V6FinalProof initialProof={initialProof} />",
 ]) {
   if (!homePage.includes(fragment)) {
@@ -282,6 +283,13 @@ for (const fragment of [
   "data-proof-reward-event-count",
   "data-proof-paid-withdrawal-count",
   "countLabel(proof.paidWithdrawalCount",
+  "PUBLIC_PROOF_REFRESH_FLOOR_MS = 45_000",
+  "PUBLIC_PROOF_POLL_MS = 60_000",
+  'document.visibilityState !== "visible"',
+  "cachedProof ?? EMPTY_PROOF",
+  "announceProofUpdate(previous, proof)",
+  "positiveDelta(next.rewardEventCount, previous.rewardEventCount)",
+  "export function V6RecentActivity",
 ]) {
   if (!liveProof.includes(fragment)) {
     throw new Error(`Live proof lost server bootstrap/background refresh contract: ${fragment}`);
@@ -289,6 +297,42 @@ for (const fragment of [
 }
 if (liveProof.includes("if (cachedProof) return Promise.resolve(cachedProof);")) {
   throw new Error("Live proof must refresh authoritative runtime data even when bootstrapped.");
+}
+
+const proofEvents = read("lib/public-proof-events.ts");
+for (const fragment of [
+  'PUBLIC_PROOF_UPDATE_EVENT = "pulsercuit:proof-update"',
+  'PublicProofUpdateKind = "member" | "reward" | "payout"',
+]) {
+  if (!proofEvents.includes(fragment)) {
+    throw new Error(`Public proof event contract missing: ${fragment}`);
+  }
+}
+
+const sensoryLayer = read("components/pulsercuit-sensory-layer.tsx");
+for (const fragment of [
+  "PUBLIC_PROOF_UPDATE_EVENT",
+  'root.querySelector<HTMLElement>(".pc-home-core-stage")',
+  'coreStage.classList.add("pc-home-proof-updated")',
+  "delete coreStage.dataset.proofSignal",
+  "window.addEventListener(PUBLIC_PROOF_UPDATE_EVENT, onProofUpdate)",
+  "window.removeEventListener(PUBLIC_PROOF_UPDATE_EVENT, onProofUpdate)",
+]) {
+  if (!sensoryLayer.includes(fragment)) {
+    throw new Error(`Home proof signal controller missing: ${fragment}`);
+  }
+}
+
+for (const fragment of [
+  ".pc-home-core-stage.pc-home-proof-updated:after",
+  "@keyframes pcHomeProofSignal",
+  "@keyframes pcHomeCoreSignal",
+  '[data-proof-signal="payout"]',
+  "@media(prefers-reduced-motion:reduce)",
+]) {
+  if (!lobbyCss.includes(fragment)) {
+    throw new Error(`Home proof signal visual contract missing: ${fragment}`);
+  }
 }
 
 console.log("Canonical Home cascade PASS");
