@@ -920,6 +920,27 @@ forbidText("supabase/migrations/0054_wallet_snapshot_compaction.sql", [
   "grant execute on function public.current_user_wallet_state()\n  to anon",
   "grant execute on function public.current_wallet_runtime_state(uuid)\n  to authenticated"
 ]);
+requireText("supabase/migrations/0104_cashback_partner_intake.sql", [
+  "cashback_partner",
+  "release_cashback_partner_intake_contract",
+  "Canonical release schema remains v55/0055"
+]);
+requireText("app/api/business/leads/route.ts", [
+  "PRODUCT_INTERESTS",
+  '"cashback_partner"',
+  'objective === "cashback" ? "cashback_partner"',
+  "product_interest: productInterest",
+]);
+requireText("app/business/integration/page.tsx", [
+  "Cashback Partner · 01 · Tracking",
+  "POST /api/cashback/callback",
+  "The partner never sends reward credits.",
+]);
+requireText("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_cashback_partner_intake_contract")',
+  'setupBlockers.push("cashback-partner-intake")',
+]);
+
 requireText("supabase/migrations/0103_cashback_canonical_ingestion.sql", [
   "cashback_tracking_sessions",
   "create_cashback_tracking_session",
