@@ -57,7 +57,8 @@ const fixtures: Record<ClaimRevealTone, {
 export default async function ClaimRevealVisualFixture({ searchParams }: Props) {
   const requestHeaders = await headers();
   const host = requestHeaders.get("host")?.toLowerCase() ?? "";
-  const localVisualHost = host.startsWith("127.0.0.1:") || host.startsWith("localhost:");
+  const forwardedHost = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim().toLowerCase() ?? "";
+  const localVisualHost = !forwardedHost && (host.startsWith("127.0.0.1:") || host.startsWith("localhost:"));
   if (!localVisualHost) notFound();
 
   const params = await searchParams;
