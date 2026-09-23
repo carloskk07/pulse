@@ -5,7 +5,7 @@ import { ArrowUpRight, Check, Shield, Trend } from "@/components/icons";
 
 export const metadata = {
   title: "Pulse for Business",
-  description: "Run prefunded campaigns that pay for verified actions, not impressions.",
+  description: "Run verified-action campaigns or connect purchase cashback with server-side proof.",
 };
 
 type Props = { searchParams: Promise<{ lead?: string }> };
@@ -29,13 +29,13 @@ export default async function BusinessPage({ searchParams }: Props) {
       <section className="business-hero shell">
         <div className="business-hero-copy">
           <div className="eyebrow"><span className="live-dot" /> Pulse for Business</div>
-          <h1>Pay for <em>verified actions.</em> Not promises.</h1>
-          <p>Define one measurable outcome, prefund a bounded pilot, and pay only after the agreed result is verified.</p>
+          <h1>Pay for <em>verified results.</em> Not promises.</h1>
+          <p>Run a verified-action campaign or connect purchase cashback. In both models, value moves only after an agreed server-side result is confirmed.</p>
           <div className="hero-actions">
             <Link className="button button-lg" href="#pilot">Plan a pilot <ArrowUpRight /></Link>
-            <Link className="button button-ghost button-lg" href="#model">See how it works</Link>
+            <Link className="button button-ghost button-lg" href="/business/integration">Integration</Link>
           </div>
-          <div className="trust-strip"><span><Check /> Prefunded</span><span><Shield /> Server-verified</span><span><Check /> No impression billing</span></div>
+          <div className="trust-strip"><span><Check /> Outcome-priced</span><span><Shield /> Server-verified</span><span><Check /> Pseudonymous tracking</span></div>
           <Link className="pc-v10-business-proof" href="/proof">See the live user-side proof <ArrowUpRight /></Link>
         </div>
 
@@ -54,8 +54,17 @@ export default async function BusinessPage({ searchParams }: Props) {
 
       <section className="business-principles shell" id="model">
         <article><span>01</span><h3>Define the result.</h3><p>Installation, registration, trial, purchase, survey completion or another event that can be verified objectively.</p></article>
-        <article><span>02</span><h3>Fund before launch.</h3><p>A direct campaign does not go live on credit. Pulse records verified advertiser funding before protected inventory can open.</p></article>
-        <article><span>03</span><h3>Settle on proof.</h3><p>When the agreed event is confirmed, advertiser spend and the user reward settle together under one financial transaction.</p></article>
+        <article><span>02</span><h3>Choose the model.</h3><p>Direct campaigns reserve funded budget before a start. Cashback settles from verified partner commission after a tracked purchase.</p></article>
+        <article><span>03</span><h3>Settle on proof.</h3><p>When the agreed event is confirmed, Pulsercuit applies the configured economics and records the user reward under server authority.</p></article>
+      </section>
+
+      <section className="section shell business-value-section" aria-labelledby="business-products-title">
+        <div className="section-heading split-heading"><div><span className="section-kicker">Two integration paths</span><h2 id="business-products-title">Acquisition or cashback — one verification philosophy.</h2></div><p>Choose the model that matches the event you can prove.</p></div>
+        <div className="business-value-grid">
+          <article><div className="step-icon"><Trend /></div><h3>Pulse Direct</h3><p>Prefund a bounded campaign and reward a verified registration, activation, trial or other agreed action.</p></article>
+          <article><div className="step-icon"><Check /></div><h3>Cashback Partner</h3><p>Preserve one anonymous tracking reference and report verified commission after a purchase. Pulsercuit calculates the member&apos;s cashback.</p></article>
+          <article><div className="step-icon"><Shield /></div><h3>One server boundary</h3><p>No client-side reward authority, no Pulsercuit account ID shared with the partner and no duplicate settlement from repeated callbacks.</p></article>
+        </div>
       </section>
 
       <section className="section shell business-value-section">
@@ -84,7 +93,7 @@ export default async function BusinessPage({ searchParams }: Props) {
         <div className="business-pilot-copy">
           <span className="section-kicker">Pilot intake</span>
           <h2>Start small enough to learn fast.</h2>
-          <p>We are not asking companies to commit to a large media buy. A strong first campaign is narrow: one action, one target market, a bounded budget and a verification method we can trust.</p>
+          <p>Start with one verifiable result. For Direct, keep the campaign bounded. For cashback, start with a small catalog or market and a server callback your commerce stack already trusts.</p>
           <div className="trust-points"><span><Check /> No campaign launches automatically</span><span><Check /> We review economics before requesting funding</span><span><Check /> No test budget is created from this form</span></div>
         </div>
 
@@ -95,12 +104,13 @@ export default async function BusinessPage({ searchParams }: Props) {
             <label><span>Contact</span><input name="contact_name" required minLength={2} maxLength={120} autoComplete="name" placeholder="Your name" /></label>
             <label><span>Work email</span><input name="work_email" required type="email" maxLength={254} autoComplete="email" placeholder="you@company.com" /></label>
             <label><span>Website</span><input name="website" maxLength={500} inputMode="url" placeholder="company.com" /></label>
-            <label><span>Primary objective</span><select name="objective" required defaultValue=""><option value="" disabled>Select one</option><option value="app_install">App install / activation</option><option value="registration">Qualified registration</option><option value="trial">Product trial</option><option value="purchase">Purchase</option><option value="survey">Survey / research</option><option value="custom">Custom verified action</option></select></label>
+            <label><span>Product</span><select name="product_interest" required defaultValue=""><option value="" disabled>Select one</option><option value="pulse_direct">Verified-action campaign</option><option value="cashback_partner">Cashback partnership</option><option value="pulse_ads">Advertising placement</option><option value="not_sure">Not sure yet</option></select></label>
+            <label><span>Primary objective</span><select name="objective" required defaultValue=""><option value="" disabled>Select one</option><option value="app_install">App install / activation</option><option value="registration">Qualified registration</option><option value="trial">Product trial</option><option value="purchase">Verified purchase</option><option value="cashback">Purchase cashback</option><option value="survey">Survey / research</option><option value="custom">Custom verified action</option></select></label>
             <label><span>Initial budget</span><select name="budget_range" required defaultValue=""><option value="" disabled>Select range</option><option value="pilot_100_500">$100–$500 pilot</option><option value="growth_500_2500">$500–$2,500</option><option value="scale_2500_10000">$2,500–$10,000</option><option value="enterprise_10000_plus">$10,000+</option><option value="not_sure">Not sure yet</option></select></label>
             <label><span>Target countries</span><input name="target_countries" maxLength={300} placeholder="Brazil, Mexico, United States…" /></label>
             <label><span>Target actions</span><input name="estimated_actions" type="number" min={1} max={10000000} inputMode="numeric" placeholder="e.g. 100" /></label>
           </div>
-          <label className="business-form-message"><span>What must the user do, and how can the result be verified?</span><textarea name="message" maxLength={3000} rows={5} placeholder="Example: install the app, create an account and complete onboarding. We can send a server callback after onboarding is confirmed." /></label>
+          <label className="business-form-message"><span>What result can your server verify?</span><textarea name="message" maxLength={3000} rows={5} placeholder="Example: confirm an onboarding milestone, or send verified commission after a tracked purchase. Your server sends the callback only after the event is authoritative." /></label>
           <TurnstileField action="business_lead" />
           <button className="button button-lg business-submit" type="submit">Request pilot review <ArrowUpRight /></button>
           <small className="business-form-note">Submitting this form does not create a campaign, charge a card or authorize spend. Pulse reviews the use case first.</small>
