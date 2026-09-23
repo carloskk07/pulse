@@ -6,6 +6,7 @@ import {
   type FaucetPayPaidWithdrawal,
 } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
+import { getCurrentRewardContract } from "@/lib/reward-contract";
 import { isCanonicalProductionSiteUrl } from "@/lib/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
@@ -195,6 +196,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   const snapshot = objectValue(data);
   const releaseAuthority = objectValue(snapshot.release_authority);
   const hourlyPulse = objectValue(snapshot.hourly_pulse);
+  const pulseEconomy = snapshot.pulse_economy;
   const authority = objectValue(snapshot.payout_pack_authority);
   const treasury = objectValue(snapshot.treasury);
   const latestClaim = objectValue(snapshot.latest_claim);
@@ -233,11 +235,14 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   const rewardCredits = positiveSafeInteger(hourlyPulse.credits);
   const intervalMinutes = positiveSafeInteger(hourlyPulse.interval_minutes);
   const treasuryCode = typeof hourlyPulse.treasury_code === "string" ? hourlyPulse.treasury_code.trim() : "";
+  const rewardContract = getCurrentRewardContract(rewardCredits ?? 0, pulseEconomy);
+  const authorizedRewardCredits = rewardContract.credits;
   const pulseConfigured = Boolean(
     rewardCredits
     && intervalMinutes
     && intervalMinutes >= 15
     && treasuryCode
+    && rewardContract.valid
   );
   if (!pulseConfigured) setupBlockers.push("hourly-pulse-config");
 
@@ -281,8 +286,8 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   const currentPulseProof = Boolean(
     typeof latestClaim.id === "string"
     && latestClaim.treasury_id === treasury.id
-    && rewardCredits
-    && numberValue(latestClaim.reward_credits) === rewardCredits
+    && rewardContract.valid
+    && authorizedRewardCredits.includes(numberValue(latestClaim.reward_credits))
     && numberValue(objectValue(latestClaim.metadata).interval_minutes) === intervalMinutes
   );
   if (!currentPulseProof) proofBlockers.push("pulse-proof");
@@ -312,8 +317,8 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     && typeof chainClaim.id === "string"
     && chainClaim.user_id === payoutWithdrawal.user_id
     && chainClaim.treasury_id === treasury.id
-    && rewardCredits
-    && numberValue(chainClaim.reward_credits) === rewardCredits
+    && rewardContract.valid
+    && authorizedRewardCredits.includes(numberValue(chainClaim.reward_credits))
     && numberValue(claimMetadata.interval_minutes) === intervalMinutes
     && validTimestampOrder(chainClaim.created_at, payoutWithdrawal.created_at)
     && claimLedger.id === chainClaim.ledger_entry_id
@@ -321,7 +326,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     && claimLedger.event_key === `hourly_pulse:${chainClaim.id}`
     && claimLedger.entry_type === "pulse_reward"
     && claimLedger.state === "available"
-    && numberValue(claimLedger.credits) === rewardCredits
+    && numberValue(claimLedger.credits) === numberValue(chainClaim.reward_credits)
     && claimLedgerMetadata.claim_id === chainClaim.id
     && claimLedgerMetadata.funding_source === "pulse"
     && claimLedgerMetadata.treasury_code === treasuryCode
