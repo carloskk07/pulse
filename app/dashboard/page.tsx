@@ -87,7 +87,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               : "Sign in to see your reward timing, balance and payout progress."}</p>
           </div>
 
-          <Link href="/wallet" className="balance-chip balance-chip-v2 pc-luxe-vault-chip pc-v9-vault-chip" aria-label="Open Vault">
+          <Link href="/wallet" className="balance-chip balance-chip-v2 pc-luxe-vault-chip pc-v9-vault-chip" aria-label="Open balance">
             <div className="pc-v9-vault-chip-head"><small>Balance</small><span>{vaultPercent}%</span></div>
             <strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong>
             {!state.preview ? <span>{away === null ? payoutTargetLabel : away <= 0 ? "Payout target reached" : `${formatUsdFromCredits(away)} to payout`}</span> : null}
@@ -187,7 +187,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                 : away > 0
                   ? `${formatUsdFromCredits(away)} remains to the current payout target.`
                   : "Your current payout target is reached."}</p>
-              <Link href="/wallet">Open Vault <ArrowUpRight /></Link>
+              <Link href="/wallet">View balance <ArrowUpRight /></Link>
             </article>
 
             <article className="pc-v9-progress-card unlock-card">
