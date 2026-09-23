@@ -5,6 +5,7 @@ import { probePwnedPasswordProtection } from "@/lib/pwned-passwords";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminAccess } from "@/lib/admin-authorization";
+import { getPublicLaunchSwitchState } from "@/lib/public-launch-switch";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getFaucetPayBalanceReadOnly } from "@/providers/faucetpay-read";
@@ -393,3 +394,58 @@ export async function enableCashbackForLaunch(formData: FormData) {
   redirect("/admin/product?cashback=enabled");
 }
 
+
+
+export async function openPublicAccess(formData: FormData) {
+  await requireAdmin();
+
+  if (
+    formData.get("confirm") !== "open-public"
+    || String(formData.get("confirmation") ?? "").trim() !== "OPEN PUBLIC"
+  ) {
+    redirect("/admin/product?launch=confirmation-required");
+  }
+
+  const switchState = await getPublicLaunchSwitchState();
+  if (!switchState.readyToOpen) {
+    redirect("/admin/product?launch=blocked");
+  }
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect("/admin/product?launch=database-unavailable");
+
+  const { data, error } = await admin.rpc("open_public_launch");
+  if (error || !data || typeof data !== "object") {
+    redirect("/admin/product?launch=failed");
+  }
+
+  const status = String((data as Record<string, unknown>).status ?? "");
+  if (status === "opened") redirect("/admin/product?launch=opened");
+  if (status === "already_public") redirect("/admin/product?launch=already-public");
+  if (status === "blocked") redirect("/admin/product?launch=blocked");
+  redirect("/admin/product?launch=failed");
+}
+
+export async function closePublicAccess(formData: FormData) {
+  await requireAdmin();
+
+  if (
+    formData.get("confirm") !== "close-public"
+    || String(formData.get("confirmation") ?? "").trim() !== "CLOSE PUBLIC"
+  ) {
+    redirect("/admin/product?launch=close-confirmation-required");
+  }
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect("/admin/product?launch=database-unavailable");
+
+  const { data, error } = await admin.rpc("close_public_launch");
+  if (error || !data || typeof data !== "object") {
+    redirect("/admin/product?launch=close-failed");
+  }
+
+  const status = String((data as Record<string, unknown>).status ?? "");
+  if (status === "closed") redirect("/admin/product?launch=closed");
+  if (status === "already_pilot") redirect("/admin/product?launch=already-pilot");
+  redirect("/admin/product?launch=close-failed");
+}
