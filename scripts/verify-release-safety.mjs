@@ -119,6 +119,8 @@ requireText("supabase/migrations/0099_pilot_backing_separation.sql", ["enforce_p
 forbidText("supabase/migrations/0099_pilot_backing_separation.sql", ["fund_reward_treasury(", "pilot_mode = false", "'version', 56", "schema_version = 56"]);
 requireText("supabase/migrations/0100_variable_reward_cadence_policy.sql", ["variable_reward_cadence_policy_ready", "user_daily_ceiling_credits", "natural_variable_hourly_ceiling", "v_required_ceiling <> 1200", "release_variable_reward_cadence_policy_contract", "canonical release schema v55"]);
 forbidText("supabase/migrations/0100_variable_reward_cadence_policy.sql", ["update public.reward_treasuries", "fund_reward_treasury(", "pilot_mode = false", "'version', 56", "schema_version = 56"]);
+requireText("supabase/migrations/0101_extra_withdrawals_launch_ready.sql", ["extra_withdrawals_enabled", "release_extra_withdrawal_policy_contract", "release_withdrawal_pass_integrity_contract", "release_withdrawal_pilot_contract", "free_withdrawal_window_hours", "extra_withdrawal_fee_credits", "canonical release schema v55"]);
+forbidText("supabase/migrations/0101_extra_withdrawals_launch_ready.sql", ["update public.reward_treasuries", "fund_reward_treasury(", "pilot_mode = false", "'version', 56", "schema_version = 56"]);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
 forbidText("lib/product-readiness.ts", ["availableTreasury >= rewardCredits", "availableTreasury >= dailyBudgetCredits", "covering at least one full"]);
 requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36", 'admin.rpc("release_hourly_pulse_pilot_contract")', "schemaVersion >= HOURLY_PILOT_SCHEMA_VERSION"]);
@@ -149,6 +151,8 @@ requireText("lib/controlled-technical-readiness.ts", [
   '"variable-reward-cadence-policy"',
   'admin.rpc("release_pilot_backing_separation_contract")',
   '"pilot-backing-separation"',
+  'admin.rpc("release_extra_withdrawal_policy_contract")',
+  '"extra-withdrawal-policy"',
   "payout-pack-authority",
   "base-loop-continuity",
   'state: "SETUP_REQUIRED"',
@@ -930,7 +934,7 @@ requireText("lib/wallet-state.ts", [
   'releaseEvidenceMatches(proof, "faucetpay_send_scope")',
   "rawRuntime.withdrawal_pilot_allowed === true"
 ]);
-requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, ecosystem, params] = await Promise.all([", "getPulseEcosystemSnapshot", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady"]);
+requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, ecosystem, params] = await Promise.all([", "getPulseEcosystemSnapshot", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady", "extraFeeActive", "withdrawButtonLabel", "It does not move your next free-withdrawal window."]);
 forbidText("app/wallet/page.tsx", [
   "getRewardSnapshot",
   "getLedgerItems",
