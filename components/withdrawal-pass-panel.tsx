@@ -21,10 +21,16 @@ export async function WithdrawalPassPanel({ snapshot }: { snapshot?: PulseEcosys
         <span className="app-eyebrow">Withdrawal access</span>
         <h2>{ecosystem.freeWithdrawalAvailable ? "Your free withdrawal is available." : "Your next free withdrawal is already scheduled."}</h2>
         <p>{ecosystem.freeWithdrawalAvailable
-          ? "One provider payout can be fee-free inside each 24-hour cycle once the expanded withdrawal policy is activated."
-          : nextFree
-            ? "The next fee-free window opens " + nextFree + "."
-            : "The fee-free window refreshes automatically."}</p>
+          ? ecosystem.extraWithdrawalsEnabled
+            ? `One payout is fee-free every 24 hours. Additional withdrawals in the same window are available for a ${formatUsdFromCredits(ecosystem.extraWithdrawalFeeCredits)} fee.`
+            : "One provider payout can be fee-free inside each 24-hour cycle."
+          : ecosystem.extraWithdrawalsEnabled
+            ? nextFree
+              ? `The next fee-free window opens ${nextFree}. Need another payout before then? The extra-withdrawal fee is ${formatUsdFromCredits(ecosystem.extraWithdrawalFeeCredits)}.`
+              : `The fee-free window refreshes automatically. Extra withdrawals cost ${formatUsdFromCredits(ecosystem.extraWithdrawalFeeCredits)}.`
+            : nextFree
+              ? "The next fee-free window opens " + nextFree + "."
+              : "The fee-free window refreshes automatically."}</p>
       </div>
 
       <div className="pc-v13-withdraw-pass-metrics">
