@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ClaimRevealHero, type ClaimRevealTone } from "@/components/claim-reveal-hero";
@@ -54,7 +55,10 @@ const fixtures: Record<ClaimRevealTone, {
 };
 
 export default async function ClaimRevealVisualFixture({ searchParams }: Props) {
-  if (process.env.VISUAL_SMOKE_FIXTURES !== "1") notFound();
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host")?.toLowerCase() ?? "";
+  const localVisualHost = host.startsWith("127.0.0.1:") || host.startsWith("localhost:");
+  if (!localVisualHost) notFound();
 
   const params = await searchParams;
   const tone = params.tone === "boosted" || params.tone === "top" ? params.tone : "standard";
