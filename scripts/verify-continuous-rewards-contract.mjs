@@ -164,6 +164,22 @@ requireAll("components/continuous-earn-hub.tsx", [
   "eligible partner purchases can return part of the confirmed value"
 ]);
 
+requireAll("components/cashback-start-button.tsx", [
+  'action="/api/cashback/start"',
+  'method="post"',
+  'name="opportunity"',
+]);
+
+requireAll("app/api/cashback/start/route.ts", [
+  "create_cashback_tracking_session",
+  "cashback=not-live",
+]);
+
+requireAll("app/api/cashback/callback/route.ts", [
+  "apply_cashback_attributed_event",
+  "CASHBACK_CALLBACK_SECRET",
+]);
+
 requireAll("components/network-depth-panel.tsx", [
   "Three levels. Three reward rates.",
   "10% · 3% · 1%",
