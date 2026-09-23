@@ -6,7 +6,8 @@ import { verifyTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 
-const OBJECTIVES = new Set(["app_install", "registration", "trial", "purchase", "survey", "custom"]);
+const OBJECTIVES = new Set(["website_traffic", "app_install", "registration", "trial", "purchase", "cashback", "survey", "custom"]);
+const PRODUCT_INTERESTS = new Set(["pulse_ads", "pulse_direct", "cashback_partner", "not_sure"]);
 const BUDGETS = new Set(["pilot_100_500", "growth_500_2500", "scale_2500_10000", "enterprise_10000_plus", "not_sure"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const POSITIVE_INTEGER_RE = /^\d+$/;
@@ -51,6 +52,8 @@ export async function POST(request: NextRequest) {
   const websiteRaw = text(form, "website", 500);
   const website = normalizeWebsite(websiteRaw);
   const objective = text(form, "objective", 40);
+  const requestedProductInterest = text(form, "product_interest", 40) || "not_sure";
+  const productInterest = objective === "cashback" ? "cashback_partner" : requestedProductInterest;
   const budgetRange = text(form, "budget_range", 40);
   const targetCountries = text(form, "target_countries", 300);
   const message = text(form, "message", 3000);
@@ -60,7 +63,7 @@ export async function POST(request: NextRequest) {
     : null;
 
   if (company.length < 2 || contactName.length < 2 || !EMAIL_RE.test(email)) return businessRedirect(request, "invalid");
-  if (!OBJECTIVES.has(objective) || !BUDGETS.has(budgetRange)) return businessRedirect(request, "invalid");
+  if (!OBJECTIVES.has(objective) || !PRODUCT_INTERESTS.has(productInterest) || !BUDGETS.has(budgetRange)) return businessRedirect(request, "invalid");
   if (websiteRaw && !website) return businessRedirect(request, "invalid");
   if (estimatedActionsRaw && estimatedActions == null) return businessRedirect(request, "invalid");
   if (estimatedActions != null && (!Number.isSafeInteger(estimatedActions) || estimatedActions <= 0 || estimatedActions > 10_000_000)) return businessRedirect(request, "invalid");
@@ -79,6 +82,7 @@ export async function POST(request: NextRequest) {
     work_email: email,
     website,
     objective,
+    product_interest: productInterest,
     budget_range: budgetRange,
     target_countries: targetCountries,
     estimated_actions: estimatedActions,
