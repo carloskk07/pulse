@@ -58,7 +58,8 @@ export default async function ClaimRevealVisualFixture({ searchParams }: Props) 
   const requestHeaders = await headers();
   const host = requestHeaders.get("host")?.toLowerCase() ?? "";
   const forwardedHost = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim().toLowerCase() ?? "";
-  const localVisualHost = !forwardedHost && (host.startsWith("127.0.0.1:") || host.startsWith("localhost:"));
+  const effectiveHost = forwardedHost || host;
+  const localVisualHost = effectiveHost.startsWith("127.0.0.1:") || effectiveHost.startsWith("localhost:");
   if (!localVisualHost) notFound();
 
   const params = await searchParams;

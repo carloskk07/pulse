@@ -165,6 +165,9 @@ requireText("app/styles/visual-audit.css", [
 requireText("proxy.ts", [
   'matchesPrefix(pathname, "/visual-smoke-fixture")',
   'request.headers.get("x-forwarded-host")',
+  "const effectiveHost = forwardedHost || host",
+  'effectiveHost.startsWith("127.0.0.1:")',
+  'effectiveHost.startsWith("localhost:")',
   'status: 404',
   '"Cache-Control": "no-store, max-age=0"',
 ]);
@@ -287,9 +290,9 @@ requireText("app/dashboard/claimed/page.tsx", [
 requireText("app/visual-smoke-fixture/claim-reveal/page.tsx", [
   'requestHeaders.get("host")',
   'requestHeaders.get("x-forwarded-host")',
-  "!forwardedHost",
-  'host.startsWith("127.0.0.1:")',
-  'host.startsWith("localhost:")',
+  "const effectiveHost = forwardedHost || host",
+  'effectiveHost.startsWith("127.0.0.1:")',
+  'effectiveHost.startsWith("localhost:")',
   "notFound()",
   'rewardTone={tone}',
   "standard:",
