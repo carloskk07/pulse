@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
   if (["unknown_tracking", "orphan_reversal"].includes(status)) {
     return response({ ok: false, status }, 404);
   }
-  if (["provider_mismatch", "economics_mismatch", "invalid_transition"].includes(status)) {
+  if (["provider_mismatch", "tracking_already_bound", "economics_mismatch", "invalid_transition"].includes(status)) {
     return response({ ok: false, status }, 409);
   }
   if (status === "cashback_disabled") {
