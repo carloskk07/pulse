@@ -17,6 +17,7 @@ const surfacePaths = [
   "components/claim-reveal-hero.tsx",
   "components/withdrawal-pass-panel.tsx",
   "components/network-depth-panel.tsx",
+  "lib/reward-state.ts",
   "lib/experience-presentation.ts",
   "components/v6-live-proof.tsx",
 ];
