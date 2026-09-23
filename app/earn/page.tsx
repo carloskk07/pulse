@@ -10,9 +10,15 @@ import { getRewardEntryChannels } from "@/providers/registry";
 
 export const metadata = { title: "Earn" };
 
-type Props = { searchParams: Promise<{ direct?: string; claim?: string }> };
+type Props = { searchParams: Promise<{ direct?: string; cashback?: string; claim?: string }> };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const cashbackCopy: Record<string, string> = {
+  invalid: "That cashback route is not valid.",
+  "not-live": "Cashback is not live yet. The hourly faucet and other rewards are unaffected.",
+  unavailable: "That cashback route is temporarily unavailable.",
+};
 
 const directCopy: Record<string, string> = {
   "already-completed": "Already completed.",
@@ -69,6 +75,7 @@ export default async function EarnPage({ searchParams }: Props) {
       </div>
 
       {params.direct ? <div className="claim-message neutral">{directCopy[params.direct] ?? "Earning state changed before start."}</div> : null}
+      {params.cashback ? <div className="claim-message neutral">{cashbackCopy[params.cashback] ?? "Cashback state changed before start."}</div> : null}
 
       <ContinuousEarnHub />
 
@@ -105,6 +112,8 @@ export default async function EarnPage({ searchParams }: Props) {
               campaignId={best.externalId}
               sourcePulseClaimId={sourcePulseClaimId}
             />
+          ) : best?.sourceType === "affiliate" && best.actionHref ? (
+            <Link className="button button-light direct-primary-action" href={best.actionHref}>Open cashback <ArrowUpRight /></Link>
           ) : primaryChannel ? (
             <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open extra rewards <ArrowUpRight /></a>
           ) : (
@@ -143,6 +152,8 @@ export default async function EarnPage({ searchParams }: Props) {
                     label="Start"
                     ariaLabel={"Start " + item.title}
                   />
+                ) : item.sourceType === "affiliate" && item.actionHref ? (
+                  <Link className="inline-action" href={item.actionHref}>Cashback <ArrowUpRight /></Link>
                 ) : null}
               </article>
             ))}
