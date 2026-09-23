@@ -172,8 +172,11 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"/__visual-smoke-not-found__"',
   '"scripts/capture-public-full-page.mjs"',
   "Capture full-page public evidence",
-  'test "$count" -eq 76',
-  'test "$count" -eq 84',
+  'test "$count" -eq 82',
+  'test "$count" -eq 90',
+  "VISUAL_SMOKE_FIXTURES=1",
+  "local-preview/claim-reveal/desktop",
+  "production-fixture-isolation",
 ]);
 
 requireText("scripts/capture-public-full-page.mjs", [
@@ -257,7 +260,7 @@ requireText("app/admin/error.tsx", [
   "Retry safely",
 ]);
 
-requireText("app/dashboard/claimed/page.tsx", [
+requireText("components/claim-reveal-hero.tsx", [
   'className="pc-v8-vault-orbit"',
   'className="pc-v8-orbit-ring"',
   'className="pc-v8-orbit-core"',
@@ -267,6 +270,21 @@ requireText("app/dashboard/claimed/page.tsx", [
   'This claim',
   'balance now',
   'current rank',
+]);
+
+requireText("app/dashboard/claimed/page.tsx", [
+  "<ClaimRevealHero",
+  "rewardTone={rewardTone}",
+  "probabilityLabel={probabilityLabel}",
+]);
+
+requireText("app/__visual-smoke/claim-reveal/page.tsx", [
+  'process.env.VISUAL_SMOKE_FIXTURES !== "1"',
+  "notFound()",
+  'rewardTone={tone}',
+  "standard:",
+  "boosted:",
+  "top:",
 ]);
 
 requireText("app/earn/page.tsx", [

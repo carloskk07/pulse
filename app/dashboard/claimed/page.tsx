@@ -2,7 +2,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { ArrowUpRight, Check, Shield, Spark } from "@/components/icons";
+import { ArrowUpRight, Spark } from "@/components/icons";
+import { ClaimRevealHero } from "@/components/claim-reveal-hero";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import { ShareRhythmButton } from "@/components/share-rhythm-button";
 import { SponsoredVisitButton } from "@/components/sponsored-visit-button";
@@ -83,54 +84,19 @@ export default async function ClaimedPage() {
   return (
     <AppShell active="home">
       <main className="pc-claim-handoff pc-v8-claim-handoff">
-        <section className={`pc-v8-victory pc-v8-reveal is-${rewardTone}-reward`} aria-labelledby="claim-victory-title" aria-live="polite">
-          <div className="pc-v8-victory-aurora" aria-hidden="true" />
-          <div className="pc-v8-victory-grid">
-            <div className="pc-v8-victory-copy">
-              <div className="pc-v8-victory-kicker">
-                <span className="pc-v8-success-mark"><Check /></span>
-                <span>{revealLabel}</span>
-              </div>
-              <span className="app-eyebrow">{variableReward ? "Your draw" : "Done"}</span>
-              <h1 id="claim-victory-title">
-                {variableReward ? <>You revealed.<br /><span className="pc-v8-reveal-value">+{rewardValue}</span></> : <>Reward added.<br />Your next claim is scheduled.</>}
-              </h1>
-              <p className="pc-v8-victory-lead">{revealLead}</p>
-
-              <div className="pc-v8-reward-line">
-                <div><small>{variableReward ? "Revealed now" : "Added now"}</small><strong>+{rewardValue}</strong>{probabilityLabel ? <span className="pc-v8-band-odds">{probabilityLabel}</span> : null}</div>
-                <div><small>Available balance</small><strong>{formatUsdFromCredits(state.availableCredits)}</strong></div>
-                {payoutTargetCredits ? <div><small>To payout target</small><strong>{payoutRemaining && payoutRemaining > 0 ? formatUsdFromCredits(payoutRemaining) : "Ready"}</strong></div> : null}
-              </div>
-
-              <div className="pc-v8-hero-actions">
-                <Link href="/dashboard" className="button button-light">Track next claim <ArrowUpRight /></Link>
-                <Link href="/wallet" className="pc-v8-text-action">View balance <ArrowUpRight /></Link>
-              </div>
-
-              <div className="pc-v8-proof-pills" aria-label="Claim integrity">
-                {variableReward ? <span><Spark /> Variable draw settled</span> : null}
-                {topReward ? <span><Spark /> Highest launch reward</span> : null}
-                <span><Shield /> Funded reward</span>
-                <span>Balance updated</span>
-              </div>
-            </div>
-
-            <div className="pc-v8-vault-orbit" aria-label="Updated reward balance">
-              <div className="pc-v8-orbit-ring">
-                <div className="pc-v8-orbit-core">
-                  <span>{variableReward ? "This claim" : "Balance updated"}</span>
-                  <strong>{variableReward ? `+${rewardValue}` : formatUsdFromCredits(state.availableCredits)}</strong>
-                  <small>{variableReward ? (topReward ? "top launch reward" : boostedReward ? "above minimum band" : "reward revealed") : "available now"}</small>
-                </div>
-              </div>
-              <div className="pc-v8-orbit-meta">
-                <span><b>{formatUsdFromCredits(state.availableCredits)}</b> balance now</span>
-                <span><b>{signal.stage}</b> current rank</span>
-              </div>
-            </div>
-          </div>
-        </section>
+        <ClaimRevealHero
+          availableBalance={formatUsdFromCredits(state.availableCredits)}
+          boostedReward={boostedReward}
+          payoutRemaining={payoutTargetCredits ? (payoutRemaining && payoutRemaining > 0 ? formatUsdFromCredits(payoutRemaining) : "Ready") : null}
+          probabilityLabel={probabilityLabel}
+          revealLabel={revealLabel}
+          revealLead={revealLead}
+          rewardTone={rewardTone}
+          rewardValue={rewardValue}
+          signalStage={signal.stage}
+          topReward={topReward}
+          variableReward={variableReward}
+        />
 
         <section className="pc-v8-return-stage" aria-labelledby="return-stage-title">
           <div className="pc-v8-return-core">
