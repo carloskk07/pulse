@@ -238,6 +238,13 @@ requireText("app/styles/public-conversion.css", [
   "font-size:clamp(34px,2.65vw,38px)",
 ]);
 
+requireText("app/styles/admin.css", [
+  ".affiliate-supply-card{",
+  ".affiliate-form-grid{",
+  ".affiliate-offer-table .admin-provider-row{",
+  "@media(max-width:650px)",
+]);
+
 requireText("app/styles/auth.css", [
   ".auth-mode-switch a.active{",
   "var(--pc7-gold-hi,#fff0ad)",
