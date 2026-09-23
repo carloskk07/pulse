@@ -212,6 +212,29 @@ forbidAll("supabase/migrations/0101_extra_withdrawal_launch_policy.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0102_referral_network_launch_policy.sql", [
+  "network_commission_enabled",
+  "network_commission_bps",
+  "network_commission_residual_cap_bps",
+  "zz_network_commission_after_monetization",
+  "release_network_commission_launch_contract",
+  "v_gross_margin - v_referral_cost",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0102_referral_network_launch_policy.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "update public.reward_treasuries",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_network_commission_launch_contract")',
+  'setupBlockers.push("network-commission-launch")',
+]);
+
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_extra_withdrawal_launch_contract")',
   'setupBlockers.push("extra-withdrawal-launch")',

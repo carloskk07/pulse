@@ -137,11 +137,12 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, extraWithdrawalLaunchResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, networkCommissionLaunchResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, extraWithdrawalLaunchResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
     admin.from("admin_users").select("user_id").limit(1).maybeSingle(),
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
     admin.rpc("release_stacked_incentive_budget_contract"),
+    admin.rpc("release_network_commission_launch_contract"),
     admin.rpc("release_cashback_budget_contract"),
     admin.rpc("release_variable_reward_budget_contract"),
     admin.rpc("release_variable_reward_execution_contract"),
@@ -163,6 +164,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (stackedIncentiveBudgetResult.error || stackedIncentiveBudgetResult.data !== true) {
     setupBlockers.push("stacked-incentive-budget");
+  }
+  if (networkCommissionLaunchResult.error || networkCommissionLaunchResult.data !== true) {
+    setupBlockers.push("network-commission-launch");
   }
   if (cashbackBudgetResult.error || cashbackBudgetResult.data !== true) {
     setupBlockers.push("cashback-budget");

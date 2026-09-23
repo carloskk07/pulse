@@ -978,6 +978,23 @@ forbidText("supabase/migrations/0055_invite_snapshot_compaction.sql", [
   "grant execute on function public.current_user_invite_state()\n  to anon",
   "grant execute on function public.current_invite_runtime_state()\n  to authenticated"
 ]);
+requireText("supabase/migrations/0102_referral_network_launch_policy.sql", [
+  "network_commission_enabled",
+  "network_commission_bps",
+  "release_network_commission_launch_contract",
+  "Canonical release schema remains v55/0055"
+]);
+requireText("lib/pulse-ecosystem.ts", [
+  "commissionBps",
+  "network_commission_bps",
+  "networkCommissionEnabled",
+]);
+requireText("components/network-depth-panel.tsx", [
+  "Three levels. Three reward rates.",
+  "10% · 3% · 1%",
+  "reward rate",
+]);
+
 requireText("lib/invite-state.ts", [
   "getInviteState",
   'supabase.rpc("current_user_invite_state")',
