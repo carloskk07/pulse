@@ -137,13 +137,14 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, networkCommissionLaunchResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, extraWithdrawalLaunchResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, networkCommissionLaunchResult, cashbackBudgetResult, cashbackIngestionResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, extraWithdrawalLaunchResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
     admin.from("admin_users").select("user_id").limit(1).maybeSingle(),
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
     admin.rpc("release_stacked_incentive_budget_contract"),
     admin.rpc("release_network_commission_launch_contract"),
     admin.rpc("release_cashback_budget_contract"),
+    admin.rpc("release_cashback_ingestion_contract"),
     admin.rpc("release_variable_reward_budget_contract"),
     admin.rpc("release_variable_reward_execution_contract"),
     admin.rpc("release_variable_reward_cadence_policy_contract"),
@@ -170,6 +171,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (cashbackBudgetResult.error || cashbackBudgetResult.data !== true) {
     setupBlockers.push("cashback-budget");
+  }
+  if (cashbackIngestionResult.error || cashbackIngestionResult.data !== true) {
+    setupBlockers.push("cashback-ingestion");
   }
   if (variableRewardBudgetResult.error || variableRewardBudgetResult.data !== true) {
     setupBlockers.push("variable-reward-budget");
