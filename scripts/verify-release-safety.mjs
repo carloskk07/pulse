@@ -920,6 +920,29 @@ forbidText("supabase/migrations/0054_wallet_snapshot_compaction.sql", [
   "grant execute on function public.current_user_wallet_state()\n  to anon",
   "grant execute on function public.current_wallet_runtime_state(uuid)\n  to authenticated"
 ]);
+requireText("supabase/migrations/0103_cashback_canonical_ingestion.sql", [
+  "cashback_tracking_sessions",
+  "create_cashback_tracking_session",
+  "apply_cashback_attributed_event",
+  "release_cashback_ingestion_contract",
+  "Canonical release schema remains v55/0055"
+]);
+requireText("app/api/cashback/start/route.ts", [
+  "isTrustedSameOriginMutation(request)",
+  "readUrlEncodedFormWithLimit(request, 1_024)",
+  'admin.rpc("create_cashback_tracking_session"',
+]);
+requireText("app/api/cashback/callback/route.ts", [
+  "CASHBACK_CALLBACK_SECRET",
+  "timingSafeEqual",
+  'admin.rpc("apply_cashback_attributed_event"',
+]);
+forbidText("app/api/cashback/callback/route.ts", [
+  "request.json()",
+  "payload.userId",
+  "payload.user_id",
+]);
+
 requireText("lib/wallet-state.ts", [
   "getWalletState",
   'supabase.rpc("current_user_wallet_state")',
