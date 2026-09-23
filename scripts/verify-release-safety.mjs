@@ -109,6 +109,12 @@ forbidText("lib/release-readiness.ts", [
 requireText("lib/current-release-readiness.ts", ["CURRENT_RELEASE_SCHEMA_VERSION = 55", 'CURRENT_RELEASE_SCHEMA_MIGRATION = "0055_invite_snapshot_compaction.sql"', "getCurrentReleaseReadiness", "schemaMigration === CURRENT_RELEASE_SCHEMA_MIGRATION", 'item.id === "schema" ? schemaCheck : item', 'state === "READY"']);
 requireText("lib/product-launch-readiness.ts", ["getCurrentReleaseReadiness", "releaseBlockers", "governanceAdvisories", "publicProductBlockers", "publicAccessBlockers", "publicExpansionBlockers", 'new Set(["public-access", "public-fair-share", "public-backing"])', "technicalReady", "publicLaunchReady", "product.publicReady"]);
 requireText("lib/product-readiness.ts", ["PRODUCT_SETUP_CHECK_IDS", '"payout-pack-authority"', "getCanonicalFaucetPayPackAuthority", '"send-authority-config"', '"hourly-pulse-config"', '"public-access"', '"public-fair-share"', '"public-backing"', '"treasury"', "getTreasuryBackingGuard", "getFaucetPaySendAuthorityConfig", "deriveTreasuryDailyFundingState", '"faucetpay-send-scope-proof"', 'releaseEvidenceMatches(proof, "faucetpay_send_scope")', "hasProductSetupBlocker", "!item.pass", "dailyBudgetCredits >= rewardCredits", "maxUserDailyCredits >= rewardCredits", "maxUserDailyCredits * 2 <= dailyBudgetCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.gte("created_at", utcTodayStartIso)', '.in("status", ["reserved", "consumed"])', "dailyFundingState.dailyCommittedCredits", "dailyFundingState.remainingDailyBudgetCredits", "dailyFundingState.availableCredits >= remainingDailyBudget", "current UTC day's remaining", "config?.pilot_mode === false", "does not block technical readiness", "publicReady", "publicBlockers", 'new Set(["public-access", "public-fair-share", "public-backing"])']);
+requireText("lib/reward-contract.ts", ["getCurrentRewardContract", "variable_reward_enabled", "variable_reward_review_required", "totalProbabilityBps === 10_000", "new Set(credits)"]);
+requireText("lib/product-readiness.ts", ["getCurrentRewardContract", 'eq("key", "pulse_economy_v13")', "authorizedRewardCredits.includes(Number(latestClaim.reward_credits))", '.in("reward_credits", authorizedRewardCredits.length ? authorizedRewardCredits : [rewardCredits])', "authorizedRewardCredits.includes(Number(chainClaim.reward_credits))", "Number(claimLedger.credits) === Number(chainClaim.reward_credits)"]);
+forbidText("lib/product-readiness.ts", ['Number(latestClaim.reward_credits) === rewardCredits', '.eq("reward_credits", rewardCredits)', 'Number(chainClaim.reward_credits) === rewardCredits', 'Number(claimLedger.credits) === rewardCredits']);
+forbidText("lib/controlled-technical-readiness.ts", ['numberValue(latestClaim.reward_credits) === rewardCredits', 'numberValue(chainClaim.reward_credits) === rewardCredits', 'numberValue(claimLedger.credits) === rewardCredits']);
+requireText("supabase/migrations/0098_variable_reward_readiness_snapshot.sql", ["pulse_economy_v13", "variable_reward_model_valid", "jsonb_array_elements", "'pulse_economy'", "release_variable_reward_execution_contract", "canonical release schema v55"]);
+forbidText("supabase/migrations/0098_variable_reward_readiness_snapshot.sql", ["fund_reward_treasury(", "pilot_mode = false", "'version', 56", "schema_version = 56"]);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
 forbidText("lib/product-readiness.ts", ["availableTreasury >= rewardCredits", "availableTreasury >= dailyBudgetCredits", "covering at least one full"]);
 requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36", 'admin.rpc("release_hourly_pulse_pilot_contract")', "schemaVersion >= HOURLY_PILOT_SCHEMA_VERSION"]);
@@ -130,6 +136,11 @@ requireText("lib/controlled-technical-readiness.ts", [
   "faucetPayPayoutEvidenceMatches",
   "faucetPayReceiptEvidenceMatches",
   "deriveTreasuryDailyFundingState",
+  "getCurrentRewardContract",
+  "snapshot.pulse_economy",
+  "authorizedRewardCredits.includes(numberValue(latestClaim.reward_credits))",
+  "authorizedRewardCredits.includes(numberValue(chainClaim.reward_credits))",
+  "numberValue(claimLedger.credits) === numberValue(chainClaim.reward_credits)",
   "payout-pack-authority",
   "base-loop-continuity",
   'state: "SETUP_REQUIRED"',
