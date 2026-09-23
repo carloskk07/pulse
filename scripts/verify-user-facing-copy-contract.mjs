@@ -14,6 +14,7 @@ const surfacePaths = [
   "app/earn/page.tsx",
   "app/support/page.tsx",
   "app/dashboard/claimed/page.tsx",
+  "components/claim-reveal-hero.tsx",
   "lib/experience-presentation.ts",
   "components/v6-live-proof.tsx",
 ];
@@ -83,7 +84,8 @@ const requiredBySurface = new Map([
   ["app/invite/page.tsx", ["Invite friends. See the reward before you share."]],
   ["app/earn/page.tsx", ["More ways to earn between faucet claims."]],
   ["app/support/page.tsx", ["Tell us what happened. Keep one reference."]],
-  ["app/dashboard/claimed/page.tsx", ["You revealed.", "Variable draw settled", "rewardTone", "probabilityLabel"]],
+  ["app/dashboard/claimed/page.tsx", ["<ClaimRevealHero", "rewardTone={rewardTone}", "probabilityLabel={probabilityLabel}"]],
+  ["components/claim-reveal-hero.tsx", ["You revealed.", "Variable draw settled", "This claim", "balance now"]],
 ]);
 
 for (const [path, phrases] of requiredBySurface) {
