@@ -32,6 +32,23 @@ requireAll("supabase/migrations/0103_cashback_canonical_ingestion.sql", [
   "Canonical release schema remains v55/0055",
 ]);
 
+requireAll("supabase/migrations/0104_cashback_public_launch_guard.sql", [
+  "cashback_public_launch_requirements_ready",
+  "cashback_public_launch_ready",
+  "enforce_cashback_public_launch_guard",
+  "cashback_public_launch_guard",
+  "cashback_public_launch_not_ready",
+  "release_cashback_public_launch_contract",
+  "source_type='affiliate'",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0104_cashback_public_launch_guard.sql", [
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 forbidAll("supabase/migrations/0103_cashback_canonical_ingestion.sql", [
   "pilot_mode = false",
   "fund_reward_treasury(",
@@ -88,6 +105,10 @@ requireAll(".env.example", ["CASHBACK_CALLBACK_SECRET="]);
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_cashback_ingestion_contract")',
   'setupBlockers.push("cashback-ingestion")',
+  'admin.rpc("release_cashback_public_launch_contract")',
+  'setupBlockers.push("cashback-public-launch")',
+  '!pilotMode && !configured("CASHBACK_CALLBACK_SECRET")',
+  'setupBlockers.push("cashback-callback-secret")',
 ]);
 
 console.log("Cashback canonical ingestion contract PASS");
