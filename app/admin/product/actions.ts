@@ -372,6 +372,13 @@ export async function enableCashbackForLaunch(formData: FormData) {
   const currentValue = configRow.value as Record<string, unknown>;
   const nextValue = { ...currentValue, cashback_enabled: true };
 
+  const { data: ready, error: readyError } = await admin.rpc("cashback_public_launch_requirements_ready", {
+    p_economy: nextValue,
+  });
+  if (readyError || ready !== true) {
+    redirect("/admin/product?cashback=requirements-not-ready");
+  }
+
   const { error: updateError } = await admin
     .from("app_config")
     .update({
@@ -383,24 +390,6 @@ export async function enableCashbackForLaunch(formData: FormData) {
     .eq("key", "pulse_economy_v13");
 
   if (updateError) redirect("/admin/product?cashback=enable-failed");
-
-  const { data: ready, error: readyError } = await admin.rpc("cashback_public_launch_requirements_ready", {
-    p_economy: null,
-  });
-
-  if (readyError || ready !== true) {
-    await admin
-      .from("app_config")
-      .update({
-        value: currentValue,
-        version: Number(configRow.version ?? 0),
-        reason: "Cashback launch activation rolled back because launch requirements were not ready",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("key", "pulse_economy_v13");
-    redirect("/admin/product?cashback=requirements-not-ready");
-  }
-
   redirect("/admin/product?cashback=enabled");
 }
 
