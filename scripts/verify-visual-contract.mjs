@@ -277,7 +277,7 @@ requireText("app/dashboard/claimed/page.tsx", [
   "probabilityLabel={probabilityLabel}",
 ]);
 
-requireText("app/__visual-smoke/claim-reveal/page.tsx", [
+requireText("app/visual-smoke-fixture/claim-reveal/page.tsx", [
   'requestHeaders.get("host")',
   'host.startsWith("127.0.0.1:")',
   'host.startsWith("localhost:")',

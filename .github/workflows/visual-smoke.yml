@@ -198,9 +198,9 @@ jobs:
           # without exposing a debug route in production.
           mkdir -p visual-smoke/local-preview/claim-reveal/desktop visual-smoke/local-preview/claim-reveal/mobile
           for tone in standard boosted top; do
-            curl --fail --silent --show-error "http://127.0.0.1:3100/__visual-smoke/claim-reveal?tone=$tone" > /dev/null
-            capture_one "visual-smoke/local-preview/claim-reveal/desktop/$tone.png" 1440,900 "http://127.0.0.1:3100/__visual-smoke/claim-reveal?tone=$tone" "local-preview/claim-reveal/desktop/$tone"
-            capture_one "visual-smoke/local-preview/claim-reveal/mobile/$tone.png" 390,844 "http://127.0.0.1:3100/__visual-smoke/claim-reveal?tone=$tone" "local-preview/claim-reveal/mobile/$tone"
+            curl --fail --silent --show-error "http://127.0.0.1:3100/visual-smoke-fixture/claim-reveal?tone=$tone" > /dev/null
+            capture_one "visual-smoke/local-preview/claim-reveal/desktop/$tone.png" 1440,900 "http://127.0.0.1:3100/visual-smoke-fixture/claim-reveal?tone=$tone" "local-preview/claim-reveal/desktop/$tone"
+            capture_one "visual-smoke/local-preview/claim-reveal/mobile/$tone.png" 390,844 "http://127.0.0.1:3100/visual-smoke-fixture/claim-reveal?tone=$tone" "local-preview/claim-reveal/mobile/$tone"
           done
 
       - name: Verify responsive runtime geometry
@@ -405,7 +405,7 @@ jobs:
           NODE
           echo "production-not-found requested=$not_found_path effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
 
-          fixture_path="/__visual-smoke/claim-reveal?tone=top"
+          fixture_path="/visual-smoke-fixture/claim-reveal?tone=top"
           fixture_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://pulsercuit.pro$fixture_path")"
           if [ "$fixture_status" != "404" ]; then
             echo "Visual fixture must remain unavailable in production; received HTTP $fixture_status"
