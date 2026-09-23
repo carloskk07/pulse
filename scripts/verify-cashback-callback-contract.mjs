@@ -115,7 +115,8 @@ requireAll("app/admin/product/actions.ts", [
   "export async function enableCashbackForLaunch",
   "CASHBACK_CALLBACK_SECRET",
   'admin.rpc("cashback_public_launch_requirements_ready"',
-  "Cashback launch activation rolled back",
+  "p_economy: nextValue",
+  "requirements-not-ready",
 ]);
 
 requireAll("lib/affiliate-opportunities-admin.ts", [
