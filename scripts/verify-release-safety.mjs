@@ -454,7 +454,7 @@ requireText("app/api/pulse/claim/route.ts", [
   'dashboardRedirect(request, "claim-in-progress")'
 ]);
 requireText("app/dashboard/page.tsx", [
-  '"claim-in-progress": "Your Pulse is already being processed. Your balance has not changed yet; try again in a moment."'
+  '"claim-in-progress": "Your reward is already being processed. Your balance has not changed yet; try again in a moment."'
 ]);
 requireText("lib/treasury-backing.ts", [
   "hasCurrentFaucetPayReadProof",
@@ -1411,7 +1411,7 @@ requireText("app/api/pulse/claim/route.ts", [
   'dashboardRedirect(request, "backing-refreshing")'
 ]);
 requireText("app/dashboard/page.tsx", [
-  '"backing-refreshing": "Pulse backing is refreshing. Your balance did not change; try again in a moment."'
+  '"backing-refreshing": "Reward availability is refreshing. Your balance did not change; try again in a moment."'
 ]);
 {
   const source = read("lib/treasury-backing.ts");

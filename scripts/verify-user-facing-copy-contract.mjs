@@ -17,6 +17,7 @@ const surfacePaths = [
   "components/claim-reveal-hero.tsx",
   "components/withdrawal-pass-panel.tsx",
   "components/network-depth-panel.tsx",
+  "lib/reward-state.ts",
   "lib/experience-presentation.ts",
   "components/v6-live-proof.tsx",
 ];
@@ -55,6 +56,16 @@ const forbidden = [
   "fair-share",
   "Launch status",
   "Controlled launch",
+  "Your next Pulse",
+  "Pulse is temporarily unavailable",
+  "Pulse backing is refreshing",
+  "Your Pulse is already being processed",
+  "This Pulse needs a review",
+  "Pulse verification is temporarily unavailable",
+  "Hourly Pulse is now the active reward loop",
+  "The Pulse did not complete",
+  "Hourly Pulse",
+  "Turbo completed",
 ];
 
 for (const [path, source] of surfaces) {
@@ -88,6 +99,8 @@ const requiredBySurface = new Map([
   ["app/support/page.tsx", ["Tell us what happened. Keep one reference."]],
   ["app/dashboard/claimed/page.tsx", ["<ClaimRevealHero", "rewardTone={rewardTone}", "probabilityLabel={probabilityLabel}"]],
   ["components/claim-reveal-hero.tsx", ["You revealed.", "Variable draw settled", "This claim", "balance now"]],
+  ["app/dashboard/page.tsx", ["The faucet is temporarily unavailable.", "Your reward is already being processed.", "verified claim", "<span>Claims</span>"]],
+  ["lib/reward-state.ts", ['pulse_reward: "Faucet reward"', 'offer: "Extra reward completed"']],
   ["app/wallet/page.tsx", ["no fee", "service fee", "24-hour cycle", "If the payout fails"]],
   ["components/withdrawal-pass-panel.tsx", ["One withdrawal every 24 hours has no service fee.", "Extra withdrawal"]],
   ["components/network-depth-panel.tsx", ["Three levels. Three reward rates.", "10% · 3% · 1%", "eligible verified partner activity"]],
