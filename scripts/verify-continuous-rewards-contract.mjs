@@ -165,8 +165,10 @@ requireAll("components/continuous-earn-hub.tsx", [
 ]);
 
 requireAll("components/network-depth-panel.tsx", [
-  "Three levels of referral activity.",
-  "Referral rewards",
+  "Three levels. Three reward rates.",
+  "10% · 3% · 1%",
+  "eligible verified partner activity",
+  "reward rate",
 ]);
 
 requireAll("components/withdrawal-pass-panel.tsx", [
