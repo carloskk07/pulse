@@ -193,6 +193,41 @@ forbidAll("supabase/migrations/0100_variable_reward_cadence_policy.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0101_extra_withdrawals_launch_ready.sql", [
+  "extra_withdrawals_enabled",
+  "release_extra_withdrawal_policy_contract",
+  "release_withdrawal_pass_integrity_contract",
+  "release_withdrawal_pilot_contract",
+  "free_withdrawal_window_hours",
+  "extra_withdrawal_fee_credits",
+  "extra withdrawal launch activation requires current pilot isolation",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0101_extra_withdrawals_launch_ready.sql", [
+  "update public.reward_treasuries",
+  "fund_reward_treasury(",
+  "pilot_mode = false",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_extra_withdrawal_policy_contract")',
+  'setupBlockers.push("extra-withdrawal-policy")',
+]);
+
+requireAll("app/wallet/page.tsx", [
+  "extraFeeActive",
+  "withdrawButtonLabel",
+  "It does not move your next free-withdrawal window.",
+]);
+
+requireAll("components/withdrawal-pass-panel.tsx", [
+  "Additional withdrawals in the same window are available",
+  "extraWithdrawalFeeCredits",
+]);
+
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_variable_reward_cadence_policy_contract")',
   'setupBlockers.push("variable-reward-cadence-policy")',
