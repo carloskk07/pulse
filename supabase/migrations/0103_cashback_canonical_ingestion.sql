@@ -165,6 +165,11 @@ begin
     return jsonb_build_object('status','provider_mismatch');
   end if;
 
+  if v_session.last_external_id is not null
+     and v_session.last_external_id <> v_external_id then
+    return jsonb_build_object('status','tracking_already_bound');
+  end if;
+
   if p_status='reversed' then
     select *
     into v_existing
@@ -303,6 +308,7 @@ select
   and position('public.apply_cashback_event' in (select src from settlement)) > 0
   and position('orphan_reversal' in (select src from settlement)) > 0
   and position('provider_mismatch' in (select src from settlement)) > 0
+  and position('tracking_already_bound' in (select src from settlement)) > 0
   and has_function_privilege(
     'service_role',
     'public.create_cashback_tracking_session(uuid,uuid)',
