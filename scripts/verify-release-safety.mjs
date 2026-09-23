@@ -930,7 +930,21 @@ requireText("lib/wallet-state.ts", [
   'releaseEvidenceMatches(proof, "faucetpay_send_scope")',
   "rawRuntime.withdrawal_pilot_allowed === true"
 ]);
-requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, ecosystem, params] = await Promise.all([", "getPulseEcosystemSnapshot", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady"]);
+requireText("supabase/migrations/0101_extra_withdrawal_launch_policy.sql", [
+  "extra_withdrawals_enabled",
+  "extra_withdrawal_fee_credits",
+  "free_withdrawal_window_hours",
+  "service_fee_credits",
+  "release_extra_withdrawal_launch_contract",
+  "Canonical release schema remains v55/0055"
+]);
+requireText("lib/wallet-state.ts", [
+  "service_fee_credits",
+]);
+requireText("lib/reward-state.ts", [
+  'withdrawal_fee: "Extra withdrawal fee"',
+]);
+requireText("app/wallet/page.tsx", ["getWalletState", "const [wallet, ecosystem, params] = await Promise.all([", "getPulseEcosystemSnapshot", "withdrawalPilotAllowed", "readProofReady", "sendScopeProofReady", "extraWithdrawalFeeCredits", "requiredWithdrawalCredits", "no fee", "service fee"]);
 forbidText("app/wallet/page.tsx", [
   "getRewardSnapshot",
   "getLedgerItems",

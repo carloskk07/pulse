@@ -24,7 +24,7 @@ const withdrawalCopy: Record<string, string> = {
   "payout-not-configured": "Withdrawals are temporarily unavailable. Your balance is safe.",
   "pilot-restricted": "Withdrawals are opening gradually. Your balance remains available.",
   "service-not-configured": "The payout service is temporarily unavailable.",
-  "free-pass-used": "Your fee-free withdrawal was already used in the current 24-hour window. Extra withdrawals remain locked until expanded payout authority is active.",
+  "free-pass-used": "Your fee-free withdrawal was already used in the current 24-hour window. Extra withdrawals are temporarily unavailable.",
   "reserve-failed": "The payout could not continue. Your balance remains protected.",
   failed: "The payout failed and the reserved credits were restored.",
 };
@@ -83,6 +83,12 @@ export default async function WalletPage({ searchParams }: Props) {
     && sendScopeProofReady
     && (activeWithdrawal.status === "submitted" || (readProofReady && activePackMatches)),
   );
+  const extraWithdrawalFeeCredits = !ecosystem.freeWithdrawalAvailable && ecosystem.extraWithdrawalsEnabled
+    ? ecosystem.extraWithdrawalFeeCredits
+    : 0;
+  const requiredWithdrawalCredits = payoutCredits
+    ? payoutCredits + extraWithdrawalFeeCredits
+    : null;
   const canWithdraw = Boolean(
     !activeWithdrawal
     && state.signedIn
@@ -94,15 +100,19 @@ export default async function WalletPage({ searchParams }: Props) {
     && turnstileReady
     && serviceReady
     && (ecosystem.freeWithdrawalAvailable || ecosystem.extraWithdrawalsEnabled)
-    && state.availableCredits >= payoutCredits + (ecosystem.freeWithdrawalAvailable ? 0 : ecosystem.extraWithdrawalFeeCredits),
+    && requiredWithdrawalCredits
+    && state.availableCredits >= requiredWithdrawalCredits,
   );
-  const missingCredits = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
+  const missingCredits = requiredWithdrawalCredits ? Math.max(0, requiredWithdrawalCredits - state.availableCredits) : null;
+  const extraWithdrawalFeeLabel = extraWithdrawalFeeCredits > 0
+    ? formatUsdFromCredits(extraWithdrawalFeeCredits)
+    : null;
   const payoutPercent = payoutCredits ? Math.max(0, Math.min(100, Math.round((state.availableCredits / payoutCredits) * 100))) : 0;
   const presentation = getWalletPresentation({
     signedIn: state.signedIn,
     preview: state.preview,
     payoutPackReady: payout.ready && turnstileReady && serviceReady,
-    payoutCredits,
+    payoutCredits: requiredWithdrawalCredits,
     availableCredits: state.availableCredits,
     readProofReady,
     sendScopeProofReady,
@@ -174,7 +184,9 @@ export default async function WalletPage({ searchParams }: Props) {
               </label>
               <TurnstileField action="withdrawal-retry" />
               <button className="button button-light button-lg" type="submit">{presentation.buttonLabel}</button>
-              <small>This continues the same payout request.</small>
+              <small>{activeWithdrawal.service_fee_credits > 0
+                ? `This continues the same payout request with its ${formatUsdFromCredits(activeWithdrawal.service_fee_credits)} service fee. No second fee is created.`
+                : "This continues the same payout request. No new fee is created."}</small>
             </form>
           ) : (
             <div className="claim-message neutral">
@@ -188,8 +200,16 @@ export default async function WalletPage({ searchParams }: Props) {
               <input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" />
             </label>
             <TurnstileField action="withdrawal" />
-            <button className="button button-light button-lg" type="submit">{payout.display ? `Withdraw ${payout.display}` : presentation.buttonLabel}</button>
-            <small>We verify the destination before the payout is reserved.</small>
+            <button className="button button-light button-lg" type="submit">
+              {payout.display
+                ? extraWithdrawalFeeLabel
+                  ? `Withdraw ${payout.display} · +${extraWithdrawalFeeLabel} fee`
+                  : `Withdraw ${payout.display} · no fee`
+                : presentation.buttonLabel}
+            </button>
+            <small>{extraWithdrawalFeeLabel
+              ? `Your fee-free withdrawal was already used in this 24-hour cycle. This payout adds a ${extraWithdrawalFeeLabel} service fee. If the payout fails, the reserved payout and fee return to your balance.`
+              : "This is your fee-free withdrawal for the current 24-hour cycle. We verify the destination before the payout is reserved."}</small>
           </form>
         ) : (
           <button className="button button-light button-lg" type="button" disabled>{presentation.buttonLabel}</button>

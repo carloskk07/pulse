@@ -193,6 +193,30 @@ forbidAll("supabase/migrations/0100_variable_reward_cadence_policy.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0101_extra_withdrawal_launch_policy.sql", [
+  "extra_withdrawals_enabled",
+  "extra_withdrawal_fee_credits",
+  "free_withdrawal_window_hours",
+  "withdrawal:fee:",
+  "withdrawal_fee",
+  "service_fee_credits",
+  "release_extra_withdrawal_launch_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0101_extra_withdrawal_launch_policy.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "update public.reward_treasuries",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_extra_withdrawal_launch_contract")',
+  'setupBlockers.push("extra-withdrawal-launch")',
+]);
+
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_variable_reward_cadence_policy_contract")',
   'setupBlockers.push("variable-reward-cadence-policy")',

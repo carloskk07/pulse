@@ -137,7 +137,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, extraWithdrawalLaunchResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
     admin.from("admin_users").select("user_id").limit(1).maybeSingle(),
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
@@ -148,6 +148,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     admin.rpc("release_variable_reward_cadence_policy_contract"),
     admin.rpc("release_pilot_backing_separation_contract"),
     admin.rpc("release_withdrawal_pass_integrity_contract"),
+    admin.rpc("release_extra_withdrawal_launch_contract"),
     admin.rpc("release_withdrawal_recovery_authority_contract"),
     admin.rpc("release_withdrawal_retry_backoff_contract"),
     admin.rpc("release_faucetpay_webhook_reconciliation_contract"),
@@ -180,6 +181,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (withdrawalPassIntegrityResult.error || withdrawalPassIntegrityResult.data !== true) {
     setupBlockers.push("withdrawal-pass-integrity");
+  }
+  if (extraWithdrawalLaunchResult.error || extraWithdrawalLaunchResult.data !== true) {
+    setupBlockers.push("extra-withdrawal-launch");
   }
   if (withdrawalRecoveryAuthorityResult.error || withdrawalRecoveryAuthorityResult.data !== true) {
     setupBlockers.push("withdrawal-recovery-authority");
