@@ -157,6 +157,52 @@ forbidAll("supabase/migrations/0098_variable_reward_readiness_snapshot.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0099_pilot_backing_separation.sql", [
+  "enforce_pulse_claim_backing_guard",
+  "pilot_user_ids",
+  "new.user_id::text",
+  "if v_pilot_user then",
+  "treasury_backing_guard",
+  "v_status <> 'backing_ready'",
+  "release_pilot_backing_separation_contract",
+  "pilot backing separation requires current pilot isolation",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0099_pilot_backing_separation.sql", [
+  "fund_reward_treasury(",
+  "pilot_mode = false",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("supabase/migrations/0100_variable_reward_cadence_policy.sql", [
+  "variable_reward_cadence_policy_ready",
+  "user_daily_ceiling_credits",
+  "natural_variable_hourly_ceiling",
+  "v_required_ceiling <> 1200",
+  "release_variable_reward_cadence_policy_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0100_variable_reward_cadence_policy.sql", [
+  "update public.reward_treasuries",
+  "fund_reward_treasury(",
+  "pilot_mode = false",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_variable_reward_cadence_policy_contract")',
+  'setupBlockers.push("variable-reward-cadence-policy")',
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_pilot_backing_separation_contract")',
+  'setupBlockers.push("pilot-backing-separation")',
+]);
+
 requireAll("lib/reward-contract.ts", [
   "getCurrentRewardContract",
   "variable_reward_enabled",
