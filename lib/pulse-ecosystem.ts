@@ -8,6 +8,7 @@ export type NetworkLevel = {
   level: 1 | 2 | 3;
   members: number;
   active: number;
+  commissionBps: number;
 };
 
 export type EcosystemMission = {
@@ -65,9 +66,9 @@ const EMPTY: PulseEcosystemSnapshot = {
   paidWithdrawals: 0,
   rewardedReferrals: 0,
   network: [
-    { level: 1, members: 0, active: 0 },
-    { level: 2, members: 0, active: 0 },
-    { level: 3, members: 0, active: 0 },
+    { level: 1, members: 0, active: 0, commissionBps: 0 },
+    { level: 2, members: 0, active: 0, commissionBps: 0 },
+    { level: 3, members: 0, active: 0, commissionBps: 0 },
   ],
   networkMembers: 0,
   networkActive: 0,
@@ -155,12 +156,14 @@ export async function getPulseEcosystemSnapshot(): Promise<PulseEcosystemSnapsho
     + rewardedReferrals * 40;
 
   const rank = rankFromXp(xp);
+  const networkCommissionRates = objectValue(config.network_commission_bps);
   const network = ([1, 2, 3] as const).map((level) => {
     const row = networkRaw.map(objectValue).find((item) => asInt(item.level) === level) ?? {};
     return {
       level,
       members: asInt(row.members),
       active: asInt(row.active),
+      commissionBps: asInt(networkCommissionRates[String(level)]),
     };
   });
   const networkMembers = network.reduce((sum, level) => sum + level.members, 0);
