@@ -65,9 +65,9 @@ export function objectValue(value: unknown) {
 
 function labelForEntry(type: string) {
   const labels: Record<string, string> = {
-    daily_reward: "Legacy Daily Pulse",
-    pulse_reward: "Hourly Pulse",
-    offer: "Turbo completed",
+    daily_reward: "Legacy daily reward",
+    pulse_reward: "Faucet reward",
+    offer: "Extra reward completed",
     survey: "Survey completed",
     referral: "Referral reward",
     withdrawal: "Withdrawal",
