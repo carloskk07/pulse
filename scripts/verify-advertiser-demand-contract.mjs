@@ -46,6 +46,24 @@ forbidAll("supabase/migrations/0081_advertiser_demand_intake.sql", [
   "'release_schema',",
 ]);
 
+requireAll("supabase/migrations/0104_cashback_partner_intake.sql", [
+  "cashback_partner",
+  "'cashback'",
+  "release_cashback_partner_intake_contract",
+  "release_cashback_ingestion_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0104_cashback_partner_intake.sql", [
+  "insert into public.reward_opportunities",
+  "cashback_enabled','true",
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "update public.reward_treasuries",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 requireAll("app/api/ads/interest/route.ts", [
   "isTrustedSameOriginMutation(request)",
   'expectedAction: "pulse_ads_interest"',
@@ -59,6 +77,27 @@ forbidAll("app/api/ads/interest/route.ts", [
   "pulse_ads_campaigns",
   "direct_campaigns",
   "fund_reward_treasury",
+]);
+
+requireAll("app/api/business/leads/route.ts", [
+  '"cashback_partner"',
+  '"cashback"',
+  "product_interest: productInterest",
+  'objective === "cashback" ? "cashback_partner"',
+]);
+
+requireAll("app/business/page.tsx", [
+  "Cashback partnership",
+  "Purchase cashback",
+  "Two integration paths",
+  "Cashback Partner",
+]);
+
+requireAll("app/business/integration/page.tsx", [
+  "Cashback Partner · 01 · Tracking",
+  "POST /api/cashback/callback",
+  "commissionUsdMicros",
+  "The partner never sends reward credits.",
 ]);
 
 requireAll("app/advertise/page.tsx", [
