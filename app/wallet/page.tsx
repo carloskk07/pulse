@@ -24,7 +24,7 @@ const withdrawalCopy: Record<string, string> = {
   "payout-not-configured": "Withdrawals are temporarily unavailable. Your balance is safe.",
   "pilot-restricted": "Withdrawals are opening gradually. Your balance remains available.",
   "service-not-configured": "The payout service is temporarily unavailable.",
-  "free-pass-used": "Your fee-free withdrawal was already used in the current 24-hour window. Extra withdrawals remain locked until expanded payout authority is active.",
+  "free-pass-used": "Your fee-free withdrawal was already used in the current 24-hour window. An extra withdrawal is not available right now.",
   "reserve-failed": "The payout could not continue. Your balance remains protected.",
   failed: "The payout failed and the reserved credits were restored.",
 };
@@ -96,6 +96,13 @@ export default async function WalletPage({ searchParams }: Props) {
     && (ecosystem.freeWithdrawalAvailable || ecosystem.extraWithdrawalsEnabled)
     && state.availableCredits >= payoutCredits + (ecosystem.freeWithdrawalAvailable ? 0 : ecosystem.extraWithdrawalFeeCredits),
   );
+  const extraFeeActive = !ecosystem.freeWithdrawalAvailable && ecosystem.extraWithdrawalsEnabled;
+  const extraFeeLabel = formatUsdFromCredits(ecosystem.extraWithdrawalFeeCredits);
+  const withdrawButtonLabel = payout.display
+    ? extraFeeActive
+      ? `Withdraw ${payout.display} + ${extraFeeLabel} fee`
+      : `Withdraw ${payout.display}`
+    : presentation.buttonLabel;
   const missingCredits = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
   const payoutPercent = payoutCredits ? Math.max(0, Math.min(100, Math.round((state.availableCredits / payoutCredits) * 100))) : 0;
   const presentation = getWalletPresentation({
