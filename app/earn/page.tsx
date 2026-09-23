@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ContinuousEarnHub } from "@/components/continuous-earn-hub";
+import { CashbackStartButton } from "@/components/cashback-start-button";
 import { DirectStartButton } from "@/components/direct-start-button";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
@@ -112,8 +113,8 @@ export default async function EarnPage({ searchParams }: Props) {
               campaignId={best.externalId}
               sourcePulseClaimId={sourcePulseClaimId}
             />
-          ) : best?.sourceType === "affiliate" && best.actionHref ? (
-            <Link className="button button-light direct-primary-action" href={best.actionHref}>Open cashback <ArrowUpRight /></Link>
+          ) : best?.sourceType === "affiliate" ? (
+            <CashbackStartButton opportunityId={best.id} />
           ) : primaryChannel ? (
             <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open extra rewards <ArrowUpRight /></a>
           ) : (
@@ -152,8 +153,8 @@ export default async function EarnPage({ searchParams }: Props) {
                     label="Start"
                     ariaLabel={"Start " + item.title}
                   />
-                ) : item.sourceType === "affiliate" && item.actionHref ? (
-                  <Link className="inline-action" href={item.actionHref}>Cashback <ArrowUpRight /></Link>
+                ) : item.sourceType === "affiliate" ? (
+                  <CashbackStartButton opportunityId={item.id} compact label="Cashback" />
                 ) : null}
               </article>
             ))}
