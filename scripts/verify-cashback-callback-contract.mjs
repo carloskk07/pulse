@@ -43,6 +43,23 @@ requireAll("supabase/migrations/0104_cashback_public_launch_guard.sql", [
   "Canonical release schema remains v55/0055",
 ]);
 
+requireAll("supabase/migrations/0105_cashback_pilot_preparation.sql", [
+  "cashback pilot preparation requires pilot isolation",
+  "'{cashback_enabled}'",
+  "release_cashback_pilot_preparation_contract",
+  "release_cashback_ingestion_contract",
+  "release_cashback_public_launch_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0105_cashback_pilot_preparation.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "insert into public.reward_opportunities",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 forbidAll("supabase/migrations/0104_cashback_public_launch_guard.sql", [
   "fund_reward_treasury(",
   "'version', 56",
@@ -149,6 +166,8 @@ requireAll("app/earn/page.tsx", [
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_cashback_ingestion_contract")',
   'setupBlockers.push("cashback-ingestion")',
+  'admin.rpc("release_cashback_pilot_preparation_contract")',
+  'setupBlockers.push("cashback-pilot-preparation")',
   'admin.rpc("release_cashback_public_launch_contract")',
   'setupBlockers.push("cashback-public-launch")',
   '!pilotMode && !configured("CASHBACK_CALLBACK_SECRET")',

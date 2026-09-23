@@ -137,7 +137,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, networkCommissionLaunchResult, cashbackBudgetResult, cashbackIngestionResult, cashbackPublicLaunchResult, extraRewardsPublicLaunchResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, extraWithdrawalLaunchResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, networkCommissionLaunchResult, cashbackBudgetResult, cashbackIngestionResult, cashbackPilotPreparationResult, cashbackPublicLaunchResult, extraRewardsPublicLaunchResult, variableRewardBudgetResult, variableRewardExecutionResult, variableRewardCadencePolicyResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, extraWithdrawalLaunchResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
     admin.from("admin_users").select("user_id").limit(1).maybeSingle(),
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
@@ -145,6 +145,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     admin.rpc("release_network_commission_launch_contract"),
     admin.rpc("release_cashback_budget_contract"),
     admin.rpc("release_cashback_ingestion_contract"),
+    admin.rpc("release_cashback_pilot_preparation_contract"),
     admin.rpc("release_cashback_public_launch_contract"),
     admin.rpc("release_extra_rewards_public_launch_contract"),
     admin.rpc("release_variable_reward_budget_contract"),
@@ -176,6 +177,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (cashbackIngestionResult.error || cashbackIngestionResult.data !== true) {
     setupBlockers.push("cashback-ingestion");
+  }
+  if (cashbackPilotPreparationResult.error || cashbackPilotPreparationResult.data !== true) {
+    setupBlockers.push("cashback-pilot-preparation");
   }
   if (cashbackPublicLaunchResult.error || cashbackPublicLaunchResult.data !== true) {
     setupBlockers.push("cashback-public-launch");
