@@ -17,6 +17,7 @@ const surfacePaths = [
   "components/claim-reveal-hero.tsx",
   "components/withdrawal-pass-panel.tsx",
   "components/network-depth-panel.tsx",
+  "components/product-preview.tsx",
   "lib/reward-state.ts",
   "lib/experience-presentation.ts",
   "components/v6-live-proof.tsx",
@@ -66,6 +67,12 @@ const forbidden = [
   "The Pulse did not complete",
   "Hourly Pulse",
   "Turbo completed",
+  "Open Vault",
+  "Back to Pulse",
+  "Turbo never blocks Pulse",
+  "More Turbo options",
+  "returns to your Vault",
+  "Return. Pulse. Build your rhythm.",
 ];
 
 for (const [path, source] of surfaces) {
@@ -95,15 +102,16 @@ const requiredBySurface = new Map([
   ["app/faucet/page.tsx", ["Each eligible claim reveals one value", "Variable reward draw", "One claim. Different possible rewards.", "A faucet should make the reward obvious.", "Current availability", "Create free account"]],
   ["app/progress/page.tsx", ["See what your activity has built.", "Five ranks. One clear path."]],
   ["app/invite/page.tsx", ["Invite friends. See the reward before you share."]],
-  ["app/earn/page.tsx", ["More ways to earn between faucet claims."]],
+  ["app/earn/page.tsx", ["More ways to earn between faucet claims.", "Extra rewards never block the faucet.", "More reward options"]],
   ["app/support/page.tsx", ["Tell us what happened. Keep one reference."]],
   ["app/dashboard/claimed/page.tsx", ["<ClaimRevealHero", "rewardTone={rewardTone}", "probabilityLabel={probabilityLabel}"]],
   ["components/claim-reveal-hero.tsx", ["You revealed.", "Variable draw settled", "This claim", "balance now"]],
-  ["app/dashboard/page.tsx", ["The faucet is temporarily unavailable.", "Your reward is already being processed.", "verified claim", "<span>Claims</span>"]],
+  ["app/dashboard/page.tsx", ["The faucet is temporarily unavailable.", "Your reward is already being processed.", "verified claim", "<span>Claims</span>", "View balance"]],
   ["lib/reward-state.ts", ['pulse_reward: "Faucet reward"', 'offer: "Extra reward completed"']],
-  ["app/wallet/page.tsx", ["no fee", "service fee", "24-hour cycle", "If the payout fails"]],
+  ["app/wallet/page.tsx", ["no fee", "service fee", "24-hour cycle", "If the payout fails", "returns to your balance"]],
   ["components/withdrawal-pass-panel.tsx", ["One withdrawal every 24 hours has no service fee.", "Extra withdrawal"]],
   ["components/network-depth-panel.tsx", ["Three levels. Three reward rates.", "10% · 3% · 1%", "eligible verified partner activity"]],
+  ["components/product-preview.tsx", ["<Spark /> Reward", "Claim. Return. Build your progress.", "<strong>Faucet</strong>", "<strong>Extras</strong>"]],
 ]);
 
 for (const [path, phrases] of requiredBySurface) {
