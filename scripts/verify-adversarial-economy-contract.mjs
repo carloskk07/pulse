@@ -267,6 +267,56 @@ forbidAll("supabase/migrations/0106_cashback_pilot_preparation.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0107_guarded_public_launch_switch.sql", [
+  "public_launch_preflight",
+  "open_public_launch",
+  "close_public_launch",
+  "variable_reward_public_open_ready",
+  "cashback_public_launch_requirements_ready",
+  "extra_rewards_public_launch_requirements_ready",
+  "pg_advisory_xact_lock(hashtextextended('pulsercuit-public-launch',0))",
+  "release_public_launch_switch_contract",
+  "Public access opened through guarded release switch",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0107_guarded_public_launch_switch.sql", [
+  "fund_reward_treasury(",
+  "insert into public.reward_opportunities",
+  "update public.reward_treasuries",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/public-launch-switch.ts", [
+  "public_launch_preflight",
+  "getControlledTechnicalReadiness",
+  "getProductLaunchReadiness",
+  'item.id !== "public-access"',
+  "CASHBACK_CALLBACK_SECRET",
+  "readyToOpen",
+]);
+
+requireAll("app/admin/product/actions.ts", [
+  "export async function openPublicAccess",
+  "export async function closePublicAccess",
+  'formData.get("confirm") !== "open-public"',
+  '"OPEN PUBLIC"',
+  "getPublicLaunchSwitchState",
+  'admin.rpc("open_public_launch")',
+  '"CLOSE PUBLIC"',
+  'admin.rpc("close_public_launch")',
+]);
+
+requireAll("app/admin/product/page.tsx", [
+  "Public release switch",
+  "getPublicLaunchSwitchState",
+  "OPEN PUBLIC",
+  "CLOSE PUBLIC",
+  "Open public access",
+  "Close public access",
+]);
+
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_cashback_ingestion_contract")',
   'setupBlockers.push("cashback-ingestion")',

@@ -2,28 +2,54 @@ import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
+import { getPublicLaunchSwitchState } from "@/lib/public-launch-switch";
 import { getAffiliateOfferAdminSnapshot } from "@/lib/affiliate-opportunities-admin";
 import { getFaucetContinuousLaunchPlan } from "@/lib/faucet-continuous-launch";
 import { getAdminAccess } from "@/lib/admin-authorization";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { formatUsdFromCredits } from "@/lib/reward-state";
-import { enableCashbackForLaunch, fundLaunchTreasury, pauseAffiliateOffer, upsertAffiliateOffer, verifyPasswordBreachProtection } from "./actions";
+import { closePublicAccess, enableCashbackForLaunch, fundLaunchTreasury, openPublicAccess, pauseAffiliateOffer, upsertAffiliateOffer, verifyPasswordBreachProtection } from "./actions";
 
 export const metadata = { title: "Product Readiness" };
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ security?: string; funding?: string; affiliate?: string; cashback?: string }> };
+function launchBlockerLabel(id: string) {
+  const labels: Record<string, string> = {
+    "database-preflight": "Database preflight",
+    "variable-reward-public-open": "Variable reward public capacity",
+    "variable-reward-model": "Variable reward model",
+    "variable-reward-execution": "Variable reward execution",
+    "variable-reward-cadence": "Hourly cadence",
+    "referral-network": "Referral network",
+    "withdrawals": "Withdrawal system",
+    "cashback-engine": "Cashback engine",
+    "cashback-supply": "Real cashback offer",
+    "extra-rewards-supply": "Actionable extra reward",
+    "faucetpay-reconciliation": "FaucetPay reconciliation",
+    "cashback-callback-secret": "Cashback callback secret",
+    "treasury": "Launch funding",
+    "public-fair-share": "Public fair-share capacity",
+    "public-backing": "Public backing",
+    "legal-operator": "Operator identity",
+    "legal-policy-review": "Legal policy review",
+    "international-transfer-review": "International transfer review",
+  };
+  return labels[id] ?? id.replaceAll("-", " ");
+}
+
+type Props = { searchParams: Promise<{ security?: string; funding?: string; affiliate?: string; cashback?: string; launch?: string }> };
 
 export default async function ProductReadinessPage({ searchParams }: Props) {
   const adminAccess = await getAdminAccess();
   if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/product");
   if (adminAccess.status !== "authorized") notFound();
 
-  const [readiness, launchTreasury, continuousLaunch, affiliateSupply, params] = await Promise.all([
+  const [readiness, launchTreasury, continuousLaunch, affiliateSupply, publicSwitch, params] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasuryDailyFundingState("launch"),
     getFaucetContinuousLaunchPlan(),
     getAffiliateOfferAdminSnapshot(),
+    getPublicLaunchSwitchState(),
     searchParams,
   ]);
   const product = readiness.product;
@@ -261,6 +287,61 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
             </article>
           )}
         </div>
+      </section>
+
+      <section className="admin-decision-card public-launch-switch-card">
+        <span className="app-eyebrow">Public release switch</span>
+        <h2>{publicSwitch.mode === "PUBLIC"
+          ? "Public access is open."
+          : publicSwitch.readyToOpen
+            ? "All release gates are green. PUBLIC can be opened."
+            : "PUBLIC is locked until every launch gate is green."}</h2>
+        <p>This is the only supported opening path. It re-checks database economics, real reward supply, technical readiness, external evidence, runtime secrets and public governance immediately before changing access.</p>
+
+        <div className="admin-secondary-grid">
+          <article><span>Database preflight</span><strong>{publicSwitch.databaseReady ? "READY" : "BLOCKED"}</strong></article>
+          <article><span>Technical release</span><strong>{publicSwitch.technicalReady ? "READY" : "BLOCKED"}</strong></article>
+          <article><span>Public governance</span><strong>{publicSwitch.governanceReady ? "READY" : "OPEN"}</strong></article>
+          <article><span>Callback authority</span><strong>{publicSwitch.callbackSecretReady ? "READY" : "MISSING"}</strong></article>
+        </div>
+
+        {params.launch === "opened" ? <div className="auth-alert success">Public access opened through the guarded release switch.</div> : null}
+        {params.launch === "closed" ? <div className="auth-alert success">Public access returned to pilot mode.</div> : null}
+        {params.launch === "blocked" ? <div className="auth-alert error">Public access remains locked because one or more release gates are still open.</div> : null}
+        {params.launch === "confirmation-required" || params.launch === "close-confirmation-required" ? <div className="auth-alert error">Type the exact confirmation phrase before changing public access.</div> : null}
+        {params.launch === "failed" || params.launch === "close-failed" || params.launch === "database-unavailable" ? <div className="auth-alert error">The access transition did not complete. The previous mode remains authoritative.</div> : null}
+
+        {publicSwitch.mode === "PUBLIC" ? (
+          <form action={closePublicAccess} className="treasury-funding-form public-launch-form">
+            <label>Emergency confirmation<input name="confirmation" required autoComplete="off" placeholder="CLOSE PUBLIC" /></label>
+            <label className="treasury-funding-confirm">
+              <input type="checkbox" name="confirm" value="close-public" required />
+              <span>Return the service to pilot mode immediately.</span>
+            </label>
+            <button className="button" type="submit">Close public access</button>
+          </form>
+        ) : (
+          <>
+            {publicSwitch.blockers.length ? (
+              <div className="readiness-list public-launch-blockers">
+                {publicSwitch.blockers.map((id) => (
+                  <article className="readiness-item pending" key={id}>
+                    <span className="readiness-dot" />
+                    <div><strong>{launchBlockerLabel(id)}</strong><small>{id}</small></div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+            <form action={openPublicAccess} className="treasury-funding-form public-launch-form">
+              <label>Final confirmation<input name="confirmation" required autoComplete="off" placeholder="OPEN PUBLIC" disabled={!publicSwitch.readyToOpen} /></label>
+              <label className="treasury-funding-confirm">
+                <input type="checkbox" name="confirm" value="open-public" required disabled={!publicSwitch.readyToOpen} />
+                <span>I confirm that Pulsercuit should leave pilot mode and accept public faucet access.</span>
+              </label>
+              <button className="button" type="submit" disabled={!publicSwitch.readyToOpen}>Open public access</button>
+            </form>
+          </>
+        )}
       </section>
 
       <section className="admin-decision-card">
