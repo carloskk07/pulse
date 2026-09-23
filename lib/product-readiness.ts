@@ -1,5 +1,6 @@
 import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
+import { getCurrentRewardContract } from "@/lib/reward-contract";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
 import { getCanonicalFaucetPayPackAuthority, getTreasuryBackingGuard } from "@/lib/treasury-backing";
@@ -43,55 +44,6 @@ function configured(...keys: string[]) {
 
 function objectValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-}
-
-function booleanFlag(value: unknown, fallback = false) {
-  if (value === undefined || value === null) return fallback;
-  if (typeof value === "boolean") return value;
-  return ["true", "1", "yes", "on"].includes(String(value).trim().toLowerCase());
-}
-
-function currentRewardContract(baseCredits: number, economyValue: unknown) {
-  const baseValid = Number.isInteger(baseCredits) && baseCredits > 0 && baseCredits <= 1_000_000;
-  const economy = objectValue(economyValue);
-  const variableEnabled = booleanFlag(economy.variable_reward_enabled);
-  const reviewRequired = booleanFlag(economy.variable_reward_review_required, true);
-
-  if (!variableEnabled || reviewRequired) {
-    return {
-      variable: false,
-      valid: baseValid,
-      credits: baseValid ? [baseCredits] : [],
-    };
-  }
-
-  const rawBands = Array.isArray(economy.reward_bands) ? economy.reward_bands : [];
-  const credits: number[] = [];
-  let totalProbabilityBps = 0;
-
-  for (const rawBand of rawBands) {
-    const band = objectValue(rawBand);
-    const creditsValue = Number(band.credits ?? 0);
-    const probabilityBps = Number(band.probability_bps ?? 0);
-    if (
-      !Number.isInteger(creditsValue)
-      || !Number.isInteger(probabilityBps)
-      || creditsValue < baseCredits
-      || creditsValue > 1_000_000
-      || probabilityBps <= 0
-      || probabilityBps > 10_000
-    ) {
-      return { variable: true, valid: false, credits: [] as number[] };
-    }
-    credits.push(creditsValue);
-    totalProbabilityBps += probabilityBps;
-  }
-
-  return {
-    variable: true,
-    valid: baseValid && credits.length > 0 && totalProbabilityBps === 10_000,
-    credits: [...new Set(credits)].sort((left, right) => left - right),
-  };
 }
 
 function validTimestampOrder(first: unknown, second: unknown) {
@@ -190,7 +142,7 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   const rewardCredits = Number(config?.credits ?? 0);
   const intervalMinutes = Number(config?.interval_minutes ?? 0);
   const treasuryCode = String(config?.treasury_code ?? "").trim();
-  const rewardContract = currentRewardContract(rewardCredits, economyConfigResult.data?.value);
+  const rewardContract = getCurrentRewardContract(rewardCredits, economyConfigResult.data?.value);
   const authorizedRewardCredits = rewardContract.credits;
   const pulseConfigured = !pulseConfigResult.error
     && !economyConfigResult.error
