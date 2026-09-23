@@ -137,7 +137,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     };
   }
 
-  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
+  const [adminAllowlistResult, snapshotResult, referralIntegrityResult, stackedIncentiveBudgetResult, cashbackBudgetResult, variableRewardBudgetResult, variableRewardExecutionResult, pilotBackingSeparationResult, withdrawalPassIntegrityResult, withdrawalRecoveryAuthorityResult, withdrawalRetryBackoffResult, faucetPayWebhookReconciliationResult] = await Promise.all([
     admin.from("admin_users").select("user_id").limit(1).maybeSingle(),
     admin.rpc("controlled_technical_readiness_snapshot"),
     admin.rpc("release_referral_network_integrity_contract"),
@@ -145,6 +145,7 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
     admin.rpc("release_cashback_budget_contract"),
     admin.rpc("release_variable_reward_budget_contract"),
     admin.rpc("release_variable_reward_execution_contract"),
+    admin.rpc("release_pilot_backing_separation_contract"),
     admin.rpc("release_withdrawal_pass_integrity_contract"),
     admin.rpc("release_withdrawal_recovery_authority_contract"),
     admin.rpc("release_withdrawal_retry_backoff_contract"),
@@ -169,6 +170,9 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   }
   if (variableRewardExecutionResult.error || variableRewardExecutionResult.data !== true) {
     setupBlockers.push("variable-reward-execution");
+  }
+  if (pilotBackingSeparationResult.error || pilotBackingSeparationResult.data !== true) {
+    setupBlockers.push("pilot-backing-separation");
   }
   if (withdrawalPassIntegrityResult.error || withdrawalPassIntegrityResult.data !== true) {
     setupBlockers.push("withdrawal-pass-integrity");
