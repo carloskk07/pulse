@@ -201,7 +201,7 @@ requireAll("supabase/migrations/0101_extra_withdrawal_launch_policy.sql", [
   "withdrawal_fee",
   "service_fee_credits",
   "release_extra_withdrawal_launch_contract",
-  "canonical release schema remains v55/0055",
+  "Canonical release schema remains v55/0055",
 ]);
 
 forbidAll("supabase/migrations/0101_extra_withdrawal_launch_policy.sql", [
