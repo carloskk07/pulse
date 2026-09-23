@@ -19,6 +19,59 @@ async function requireAdmin() {
   return access.user;
 }
 
+
+const AFFILIATE_PROVIDER_RE = /^[a-z0-9][a-z0-9._-]{1,63}$/;
+const AFFILIATE_TRACKING_PARAM_RE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+function requiredText(formData: FormData, key: string, maxLength: number) {
+  const value = String(formData.get(key) ?? "").trim();
+  return value && value.length <= maxLength ? value : null;
+}
+
+function optionalPositiveInt(formData: FormData, key: string, max: number) {
+  const raw = String(formData.get(key) ?? "").trim();
+  if (!raw) return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 && value <= max ? value : null;
+}
+
+function parseUsdMicros(rawValue: string) {
+  const raw = rawValue.trim();
+  const match = raw.match(/^(\d{1,7})(?:\.(\d{1,6}))?$/);
+  if (!match) return null;
+  const whole = Number(match[1]);
+  const fraction = Number((match[2] ?? "").padEnd(6, "0"));
+  const micros = whole * 1_000_000 + fraction;
+  return Number.isSafeInteger(micros) && micros > 0 ? micros : null;
+}
+
+function safeAffiliateDestination(value: string) {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    if (
+      url.protocol !== "https:"
+      || url.username
+      || url.password
+      || !hostname
+      || hostname === "localhost"
+      || hostname.endsWith(".local")
+    ) return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function normalizedCodeList(rawValue: FormDataEntryValue | null, maxItems = 40) {
+  const items = String(rawValue ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (items.length > maxItems) return null;
+  return [...new Set(items)];
+}
+
 export async function verifyPasswordBreachProtection() {
   await requireAdmin();
 
@@ -157,3 +210,187 @@ export async function fundLaunchTreasury(formData: FormData) {
   if (status === "already_sufficient") redirect("/admin/product?funding=already-covered");
   redirect("/admin/product?funding=record-failed");
 }
+
+export async function upsertAffiliateOffer(formData: FormData) {
+  await requireAdmin();
+
+  const providerRaw = requiredText(formData, "provider", 64);
+  const externalId = requiredText(formData, "external_id", 160);
+  const title = requiredText(formData, "title", 180);
+  const category = requiredText(formData, "category", 80) ?? "cashback";
+  const destinationRaw = requiredText(formData, "destination_url", 2_000);
+  const trackingParam = requiredText(formData, "tracking_param", 64) ?? "subid";
+  const estimatedCommissionRaw = requiredText(formData, "estimated_commission_usd", 32);
+  const publicRewardLabel = requiredText(formData, "public_reward_label", 80);
+  const freshnessHours = optionalPositiveInt(formData, "freshness_hours", 168) ?? 24;
+  const estimatedMinutes = optionalPositiveInt(formData, "estimated_minutes", 10_080);
+  const countryCodes = normalizedCodeList(formData.get("country_codes"));
+  const devicePlatforms = normalizedCodeList(formData.get("device_platforms"));
+
+  const provider = providerRaw?.toLowerCase() ?? "";
+  const destination = destinationRaw ? safeAffiliateDestination(destinationRaw) : null;
+  const commissionMicros = estimatedCommissionRaw ? parseUsdMicros(estimatedCommissionRaw) : null;
+
+  if (
+    !AFFILIATE_PROVIDER_RE.test(provider)
+    || !externalId
+    || !title
+    || !destination
+    || !AFFILIATE_TRACKING_PARAM_RE.test(trackingParam)
+    || !commissionMicros
+    || !countryCodes
+    || !devicePlatforms
+  ) {
+    redirect("/admin/product?affiliate=invalid");
+  }
+
+  const expiresRaw = String(formData.get("expires_at") ?? "").trim();
+  let expiresAt: string | null = null;
+  if (expiresRaw) {
+    const date = new Date(expiresRaw);
+    if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) {
+      redirect("/admin/product?affiliate=invalid-expiry");
+    }
+    expiresAt = date.toISOString();
+  }
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect("/admin/product?affiliate=database-unavailable");
+
+  const { data: configRow, error: configError } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", "pulse_economy_v13")
+    .maybeSingle();
+
+  if (configError || !configRow?.value || typeof configRow.value !== "object") {
+    redirect("/admin/product?affiliate=economy-unavailable");
+  }
+
+  const economy = configRow.value as Record<string, unknown>;
+  const shareBps = Math.max(0, Math.min(7_500, Number(economy.cashback_user_share_bps ?? 0)));
+  if (!Number.isFinite(shareBps) || shareBps <= 0) {
+    redirect("/admin/product?affiliate=economy-unavailable");
+  }
+
+  const estimatedRewardCredits = Math.floor((commissionMicros * shareBps) / 10_000_000);
+  if (!Number.isSafeInteger(estimatedRewardCredits) || estimatedRewardCredits <= 0) {
+    redirect("/admin/product?affiliate=reward-too-small");
+  }
+
+  const now = new Date().toISOString();
+  const metadata = {
+    destination_url: destination.toString(),
+    tracking_param: trackingParam,
+    estimated_commission_usd_micros: commissionMicros,
+    cashback_user_share_bps: shareBps,
+    estimate_only: true,
+    ...(publicRewardLabel ? { public_reward_label: publicRewardLabel } : {}),
+  };
+
+  const { error } = await admin
+    .from("reward_opportunities")
+    .upsert({
+      provider,
+      external_id: externalId,
+      title,
+      category,
+      payout_usd_micros: commissionMicros,
+      base_reward_credits: estimatedRewardCredits,
+      estimated_minutes: estimatedMinutes,
+      completion_probability: null,
+      tracking_reliability: null,
+      payout_reliability: null,
+      reversal_rate: null,
+      country_codes: countryCodes.map((code) => code.toUpperCase()),
+      device_platforms: devicePlatforms.map((value) => value.toLowerCase()),
+      status: "active",
+      source_type: "affiliate",
+      evidence_tier: "new",
+      health_state: "good",
+      freshness_ttl_minutes: freshnessHours * 60,
+      metadata,
+      refreshed_at: now,
+      updated_at: now,
+      expires_at: expiresAt,
+    }, { onConflict: "provider,external_id" });
+
+  if (error) redirect("/admin/product?affiliate=save-failed");
+  redirect("/admin/product?affiliate=saved");
+}
+
+export async function pauseAffiliateOffer(formData: FormData) {
+  await requireAdmin();
+  const opportunityId = String(formData.get("opportunity_id") ?? "").trim();
+  if (!UUID_RE.test(opportunityId)) redirect("/admin/product?affiliate=invalid");
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect("/admin/product?affiliate=database-unavailable");
+
+  const { error } = await admin
+    .from("reward_opportunities")
+    .update({ status: "paused", updated_at: new Date().toISOString() })
+    .eq("id", opportunityId)
+    .eq("source_type", "affiliate");
+
+  if (error) redirect("/admin/product?affiliate=pause-failed");
+  redirect("/admin/product?affiliate=paused");
+}
+
+export async function enableCashbackForLaunch(formData: FormData) {
+  await requireAdmin();
+  if (formData.get("confirm") !== "enable-cashback") {
+    redirect("/admin/product?cashback=confirmation-required");
+  }
+  if (!process.env.CASHBACK_CALLBACK_SECRET?.trim()) {
+    redirect("/admin/product?cashback=callback-secret-missing");
+  }
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) redirect("/admin/product?cashback=database-unavailable");
+
+  const { data: configRow, error: configError } = await admin
+    .from("app_config")
+    .select("value,version")
+    .eq("key", "pulse_economy_v13")
+    .maybeSingle();
+
+  if (configError || !configRow?.value || typeof configRow.value !== "object") {
+    redirect("/admin/product?cashback=economy-unavailable");
+  }
+
+  const currentValue = configRow.value as Record<string, unknown>;
+  const nextValue = { ...currentValue, cashback_enabled: true };
+
+  const { error: updateError } = await admin
+    .from("app_config")
+    .update({
+      value: nextValue,
+      version: Math.max(14, Number(configRow.version ?? 0)),
+      reason: "Operator enabled launch cashback after canonical offer onboarding",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("key", "pulse_economy_v13");
+
+  if (updateError) redirect("/admin/product?cashback=enable-failed");
+
+  const { data: ready, error: readyError } = await admin.rpc("cashback_public_launch_requirements_ready", {
+    p_economy: null,
+  });
+
+  if (readyError || ready !== true) {
+    await admin
+      .from("app_config")
+      .update({
+        value: currentValue,
+        version: Number(configRow.version ?? 0),
+        reason: "Cashback launch activation rolled back because launch requirements were not ready",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("key", "pulse_economy_v13");
+    redirect("/admin/product?cashback=requirements-not-ready");
+  }
+
+  redirect("/admin/product?cashback=enabled");
+}
+
