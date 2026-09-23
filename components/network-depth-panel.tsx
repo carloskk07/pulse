@@ -8,8 +8,8 @@ export async function NetworkDepthPanel() {
       <div className="app-section-head">
         <div>
           <span className="app-eyebrow">Referral network</span>
-          <h2>Three levels of referral activity.</h2>
-          <p>See how many referred members are active at each level. Monetary rewards apply only when the displayed referral rule is active.</p>
+          <h2>Three levels. Three reward rates.</h2>
+          <p>When network rewards are active, eligible verified partner activity can reward all three levels from remaining partner margin after the member&apos;s own reward.</p>
         </div>
         <strong className="pc-v13-rank-chip">{ecosystem.rank} · {ecosystem.xp} XP</strong>
       </div>
@@ -20,6 +20,7 @@ export async function NetworkDepthPanel() {
             <small>Level {row.level}</small>
             <strong>{row.members}</strong>
             <span>{row.active} active</span>
+            <b>{ecosystem.networkCommissionEnabled ? `${row.commissionBps / 100}% reward rate` : "Reward rate inactive"}</b>
           </article>
         ))}
       </div>
@@ -27,7 +28,7 @@ export async function NetworkDepthPanel() {
       <div className="pc-v13-network-summary">
         <span><small>Total referrals</small><strong>{ecosystem.networkMembers}</strong></span>
         <span><small>Active</small><strong>{ecosystem.networkActive}</strong></span>
-        <span><small>Referral rewards</small><strong>{ecosystem.networkCommissionEnabled ? "Active" : "No active bonus"}</strong></span>
+        <span><small>Network rewards</small><strong>{ecosystem.networkCommissionEnabled ? "10% · 3% · 1%" : "Inactive"}</strong></span>
       </div>
     </section>
   );
