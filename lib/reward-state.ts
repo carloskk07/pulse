@@ -71,6 +71,7 @@ function labelForEntry(type: string) {
     survey: "Survey completed",
     referral: "Referral reward",
     withdrawal: "Withdrawal",
+    withdrawal_fee: "Extra withdrawal fee",
     chargeback: "Reward reversed",
     adjustment: "Balance adjustment",
     cashback: "Cashback confirmed",
