@@ -2,25 +2,28 @@ import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
+import { getAffiliateOfferAdminSnapshot } from "@/lib/affiliate-opportunities-admin";
 import { getFaucetContinuousLaunchPlan } from "@/lib/faucet-continuous-launch";
 import { getAdminAccess } from "@/lib/admin-authorization";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
-import { fundLaunchTreasury, verifyPasswordBreachProtection } from "./actions";
+import { formatUsdFromCredits } from "@/lib/reward-state";
+import { enableCashbackForLaunch, fundLaunchTreasury, pauseAffiliateOffer, upsertAffiliateOffer, verifyPasswordBreachProtection } from "./actions";
 
 export const metadata = { title: "Product Readiness" };
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ security?: string; funding?: string }> };
+type Props = { searchParams: Promise<{ security?: string; funding?: string; affiliate?: string; cashback?: string }> };
 
 export default async function ProductReadinessPage({ searchParams }: Props) {
   const adminAccess = await getAdminAccess();
   if (adminAccess.status === "unauthenticated") redirect("/auth?next=/admin/product");
   if (adminAccess.status !== "authorized") notFound();
 
-  const [readiness, launchTreasury, continuousLaunch, params] = await Promise.all([
+  const [readiness, launchTreasury, continuousLaunch, affiliateSupply, params] = await Promise.all([
     getProductLaunchReadiness(),
     getTreasuryDailyFundingState("launch"),
     getFaucetContinuousLaunchPlan(),
+    getAffiliateOfferAdminSnapshot(),
     searchParams,
   ]);
   const product = readiness.product;
@@ -81,6 +84,80 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
             </div>
             <p className="admin-panel-note"><strong>{continuousLaunch.variableRewardsEnabled ? "The variable reward model is configured for launch." : "The variable reward model is not configured yet."}</strong> {continuousLaunch.pilotMode ? "Public access remains isolated by pilot mode; Treasury and public-release gates are resolved when opening access, not while preparing the product." : "Public mode is active, so live funding and release gates must remain satisfied."}</p>
           </>
+        ) : null}
+      </section>
+
+      <section className="admin-decision-card affiliate-supply-card">
+        <span className="app-eyebrow">Cashback supply</span>
+        <h2>{affiliateSupply.liveOfferCount > 0 ? "Real affiliate inventory is available." : "Add the first real cashback offer."}</h2>
+        <p>Use this internal form to onboard a real affiliate destination without SQL. The estimated user value is derived from the configured cashback share for ranking only; actual cashback is still settled from the verified partner commission callback.</p>
+
+        <div className="admin-secondary-grid affiliate-supply-metrics">
+          <article><span>Fresh live offers</span><strong>{affiliateSupply.liveOfferCount}</strong></article>
+          <article><span>User share</span><strong>{(affiliateSupply.cashbackUserShareBps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%</strong><small>of verified partner commission</small></article>
+          <article><span>Callback secret</span><strong>{affiliateSupply.callbackSecretConfigured ? "READY" : "MISSING"}</strong></article>
+          <article><span>Cashback model</span><strong>{affiliateSupply.cashbackEnabled ? "ENABLED" : "OFF"}</strong><small>{affiliateSupply.launchRequirementsReady ? "LAUNCH REQUIREMENTS READY" : "NOT READY YET"}</small></article>
+        </div>
+
+        {params.affiliate === "saved" ? <div className="auth-alert success">Affiliate offer saved and refreshed.</div> : null}
+        {params.affiliate === "paused" ? <div className="auth-alert success">Affiliate offer paused.</div> : null}
+        {params.affiliate === "invalid" || params.affiliate === "invalid-expiry" ? <div className="auth-alert error">Check the affiliate fields. Use a public HTTPS destination, valid tracking parameter and a future expiry.</div> : null}
+        {params.affiliate === "reward-too-small" ? <div className="auth-alert error">The estimated partner commission is too small to produce one cashback credit at the current user share.</div> : null}
+        {params.affiliate === "save-failed" || params.affiliate === "pause-failed" || params.affiliate === "database-unavailable" || params.affiliate === "economy-unavailable" ? <div className="auth-alert error">The affiliate offer could not be updated safely.</div> : null}
+
+        {params.cashback === "enabled" ? <div className="auth-alert success">Cashback is enabled for launch and all launch requirements passed.</div> : null}
+        {params.cashback === "callback-secret-missing" ? <div className="auth-alert error">Set CASHBACK_CALLBACK_SECRET before enabling cashback.</div> : null}
+        {params.cashback === "requirements-not-ready" ? <div className="auth-alert error">Cashback activation was rolled back because the launch requirements are not complete yet.</div> : null}
+        {params.cashback === "confirmation-required" || params.cashback === "enable-failed" || params.cashback === "database-unavailable" || params.cashback === "economy-unavailable" ? <div className="auth-alert error">Cashback could not be enabled safely.</div> : null}
+
+        {affiliateSupply.offers.length ? (
+          <div className="admin-provider-table affiliate-offer-table">
+            <div className="admin-provider-row header"><span>Offer</span><span>Est. cashback</span><span>Freshness</span><span>Action</span></div>
+            {affiliateSupply.offers.map((offer) => (
+              <div className="admin-provider-row" key={offer.id}>
+                <span><strong>{offer.title}</strong><small>{offer.provider} · {offer.externalId} · {offer.status}</small></span>
+                <span>{formatUsdFromCredits(offer.baseRewardCredits)}</span>
+                <span>{offer.fresh ? "FRESH" : "STALE"} · {Math.round(offer.freshnessTtlMinutes / 60)}h TTL</span>
+                <span>
+                  {offer.status === "active" ? (
+                    <form action={pauseAffiliateOffer}>
+                      <input type="hidden" name="opportunity_id" value={offer.id} />
+                      <button className="inline-action" type="submit">Pause</button>
+                    </form>
+                  ) : "Paused"}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <form action={upsertAffiliateOffer} className="affiliate-offer-form">
+          <div className="affiliate-form-grid">
+            <label>Provider<input name="provider" required maxLength={64} placeholder="partner-name" /></label>
+            <label>External offer ID<input name="external_id" required maxLength={160} placeholder="offer-123" /></label>
+            <label className="wide">Offer title<input name="title" required maxLength={180} placeholder="5% cashback at Example Store" /></label>
+            <label>Category<input name="category" maxLength={80} defaultValue="cashback" /></label>
+            <label>Tracking parameter<input name="tracking_param" maxLength={64} defaultValue="subid" /></label>
+            <label>Estimated partner commission (USD)<input name="estimated_commission_usd" required inputMode="decimal" placeholder="0.10" /></label>
+            <label>Estimated time (minutes)<input name="estimated_minutes" type="number" min={1} max={10080} placeholder="5" /></label>
+            <label>Freshness (hours)<input name="freshness_hours" type="number" min={1} max={168} defaultValue={24} /></label>
+            <label>Public reward label<input name="public_reward_label" maxLength={80} placeholder="Up to 5% cashback" /></label>
+            <label>Countries<input name="country_codes" maxLength={200} placeholder="US,BR,GB" /></label>
+            <label>Platforms<input name="device_platforms" maxLength={200} placeholder="web,android,ios" /></label>
+            <label>Expires at<input name="expires_at" type="datetime-local" /></label>
+            <label className="wide">Affiliate destination URL<input name="destination_url" type="url" required maxLength={2000} placeholder="https://partner.example/offer" /></label>
+          </div>
+          <button className="button" type="submit">Save or refresh offer</button>
+        </form>
+
+        {!affiliateSupply.cashbackEnabled ? (
+          <form action={enableCashbackForLaunch} className="treasury-funding-form cashback-enable-form">
+            <label className="treasury-funding-confirm">
+              <input type="checkbox" name="confirm" value="enable-cashback" required />
+              <span>Enable cashback only after at least one real fresh offer exists and the production callback secret is configured.</span>
+            </label>
+            <button className="button" type="submit" disabled={!affiliateSupply.liveOfferCount || !affiliateSupply.callbackSecretConfigured}>Enable cashback for launch</button>
+          </form>
         ) : null}
       </section>
 
