@@ -15,7 +15,8 @@ export async function proxy(request: NextRequest) {
   if (matchesPrefix(pathname, "/visual-smoke-fixture")) {
     const host = request.headers.get("host")?.toLowerCase() ?? "";
     const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim().toLowerCase() ?? "";
-    const localVisualHost = !forwardedHost && (host.startsWith("127.0.0.1:") || host.startsWith("localhost:"));
+    const effectiveHost = forwardedHost || host;
+    const localVisualHost = effectiveHost.startsWith("127.0.0.1:") || effectiveHost.startsWith("localhost:");
     if (!localVisualHost) {
       return new NextResponse("Not Found", {
         status: 404,
