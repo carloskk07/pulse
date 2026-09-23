@@ -212,8 +212,9 @@
 
 .pc-value-first-faucet .pc-faucet-money-value{
   display:block;
-  font-size:clamp(34px,4vw,56px);
-  letter-spacing:-.07em;
+  max-width:none;
+  font-size:clamp(34px,2.65vw,38px);
+  letter-spacing:-.06em;
   white-space:nowrap;
 }
 
