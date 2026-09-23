@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserContext } from "@/lib/current-user-context";
+import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -32,22 +33,27 @@ function safeDestination(value: string) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  const opportunityId = request.nextUrl.searchParams.get("opportunity")?.trim() ?? "";
+export async function POST(request: NextRequest) {
+  if (!isTrustedSameOriginMutation(request)) {
+    return NextResponse.json({ status: "origin-rejected" }, { status: 403 });
+  }
+
+  const form = await readUrlEncodedFormWithLimit(request, 1_024);
+  const opportunityId = form?.get("opportunity")?.trim() ?? "";
   if (!UUID_RE.test(opportunityId)) {
-    return NextResponse.redirect(new URL("/earn?cashback=invalid", request.url), 302);
+    return NextResponse.redirect(new URL("/earn?cashback=invalid", request.url), 303);
   }
 
   const { user } = await getCurrentUserContext();
   if (!user) {
     const auth = new URL("/auth", request.url);
-    auth.searchParams.set("next", `/api/cashback/start?opportunity=${encodeURIComponent(opportunityId)}`);
-    return NextResponse.redirect(auth, 302);
+    auth.searchParams.set("next", "/earn");
+    return NextResponse.redirect(auth, 303);
   }
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
-    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 302);
+    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 303);
   }
 
   const { data, error } = await admin.rpc("create_cashback_tracking_session", {
@@ -56,24 +62,24 @@ export async function GET(request: NextRequest) {
   });
 
   if (error || !data || typeof data !== "object") {
-    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 302);
+    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 303);
   }
 
   const result = data as TrackingResult;
   if (result.status !== "ready" || !UUID_RE.test(result.tracking_id ?? "")) {
     const reason = result.status === "cashback_disabled" ? "not-live" : "unavailable";
-    return NextResponse.redirect(new URL(`/earn?cashback=${reason}`, request.url), 302);
+    return NextResponse.redirect(new URL(`/earn?cashback=${reason}`, request.url), 303);
   }
 
   const destination = safeDestination(result.destination_url ?? "");
   const trackingParam = result.tracking_param ?? "";
   if (!destination || !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trackingParam)) {
-    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 302);
+    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 303);
   }
 
   destination.searchParams.set(trackingParam, result.tracking_id!);
   destination.searchParams.set("utm_source", "pulsercuit");
   destination.searchParams.set("utm_medium", "cashback");
 
-  return NextResponse.redirect(destination, 302);
+  return NextResponse.redirect(destination, 303);
 }
