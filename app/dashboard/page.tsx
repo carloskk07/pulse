@@ -18,16 +18,16 @@ type Props = { searchParams: Promise<{ claim?: string }> };
 
 const claimCopy: Record<string, string> = {
   success: "Reward claimed. Your balance and progress were updated.",
-  "not-ready": "Your next Pulse is not ready yet.",
-  "budget-paused": "Pulse is temporarily unavailable. Your balance did not change.",
-  "backing-refreshing": "Pulse backing is refreshing. Your balance did not change; try again in a moment.",
-  "claim-in-progress": "Your Pulse is already being processed. Your balance has not changed yet; try again in a moment.",
-  "trust-review": "This Pulse needs a review before it can be released.",
+  "not-ready": "Your next reward is not ready yet.",
+  "budget-paused": "The faucet is temporarily unavailable. Your balance did not change.",
+  "backing-refreshing": "Reward availability is refreshing. Your balance did not change; try again in a moment.",
+  "claim-in-progress": "Your reward is already being processed. Your balance has not changed yet; try again in a moment.",
+  "trust-review": "This reward needs a review before it can be released.",
   "verification-failed": "Verification failed. Try again.",
-  "verification-not-configured": "Pulse verification is temporarily unavailable.",
+  "verification-not-configured": "Reward verification is temporarily unavailable.",
   "service-not-configured": "The live reward service is temporarily unavailable.",
-  upgraded: "Hourly Pulse is now the active reward loop.",
-  failed: "The Pulse did not complete. Your balance did not change.",
+  upgraded: "The hourly faucet is now the active reward loop.",
+  failed: "The reward did not complete. Your balance did not change.",
 };
 
 export default async function DashboardPage({ searchParams }: Props) {
@@ -135,7 +135,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               )}
             </div>
 
-            <div className="pulse-core-panel pc-luxe-core-panel pc-v9-core-panel" aria-label="Live Pulse state">
+            <div className="pulse-core-panel pc-luxe-core-panel pc-v9-core-panel" aria-label="Live reward state">
               <PulseCoreVisual state={visualState} eyebrow="Hourly reward" caption={pulseCaption}>
                 {state.pulseFundingReady && !state.claimReady
                   ? <PulseCountdown target={state.nextClaimAt} />
@@ -149,7 +149,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               ) : null}
             </div>
 
-            <div className="pulse-integrity-rail pc-luxe-integrity pc-v9-integrity" aria-label="Pulse principles">
+            <div className="pulse-integrity-rail pc-luxe-integrity pc-v9-integrity" aria-label="Reward principles">
               <span><i className="integrity-dot" />Rewards</span>
               <span><i className="integrity-dot" />Progress</span>
               <span><i className="integrity-dot" />Payout</span>
@@ -174,7 +174,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <span className="app-eyebrow">Progress</span>
               <div className="pc-v9-progress-value"><strong>{state.preview ? "—" : signal.signal}</strong><span>/100</span></div>
               <h3>{state.preview ? "Waiting for live history" : signal.stage}</h3>
-              <p>{state.preview ? "Your live progress appears after connection." : `${state.streakDays}-day rhythm · ${state.hourlyClaimCount} funded Pulse${state.hourlyClaimCount === 1 ? "" : "s"}`}</p>
+              <p>{state.preview ? "Your live progress appears after connection." : `${state.streakDays}-day return streak · ${state.hourlyClaimCount} verified claim${state.hourlyClaimCount === 1 ? "" : "s"}`}</p>
               <Link href="/progress">See progress <ArrowUpRight /></Link>
             </article>
 
@@ -204,7 +204,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <summary>More progress details</summary>
               <div className="admin-secondary-grid">
                 <article><span>Rhythm</span><strong>{state.streakDays} day{state.streakDays === 1 ? "" : "s"}</strong><small>Your return streak</small></article>
-                <article><span>Pulses</span><strong>{state.hourlyClaimCount}</strong><small>Claims completed</small></article>
+                <article><span>Claims</span><strong>{state.hourlyClaimCount}</strong><small>Completed rewards</small></article>
               </div>
             </details>
           ) : null}
