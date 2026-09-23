@@ -43,7 +43,7 @@ requireAll("supabase/migrations/0104_cashback_public_launch_guard.sql", [
   "Canonical release schema remains v55/0055",
 ]);
 
-requireAll("supabase/migrations/0105_cashback_pilot_preparation.sql", [
+requireAll("supabase/migrations/0106_cashback_pilot_preparation.sql", [
   "cashback pilot preparation requires pilot isolation",
   "'{cashback_enabled}'",
   "release_cashback_pilot_preparation_contract",
@@ -52,7 +52,7 @@ requireAll("supabase/migrations/0105_cashback_pilot_preparation.sql", [
   "Canonical release schema remains v55/0055",
 ]);
 
-forbidAll("supabase/migrations/0105_cashback_pilot_preparation.sql", [
+forbidAll("supabase/migrations/0106_cashback_pilot_preparation.sql", [
   "pilot_mode = false",
   "fund_reward_treasury(",
   "insert into public.reward_opportunities",
