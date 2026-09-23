@@ -16,6 +16,7 @@ const surfacePaths = [
   "app/dashboard/claimed/page.tsx",
   "components/claim-reveal-hero.tsx",
   "components/withdrawal-pass-panel.tsx",
+  "components/network-depth-panel.tsx",
   "lib/experience-presentation.ts",
   "components/v6-live-proof.tsx",
 ];
@@ -89,6 +90,7 @@ const requiredBySurface = new Map([
   ["components/claim-reveal-hero.tsx", ["You revealed.", "Variable draw settled", "This claim", "balance now"]],
   ["app/wallet/page.tsx", ["no fee", "service fee", "24-hour cycle", "If the payout fails"]],
   ["components/withdrawal-pass-panel.tsx", ["One withdrawal every 24 hours has no service fee.", "Extra withdrawal"]],
+  ["components/network-depth-panel.tsx", ["Three levels. Three reward rates.", "10% · 3% · 1%", "eligible verified partner activity"]],
 ]);
 
 for (const [path, phrases] of requiredBySurface) {
