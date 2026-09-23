@@ -139,6 +139,63 @@ forbidAll("supabase/migrations/0097_variable_reward_contract_alignment.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0098_variable_reward_readiness_snapshot.sql", [
+  "controlled_technical_readiness_snapshot",
+  "pulse_economy_v13",
+  "variable_reward_model_valid",
+  "jsonb_array_elements",
+  "'pulse_economy'",
+  "release_variable_reward_execution_contract",
+  "variable reward readiness snapshot contract failed",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0098_variable_reward_readiness_snapshot.sql", [
+  "fund_reward_treasury(",
+  "pilot_mode = false",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/reward-contract.ts", [
+  "getCurrentRewardContract",
+  "variable_reward_enabled",
+  "variable_reward_review_required",
+  "totalProbabilityBps === 10_000",
+  "creditsValue < baseCredits",
+  "new Set(credits)",
+]);
+
+requireAll("lib/product-readiness.ts", [
+  "getCurrentRewardContract",
+  'eq("key", "pulse_economy_v13")',
+  "authorizedRewardCredits.includes(Number(latestClaim.reward_credits))",
+  '.in("reward_credits", authorizedRewardCredits.length ? authorizedRewardCredits : [rewardCredits])',
+  "authorizedRewardCredits.includes(Number(chainClaim.reward_credits))",
+  "Number(claimLedger.credits) === Number(chainClaim.reward_credits)",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  "getCurrentRewardContract",
+  "snapshot.pulse_economy",
+  "authorizedRewardCredits.includes(numberValue(latestClaim.reward_credits))",
+  "authorizedRewardCredits.includes(numberValue(chainClaim.reward_credits))",
+  "numberValue(claimLedger.credits) === numberValue(chainClaim.reward_credits)",
+]);
+
+forbidAll("lib/product-readiness.ts", [
+  'Number(latestClaim.reward_credits) === rewardCredits',
+  '.eq("reward_credits", rewardCredits)',
+  'Number(chainClaim.reward_credits) === rewardCredits',
+  'Number(claimLedger.credits) === rewardCredits',
+]);
+
+forbidAll("lib/controlled-technical-readiness.ts", [
+  'numberValue(latestClaim.reward_credits) === rewardCredits',
+  'numberValue(chainClaim.reward_credits) === rewardCredits',
+  'numberValue(claimLedger.credits) === rewardCredits',
+]);
+
 forbidAll("supabase/migrations/0086_variable_reward_budget_readiness.sql", [
   "'variable_reward_enabled', true",
   "'variable_reward_review_required', false",
