@@ -228,10 +228,16 @@ requireText("app/styles/faucet-entry.css", [
   "var(--pc7-gold-hi,#fff0ad)",
   ".pc-faucet-band-grid{",
   ".pc-faucet-band-grid article.is-top{",
-  ".pc-faucet-live-card .pc-faucet-money-value{",
+  ".pc-faucet-live-card .pulse-core-readout{width:82%}",
   ".pc-faucet-final{",
   "var(--pc7-gold,#e6bd5d)",
 ]);
+requireText("app/styles/public-conversion.css", [
+  ".pc-value-first-faucet .pc-faucet-money-value{",
+  "max-width:none",
+  "font-size:clamp(34px,2.65vw,38px)",
+]);
+
 requireText("app/styles/auth.css", [
   ".auth-mode-switch a.active{",
   "var(--pc7-gold-hi,#fff0ad)",
