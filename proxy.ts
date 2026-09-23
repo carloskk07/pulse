@@ -12,6 +12,18 @@ function matchesPrefix(pathname: string, prefix: string) {
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  if (matchesPrefix(pathname, "/visual-smoke-fixture")) {
+    const host = request.headers.get("host")?.toLowerCase() ?? "";
+    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim().toLowerCase() ?? "";
+    const localVisualHost = !forwardedHost && (host.startsWith("127.0.0.1:") || host.startsWith("localhost:"));
+    if (!localVisualHost) {
+      return new NextResponse("Not Found", {
+        status: 404,
+        headers: { "Cache-Control": "no-store, max-age=0" },
+      });
+    }
+  }
+
   // Public machine endpoints never consume user identity. Skipping SSR Auth here
   // removes an unnecessary JWT/JWKS/Auth hop from health and CDN-cacheable public
   // APIs and guarantees these responses cannot acquire refreshed auth cookies.

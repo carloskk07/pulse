@@ -162,6 +162,13 @@ requireText("app/styles/visual-audit.css", [
   ".app-frame .admin-decision-card p{",
 ]);
 
+requireText("proxy.ts", [
+  'matchesPrefix(pathname, "/visual-smoke-fixture")',
+  'request.headers.get("x-forwarded-host")',
+  'status: 404',
+  '"Cache-Control": "no-store, max-age=0"',
+]);
+
 requireText(".github/workflows/visual-smoke.yml", [
   '"privacy|/privacy"',
   '"terms|/terms"',
@@ -279,6 +286,8 @@ requireText("app/dashboard/claimed/page.tsx", [
 
 requireText("app/visual-smoke-fixture/claim-reveal/page.tsx", [
   'requestHeaders.get("host")',
+  'requestHeaders.get("x-forwarded-host")',
+  "!forwardedHost",
   'host.startsWith("127.0.0.1:")',
   'host.startsWith("localhost:")',
   "notFound()",
