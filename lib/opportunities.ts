@@ -139,7 +139,11 @@ export async function getRankedOpportunities(limit = 24): Promise<RankedOpportun
         estimatedMinutes,
         freshnessMinutes: Math.round(freshness.freshnessMinutes),
         quickWin: estimatedMinutes != null && estimatedMinutes > 0 && estimatedMinutes <= 10,
-        actionHref: sourceType === "direct" ? `/api/direct/start?campaign=${encodeURIComponent(externalId)}` : null,
+        actionHref: sourceType === "direct"
+          ? `/api/direct/start?campaign=${encodeURIComponent(externalId)}`
+          : sourceType === "affiliate"
+            ? `/api/cashback/start?opportunity=${encodeURIComponent(String(row.id))}`
+            : null,
         pulseProtected: sourceType === "direct",
         ...result,
       } satisfies RankedOpportunity];
