@@ -234,6 +234,13 @@
   font-size: 13px;
 }
 
+.pc-v13-network-grid b {
+  margin-top: auto;
+  color: #b1ff52;
+  font-size: 12px;
+  letter-spacing: .02em;
+}
+
 .pc-v13-network-summary {
   margin-top: 14px;
 }
