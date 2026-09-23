@@ -57,6 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --no-audit --no-fund
+          export VISUAL_SMOKE_FIXTURES=1
           npm run build
 
           nohup npm start -- -p 3100 -H 127.0.0.1 > "$RUNNER_TEMP/visual-preview.log" 2>&1 &
@@ -193,6 +194,15 @@ jobs:
           capture bp-761 761,1024
           capture bp-1120 1120,800
           capture bp-1121 1121,800
+
+          # Claim-reveal fixtures exercise the exact authenticated reveal component
+          # without exposing a debug route in production.
+          mkdir -p visual-smoke/local-preview/claim-reveal/desktop visual-smoke/local-preview/claim-reveal/mobile
+          for tone in standard boosted top; do
+            curl --fail --silent --show-error "http://127.0.0.1:3100/__visual-smoke/claim-reveal?tone=$tone" > /dev/null
+            capture_one "visual-smoke/local-preview/claim-reveal/desktop/$tone.png" 1440,900 "http://127.0.0.1:3100/__visual-smoke/claim-reveal?tone=$tone" "local-preview/claim-reveal/desktop/$tone"
+            capture_one "visual-smoke/local-preview/claim-reveal/mobile/$tone.png" 390,844 "http://127.0.0.1:3100/__visual-smoke/claim-reveal?tone=$tone" "local-preview/claim-reveal/mobile/$tone"
+          done
 
       - name: Verify responsive runtime geometry
         shell: bash
@@ -396,6 +406,14 @@ jobs:
           NODE
           echo "production-not-found requested=$not_found_path effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
 
+          fixture_path="/__visual-smoke/claim-reveal?tone=top"
+          fixture_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://pulsercuit.pro$fixture_path")"
+          if [ "$fixture_status" != "404" ]; then
+            echo "Visual fixture must remain unavailable in production; received HTTP $fixture_status"
+            exit 1
+          fi
+          echo "production-fixture-isolation requested=$fixture_path HTTP=$fixture_status" >> visual-smoke/manifest.txt
+
       - name: Capture production direct views and auth redirects
         shell: bash
         run: |
@@ -505,9 +523,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
-          # 40 local-preview PNGs (5 routes × 8 viewports) + 36 production PNGs.
-          # Production adds the FaucetPay entry and advertiser surface in desktop + mobile.
-          test "$count" -eq 76
+          # 40 canonical local-preview PNGs + 6 gated claim-reveal fixture PNGs + 36 production PNGs.
+          # The reveal fixtures cover standard / boosted / top rewards on desktop and mobile.
+          test "$count" -eq 82
 
       - name: Capture full-page public evidence
         shell: bash
@@ -521,9 +539,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots after targeted full-page evidence."
-          # Existing 76 viewport screenshots + 8 full-page public screenshots:
+          # Existing 82 viewport/fixture screenshots + 8 full-page public screenshots:
           # Home, Faucet, Proof and Auth × desktop/mobile.
-          test "$count" -eq 84
+          test "$count" -eq 90
 
       - name: Stop local preview
         if: always()
