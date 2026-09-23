@@ -176,6 +176,28 @@ forbidAll("supabase/migrations/0099_pilot_backing_separation.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0100_variable_reward_cadence_policy.sql", [
+  "variable_reward_cadence_policy_ready",
+  "user_daily_ceiling_credits",
+  "natural_variable_hourly_ceiling",
+  "v_required_ceiling <> 1200",
+  "release_variable_reward_cadence_policy_contract",
+  "canonical release schema v55",
+]);
+
+forbidAll("supabase/migrations/0100_variable_reward_cadence_policy.sql", [
+  "update public.reward_treasuries",
+  "fund_reward_treasury(",
+  "pilot_mode = false",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_variable_reward_cadence_policy_contract")',
+  'setupBlockers.push("variable-reward-cadence-policy")',
+]);
+
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_pilot_backing_separation_contract")',
   'setupBlockers.push("pilot-backing-separation")',
