@@ -63,12 +63,22 @@ function safeAffiliateDestination(value: string) {
   }
 }
 
-function normalizedCodeList(rawValue: FormDataEntryValue | null, maxItems = 40) {
+function normalizeCountryCodes(rawValue: FormDataEntryValue | null, maxItems = 40) {
   const items = String(rawValue ?? "")
     .split(",")
-    .map((item) => item.trim())
+    .map((item) => item.trim().toUpperCase())
     .filter(Boolean);
-  if (items.length > maxItems) return null;
+  if (items.length > maxItems || items.some((item) => !/^[A-Z]{2}$/.test(item))) return null;
+  return [...new Set(items)];
+}
+
+function normalizeDevicePlatforms(rawValue: FormDataEntryValue | null, maxItems = 10) {
+  const allowed = new Set(["web", "desktop", "mobile", "android", "ios"]);
+  const items = String(rawValue ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  if (items.length > maxItems || items.some((item) => !allowed.has(item))) return null;
   return [...new Set(items)];
 }
 
@@ -224,8 +234,8 @@ export async function upsertAffiliateOffer(formData: FormData) {
   const publicRewardLabel = requiredText(formData, "public_reward_label", 80);
   const freshnessHours = optionalPositiveInt(formData, "freshness_hours", 168) ?? 24;
   const estimatedMinutes = optionalPositiveInt(formData, "estimated_minutes", 10_080);
-  const countryCodes = normalizedCodeList(formData.get("country_codes"));
-  const devicePlatforms = normalizedCodeList(formData.get("device_platforms"));
+  const countryCodes = normalizeCountryCodes(formData.get("country_codes"));
+  const devicePlatforms = normalizeDevicePlatforms(formData.get("device_platforms"));
 
   const provider = providerRaw?.toLowerCase() ?? "";
   const destination = destinationRaw ? safeAffiliateDestination(destinationRaw) : null;
@@ -302,8 +312,8 @@ export async function upsertAffiliateOffer(formData: FormData) {
       tracking_reliability: null,
       payout_reliability: null,
       reversal_rate: null,
-      country_codes: countryCodes.map((code) => code.toUpperCase()),
-      device_platforms: devicePlatforms.map((value) => value.toLowerCase()),
+      country_codes: countryCodes,
+      device_platforms: devicePlatforms,
       status: "active",
       source_type: "affiliate",
       evidence_tier: "new",
