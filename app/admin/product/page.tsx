@@ -89,8 +89,8 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
 
       <section className="admin-decision-card affiliate-supply-card">
         <span className="app-eyebrow">Cashback supply</span>
-        <h2>{affiliateSupply.liveOfferCount > 0 ? "Real affiliate inventory is available." : "Add the first real cashback offer."}</h2>
-        <p>Use this internal form to onboard a real affiliate destination without SQL. The estimated user value is derived from the configured cashback share for ranking only; actual cashback is still settled from the verified partner commission callback.</p>
+        <h2>{affiliateSupply.liveOfferCount > 0 ? "Real affiliate inventory is available." : affiliateSupply.cashbackEnabled ? "Cashback engine ready. Add the first real offer." : "Add the first real cashback offer."}</h2>
+        <p>The cashback engine can stay active during pilot without inventing inventory. Add only a real affiliate destination; nothing becomes actionable for members until a fresh real offer exists. Estimated value is used for ranking only, while actual cashback is settled from verified partner commission callbacks.</p>
 
         <div className="admin-secondary-grid affiliate-supply-metrics">
           <article><span>Fresh live offers</span><strong>{affiliateSupply.liveOfferCount}</strong></article>
