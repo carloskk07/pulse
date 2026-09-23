@@ -57,7 +57,6 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --no-audit --no-fund
-          export VISUAL_SMOKE_FIXTURES=1
           npm run build
 
           nohup npm start -- -p 3100 -H 127.0.0.1 > "$RUNNER_TEMP/visual-preview.log" 2>&1 &

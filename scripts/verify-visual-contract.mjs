@@ -174,7 +174,6 @@ requireText(".github/workflows/visual-smoke.yml", [
   "Capture full-page public evidence",
   'test "$count" -eq 82',
   'test "$count" -eq 90',
-  "VISUAL_SMOKE_FIXTURES=1",
   "local-preview/claim-reveal/desktop",
   "production-fixture-isolation",
 ]);
@@ -279,7 +278,9 @@ requireText("app/dashboard/claimed/page.tsx", [
 ]);
 
 requireText("app/__visual-smoke/claim-reveal/page.tsx", [
-  'process.env.VISUAL_SMOKE_FIXTURES !== "1"',
+  'requestHeaders.get("host")',
+  'host.startsWith("127.0.0.1:")',
+  'host.startsWith("localhost:")',
   "notFound()",
   'rewardTone={tone}',
   "standard:",
