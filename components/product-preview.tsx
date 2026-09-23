@@ -8,13 +8,13 @@ export function ProductPreview() {
         <div className="preview-main">
           <article className="preview-drop">
             <div className="preview-drop-top">
-              <span className="status-pill status-lime"><Spark /> Pulse</span>
+              <span className="status-pill status-lime"><Spark /> Reward</span>
               <div className="preview-value"><small>Reward rail</small><strong>Treasury gated</strong></div>
             </div>
             <div>
               <div className="pulse-line protected">Pulsercuit protected</div>
-              <h3>Return. Pulse. Build your rhythm.</h3>
-              <p>Claim when eligible, come back on the rolling timer and use Turbo only when extra earning is worth it.</p>
+              <h3>Claim. Return. Build your progress.</h3>
+              <p>Claim when eligible, come back on the rolling timer and use extra rewards only when they are worth your time.</p>
             </div>
             <div className="preview-drop-bottom">
               <span className="preview-protect"><Shield /> Budget required</span>
@@ -29,9 +29,9 @@ export function ProductPreview() {
         </div>
         <div className="preview-feed">
           <div className="mini-label">Your circuit</div>
-          <div className="activity-row"><span className="activity-icon"><Check /></span><div><strong>Pulse</strong><small>Eligible + funded</small></div><time>base</time></div>
+          <div className="activity-row"><span className="activity-icon"><Check /></span><div><strong>Faucet</strong><small>Eligible + funded</small></div><time>hourly</time></div>
           <div className="activity-row"><span className="activity-icon"><Clock /></span><div><strong>Return</strong><small>Rolling eligibility</small></div><time>rhythm</time></div>
-          <div className="activity-row"><span className="activity-icon"><Bolt /></span><div><strong>Turbo</strong><small>Optional extra reward</small></div><time>choice</time></div>
+          <div className="activity-row"><span className="activity-icon"><Bolt /></span><div><strong>Extras</strong><small>Optional extra reward</small></div><time>choice</time></div>
         </div>
       </div>
     </div>
