@@ -102,6 +102,49 @@ requireAll("app/earn/page.tsx", [
 
 requireAll(".env.example", ["CASHBACK_CALLBACK_SECRET="]);
 
+requireAll("app/admin/product/actions.ts", [
+  "export async function upsertAffiliateOffer",
+  "safeAffiliateDestination",
+  "normalizeCountryCodes",
+  "normalizeDevicePlatforms",
+  "estimated_commission_usd",
+  "cashback_user_share_bps",
+  "estimate_only: true",
+  'source_type: "affiliate"',
+  "export async function pauseAffiliateOffer",
+  "export async function enableCashbackForLaunch",
+  "CASHBACK_CALLBACK_SECRET",
+  'admin.rpc("cashback_public_launch_requirements_ready"',
+  "Cashback launch activation rolled back",
+]);
+
+requireAll("lib/affiliate-opportunities-admin.ts", [
+  'eq("source_type", "affiliate")',
+  'admin.rpc("cashback_public_launch_requirements_ready"',
+  "CASHBACK_CALLBACK_SECRET",
+  "liveOfferCount",
+]);
+
+requireAll("app/admin/product/page.tsx", [
+  "Cashback supply",
+  "upsertAffiliateOffer",
+  "pauseAffiliateOffer",
+  "enableCashbackForLaunch",
+  "Estimated partner commission (USD)",
+  "Save or refresh offer",
+]);
+
+requireAll("lib/opportunities.ts", [
+  "publicRewardLabel",
+  "metadata.public_reward_label",
+]);
+
+requireAll("app/earn/page.tsx", [
+  "Cashback estimate",
+  "publicRewardLabel",
+  "Estimated ",
+]);
+
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_cashback_ingestion_contract")',
   'setupBlockers.push("cashback-ingestion")',
