@@ -102,7 +102,7 @@ const requiredBySurface = new Map([
   ["app/faucet/page.tsx", ["Each eligible claim reveals one value", "Variable reward draw", "One claim. Different possible rewards.", "A faucet should make the reward obvious.", "Current availability", "Create free account"]],
   ["app/progress/page.tsx", ["See what your activity has built.", "Five ranks. One clear path."]],
   ["app/invite/page.tsx", ["Invite friends. See the reward before you share."]],
-  ["app/earn/page.tsx", ["More ways to earn between faucet claims.", "Extra rewards never block the faucet.", "More reward options"]],
+  ["app/earn/page.tsx", ["More ways to earn between faucet claims.", "Extra rewards never block the faucet.", "More reward options", "Cashback estimate", "publicRewardLabel"]],
   ["app/support/page.tsx", ["Tell us what happened. Keep one reference."]],
   ["app/dashboard/claimed/page.tsx", ["<ClaimRevealHero", "rewardTone={rewardTone}", "probabilityLabel={probabilityLabel}"]],
   ["components/claim-reveal-hero.tsx", ["You revealed.", "Variable draw settled", "This claim", "balance now"]],

@@ -30,6 +30,7 @@ export type RankedOpportunity = {
   confidence: number;
   evidenceConfidence: number;
   dataCompleteness: number;
+  publicRewardLabel: string | null;
 };
 
 type OpportunityRow = {
@@ -51,6 +52,7 @@ type OpportunityRow = {
   refreshed_at?: unknown;
   freshness_ttl_minutes?: unknown;
   expires_at?: unknown;
+  metadata?: unknown;
 };
 
 function asEvidenceTier(value: unknown): OpportunityEvidenceTier {
@@ -96,7 +98,7 @@ export async function getRankedOpportunities(limit = 24): Promise<RankedOpportun
 
   const { data, error } = await admin
     .from("reward_opportunities")
-    .select("id,provider,external_id,title,category,source_type,evidence_tier,health_state,payout_usd_micros,base_reward_credits,estimated_minutes,completion_probability,tracking_reliability,payout_reliability,reversal_rate,refreshed_at,freshness_ttl_minutes,expires_at")
+    .select("id,provider,external_id,title,category,source_type,evidence_tier,health_state,payout_usd_micros,base_reward_credits,estimated_minutes,completion_probability,tracking_reliability,payout_reliability,reversal_rate,refreshed_at,freshness_ttl_minutes,expires_at,metadata")
     .eq("status", "active")
     .neq("health_state", "hidden")
     .order("refreshed_at", { ascending: false })
@@ -124,6 +126,14 @@ export async function getRankedOpportunities(limit = 24): Promise<RankedOpportun
         healthState: freshness.effectiveHealth,
       });
       const estimatedMinutes = row.estimated_minutes == null ? null : finiteNumber(row.estimated_minutes);
+      const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? row.metadata as Record<string, unknown>
+        : {};
+      const publicRewardLabel = typeof metadata.public_reward_label === "string"
+        && metadata.public_reward_label.trim()
+        && metadata.public_reward_label.trim().length <= 80
+        ? metadata.public_reward_label.trim()
+        : null;
 
       return [{
         id: String(row.id),
@@ -141,6 +151,7 @@ export async function getRankedOpportunities(limit = 24): Promise<RankedOpportun
         quickWin: estimatedMinutes != null && estimatedMinutes > 0 && estimatedMinutes <= 10,
         actionHref: sourceType === "direct" ? `/api/direct/start?campaign=${encodeURIComponent(externalId)}` : null,
         pulseProtected: sourceType === "direct",
+        publicRewardLabel,
         ...result,
       } satisfies RankedOpportunity];
     })

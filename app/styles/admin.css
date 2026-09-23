@@ -16,3 +16,20 @@
 .treasury-funding-confirm input{width:18px;height:18px;flex:0 0 auto;margin:1px 0 0;accent-color:var(--lime)}
 .treasury-funding-form .button{justify-self:start}
 @media(max-width:650px){.treasury-funding-form .button{width:100%}}
+
+.affiliate-supply-card{margin:16px 0}
+.affiliate-supply-metrics{margin:20px 0}
+.affiliate-offer-table{margin:18px 0}
+.affiliate-offer-table .admin-provider-row{grid-template-columns:minmax(0,1.5fr) minmax(120px,.65fr) minmax(140px,.8fr) minmax(90px,.5fr);align-items:center}
+.affiliate-offer-table .admin-provider-row>span:first-child{display:grid;gap:4px}
+.affiliate-offer-table .admin-provider-row small{color:#65707c;font-size:9px}
+.affiliate-offer-form{display:grid;gap:16px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.affiliate-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.affiliate-form-grid label{display:grid;gap:7px;color:#77818e;font-size:9px;text-transform:uppercase;letter-spacing:.07em}
+.affiliate-form-grid label.wide{grid-column:span 2}
+.affiliate-form-grid input{width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;background:#090c11;color:var(--text);padding:11px 12px;font:inherit;text-transform:none;letter-spacing:0;outline:none}
+.affiliate-form-grid input:focus{border-color:rgba(184,255,61,.28);box-shadow:0 0 0 3px rgba(184,255,61,.055)}
+.affiliate-offer-form>.button,.cashback-enable-form .button{justify-self:start}
+.cashback-enable-form{padding-top:18px;border-top:1px solid var(--line)}
+@media(max-width:900px){.affiliate-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.affiliate-offer-table .admin-provider-row{grid-template-columns:1.4fr .7fr 1fr}.affiliate-offer-table .admin-provider-row>span:nth-child(4){grid-column:1/-1}}
+@media(max-width:650px){.affiliate-form-grid{grid-template-columns:1fr}.affiliate-form-grid label.wide{grid-column:auto}.affiliate-offer-form>.button,.cashback-enable-form .button{width:100%}.affiliate-offer-table .admin-provider-row{grid-template-columns:1fr 1fr}.affiliate-offer-table .admin-provider-row>span:nth-child(3){display:block}.affiliate-offer-table .admin-provider-row>span:nth-child(4){grid-column:1/-1}}
