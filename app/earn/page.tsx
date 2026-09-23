@@ -102,7 +102,14 @@ export default async function EarnPage({ searchParams }: Props) {
 
           <div className="drop-card-foot">
             <div className="drop-stat">
-              <div><small>Reward</small><strong>{best ? formatUsdFromCredits(best.baseRewardCredits) : primaryChannel ? "Available" : "—"}</strong></div>
+              <div>
+                <small>{best?.sourceType === "affiliate" ? "Cashback estimate" : "Reward"}</small>
+                <strong>{best
+                  ? best.sourceType === "affiliate"
+                    ? best.publicRewardLabel ?? `Estimated ${formatUsdFromCredits(best.baseRewardCredits)}`
+                    : formatUsdFromCredits(best.baseRewardCredits)
+                  : primaryChannel ? "Available" : "—"}</strong>
+              </div>
               <div><small>Time</small><strong>{best?.estimatedMinutes ? "~" + best.estimatedMinutes + " min" : "—"}</strong></div>
               <div><small>Verification</small><strong>{best ? (best.pulseProtected ? "Funded" : evidenceLabel(best)) : "—"}</strong></div>
             </div>
@@ -142,7 +149,12 @@ export default async function EarnPage({ searchParams }: Props) {
                   <span className="reward-rank">{String(index + 2).padStart(2, "0")}</span>
                   <div><strong>{item.title}</strong><small>{item.category} · {item.pulseProtected ? "Funded" : evidenceLabel(item)}</small></div>
                 </div>
-                <div className="reward-metric"><small>Reward</small><strong>{formatUsdFromCredits(item.baseRewardCredits)}</strong></div>
+                <div className="reward-metric">
+                  <small>{item.sourceType === "affiliate" ? "Cashback estimate" : "Reward"}</small>
+                  <strong>{item.sourceType === "affiliate"
+                    ? item.publicRewardLabel ?? `Estimated ${formatUsdFromCredits(item.baseRewardCredits)}`
+                    : formatUsdFromCredits(item.baseRewardCredits)}</strong>
+                </div>
                 <div className="reward-metric"><small>Time</small><strong>{item.estimatedMinutes ? item.estimatedMinutes + "m" : "—"}</strong></div>
                 <div className="reward-metric"><small>Verification</small><strong>{item.pulseProtected ? "Protected" : Math.round(item.confidence * 100) + "%"}</strong></div>
                 {item.pulseProtected ? (
