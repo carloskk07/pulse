@@ -230,6 +230,29 @@ forbidAll("supabase/migrations/0102_referral_network_launch_policy.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0103_cashback_canonical_ingestion.sql", [
+  "cashback_tracking_sessions",
+  "apply_cashback_attributed_event",
+  "tracking_already_bound",
+  "p_commission_usd_micros::numeric * v_share_bps::numeric",
+  "/ 10000000::numeric",
+  "release_cashback_ingestion_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0103_cashback_canonical_ingestion.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "update public.reward_treasuries",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_cashback_ingestion_contract")',
+  'setupBlockers.push("cashback-ingestion")',
+]);
+
 requireAll("lib/controlled-technical-readiness.ts", [
   'admin.rpc("release_network_commission_launch_contract")',
   'setupBlockers.push("network-commission-launch")',

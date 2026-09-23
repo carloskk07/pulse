@@ -28,6 +28,7 @@ const sameOriginRoutes = [
   "app/api/pulse/claim/route.ts",
   "app/api/withdrawals/route.ts",
   "app/api/direct/start/route.ts",
+  "app/api/cashback/start/route.ts",
   "app/api/return-reminder/route.ts",
 ];
 
@@ -46,6 +47,7 @@ const boundedFormRoutes = [
   "app/api/pulse/claim/route.ts",
   "app/api/withdrawals/route.ts",
   "app/api/direct/start/route.ts",
+  "app/api/cashback/start/route.ts",
 ];
 
 for (const routePath of boundedFormRoutes) {
