@@ -121,6 +121,24 @@ forbidAll("supabase/migrations/0088_withdrawal_recovery_authority.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0105_extra_rewards_public_launch_guard.sql", [
+  "extra_rewards_public_launch_requirements_ready",
+  "extra_rewards_public_launch_ready",
+  "enforce_extra_rewards_public_launch_guard",
+  "extra_rewards_public_launch_guard",
+  "extra_rewards_public_launch_not_ready",
+  "direct_campaigns",
+  "cashback_public_launch_requirements_ready",
+  "release_extra_rewards_public_launch_contract",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0105_extra_rewards_public_launch_guard.sql", [
+  "fund_reward_treasury(",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 requireAll("supabase/migrations/0089_withdrawal_retry_backoff.sql", [
   "v_effective_retry_seconds",
   "power(2::numeric",
@@ -136,6 +154,11 @@ forbidAll("supabase/migrations/0089_withdrawal_retry_backoff.sql", [
   "fund_reward_treasury(",
   "'version', 56",
   "schema_version = 56",
+]);
+
+requireAll("lib/controlled-technical-readiness.ts", [
+  'admin.rpc("release_extra_rewards_public_launch_contract")',
+  'setupBlockers.push("extra-rewards-public-launch")',
 ]);
 
 requireAll("lib/pulse-ecosystem.ts", [
