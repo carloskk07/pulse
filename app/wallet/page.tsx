@@ -239,7 +239,7 @@ export default async function WalletPage({ searchParams }: Props) {
           <Shield />
           <span className="app-eyebrow">How payouts work</span>
           <h3>Available → Reserved → Paid.</h3>
-          <p>Once a payout starts, that amount stays reserved until the request completes or returns to your Vault.</p>
+          <p>Once a payout starts, that amount stays reserved until the request completes or returns to your balance.</p>
           <div className="state-list">
             <span className="done">Available</span>
             <span className={activeWithdrawal ? "active" : ""}>Reserved</span>

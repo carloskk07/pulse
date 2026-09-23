@@ -33,7 +33,7 @@ const directCopy: Record<string, string> = {
   invalid: "That reward link is not valid.",
   "session-error": "The protected session could not be created safely.",
   "destination-error": "The destination failed the secure redirect check.",
-  "service-unavailable": "Extra rewards are temporarily unavailable. Pulse is unaffected.",
+  "service-unavailable": "Extra rewards are temporarily unavailable. The hourly faucet is unaffected.",
 };
 
 function evidenceLabel(item: RankedOpportunity) {
@@ -118,15 +118,15 @@ export default async function EarnPage({ searchParams }: Props) {
           ) : primaryChannel ? (
             <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open extra rewards <ArrowUpRight /></a>
           ) : (
-            <Link className="button button-light direct-primary-action" href="/dashboard">Back to Pulse <ArrowUpRight /></Link>
+            <Link className="button button-light direct-primary-action" href="/dashboard">Back to rewards <ArrowUpRight /></Link>
           )}
         </article>
 
         <aside className="drop-aside pc-luxe-turbo-aside">
           <div>
             <span className="app-eyebrow">Core rule</span>
-            <h3>Turbo never blocks Pulse.</h3>
-            <p>Extra reward availability can change without affecting your Pulse history or Vault.</p>
+            <h3>Extra rewards never block the faucet.</h3>
+            <p>Extra reward availability can change without affecting your faucet history or balance.</p>
           </div>
           <span className="status-pill"><Shield /> Optional by design</span>
         </aside>
@@ -134,7 +134,7 @@ export default async function EarnPage({ searchParams }: Props) {
 
       {moreOptions.length ? (
         <details className="admin-panel intelligence-section pc-luxe-ranked-turbo">
-          <summary><strong>More Turbo options</strong></summary>
+          <summary><strong>More reward options</strong></summary>
           <div className="reward-list">
             {moreOptions.map((item, index) => (
               <article className={"reward-row intelligence-row " + (item.pulseProtected ? "direct-opportunity-row" : "")} key={item.id}>
