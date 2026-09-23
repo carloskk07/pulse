@@ -115,6 +115,8 @@ forbidText("lib/product-readiness.ts", ['Number(latestClaim.reward_credits) === 
 forbidText("lib/controlled-technical-readiness.ts", ['numberValue(latestClaim.reward_credits) === rewardCredits', 'numberValue(chainClaim.reward_credits) === rewardCredits', 'numberValue(claimLedger.credits) === rewardCredits']);
 requireText("supabase/migrations/0098_variable_reward_readiness_snapshot.sql", ["pulse_economy_v13", "variable_reward_model_valid", "jsonb_array_elements", "'pulse_economy'", "release_variable_reward_execution_contract", "canonical release schema v55"]);
 forbidText("supabase/migrations/0098_variable_reward_readiness_snapshot.sql", ["fund_reward_treasury(", "pilot_mode = false", "'version', 56", "schema_version = 56"]);
+requireText("supabase/migrations/0099_pilot_backing_separation.sql", ["enforce_pulse_claim_backing_guard", "pilot_user_ids", "new.user_id::text", "if v_pilot_user then", "treasury_backing_guard", "v_status <> 'backing_ready'", "release_pilot_backing_separation_contract", "canonical release schema v55"]);
+forbidText("supabase/migrations/0099_pilot_backing_separation.sql", ["fund_reward_treasury(", "pilot_mode = false", "'version', 56", "schema_version = 56"]);
 requireText("lib/treasury.ts", ["deriveTreasuryDailyFundingState", "getTreasuryDailyFundingState", "remainingDailyBudgetCredits", "fundingGapCredits", "utcTodayStart.setUTCHours(0, 0, 0, 0)", '.in("status", ["reserved", "consumed"])']);
 forbidText("lib/product-readiness.ts", ["availableTreasury >= rewardCredits", "availableTreasury >= dailyBudgetCredits", "covering at least one full"]);
 requireText("lib/hourly-pilot-readiness.ts", ["HOURLY_PILOT_SCHEMA_VERSION = 36", 'admin.rpc("release_hourly_pulse_pilot_contract")', "schemaVersion >= HOURLY_PILOT_SCHEMA_VERSION"]);
@@ -141,6 +143,8 @@ requireText("lib/controlled-technical-readiness.ts", [
   "authorizedRewardCredits.includes(numberValue(latestClaim.reward_credits))",
   "authorizedRewardCredits.includes(numberValue(chainClaim.reward_credits))",
   "numberValue(claimLedger.credits) === numberValue(chainClaim.reward_credits)",
+  'admin.rpc("release_pilot_backing_separation_contract")',
+  '"pilot-backing-separation"',
   "payout-pack-authority",
   "base-loop-continuity",
   'state: "SETUP_REQUIRED"',
