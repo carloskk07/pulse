@@ -17,6 +17,7 @@ export type ActiveWithdrawal = {
   asset: string;
   amount_credits: number;
   payout_amount_units: number | null;
+  service_fee_credits: number;
   created_at: string;
 };
 
@@ -42,6 +43,7 @@ function activeWithdrawalFromPayload(value: unknown): ActiveWithdrawal | null {
   const payoutUnits = row.payout_amount_units === null || row.payout_amount_units === undefined
     ? null
     : Number(row.payout_amount_units);
+  const serviceFeeCredits = Number(row.service_fee_credits ?? 0);
 
   if (
     !id
@@ -51,6 +53,8 @@ function activeWithdrawalFromPayload(value: unknown): ActiveWithdrawal | null {
     || !Number.isFinite(amountCredits)
     || amountCredits <= 0
     || (payoutUnits !== null && (!Number.isFinite(payoutUnits) || payoutUnits <= 0))
+    || !Number.isFinite(serviceFeeCredits)
+    || serviceFeeCredits < 0
   ) {
     return null;
   }
@@ -62,6 +66,7 @@ function activeWithdrawalFromPayload(value: unknown): ActiveWithdrawal | null {
     asset,
     amount_credits: amountCredits,
     payout_amount_units: payoutUnits,
+    service_fee_credits: Math.floor(serviceFeeCredits),
     created_at: createdAt,
   };
 }
