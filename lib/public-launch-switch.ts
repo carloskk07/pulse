@@ -25,6 +25,10 @@ export type PublicLaunchSwitchState = {
   blockers: string[];
 };
 
+function secretReady(value: string | undefined) {
+  return Boolean(value?.trim() && value.trim().length >= 32);
+}
+
 function stringArray(value: unknown) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
@@ -60,8 +64,8 @@ export async function getPublicLaunchSwitchState(): Promise<PublicLaunchSwitchSt
     : {};
   const pilotMode = preflight.pilot_mode !== false;
   const databaseReady = !preflightResult.error && preflight.ready === true;
-  const callbackSecretReady = Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim());
-  const providerPostbacksReady = !affiliateSupply.hasFreshAdmitadOffer || affiliateSupply.admitadPostbackConfigured;
+  const callbackSecretReady = secretReady(process.env.CASHBACK_CALLBACK_SECRET);
+  const providerPostbacksReady = !affiliateSupply.hasFreshAdmitadOffer || secretReady(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET);
   const governanceReady = launch.governanceAdvisories.length === 0;
   const nonAccessPublicBlockers = launch.publicProductBlockers.filter((item) => item.id !== "public-access");
   const technicalReady = controlled.ready && launch.technicalReady;
