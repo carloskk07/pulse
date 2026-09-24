@@ -7,6 +7,7 @@ import { NextCircuitPanel } from "@/components/next-circuit-panel";
 import { ProgressOrbitArtwork } from "@/components/pulse-visuals";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
+import { getProgressExperience } from "@/lib/product-experience";
 import { getRewardSnapshot } from "@/lib/reward-state";
 import { getWeeklyPulseSummary } from "@/lib/retention-summary";
 
@@ -38,11 +39,12 @@ export default async function ProgressPage() {
   const unlockedAchievements = achievements.filter((achievement) => achievement.unlocked);
   const strongestAchievement = unlockedAchievements.at(-1)?.title ?? null;
   const nextAchievement = getNextCircuitAchievement(achievements);
+  const experience = getProgressExperience(state);
   const shareReady = state.signedIn && !state.preview;
   const shareEntryHref = state.signedIn ? "#circuit-moments" : "/auth?next=/progress%23circuit-moments";
 
   return (
-    <AppShell active="progress" userLabel={state.signedIn ? state.userLabel : undefined}>
+    <AppShell active="progress" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="app-page-head pc-progress-head pc-luxe-momentum-head">
         <div>
           <span className="app-eyebrow">Progress</span>
