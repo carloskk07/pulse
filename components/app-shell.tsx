@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
+import type { ProductExperience } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { PulsercuitBrand } from "./pulsercuit-brand";
@@ -26,7 +27,17 @@ function initials(value: string) {
   return value.replace(/[^a-zA-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "PC";
 }
 
-export async function AppShell({ children, active, userLabel }: { children: React.ReactNode; active: string; userLabel?: string | null }) {
+export async function AppShell({
+  children,
+  active,
+  userLabel,
+  experience,
+}: {
+  children: React.ReactNode;
+  active: string;
+  userLabel?: string | null;
+  experience?: ProductExperience;
+}) {
   const { supabase, user } = await getCurrentUserContext();
   const suppliedLabel = userLabel?.trim();
   let label = suppliedLabel || "Demo member";
@@ -40,7 +51,7 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
   const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
 
   return (
-    <div className="app-frame" data-section={active}>
+    <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase}>
       <header className="app-topbar">
         <div className="app-topbar-inner">
           <PulsercuitBrand />
