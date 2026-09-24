@@ -74,6 +74,23 @@ forbidAll("supabase/migrations/0103_cashback_canonical_ingestion.sql", [
   "schema_version = 56",
 ]);
 
+requireAll("supabase/migrations/0108_cashback_revalidation_state.sql", [
+  "p_status = 'pending' and v_existing.status = 'confirmed'",
+  "set state = 'pending'",
+  "confirmed_at=null",
+  "release_cashback_budget_contract",
+  "cashback revalidation contract failed",
+  "Canonical release schema remains v55/0055",
+]);
+
+forbidAll("supabase/migrations/0108_cashback_revalidation_state.sql", [
+  "pilot_mode = false",
+  "fund_reward_treasury(",
+  "update public.reward_treasuries",
+  "'version', 56",
+  "schema_version = 56",
+]);
+
 requireAll("app/api/cashback/start/route.ts", [
   "export async function POST",
   "isTrustedSameOriginMutation(request)",
@@ -104,6 +121,29 @@ forbidAll("app/api/cashback/callback/route.ts", [
   "p_user_reward_credits",
 ]);
 
+requireAll("app/api/cashback/admitad/route.ts", [
+  "CASHBACK_ADMITAD_POSTBACK_SECRET",
+  "timingSafeEqual",
+  'params.get("subid4")',
+  'params.get("admitad_id")',
+  'params.get("payment_status")',
+  'params.get("payment_sum")',
+  'params.get("currency")',
+  'p_provider: "admitad"',
+  'admin.rpc("apply_cashback_attributed_event"',
+  'status === "approved"',
+  'status === "declined"',
+  'status === "pending"',
+  "unsupported-currency",
+]);
+
+forbidAll("app/api/cashback/admitad/route.ts", [
+  "request.json()",
+  "userId",
+  "user_id",
+  "p_user_reward_credits",
+]);
+
 requireAll("components/cashback-start-button.tsx", [
   'action="/api/cashback/start"',
   'method="post"',
@@ -117,7 +157,7 @@ requireAll("app/earn/page.tsx", [
   "Cashback is not live yet.",
 ]);
 
-requireAll(".env.example", ["CASHBACK_CALLBACK_SECRET="]);
+requireAll(".env.example", ["CASHBACK_CALLBACK_SECRET=", "CASHBACK_ADMITAD_POSTBACK_SECRET="]);
 
 requireAll("app/admin/product/actions.ts", [
   "export async function upsertAffiliateOffer",
@@ -125,6 +165,7 @@ requireAll("app/admin/product/actions.ts", [
   "normalizeCountryCodes",
   "normalizeDevicePlatforms",
   "estimated_commission_usd",
+  'provider === "admitad" ? "subid4" : requestedTrackingParam',
   "cashback_user_share_bps",
   "estimate_only: true",
   'source_type: "affiliate"',
@@ -140,6 +181,8 @@ requireAll("lib/affiliate-opportunities-admin.ts", [
   'eq("source_type", "affiliate")',
   'admin.rpc("cashback_public_launch_requirements_ready"',
   "CASHBACK_CALLBACK_SECRET",
+  "CASHBACK_ADMITAD_POSTBACK_SECRET",
+  "hasFreshAdmitadOffer",
   "liveOfferCount",
 ]);
 
@@ -149,6 +192,8 @@ requireAll("app/admin/product/page.tsx", [
   "pauseAffiliateOffer",
   "enableCashbackForLaunch",
   "Estimated partner commission (USD)",
+  "Admitad postback",
+  "subid4",
   "Save or refresh offer",
 ]);
 
@@ -161,6 +206,15 @@ requireAll("app/earn/page.tsx", [
   "Cashback estimate",
   "publicRewardLabel",
   "Estimated ",
+]);
+
+requireAll("lib/public-launch-switch.ts", [
+  "getAffiliateOfferAdminSnapshot",
+  "hasFreshAdmitadOffer",
+  "CASHBACK_ADMITAD_POSTBACK_SECRET",
+  "secretReady",
+  "admitad-postback-secret",
+  "providerPostbacksReady",
 ]);
 
 requireAll("lib/controlled-technical-readiness.ts", [
