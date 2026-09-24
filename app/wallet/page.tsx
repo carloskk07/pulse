@@ -163,6 +163,7 @@ export default async function WalletPage({ searchParams }: Props) {
           <VaultProgressArtwork
             percent={state.preview ? 0 : payoutPercent}
             value={state.preview ? "Live after sign-in" : formatUsdFromCredits(state.availableCredits)}
+            readout={false}
           />
         </div>
         <div className="payout-pack-label">
