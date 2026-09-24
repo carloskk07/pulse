@@ -1047,3 +1047,111 @@
     transition:none!important;
   }
 }
+
+
+/* Visual Identity V2 — image-led Home composition, preserving live reward authority. */
+.pc-home-capsule-art{
+  position:absolute;
+  z-index:1;
+  inset:-11%;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  opacity:.92;
+  filter:saturate(.92) contrast(1.04);
+}
+.pc-home-capsule-art .pc-artifact-reward{width:100%}
+.pc-home-core-stage .pulse-core-visual{
+  width:min(100%,306px);
+  filter:drop-shadow(0 24px 42px rgba(0,0,0,.34));
+}
+.pc-home-core-stage .pulse-core-field{
+  background:rgba(3,6,4,.7);
+  backdrop-filter:blur(3px);
+}
+.pc-home-core-stage .pc-home-core-status{
+  bottom:5px;
+  border-color:rgba(239,209,123,.14);
+  background:rgba(5,8,6,.88);
+}
+.pc-home-return-visual{
+  position:relative;
+  min-height:600px;
+  display:grid;
+  align-items:center;
+  overflow:hidden;
+  border:1px solid var(--home-line);
+  border-radius:28px;
+  background:
+    radial-gradient(circle at 62% 35%,rgba(217,255,114,.055),transparent 31%),
+    radial-gradient(circle at 90% 0%,rgba(239,209,123,.045),transparent 27%),
+    linear-gradient(145deg,#070a08,#030504);
+  box-shadow:0 42px 120px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.pc-home-return-visual:before{
+  content:"EARN / BUILD / PAYOUT";
+  position:absolute;
+  z-index:3;
+  left:24px;
+  top:22px;
+  color:rgba(239,209,123,.42);
+  font-size:7px;
+  font-weight:850;
+  letter-spacing:.25em;
+}
+.pc-home-return-visual>.pc-artifact-spectrum{
+  position:absolute;
+  z-index:1;
+  left:-10%;
+  top:-2%;
+  width:94%;
+  opacity:.82;
+}
+.pc-home-return-visual .pc-home-return-board{
+  position:relative;
+  z-index:4;
+  width:min(76%,500px);
+  justify-self:end;
+  margin-right:24px;
+  border-color:rgba(239,209,123,.14);
+  background:linear-gradient(150deg,rgba(11,16,13,.88),rgba(5,8,6,.92));
+  backdrop-filter:blur(16px);
+}
+.pc-home-return-visual .pc-home-return-board article{
+  min-height:82px;
+  background:rgba(255,255,255,.006);
+}
+.pc-home-return-visual .pc-home-return-board article:hover{
+  background:rgba(239,209,123,.025);
+}
+@media(max-width:980px){
+  .pc-home-capsule-art{inset:-8%}
+  .pc-home-return-visual{min-height:570px}
+  .pc-home-return-visual>.pc-artifact-spectrum{left:-4%;width:78%}
+}
+@media(max-width:760px){
+  .pc-home-return-visual{
+    min-height:0;
+    padding:20px 14px 14px;
+    display:block;
+  }
+  .pc-home-return-visual:before{left:18px;top:16px}
+  .pc-home-return-visual>.pc-artifact-spectrum{
+    position:relative;
+    left:auto;
+    top:auto;
+    width:min(100%,560px);
+    margin:0 auto -48px;
+    opacity:.74;
+  }
+  .pc-home-return-visual .pc-home-return-board{
+    width:100%;
+    margin:0;
+  }
+}
+@media(max-width:560px){
+  .pc-home-capsule-art{inset:-5%}
+  .pc-home-core-stage .pulse-core-visual{width:min(100%,226px)}
+  .pc-home-core-stage .pc-home-core-status{bottom:-2px}
+  .pc-home-return-visual>.pc-artifact-spectrum{margin-bottom:-26px}
+}
