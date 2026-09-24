@@ -37,7 +37,6 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
   }
 
   const admin = user ? (await getAdminAllowlistStatus(user.id)) === "authorized" : false;
-  const sidebarLinks = admin ? [...links, ...adminLinks] : links;
   const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
 
   return (
