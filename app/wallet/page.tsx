@@ -6,6 +6,7 @@ import { ValueFlow } from "@/components/value-flow";
 import { VaultProgressArtwork } from "@/components/pulse-visuals";
 import { getWalletPresentation } from "@/lib/experience-presentation";
 import { getWalletExperience } from "@/lib/product-experience";
+import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 import { getWalletState } from "@/lib/wallet-state";
@@ -110,12 +111,19 @@ export default async function WalletPage({ searchParams }: Props) {
   const extraWithdrawalFeeLabel = extraWithdrawalFeeCredits > 0
     ? formatUsdFromCredits(extraWithdrawalFeeCredits)
     : null;
+  const paidConfirmed = params.withdraw === "paid"
+    && rows.some((row) =>
+      row.label === "Withdrawal"
+      && row.state === "withdrawn"
+      && row.credits < 0
+      && isRecentAuthoritativeEvent(row.createdAt, Date.now(), 10 * 60_000)
+    );
   const experience = getWalletExperience({
     snapshot: state,
     payoutCredits,
     canWithdraw,
     hasActiveWithdrawal: Boolean(activeWithdrawal),
-    paid: params.withdraw === "paid",
+    paid: paidConfirmed,
   });
   const payoutPercent = experience.journey?.payoutProgress ?? 0;
   const payoutFlowState = experience.journey?.payoutState ?? "paused";
@@ -149,8 +157,10 @@ export default async function WalletPage({ searchParams }: Props) {
       </div>
 
       {params.withdraw ? (
-        <div className={`claim-message ${params.withdraw === "paid" ? "success" : "neutral"}`}>
-          {withdrawalCopy[params.withdraw] ?? "Payment state updated."}
+        <div className={`claim-message ${paidConfirmed ? "success" : "neutral"}`}>
+          {params.withdraw === "paid" && !paidConfirmed
+            ? "Payment status refreshed. The authoritative payout state is shown below."
+            : withdrawalCopy[params.withdraw] ?? "Payment state updated."}
         </div>
       ) : null}
 
