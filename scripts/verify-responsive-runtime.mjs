@@ -124,7 +124,7 @@ async function waitForDocument(send, expectedPath) {
 const runtimeProbe = `(() => {
   const root = document.documentElement;
   const body = document.body;
-  const sidebar = document.querySelector(".app-sidebar");
+  const topbar = document.querySelector(".app-topbar");
   const bottomNav = document.querySelector(".bottom-nav");
   const appContent = document.querySelector(".app-content");
 
@@ -156,7 +156,7 @@ const runtimeProbe = `(() => {
     maxScrollX,
     htmlOverflowX: getComputedStyle(root).overflowX,
     bodyOverflowX: body ? getComputedStyle(body).overflowX : null,
-    sidebar: inspect(sidebar),
+    topbar: inspect(topbar),
     bottomNav: inspect(bottomNav),
     appContent: inspect(appContent),
   };
@@ -231,8 +231,8 @@ try {
 
       const compactShell = width <= 1120;
       if (compactShell) {
-        if (!state.sidebar || state.sidebar.display !== "none") {
-          failures.push(`${profile} ${routeName}: sidebar must be hidden at ${width}px`);
+        if (state.topbar && state.topbar.display !== "none" && state.topbar.width > 0) {
+          failures.push(`${profile} ${routeName}: topbar must be hidden at ${width}px`);
         }
         if (!state.bottomNav || state.bottomNav.display === "none" || state.bottomNav.width <= 0) {
           failures.push(`${profile} ${routeName}: bottom nav must be visible at ${width}px`);
@@ -245,8 +245,15 @@ try {
           );
         }
       } else {
-        if (!state.sidebar || state.sidebar.display === "none" || state.sidebar.width <= 0) {
-          failures.push(`${profile} ${routeName}: sidebar must be visible at ${width}px`);
+        if (!state.topbar || state.topbar.display === "none" || state.topbar.width <= 0) {
+          failures.push(`${profile} ${routeName}: topbar must be visible at ${width}px`);
+        } else if (
+          state.topbar.left < -tolerance
+          || state.topbar.right > state.innerWidth + tolerance
+        ) {
+          failures.push(
+            `${profile} ${routeName}: topbar escapes viewport [${state.topbar.left}, ${state.topbar.right}] vs ${state.innerWidth}`,
+          );
         }
         if (state.bottomNav && state.bottomNav.display !== "none" && state.bottomNav.width > 0) {
           failures.push(`${profile} ${routeName}: bottom nav must be hidden at ${width}px`);
@@ -258,7 +265,7 @@ try {
       }
 
       console.log(
-        `RESPONSIVE_PROBE profile=${profile} route=${routeName} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} overflow=${state.htmlOverflowX}/${state.bodyOverflowX} sidebar=${state.sidebar?.display ?? "missing"} bottom=${state.bottomNav?.display ?? "missing"}`,
+        `RESPONSIVE_PROBE profile=${profile} route=${routeName} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} overflow=${state.htmlOverflowX}/${state.bodyOverflowX} topbar=${state.topbar?.display ?? "missing"} bottom=${state.bottomNav?.display ?? "missing"}`,
       );
     }
   }
