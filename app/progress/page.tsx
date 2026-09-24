@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { CircuitShareStudio } from "@/components/circuit-share-studio";
 import { NextCircuitPanel } from "@/components/next-circuit-panel";
+import { ProgressOrbitArtwork } from "@/components/pulse-visuals";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getRewardSnapshot } from "@/lib/reward-state";
@@ -51,8 +52,9 @@ export default async function ProgressPage() {
       </div>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
-        <article className="pc-identity-card pc-luxe-prestige-card">
+        <article className="pc-identity-card pc-luxe-prestige-card pc-v3-prestige-card">
           <div className="pc-luxe-prestige-halo" aria-hidden="true" />
+          <div className="pc-v3-progress-orbit" aria-hidden="true"><ProgressOrbitArtwork /></div>
           <div className="pc-identity-top"><span><Spark /> Current rank</span><b>{state.preview ? "Preview" : signal.stage}</b></div>
           <div className="pc-luxe-rank-name">{state.preview ? "—" : signal.stage}</div>
           <div className="pc-identity-score"><strong>{state.preview ? "—" : signal.signal}</strong><span>/100</span></div>
