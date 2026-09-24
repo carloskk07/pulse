@@ -403,3 +403,325 @@
     max-width:none;
   }
 }
+
+
+/* V5 — live value-flow behavior.
+   Motion follows real product state: earn -> balance -> payout.
+   Monetary authority remains in server-rendered HTML; this layer only visualizes it. */
+@keyframes pcValueTravel{
+  0%{transform:translate3d(-34px,-50%,0);opacity:0}
+  14%{opacity:1}
+  82%{opacity:1}
+  100%{transform:translate3d(calc(100% + 34px),-50%,0);opacity:0}
+}
+@keyframes pcValueNodePulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(223,255,114,0),inset 0 1px 0 rgba(255,255,255,.04)}
+  50%{box-shadow:0 0 0 5px rgba(223,255,114,.025),0 0 28px rgba(223,255,114,.075),inset 0 1px 0 rgba(255,255,255,.055)}
+}
+@keyframes pcOpportunityWake{
+  0%,100%{border-color:rgba(119,239,255,.085);box-shadow:0 36px 100px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.025)}
+  50%{border-color:rgba(119,239,255,.17);box-shadow:0 42px 120px rgba(0,0,0,.38),0 0 52px rgba(119,239,255,.035),inset 0 1px 0 rgba(255,255,255,.04)}
+}
+@keyframes pcSignalLive{
+  0%,100%{opacity:.48;box-shadow:0 0 10px currentColor}
+  50%{opacity:1;box-shadow:0 0 24px currentColor}
+}
+@keyframes pcNetworkWake{
+  0%,100%{transform:translate3d(0,0,0);border-color:rgba(255,255,255,.075)}
+  50%{transform:translate3d(0,-2px,0);border-color:rgba(164,145,255,.2)}
+}
+@keyframes pcPayoutReady{
+  0%,100%{border-color:rgba(241,210,125,.15);box-shadow:0 52px 145px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.03)}
+  50%{border-color:rgba(223,255,114,.25);box-shadow:0 52px 145px rgba(0,0,0,.4),0 0 70px rgba(223,255,114,.05),inset 0 1px 0 rgba(255,255,255,.04)}
+}
+@keyframes pcPayoutSettle{
+  0%{transform:scale(.992);filter:brightness(.92)}
+  44%{transform:scale(1.006);filter:brightness(1.08)}
+  100%{transform:scale(1);filter:brightness(1)}
+}
+@keyframes pcResultArrive{
+  from{opacity:.45;transform:translateY(-5px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.pc-value-flow{
+  --pc-flow-ink:#f5efe2;
+  --pc-flow-muted:#78827b;
+  --pc-flow-line:rgba(255,255,255,.075);
+  --pc-flow-live:var(--app-accent);
+  position:relative;
+  z-index:5;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(56px,.36fr) minmax(0,1fr) minmax(56px,.36fr) minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  min-height:76px;
+  margin:-11px 0 30px;
+  padding:9px 12px;
+  border-block:1px solid rgba(255,255,255,.052);
+  background:
+    linear-gradient(90deg,transparent,var(--app-accent-soft) 44%,transparent 76%),
+    rgba(255,255,255,.004);
+}
+.pc-value-flow>a{
+  min-width:0;
+  min-height:54px;
+  padding:8px 10px;
+  display:grid;
+  grid-template-columns:27px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  border:1px solid transparent;
+  border-radius:13px;
+  color:inherit;
+  text-decoration:none;
+}
+.pc-value-flow>a:hover{
+  border-color:rgba(255,255,255,.065);
+  background:rgba(255,255,255,.018);
+}
+.pc-value-flow>a.active{
+  border-color:var(--app-accent-line);
+  background:linear-gradient(145deg,var(--app-accent-soft),rgba(255,255,255,.008));
+}
+.pc-value-flow-index{
+  width:27px;
+  height:27px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.085);
+  border-radius:50%;
+  color:#778078;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.05em;
+  background:rgba(3,6,4,.64);
+}
+.pc-value-flow>a.active .pc-value-flow-index{
+  color:#10130d;
+  border-color:var(--app-accent);
+  background:var(--app-accent);
+  box-shadow:0 0 24px var(--app-accent-soft);
+  animation:pcValueNodePulse 3.8s ease-in-out infinite;
+}
+.pc-value-flow-copy{min-width:0}
+.pc-value-flow-copy small,
+.pc-value-flow-copy strong{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.pc-value-flow-copy small{
+  color:var(--pc-flow-muted);
+  font-size:7px;
+  font-weight:880;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.pc-value-flow-copy strong{
+  margin-top:4px;
+  color:var(--pc-flow-ink);
+  font-size:11px;
+  font-weight:760;
+  letter-spacing:-.015em;
+}
+.pc-value-flow-line{
+  position:relative;
+  height:1px;
+  overflow:hidden;
+  background:linear-gradient(90deg,transparent,var(--pc-flow-line) 12%,var(--pc-flow-line) 88%,transparent);
+}
+.pc-value-flow-line:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  opacity:.72;
+  background:linear-gradient(90deg,transparent,var(--pc-flow-live),transparent);
+  transform:scaleX(.38);
+}
+.pc-value-flow-line>i{
+  position:absolute;
+  z-index:2;
+  left:0;
+  top:50%;
+  width:34px;
+  height:1px;
+  opacity:0;
+  background:linear-gradient(90deg,transparent,var(--pc-flow-live),#fff7cf,transparent);
+  box-shadow:0 0 12px var(--pc-flow-live);
+}
+.pc-value-flow.is-earn .pc-value-flow-line:not(.is-payout)>i{
+  animation:pcValueTravel 4.8s ease-in-out infinite;
+}
+.pc-value-flow.is-balance .pc-value-flow-line.is-payout>i{
+  animation:pcValueTravel 4.8s ease-in-out infinite;
+}
+.pc-value-flow.payout-processing .pc-value-flow-line.is-payout>i{
+  animation:pcValueTravel 2.4s ease-in-out infinite;
+}
+.pc-value-flow.payout-ready>a:last-child .pc-value-flow-index,
+.pc-value-flow.payout-paid>a:last-child .pc-value-flow-index{
+  color:#10130d;
+  border-color:#dfff72;
+  background:#dfff72;
+  box-shadow:0 0 28px rgba(223,255,114,.12);
+}
+.pc-value-flow.payout-ready .pc-value-flow-line.is-payout:after,
+.pc-value-flow.payout-paid .pc-value-flow-line.is-payout:after{
+  opacity:1;
+  transform:scaleX(.82);
+}
+.pc-value-flow.payout-paid{
+  --pc-flow-live:#efd17b;
+}
+.pc-value-flow.payout-paid>a:last-child{
+  border-color:rgba(239,209,123,.2);
+  background:rgba(239,209,123,.045);
+}
+.pc-value-flow.payout-paused{
+  opacity:.72;
+}
+.pc-value-flow.payout-paused .pc-value-flow-line>i{animation:none!important}
+
+/* Dashboard claim result becomes a visible transfer event, not just a message. */
+.pc-v9-dashboard .claim-message.success{
+  animation:pcResultArrive .62s cubic-bezier(.2,.8,.2,1) both;
+}
+.pc-v9-dashboard .hourly-pulse-card.is-claimed .pulse-core-visual.is-charging .pulse-core-scan,
+.pc-v9-dashboard .hourly-pulse-card.is-claimed .pulse-core-visual.is-ready .pulse-core-scan{
+  animation-duration:3.2s;
+}
+.pulse-core-visual.is-ready .pulse-core-ring.ring-one{animation-duration:15s}
+.pulse-core-visual.is-ready .pulse-core-ring.ring-two{animation-duration:12s}
+.pulse-core-visual.is-ready .pulse-core-ring.ring-three{animation-duration:18s}
+.pulse-core-visual.is-ready .pulse-core-node{animation-duration:2.1s}
+.pulse-core-visual.is-ready .pulse-core-heart{animation-duration:1.7s}
+.pulse-core-visual.is-ready .pulse-core-scan{animation-duration:4.1s}
+
+/* Earn wakes only when an actual opportunity exists. */
+.pc-luxe-best-turbo.has-live-opportunity{
+  animation:pcOpportunityWake 8s ease-in-out infinite;
+}
+.pc-luxe-best-turbo.is-empty-opportunity{
+  animation:none;
+  filter:saturate(.74);
+}
+.pc-luxe-best-turbo.has-live-opportunity .pc-turbo-orb{
+  opacity:1;
+  filter:drop-shadow(0 0 28px rgba(119,239,255,.09));
+}
+
+/* Progress receives a factual live trace sized by the server-derived signal. */
+.pc-v3-prestige-card{position:relative}
+.pc-live-signal-trace{
+  position:absolute;
+  z-index:4;
+  left:24px;
+  right:24px;
+  bottom:12px;
+  height:2px;
+  overflow:visible;
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+}
+.pc-live-signal-trace>i{
+  position:absolute;
+  left:0;
+  top:0;
+  width:var(--pc-signal,0%);
+  max-width:100%;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#a491ff,var(--app-accent));
+  box-shadow:0 0 18px var(--app-accent-soft);
+}
+.pc-live-signal-trace>i:after{
+  content:"";
+  position:absolute;
+  right:-3px;
+  top:50%;
+  width:6px;
+  height:6px;
+  margin-top:-3px;
+  border-radius:50%;
+  color:var(--app-accent);
+  background:currentColor;
+  animation:pcSignalLive 2.6s ease-in-out infinite;
+}
+
+/* Referral motion is earned by real network state. */
+.pc-artifact-network.has-active .pc-network-metric.metric-active{
+  animation:pcNetworkWake 4.8s ease-in-out infinite;
+}
+.pc-artifact-network.has-waiting .pc-network-metric.metric-waiting{
+  animation:pcNetworkWake 5.6s ease-in-out infinite reverse;
+}
+.pc-artifact-network.has-active .pc-artifact-image{
+  filter:drop-shadow(0 28px 45px rgba(164,145,255,.09));
+}
+
+/* Payout readiness and completion have distinct physical states. */
+.pc-v3-vault-balance.is-payout-ready{
+  animation:pcPayoutReady 5.6s ease-in-out infinite;
+}
+.pc-v3-vault-balance.is-payout-paid{
+  animation:pcPayoutSettle 1.1s cubic-bezier(.2,.8,.2,1) both;
+  border-color:rgba(239,209,123,.24)!important;
+}
+.pc-v3-vault-balance.is-payout-paid .pc-v3-vault-visual{
+  filter:brightness(1.08) saturate(1.06);
+}
+
+@media(max-width:760px){
+  .pc-value-flow{
+    grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1fr);
+    gap:5px;
+    min-height:66px;
+    margin:-4px 0 22px;
+    padding:7px 3px;
+  }
+  .pc-value-flow>a{
+    min-height:48px;
+    padding:6px 4px;
+    grid-template-columns:22px minmax(0,1fr);
+    gap:6px;
+    border-radius:10px;
+  }
+  .pc-value-flow-index{width:22px;height:22px;font-size:6px}
+  .pc-value-flow-copy small{font-size:6px;letter-spacing:.1em}
+  .pc-value-flow-copy strong{font-size:9px}
+  .pc-live-signal-trace{left:18px;right:18px;bottom:10px}
+}
+@media(max-width:420px){
+  .pc-value-flow{
+    grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr) 16px minmax(0,1fr);
+  }
+  .pc-value-flow>a{
+    grid-template-columns:1fr;
+    text-align:center;
+    justify-items:center;
+  }
+  .pc-value-flow-copy{width:100%}
+  .pc-value-flow-copy strong{font-size:8px}
+  .pc-value-flow-index{width:20px;height:20px}
+}
+@media(prefers-reduced-motion:reduce){
+  .pc-value-flow>a.active .pc-value-flow-index,
+  .pc-value-flow-line>i,
+  .pc-v9-dashboard .claim-message.success,
+  .pc-luxe-best-turbo.has-live-opportunity,
+  .pc-live-signal-trace>i:after,
+  .pc-artifact-network.has-active .pc-network-metric.metric-active,
+  .pc-artifact-network.has-waiting .pc-network-metric.metric-waiting,
+  .pc-v3-vault-balance.is-payout-ready,
+  .pc-v3-vault-balance.is-payout-paid{
+    animation:none!important;
+  }
+  .pulse-core-visual.is-ready .pulse-core-ring,
+  .pulse-core-visual.is-ready .pulse-core-node,
+  .pulse-core-visual.is-ready .pulse-core-heart,
+  .pulse-core-visual.is-ready .pulse-core-scan{
+    animation-duration:initial!important;
+  }
+}
