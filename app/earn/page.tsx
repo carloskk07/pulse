@@ -8,6 +8,7 @@ import { EarnSpectrumArtwork } from "@/components/pulse-visuals";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
+import { getEarningExperience } from "@/lib/product-experience";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getRewardEntryChannels } from "@/providers/registry";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -62,10 +63,10 @@ export default async function EarnPage({ searchParams }: Props) {
   const sourcePulseClaimId = params.claim && UUID_RE.test(params.claim) ? params.claim : null;
   const payout = getFaucetPayPackConfig();
   const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
-  const payoutPercent = payoutCredits ? Math.max(0, Math.min(100, Math.round((state.availableCredits / payoutCredits) * 100))) : 0;
+  const experience = getEarningExperience({ surface: "earn", snapshot: state, payoutCredits });
 
   return (
-    <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined}>
+    <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="app-page-head pc-luxe-turbo-head">
         <div className="pc-earn-head-copy">
           <span className="app-eyebrow">Extra rewards · optional</span>
@@ -76,13 +77,7 @@ export default async function EarnPage({ searchParams }: Props) {
         <div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
 
-      <ValueFlow
-        stage="earn"
-        balance={state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}
-        payoutProgress={state.preview ? 0 : payoutPercent}
-        payoutState={state.preview || !payoutCredits ? "paused" : payoutPercent >= 100 ? "ready" : "building"}
-        payoutLabel={state.preview || !payoutCredits ? "Preparing" : payoutPercent >= 100 ? "Ready" : `${payoutPercent}% to target`}
-      />
+      {experience.journey ? <ValueFlow journey={experience.journey} /> : null}
 
       <div className="pc-v10-turbo-criteria" aria-label="Earn ranking criteria">
         <span><small>01</small><strong>Reward</strong><b>What it is worth</b></span>
