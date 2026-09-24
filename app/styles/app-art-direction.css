@@ -370,3 +370,36 @@
     transition:none!important;
   }
 }
+
+
+/* V4.2 — screenshot-driven Progress composition refinement. */
+.app-frame[data-section="progress"] .pc-momentum-story .pc-visual-story-copy{
+  position:relative;
+  z-index:3;
+  max-width:min(100%,470px);
+}
+.app-frame[data-section="progress"] .pc-momentum-story .pc-visual-story-copy h2{
+  max-width:440px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:clamp(38px,3.4vw,54px);
+  font-weight:500;
+  line-height:.94;
+  letter-spacing:-.065em;
+  text-wrap:balance;
+}
+.app-frame[data-section="progress"] .pc-momentum-story .pc-visual-story-copy p{
+  max-width:430px;
+}
+@media(max-width:1180px){
+  .app-frame[data-section="progress"] .pc-momentum-story .pc-visual-story-copy h2{
+    max-width:390px;
+    font-size:clamp(35px,3.5vw,46px);
+  }
+}
+@media(max-width:760px){
+  .app-frame[data-section="progress"] .pc-momentum-story .pc-visual-story-copy,
+  .app-frame[data-section="progress"] .pc-momentum-story .pc-visual-story-copy h2,
+  .app-frame[data-section="progress"] .pc-momentum-story .pc-visual-story-copy p{
+    max-width:none;
+  }
+}
