@@ -660,6 +660,8 @@
   background:currentColor;
   animation:pcSignalLive 2.6s ease-in-out infinite;
 }
+.pc-v3-prestige-card.is-preview .pc-live-signal-trace{opacity:.42}
+.pc-v3-prestige-card.is-preview .pc-live-signal-trace>i:after{display:none}
 
 /* Referral motion is earned by real network state. */
 .pc-artifact-network.has-active .pc-network-metric.metric-active{
