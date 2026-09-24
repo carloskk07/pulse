@@ -57,11 +57,14 @@ body{min-width:320px}
    sidebar. Padding is part of the same contract on Dashboard, Momentum, Turbo,
    Vault, Share, Account and every operator page. */
 .app-frame{
-  display:block!important;
+  display:grid!important;
+  grid-template-columns:var(--pc11-sidebar) minmax(0,1fr)!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
   width:100%!important;
   min-width:0!important;
 }
 .app-sidebar{display:none!important}
+.app-topbar,.app-content{grid-column:1/-1!important}
 .app-content{
   width:100%!important;
   max-width:1440px!important;
