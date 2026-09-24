@@ -3,7 +3,7 @@ import { signOut } from "@/app/auth/actions";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { PulsercuitBrand } from "./pulsercuit-brand";
-import { Bolt, Home, Shield, Trend, Users, Wallet } from "./icons";
+import { Bolt, Home, Shield, Spark, Trend, Users, Wallet } from "./icons";
 
 const links = [
   { id: "home", href: "/dashboard", label: "Rewards", Icon: Home },
@@ -18,6 +18,7 @@ const adminLinks = [
   { id: "faucetpay-admin", href: "/admin/faucetpay", label: "Payments", Icon: Wallet },
   { id: "support-admin", href: "/admin/support", label: "Support", Icon: Users },
   { id: "ads-admin", href: "/admin/ads", label: "Ads", Icon: Bolt },
+  { id: "direct-admin", href: "/admin/direct", label: "Direct", Icon: Spark },
   { id: "advanced", href: "/admin/advanced", label: "Advanced", Icon: Shield },
 ];
 
