@@ -13,17 +13,30 @@ function requireText(path, fragments) {
   }
 }
 
+requireText("lib/product-experience-core.ts", [
+  'export type CoreProductEvent =',
+  '"reward-settled"',
+  '"payout-ready"',
+  '"payout-processing"',
+  '"payout-complete"',
+  '"network-live"',
+  "export function payoutProgressPercent",
+  "export function isRecentAuthoritativeEvent",
+  "export function deriveEarningPhase",
+  "export function deriveEarningEvent",
+  "export function deriveWalletCore",
+  "export function deriveNetworkEvent",
+]);
+
 requireText("lib/product-experience.ts", [
   'export type ProductSurface = "reward" | "earn" | "balance" | "payout" | "progress" | "network"',
-  'export type PayoutFlowState = "building" | "ready" | "processing" | "paid" | "paused"',
-  "export function payoutProgressPercent",
+  "export type ProductEvent = CoreProductEvent",
   "export function getEarningExperience",
   "export function getWalletExperience",
   "export function getProgressExperience",
   "export function getNetworkExperience",
-  'payoutState === "processing"',
-  'payoutState === "ready"',
-  'payoutState === "paid"',
+  "deriveWalletCore({",
+  "event: core.event",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -79,14 +92,22 @@ requireText("components/app-shell.tsx", [
   "experience?: ProductExperience;",
   "data-product-surface={experience?.surface}",
   "data-product-phase={experience?.phase}",
+  "data-product-event={experience?.event}",
+]);
+
+requireText("app/dashboard/page.tsx", [
+  "isRecentAuthoritativeEvent(state.lastClaimAt, Date.now())",
+  "claimSettled: claimSucceeded",
+  '"Reward status refreshed. Your current balance is shown above."',
 ]);
 
 requireText("app/wallet/page.tsx", [
+  'row.label === "Withdrawal"',
+  'row.state === "withdrawn"',
+  "isRecentAuthoritativeEvent(row.createdAt, Date.now(), 10 * 60_000)",
+  "paid: paidConfirmed",
+  '"Payment status refreshed. The authoritative payout state is shown below."',
   'const payoutFlowState = experience.journey?.payoutState ?? "paused";',
-  'payoutFlowState === "ready"',
-  'payoutFlowState === "paid"',
-  '"is-payout-ready"',
-  '"is-payout-paid"',
 ]);
 
 requireText("app/progress/page.tsx", [
@@ -103,14 +124,11 @@ requireText("components/pulse-visuals.tsx", [
 
 requireText("app/styles/app-art-direction.css", [
   "/* V5 — live value-flow behavior.",
-  ".pc-value-flow{",
-  ".pc-value-flow.is-earn .pc-value-flow-line:not(.is-payout)>i{",
-  ".pc-value-flow.is-balance .pc-value-flow-line.is-payout>i{",
-  ".pc-value-flow.payout-processing .pc-value-flow-line.is-payout>i{",
-  ".pc-live-signal-trace{",
-  ".pc-v3-prestige-card.is-preview .pc-live-signal-trace>i:after{display:none}",
-  ".pc-v3-vault-balance.is-payout-ready{",
-  ".pc-v3-vault-balance.is-payout-paid{",
+  "/* V6 — event choreography.",
+  '.app-frame[data-product-event="reward-settled"]:after',
+  '.app-frame[data-product-event="payout-processing"]:after',
+  '.app-frame[data-product-event="payout-complete"] .pc-v3-vault-balance',
+  '.app-frame[data-product-event="network-live"] .pc-luxe-invite-hero',
   "@media(prefers-reduced-motion:reduce)",
 ]);
 
