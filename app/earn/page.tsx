@@ -90,7 +90,6 @@ export default async function EarnPage({ searchParams }: Props) {
           </div>
 
           <div className="pc-turbo-orb" aria-hidden="true" />
-          <div className="pc-earn-spectrum-layer" aria-hidden="true"><EarnSpectrumArtwork /></div>
 
           <div className="drop-card-main">
             <h2>{best ? best.title : primaryChannel ? "Open the available extra-reward route." : "No extra reward is worth your time right now."}</h2>
