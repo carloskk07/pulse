@@ -27,6 +27,7 @@ function launchBlockerLabel(id: string) {
     "extra-rewards-supply": "Actionable extra reward",
     "faucetpay-reconciliation": "FaucetPay reconciliation",
     "cashback-callback-secret": "Cashback callback secret",
+    "admitad-postback-secret": "Admitad postback secret",
     "treasury": "Launch funding",
     "public-fair-share": "Public fair-share capacity",
     "public-backing": "Public backing",
@@ -122,6 +123,7 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
           <article><span>Fresh live offers</span><strong>{affiliateSupply.liveOfferCount}</strong></article>
           <article><span>User share</span><strong>{(affiliateSupply.cashbackUserShareBps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%</strong><small>of verified partner commission</small></article>
           <article><span>Callback secret</span><strong>{affiliateSupply.callbackSecretConfigured ? "READY" : "MISSING"}</strong></article>
+          <article><span>Admitad postback</span><strong>{affiliateSupply.hasFreshAdmitadOffer ? (affiliateSupply.admitadPostbackConfigured ? "READY" : "MISSING") : "NOT REQUIRED"}</strong></article>
           <article><span>Cashback model</span><strong>{affiliateSupply.cashbackEnabled ? "ENABLED" : "OFF"}</strong><small>{affiliateSupply.launchRequirementsReady ? "LAUNCH REQUIREMENTS READY" : "NOT READY YET"}</small></article>
         </div>
 
@@ -159,11 +161,11 @@ export default async function ProductReadinessPage({ searchParams }: Props) {
 
         <form action={upsertAffiliateOffer} className="affiliate-offer-form">
           <div className="affiliate-form-grid">
-            <label>Provider<input name="provider" required maxLength={64} placeholder="partner-name" /></label>
+            <label>Provider<input name="provider" required maxLength={64} placeholder="admitad" /></label>
             <label>External offer ID<input name="external_id" required maxLength={160} placeholder="offer-123" /></label>
             <label className="wide">Offer title<input name="title" required maxLength={180} placeholder="5% cashback at Example Store" /></label>
             <label>Category<input name="category" maxLength={80} defaultValue="cashback" /></label>
-            <label>Tracking parameter<input name="tracking_param" maxLength={64} defaultValue="subid" /></label>
+            <label>Tracking parameter<input name="tracking_param" maxLength={64} defaultValue="subid" /><small>Admitad is automatically normalized to subid4.</small></label>
             <label>Estimated partner commission (USD)<input name="estimated_commission_usd" required inputMode="decimal" placeholder="0.10" /></label>
             <label>Estimated time (minutes)<input name="estimated_minutes" type="number" min={1} max={10080} placeholder="5" /></label>
             <label>Freshness (hours)<input name="freshness_hours" type="number" min={1} max={168} defaultValue={24} /></label>
