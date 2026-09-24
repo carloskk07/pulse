@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { ContinuousEarnHub } from "@/components/continuous-earn-hub";
 import { CashbackStartButton } from "@/components/cashback-start-button";
 import { DirectStartButton } from "@/components/direct-start-button";
+import { EarnSpectrumArtwork } from "@/components/pulse-visuals";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
@@ -88,6 +89,7 @@ export default async function EarnPage({ searchParams }: Props) {
           </div>
 
           <div className="pc-turbo-orb" aria-hidden="true" />
+          <div className="pc-earn-spectrum-layer" aria-hidden="true"><EarnSpectrumArtwork /></div>
 
           <div className="drop-card-main">
             <h2>{best ? best.title : primaryChannel ? "Open the available extra-reward route." : "No extra reward is worth your time right now."}</h2>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="650" viewBox="0 0 900 650" fill="none">
+<defs>
+  <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(460 325) rotate(90) scale(315 410)">
+    <stop stop-color="#9A82FF" stop-opacity=".08"/><stop offset=".45" stop-color="#DFFF72" stop-opacity=".05"/><stop offset="1" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="node" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFF2B8"/><stop offset=".46" stop-color="#D8B758"/><stop offset="1" stop-color="#687C38"/></linearGradient>
+  <linearGradient id="lime" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#E5FF93"/><stop offset="1" stop-color="#71A941"/></linearGradient>
+  <filter id="shadow" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#000" flood-opacity=".52"/></filter>
+  <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="18"/></filter>
+</defs>
+<rect width="900" height="650" fill="url(#bg)"/>
+<circle cx="450" cy="325" r="238" stroke="#DFFF72" stroke-opacity=".08"/>
+<circle cx="450" cy="325" r="176" stroke="#EFD17B" stroke-opacity=".08" stroke-dasharray="4 12"/>
+<g stroke-linecap="round">
+  <path d="M450 325L264 224M450 325L246 407M450 325L644 206M450 325L670 385M264 224L168 147M264 224L140 285M246 407L156 492M644 206L753 129M644 206L785 273M670 385L781 469" stroke="url(#node)" stroke-opacity=".32" stroke-width="2"/>
+  <path d="M450 325L264 224M450 325L644 206M450 325L670 385" stroke="#DFFF72" stroke-opacity=".22" stroke-width="6" filter="url(#glow)"/>
+</g>
+<g filter="url(#shadow)">
+  <circle cx="450" cy="325" r="70" fill="#070A08" stroke="#EFD17B" stroke-opacity=".35" stroke-width="2"/>
+  <circle cx="450" cy="325" r="48" stroke="#DFFF72" stroke-opacity=".3"/>
+  <circle cx="450" cy="325" r="18" fill="url(#lime)"/>
+</g>
+<g>
+  <g transform="translate(264 224)"><circle r="36" fill="#0A0D0A" stroke="#DFFF72" stroke-opacity=".28"/><circle r="11" fill="url(#lime)"/></g>
+  <g transform="translate(246 407)"><circle r="30" fill="#0A0D0A" stroke="#EFD17B" stroke-opacity=".24"/><circle r="9" fill="url(#node)"/></g>
+  <g transform="translate(644 206)"><circle r="36" fill="#0A0D0A" stroke="#DFFF72" stroke-opacity=".28"/><circle r="11" fill="url(#lime)"/></g>
+  <g transform="translate(670 385)"><circle r="33" fill="#0A0D0A" stroke="#EFD17B" stroke-opacity=".26"/><circle r="10" fill="url(#node)"/></g>
+  <g transform="translate(168 147)"><circle r="18" fill="#0B0D0B" stroke="white" stroke-opacity=".12"/><circle r="5" fill="#EFD17B"/></g>
+  <g transform="translate(140 285)"><circle r="16" fill="#0B0D0B" stroke="white" stroke-opacity=".1"/><circle r="5" fill="#DFFF72"/></g>
+  <g transform="translate(156 492)"><circle r="18" fill="#0B0D0B" stroke="white" stroke-opacity=".12"/><circle r="5" fill="#EFD17B"/></g>
+  <g transform="translate(753 129)"><circle r="18" fill="#0B0D0B" stroke="white" stroke-opacity=".12"/><circle r="5" fill="#DFFF72"/></g>
+  <g transform="translate(785 273)"><circle r="16" fill="#0B0D0B" stroke="white" stroke-opacity=".1"/><circle r="5" fill="#EFD17B"/></g>
+  <g transform="translate(781 469)"><circle r="18" fill="#0B0D0B" stroke="white" stroke-opacity=".12"/><circle r="5" fill="#DFFF72"/></g>
+</g>
+<circle cx="450" cy="325" r="104" fill="#DFFF72" fill-opacity=".035" filter="url(#glow)"/>
+</svg>

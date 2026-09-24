@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { Check, Users } from "@/components/icons";
 import { CopyReferralLink } from "@/components/copy-referral-link";
 import { NetworkDepthPanel } from "@/components/network-depth-panel";
+import { ReferralNetworkArtwork } from "@/components/pulse-visuals";
 import { getInviteState } from "@/lib/invite-state";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
@@ -58,7 +59,9 @@ export default async function InvitePage() {
             <p>Bonus values appear when a referral reward is active.</p>
           )}
         </div>
-        <div className="pc-invite-scene" aria-hidden="true"><span>Verified referral</span></div>
+        <div className="pc-invite-visual-stage" aria-hidden="true">
+          <ReferralNetworkArtwork active={signedIn ? rewarded : "—"} waiting={signedIn ? pending : "—"} />
+        </div>
       </section>
 
       {signedIn && (inviterBonus === null || inviteeBonus === null) ? (

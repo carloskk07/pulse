@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { ContinuousPulsePanel } from "@/components/continuous-pulse-panel";
 import { ArrowUpRight, Bolt, Shield, Spark, Users } from "@/components/icons";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
+import { VaultProgressArtwork } from "@/components/pulse-visuals";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { getCircuitProgress } from "@/lib/circuit-progress";
@@ -180,6 +181,12 @@ export default async function DashboardPage({ searchParams }: Props) {
 
             <article className="pc-v9-progress-card vault-card">
               <span className="app-eyebrow">Balance</span>
+              <div className="pc-dashboard-vault-art" aria-hidden="true">
+                <VaultProgressArtwork
+                  percent={state.preview ? 0 : vaultPercent}
+                  value={state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}
+                />
+              </div>
               <div className="pc-v9-progress-value"><strong>{state.preview ? "—" : `${vaultPercent}%`}</strong></div>
               <h3>{state.preview ? "Live after sign-in" : formatUsdFromCredits(state.availableCredits)}</h3>
               <p>{state.preview || away === null
