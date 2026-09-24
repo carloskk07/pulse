@@ -33,3 +33,20 @@
 .cashback-enable-form{padding-top:18px;border-top:1px solid var(--line)}
 @media(max-width:900px){.affiliate-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.affiliate-offer-table .admin-provider-row{grid-template-columns:1.4fr .7fr 1fr}.affiliate-offer-table .admin-provider-row>span:nth-child(4){grid-column:1/-1}}
 @media(max-width:650px){.affiliate-form-grid{grid-template-columns:1fr}.affiliate-form-grid label.wide{grid-column:auto}.affiliate-offer-form>.button,.cashback-enable-form .button{width:100%}.affiliate-offer-table .admin-provider-row{grid-template-columns:1fr 1fr}.affiliate-offer-table .admin-provider-row>span:nth-child(3){display:block}.affiliate-offer-table .admin-provider-row>span:nth-child(4){grid-column:1/-1}}
+
+.direct-secret-result{display:grid;gap:7px;margin:16px 0}
+.direct-secret-result span{color:#75808b;font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+.direct-secret-result code{display:block;overflow-wrap:anywhere;border:1px solid rgba(184,255,61,.14);border-radius:10px;background:#070a0d;padding:10px;color:#d8f7ac;font-size:11px;text-transform:none;letter-spacing:0}
+.affiliate-form-grid select,.affiliate-form-grid textarea{width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;background:#090c11;color:var(--text);padding:11px 12px;font:inherit;text-transform:none;letter-spacing:0;outline:none;resize:vertical}
+.affiliate-form-grid select:focus,.affiliate-form-grid textarea:focus{border-color:rgba(184,255,61,.28);box-shadow:0 0 0 3px rgba(184,255,61,.055)}
+.direct-admin-table{margin-top:18px}
+.direct-admin-table .admin-provider-row{grid-template-columns:minmax(0,1.5fr) minmax(120px,.7fr) minmax(130px,.7fr) minmax(230px,1fr);align-items:center}
+.direct-admin-table .admin-provider-row>span:first-child,.direct-admin-table .admin-provider-row>span:nth-child(2),.direct-admin-table .admin-provider-row>span:nth-child(3){display:grid;gap:4px}
+.direct-admin-table small{color:#65707c;font-size:9px}
+.direct-admin-actions{display:grid;gap:7px}
+.direct-admin-actions form{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.direct-admin-actions input{min-width:0;max-width:120px;border:1px solid var(--line);border-radius:9px;background:#090c11;color:var(--text);padding:8px 9px;font-size:9px;outline:none}
+.direct-admin-actions input[name="funding_reference"]{max-width:170px}
+.direct-admin-actions input:focus{border-color:rgba(184,255,61,.28)}
+@media(max-width:1000px){.direct-admin-table .admin-provider-row{grid-template-columns:1.3fr .7fr .7fr}.direct-admin-table .admin-provider-row>span:nth-child(4){grid-column:1/-1}}
+@media(max-width:650px){.direct-admin-table .admin-provider-row{grid-template-columns:1fr 1fr}.direct-admin-table .admin-provider-row>span:nth-child(3){display:grid}.direct-admin-table .admin-provider-row>span:nth-child(4){grid-column:1/-1}.direct-admin-actions input,.direct-admin-actions input[name="funding_reference"]{max-width:none;flex:1 1 120px}}
