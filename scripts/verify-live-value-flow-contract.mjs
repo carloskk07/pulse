@@ -8,20 +8,51 @@ function requireText(path, fragments) {
   const value = read(path);
   for (const fragment of fragments) {
     if (!value.includes(fragment)) {
-      throw new Error(`${path} is missing live value-flow contract: ${fragment}`);
+      throw new Error(`${path} is missing product-experience contract: ${fragment}`);
     }
   }
 }
 
+requireText("lib/product-experience.ts", [
+  'export type ProductSurface = "reward" | "earn" | "balance" | "payout" | "progress" | "network"',
+  'export type PayoutFlowState = "building" | "ready" | "processing" | "paid" | "paused"',
+  "export function payoutProgressPercent",
+  "export function getEarningExperience",
+  "export function getWalletExperience",
+  "export function getProgressExperience",
+  "export function getNetworkExperience",
+  'payoutState === "processing"',
+  'payoutState === "ready"',
+  'payoutState === "paid"',
+]);
+
 requireText("components/value-flow.tsx", [
-  'type ValueFlowStage = "earn" | "balance" | "payout"',
-  'type PayoutState = "building" | "ready" | "processing" | "paid" | "paused"',
+  'import type { ProductJourney } from "@/lib/product-experience";',
+  'export function ValueFlow({ journey }: { journey: ProductJourney })',
   'aria-label="Reward value path"',
   'href="/earn"',
   'href="/wallet"',
   'aria-current={stage === "earn" ? "step" : undefined}',
   '"--pc-value-progress"',
 ]);
+
+const governedPages = [
+  ["app/dashboard/page.tsx", "getEarningExperience"],
+  ["app/earn/page.tsx", "getEarningExperience"],
+  ["app/wallet/page.tsx", "getWalletExperience"],
+  ["app/progress/page.tsx", "getProgressExperience"],
+  ["app/invite/page.tsx", "getNetworkExperience"],
+];
+
+for (const [path, authority] of governedPages) {
+  const source = read(path);
+  if (!source.includes(authority)) {
+    throw new Error(`${path} must use ${authority}.`);
+  }
+  if (!source.includes("experience={experience}")) {
+    throw new Error(`${path} must expose the canonical experience through AppShell.`);
+  }
+}
 
 for (const path of ["app/dashboard/page.tsx", "app/earn/page.tsx", "app/wallet/page.tsx"]) {
   const source = read(path);
@@ -32,12 +63,28 @@ for (const path of ["app/dashboard/page.tsx", "app/earn/page.tsx", "app/wallet/p
   if (count !== 1) {
     throw new Error(`${path} must render exactly one ValueFlow; found ${count}.`);
   }
+  if (!source.includes("<ValueFlow journey={experience.journey} />")) {
+    throw new Error(`${path} must render ValueFlow from the canonical experience journey.`);
+  }
+  if (/payoutState=|payoutLabel=|payoutProgress=/.test(source)) {
+    throw new Error(`${path} must not reconstruct ValueFlow state locally.`);
+  }
+  if (source.includes("state.availableCredits / payoutCredits")) {
+    throw new Error(`${path} must not recalculate payout progress outside product-experience authority.`);
+  }
 }
 
+requireText("components/app-shell.tsx", [
+  'import type { ProductExperience } from "@/lib/product-experience";',
+  "experience?: ProductExperience;",
+  "data-product-surface={experience?.surface}",
+  "data-product-phase={experience?.phase}",
+]);
+
 requireText("app/wallet/page.tsx", [
-  'payoutFlowState === "paid"',
-  'payoutFlowState === "processing"',
+  'const payoutFlowState = experience.journey?.payoutState ?? "paused";',
   'payoutFlowState === "ready"',
+  'payoutFlowState === "paid"',
   '"is-payout-ready"',
   '"is-payout-paid"',
 ]);
@@ -67,4 +114,4 @@ requireText("app/styles/app-art-direction.css", [
   "@media(prefers-reduced-motion:reduce)",
 ]);
 
-console.log("Live value-flow visual contract PASS");
+console.log("Canonical product-experience authority PASS");
