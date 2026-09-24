@@ -1,9 +1,21 @@
 import { formatUsdFromCredits, type RewardSnapshot } from "@/lib/reward-state";
+import {
+  deriveEarningEvent,
+  deriveEarningPhase,
+  deriveNetworkEvent,
+  deriveWalletCore,
+  payoutProgressPercent,
+  type CorePayoutFlowState,
+  type CoreProductEvent,
+  type CoreProductPhase,
+  type CoreValueFlowStage,
+} from "@/lib/product-experience-core";
 
 export type ProductSurface = "reward" | "earn" | "balance" | "payout" | "progress" | "network";
-export type ProductPhase = "preview" | "paused" | "ready" | "charging" | "building" | "processing" | "complete" | "live" | "idle";
-export type ValueFlowStage = "earn" | "balance" | "payout";
-export type PayoutFlowState = "building" | "ready" | "processing" | "paid" | "paused";
+export type ProductPhase = CoreProductPhase;
+export type ProductEvent = CoreProductEvent;
+export type ValueFlowStage = CoreValueFlowStage;
+export type PayoutFlowState = CorePayoutFlowState;
 
 export type ProductJourney = {
   stage: ValueFlowStage;
@@ -16,18 +28,9 @@ export type ProductJourney = {
 export type ProductExperience = {
   surface: ProductSurface;
   phase: ProductPhase;
+  event: ProductEvent;
   journey?: ProductJourney;
 };
-
-function clampPercent(value: number) {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-export function payoutProgressPercent(availableCredits: number, payoutCredits: number | null) {
-  if (!payoutCredits || payoutCredits <= 0) return 0;
-  return clampPercent((Math.max(0, availableCredits) / payoutCredits) * 100);
-}
 
 function journeyBalance(snapshot: RewardSnapshot) {
   return snapshot.preview ? "—" : formatUsdFromCredits(snapshot.availableCredits);
@@ -53,10 +56,12 @@ export function getEarningExperience({
   surface,
   snapshot,
   payoutCredits,
+  claimSettled,
 }: {
   surface: "reward" | "earn";
   snapshot: RewardSnapshot;
   payoutCredits: number | null;
+  claimSettled?: boolean;
 }): ProductExperience {
   const progress = payoutProgressPercent(snapshot.availableCredits, payoutCredits);
   const payoutState: PayoutFlowState = snapshot.preview || !payoutCredits
@@ -70,17 +75,14 @@ export function getEarningExperience({
       ? "Ready"
       : `${progress}% to target`;
 
-  const phase: ProductPhase = snapshot.preview
-    ? "preview"
-    : !snapshot.pulseFundingReady
-      ? "paused"
-      : snapshot.claimReady
-        ? "ready"
-        : "charging";
-
   return {
     surface,
-    phase,
+    phase: deriveEarningPhase({
+      preview: snapshot.preview,
+      pulseFundingReady: snapshot.pulseFundingReady,
+      claimReady: snapshot.claimReady,
+    }),
+    event: snapshot.preview ? "none" : deriveEarningEvent({ claimSettled: Boolean(claimSettled) }),
     journey: buildJourney(snapshot, payoutCredits, "earn", payoutState, payoutLabel),
   };
 }
@@ -99,45 +101,28 @@ export function getWalletExperience({
   paid: boolean;
 }): ProductExperience {
   const progress = payoutProgressPercent(snapshot.availableCredits, payoutCredits);
-  const payoutState: PayoutFlowState = paid
-    ? "paid"
-    : hasActiveWithdrawal
-      ? "processing"
-      : canWithdraw
-        ? "ready"
-        : payoutCredits
-          ? "building"
-          : "paused";
-
-  const surface: ProductSurface = payoutState === "ready" || payoutState === "processing" || payoutState === "paid"
-    ? "payout"
-    : "balance";
-  const stage: ValueFlowStage = surface === "payout" ? "payout" : "balance";
-  const phase: ProductPhase = snapshot.preview
-    ? "preview"
-    : payoutState === "paid"
-      ? "complete"
-      : payoutState === "processing"
-        ? "processing"
-        : payoutState === "ready"
-          ? "ready"
-          : payoutState === "building"
-            ? "building"
-            : "paused";
-  const payoutLabel = payoutState === "paid"
+  const core = deriveWalletCore({
+    preview: snapshot.preview,
+    payoutConfigured: Boolean(payoutCredits),
+    canWithdraw,
+    hasActiveWithdrawal,
+    paid,
+  });
+  const payoutLabel = core.payoutState === "paid"
     ? "Paid"
-    : payoutState === "processing"
+    : core.payoutState === "processing"
       ? "In progress"
-      : payoutState === "ready"
+      : core.payoutState === "ready"
         ? "Ready"
         : payoutCredits
           ? `${progress}% to target`
           : "Preparing";
 
   return {
-    surface,
-    phase,
-    journey: buildJourney(snapshot, payoutCredits, stage, payoutState, payoutLabel),
+    surface: core.surface,
+    phase: core.phase,
+    event: core.event,
+    journey: buildJourney(snapshot, payoutCredits, core.stage, core.payoutState, payoutLabel),
   };
 }
 
@@ -145,6 +130,7 @@ export function getProgressExperience(snapshot: RewardSnapshot): ProductExperien
   return {
     surface: "progress",
     phase: snapshot.preview ? "preview" : snapshot.signedIn ? "live" : "idle",
+    event: "none",
   };
 }
 
@@ -160,5 +146,8 @@ export function getNetworkExperience({
   return {
     surface: "network",
     phase: !signedIn ? "idle" : active > 0 || waiting > 0 ? "live" : "idle",
+    event: deriveNetworkEvent({ signedIn, active }),
   };
 }
+
+export { payoutProgressPercent };

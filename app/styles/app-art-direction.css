@@ -738,3 +738,113 @@
     animation-duration:initial!important;
   }
 }
+
+
+/* V6 — event choreography.
+   Transient motion is driven only by canonical, evidence-backed product events.
+   Keep it compositor-friendly: transform + opacity, with reduced-motion parity. */
+@keyframes pcEventRailSettle{
+  0%{transform:scaleX(0);opacity:0}
+  18%{opacity:.95}
+  72%{transform:scaleX(1);opacity:.82}
+  100%{transform:scaleX(1);opacity:0}
+}
+@keyframes pcEventRailProcessing{
+  0%{transform:translate3d(-100%,0,0);opacity:0}
+  16%{opacity:.78}
+  84%{opacity:.78}
+  100%{transform:translate3d(100%,0,0);opacity:0}
+}
+@keyframes pcEventSurfaceSettle{
+  0%{transform:translate3d(0,3px,0) scale(.997);opacity:.88}
+  48%{transform:translate3d(0,-1px,0) scale(1.002);opacity:1}
+  100%{transform:translate3d(0,0,0) scale(1);opacity:1}
+}
+@keyframes pcEventNodeArrive{
+  0%{transform:scale(.82);opacity:.38}
+  52%{transform:scale(1.08);opacity:1}
+  100%{transform:scale(1);opacity:1}
+}
+
+.app-frame{
+  --pc-motion-fast:180ms;
+  --pc-motion-settle:520ms;
+  --pc-motion-event:980ms;
+  --pc-motion-ease:cubic-bezier(.2,.8,.2,1);
+}
+.app-frame:after{
+  content:"";
+  position:fixed;
+  z-index:140;
+  top:0;
+  left:0;
+  width:100%;
+  height:2px;
+  pointer-events:none;
+  opacity:0;
+  transform:scaleX(0);
+  transform-origin:left center;
+  background:linear-gradient(90deg,transparent,var(--app-accent) 18%,var(--app-accent-2) 70%,transparent);
+  box-shadow:0 0 18px var(--app-accent-soft);
+}
+.app-frame[data-product-event="reward-settled"]:after,
+.app-frame[data-product-event="payout-ready"]:after,
+.app-frame[data-product-event="payout-complete"]:after,
+.app-frame[data-product-event="network-live"]:after{
+  animation:pcEventRailSettle var(--pc-motion-event) var(--pc-motion-ease) both;
+}
+.app-frame[data-product-event="payout-processing"]:after{
+  width:48%;
+  transform:translate3d(-100%,0,0);
+  animation:pcEventRailProcessing 2.8s linear infinite;
+}
+
+/* A confirmed reward visibly moves from action into the value path. */
+.app-frame[data-product-event="reward-settled"] .pc-v9-chamber{
+  animation:pcEventSurfaceSettle var(--pc-motion-settle) var(--pc-motion-ease) both;
+}
+.app-frame[data-product-event="reward-settled"] .pc-value-flow>a:first-child .pc-value-flow-index{
+  animation:pcEventNodeArrive var(--pc-motion-settle) var(--pc-motion-ease) both;
+}
+.app-frame[data-product-event="reward-settled"] .pc-value-flow-line:not(.is-payout)>i{
+  animation:pcValueTravel 1.05s var(--pc-motion-ease) 1 both;
+}
+
+/* Ready / processing / complete are one coherent payout choreography. */
+.app-frame[data-product-event="payout-ready"] .pc-value-flow>a:last-child .pc-value-flow-index{
+  animation:pcEventNodeArrive var(--pc-motion-settle) var(--pc-motion-ease) both;
+}
+.app-frame[data-product-event="payout-processing"] .pc-value-flow-line.is-payout>i{
+  animation-duration:1.8s;
+}
+.app-frame[data-product-event="payout-complete"] .pc-v3-vault-balance{
+  animation:pcEventSurfaceSettle 720ms var(--pc-motion-ease) both;
+}
+.app-frame[data-product-event="payout-complete"] .pc-value-flow>a:last-child .pc-value-flow-index{
+  animation:pcEventNodeArrive 720ms var(--pc-motion-ease) both;
+}
+
+/* Network motion only appears when the canonical network authority reports activity. */
+.app-frame[data-product-event="network-live"] .pc-luxe-invite-hero{
+  animation:pcEventSurfaceSettle 620ms var(--pc-motion-ease) both;
+}
+
+/* Phase is available globally, so future components can consume state without
+   recreating business logic. Keep the current treatment restrained. */
+.app-frame[data-product-phase="processing"] .app-topbar:after{opacity:.9}
+.app-frame[data-product-phase="complete"] .app-topbar:after{width:48%;opacity:.78}
+.app-frame[data-product-phase="paused"] .app-topbar:after{opacity:.24}
+
+@media(prefers-reduced-motion:reduce){
+  .app-frame:after,
+  .app-frame[data-product-event="reward-settled"] .pc-v9-chamber,
+  .app-frame[data-product-event="reward-settled"] .pc-value-flow>a:first-child .pc-value-flow-index,
+  .app-frame[data-product-event="reward-settled"] .pc-value-flow-line:not(.is-payout)>i,
+  .app-frame[data-product-event="payout-ready"] .pc-value-flow>a:last-child .pc-value-flow-index,
+  .app-frame[data-product-event="payout-processing"] .pc-value-flow-line.is-payout>i,
+  .app-frame[data-product-event="payout-complete"] .pc-v3-vault-balance,
+  .app-frame[data-product-event="payout-complete"] .pc-value-flow>a:last-child .pc-value-flow-index,
+  .app-frame[data-product-event="network-live"] .pc-luxe-invite-hero{
+    animation:none!important;
+  }
+}

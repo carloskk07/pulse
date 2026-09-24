@@ -10,6 +10,7 @@ import { ValueFlow } from "@/components/value-flow";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getUserNextAction } from "@/lib/experience-presentation";
 import { getEarningExperience } from "@/lib/product-experience";
+import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
@@ -50,10 +51,17 @@ export default async function DashboardPage({ searchParams }: Props) {
     && state.pulseFundingReady
     && verificationConfigured;
   const canScheduleReturn = state.signedIn && state.pulseFundingReady && !state.claimReady && Boolean(state.nextClaimAt);
-  const experience = getEarningExperience({ surface: "reward", snapshot: state, payoutCredits });
+  const claimSucceeded = params.claim === "success"
+    && state.signedIn
+    && isRecentAuthoritativeEvent(state.lastClaimAt, Date.parse(state.observedAt));
+  const experience = getEarningExperience({
+    surface: "reward",
+    snapshot: state,
+    payoutCredits,
+    claimSettled: claimSucceeded,
+  });
   const away = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
   const vaultPercent = experience.journey?.payoutProgress ?? 0;
-  const claimSucceeded = params.claim === "success";
   const signal = getCircuitProgress({
     hourlyClaimCount: state.hourlyClaimCount,
     streakDays: state.streakDays,
@@ -102,7 +110,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
         {params.claim ? (
           <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>
-            {claimCopy[params.claim] ?? "Circuit updated."}
+            {params.claim === "success" && !claimSucceeded ? "Reward status refreshed. Your current balance is shown above." : claimCopy[params.claim] ?? "Circuit updated."}
             {claimSucceeded ? <Link href="/progress">See progress <ArrowUpRight /></Link> : null}
           </div>
         ) : null}
