@@ -30,6 +30,18 @@ export function payoutProgressPercent(availableCredits: number, payoutCredits: n
   return clampPercent((Math.max(0, availableCredits) / payoutCredits) * 100);
 }
 
+export function isRecentAuthoritativeEvent(
+  timestamp: string | null | undefined,
+  nowMs: number,
+  windowMs = 5 * 60_000,
+) {
+  if (!timestamp || !Number.isFinite(nowMs) || !Number.isFinite(windowMs) || windowMs <= 0) return false;
+  const eventMs = new Date(timestamp).getTime();
+  if (!Number.isFinite(eventMs)) return false;
+  const age = nowMs - eventMs;
+  return age >= 0 && age <= windowMs;
+}
+
 export function deriveEarningPhase(input: {
   preview: boolean;
   pulseFundingReady: boolean;
@@ -41,9 +53,9 @@ export function deriveEarningPhase(input: {
 }
 
 export function deriveEarningEvent(input: {
-  claimResult?: string | null;
+  claimSettled: boolean;
 }): CoreProductEvent {
-  return input.claimResult === "success" ? "reward-settled" : "none";
+  return input.claimSettled ? "reward-settled" : "none";
 }
 
 export function deriveWalletCore(input: {
