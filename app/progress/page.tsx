@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
@@ -52,8 +53,9 @@ export default async function ProgressPage() {
       </div>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
-        <article className="pc-identity-card pc-luxe-prestige-card pc-v3-prestige-card">
+        <article className="pc-identity-card pc-luxe-prestige-card pc-v3-prestige-card" style={{ "--pc-signal": `${state.preview ? 0 : signal.signal}%` } as CSSProperties}>
           <div className="pc-luxe-prestige-halo" aria-hidden="true" />
+          <span className="pc-live-signal-trace" aria-hidden="true"><i /></span>
           <div className="pc-v3-progress-orbit" aria-hidden="true"><ProgressOrbitArtwork /></div>
           <div className="pc-identity-top"><span><Spark /> Current rank</span><b>{state.preview ? "Preview" : signal.stage}</b></div>
           <div className="pc-luxe-rank-name">{state.preview ? "—" : signal.stage}</div>
