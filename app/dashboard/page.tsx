@@ -6,6 +6,7 @@ import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { RewardArtifact, VaultProgressArtwork } from "@/components/pulse-visuals";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
+import { ValueFlow } from "@/components/value-flow";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getUserNextAction } from "@/lib/experience-presentation";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
@@ -95,6 +96,14 @@ export default async function DashboardPage({ searchParams }: Props) {
             <div className="pc-v9-vault-mini-track" aria-hidden="true"><i style={{ width: `${state.preview ? 0 : vaultPercent}%` }} /></div>
           </Link>
         </div>
+
+        <ValueFlow
+          stage="earn"
+          balance={state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}
+          payoutProgress={state.preview ? 0 : vaultPercent}
+          payoutState={state.preview || !payoutCredits ? "paused" : vaultPercent >= 100 ? "ready" : "building"}
+          payoutLabel={state.preview || !payoutCredits ? "Preparing" : vaultPercent >= 100 ? "Ready" : `${vaultPercent}% to target`}
+        />
 
         {params.claim ? (
           <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>

@@ -58,8 +58,11 @@ export function ReferralNetworkArtwork({
   active: number | string;
   waiting: number | string;
 }) {
+  const hasActive = typeof active === "number" && active > 0;
+  const hasWaiting = typeof waiting === "number" && waiting > 0;
+
   return (
-    <div className="pc-artifact pc-artifact-network">
+    <div className={`pc-artifact pc-artifact-network ${hasActive ? "has-active" : ""} ${hasWaiting ? "has-waiting" : ""}`}>
       <Image
         className="pc-artifact-image"
         src="/visual/referral-network.svg"
