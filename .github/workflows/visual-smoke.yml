@@ -14,6 +14,7 @@ on:
       - "proxy.ts"
       - "scripts/verify-responsive-runtime.mjs"
       - "scripts/capture-public-full-page.mjs"
+      - "scripts/capture-viewport.mjs"
 
 permissions:
   contents: read
@@ -157,7 +158,16 @@ jobs:
               sleep 1
             done
 
-            echo "Capture failed twice: $label ($size) $url"
+            echo "Chrome CLI capture failed twice; trying CDP fallback: $label ($size) $url" | tee -a visual-smoke/manifest.txt
+            rm -f "$output"
+            if timeout --signal=TERM --kill-after=5s 25s node scripts/capture-viewport.mjs "$url" "$output" "$size"; then
+              if test -s "$output"; then
+                echo "capture-pass label=$label fallback=cdp" | tee -a visual-smoke/manifest.txt
+                return 0
+              fi
+            fi
+
+            echo "Capture failed after CLI retries and CDP fallback: $label ($size) $url"
             return 1
           }
 
@@ -490,7 +500,16 @@ jobs:
               sleep 1
             done
 
-            echo "Capture failed twice: $label ($size) $url"
+            echo "Chrome CLI capture failed twice; trying CDP fallback: $label ($size) $url" | tee -a visual-smoke/manifest.txt
+            rm -f "$output"
+            if timeout --signal=TERM --kill-after=5s 25s node scripts/capture-viewport.mjs "$url" "$output" "$size"; then
+              if test -s "$output"; then
+                echo "capture-pass label=$label fallback=cdp" | tee -a visual-smoke/manifest.txt
+                return 0
+              fi
+            fi
+
+            echo "Capture failed after CLI retries and CDP fallback: $label ($size) $url"
             return 1
           }
 
