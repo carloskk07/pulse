@@ -532,6 +532,17 @@
   overflow:hidden;
   background:linear-gradient(90deg,transparent,var(--pc-flow-line) 12%,var(--pc-flow-line) 88%,transparent);
 }
+.pc-value-flow-line:before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:0;
+  background:linear-gradient(90deg,rgba(223,255,114,.18),var(--pc-flow-live));
+  box-shadow:0 0 12px var(--pc-flow-live);
+}
+.pc-value-flow-line.is-payout:before{width:var(--pc-value-progress,0%)}
 .pc-value-flow-line:after{
   content:"";
   position:absolute;
