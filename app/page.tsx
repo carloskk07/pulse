@@ -5,6 +5,7 @@ import { FunnelBeacon } from "@/components/funnel-beacon";
 import { FunnelLink } from "@/components/funnel-link";
 import { PulsercuitSensoryLayer } from "@/components/pulsercuit-sensory-layer";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
+import { EarnSpectrumArtwork, RewardArtifact } from "@/components/pulse-visuals";
 import { V6RecentActivity } from "@/components/v6-live-proof";
 import { ArrowUpRight, Check, Clock, Shield, Spark, Wallet } from "@/components/icons";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
@@ -97,6 +98,14 @@ export default async function HomePage() {
           </div>
 
           <aside className="pc-home-core-stage pc-home-money-stage" aria-label="Current faucet reward">
+            <div className="pc-home-capsule-art" aria-hidden="true">
+              <RewardArtifact
+                value={rewardDisplay}
+                eyebrow="Reward"
+                meta={intervalLabel(pulseInterval)}
+                readout={false}
+              />
+            </div>
             <PulseCoreVisual
               state={publicLive ? "ready" : "limited"}
               eyebrow={rewardVariable ? (publicLive ? "Live reward range" : "Launch reward range") : "Current reward rule"}
@@ -182,11 +191,14 @@ export default async function HomePage() {
             <Link className="pc-home-inline-link" href="/earn">Explore earning options <ArrowUpRight /></Link>
           </div>
 
-          <div className="pc-home-return-board pc-home-benefit-board">
-            <article><span>01</span><div><strong>Hourly faucet</strong><small>See the current reward value and your next eligible time.</small></div></article>
-            <article><span>02</span><div><strong>Extra rewards</strong><small>Choose higher-value tasks and verified partner actions when they are available.</small></div></article>
-            <article><span>03</span><div><strong>Referral rewards</strong><small>Invite people and see the active reward rule in plain money terms before you share.</small></div></article>
-            <article><span>04</span><div><strong>Cashback and progress</strong><small>Verified cashback, milestones and account progress add value around the faucet.</small></div></article>
+          <div className="pc-home-return-visual">
+            <EarnSpectrumArtwork />
+            <div className="pc-home-return-board pc-home-benefit-board">
+              <article><span>01</span><div><strong>Hourly faucet</strong><small>See the current reward value and your next eligible time.</small></div></article>
+              <article><span>02</span><div><strong>Extra rewards</strong><small>Choose higher-value tasks and verified partner actions when they are available.</small></div></article>
+              <article><span>03</span><div><strong>Referral rewards</strong><small>Invite people and see the active reward rule in plain money terms before you share.</small></div></article>
+              <article><span>04</span><div><strong>Cashback and progress</strong><small>Verified cashback, milestones and account progress add value around the faucet.</small></div></article>
+            </div>
           </div>
         </div>
       </section>
