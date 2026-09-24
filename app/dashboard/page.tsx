@@ -9,6 +9,7 @@ import { TurnstileField } from "@/components/turnstile-field";
 import { ValueFlow } from "@/components/value-flow";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getUserNextAction } from "@/lib/experience-presentation";
+import { getEarningExperience } from "@/lib/product-experience";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
@@ -49,9 +50,9 @@ export default async function DashboardPage({ searchParams }: Props) {
     && state.pulseFundingReady
     && verificationConfigured;
   const canScheduleReturn = state.signedIn && state.pulseFundingReady && !state.claimReady && Boolean(state.nextClaimAt);
-  const progress = payoutCredits ? Math.min(100, (state.availableCredits / payoutCredits) * 100) : 0;
+  const experience = getEarningExperience({ surface: "reward", snapshot: state, payoutCredits });
   const away = payoutCredits ? Math.max(0, payoutCredits - state.availableCredits) : null;
-  const vaultPercent = Math.max(0, Math.min(100, Math.round(progress)));
+  const vaultPercent = experience.journey?.payoutProgress ?? 0;
   const claimSucceeded = params.claim === "success";
   const signal = getCircuitProgress({
     hourlyClaimCount: state.hourlyClaimCount,
@@ -65,7 +66,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     claimReady: state.claimReady,
     nextClaimAt: state.nextClaimAt,
   });
-  const visualState = state.preview || !state.pulseFundingReady ? "paused" : state.claimReady ? "ready" : "charging";
+  const visualState = experience.phase === "ready" ? "ready" : experience.phase === "charging" ? "charging" : "paused";
   const pulseCaption = state.preview
     ? "Live service unavailable"
     : !state.pulseFundingReady
@@ -78,7 +79,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const payoutTargetLabel = payout.ready && payout.display ? payout.display : "Target preparing";
 
   return (
-    <AppShell active="home" userLabel={state.signedIn ? state.userLabel : undefined}>
+    <AppShell active="home" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="pc-v9-dashboard">
         <div className="app-page-head pulse-page-head pc-luxe-dashboard-head pc-v9-head">
           <div className="pc-v9-head-copy">
@@ -97,13 +98,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           </Link>
         </div>
 
-        <ValueFlow
-          stage="earn"
-          balance={state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}
-          payoutProgress={state.preview ? 0 : vaultPercent}
-          payoutState={state.preview || !payoutCredits ? "paused" : vaultPercent >= 100 ? "ready" : "building"}
-          payoutLabel={state.preview || !payoutCredits ? "Preparing" : vaultPercent >= 100 ? "Ready" : `${vaultPercent}% to target`}
-        />
+        {experience.journey ? <ValueFlow journey={experience.journey} /> : null}
 
         {params.claim ? (
           <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>
