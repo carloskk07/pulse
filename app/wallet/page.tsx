@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { WithdrawalPassPanel } from "@/components/withdrawal-pass-panel";
+import { ValueFlow } from "@/components/value-flow";
 import { VaultProgressArtwork } from "@/components/pulse-visuals";
 import { getWalletPresentation } from "@/lib/experience-presentation";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
@@ -127,6 +128,27 @@ export default async function WalletPage({ searchParams }: Props) {
     : payout.ready && payoutCredits
       ? payout.display || formatUsdFromCredits(payoutCredits)
       : "Preparing";
+  const payoutFlowState = params.withdraw === "paid"
+    ? "paid"
+    : activeWithdrawal
+      ? "processing"
+      : canWithdraw
+        ? "ready"
+        : payoutCredits
+          ? "building"
+          : "paused";
+  const payoutFlowStage = payoutFlowState === "ready" || payoutFlowState === "processing" || payoutFlowState === "paid"
+    ? "payout"
+    : "balance";
+  const payoutFlowLabel = payoutFlowState === "paid"
+    ? "Paid"
+    : payoutFlowState === "processing"
+      ? "In progress"
+      : payoutFlowState === "ready"
+        ? "Ready"
+        : payoutCredits
+          ? `${payoutPercent}% to target`
+          : "Preparing";
 
   return (
     <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined}>
@@ -144,7 +166,15 @@ export default async function WalletPage({ searchParams }: Props) {
         </div>
       ) : null}
 
-      <section className="wallet-balance-card pc-luxe-vault-balance pc-v3-vault-balance">
+      <ValueFlow
+        stage={payoutFlowStage}
+        balance={state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}
+        payoutProgress={state.preview ? 0 : payoutPercent}
+        payoutState={state.preview ? "paused" : payoutFlowState}
+        payoutLabel={state.preview ? "Preparing" : payoutFlowLabel}
+      />
+
+      <section className={`wallet-balance-card pc-luxe-vault-balance pc-v3-vault-balance ${payoutFlowState === "ready" ? "is-payout-ready" : ""} ${payoutFlowState === "paid" ? "is-payout-paid" : ""}`}>
         <div className="pc-v3-vault-copy">
           <div className="wallet-big-icon"><Wallet /></div>
           <div>
