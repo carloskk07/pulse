@@ -54,6 +54,20 @@ for (const file of operationalScripts) {
   assert(!source.includes("ADMIN_EMAILS"), `Legacy ADMIN_EMAILS operational dependency returned in ${path.relative(root, file)}`);
 }
 
+const directActions = await fs.readFile(path.join(root, "app", "admin", "direct", "actions.ts"), "utf8");
+const directPage = await fs.readFile(path.join(root, "app", "admin", "direct", "page.tsx"), "utf8");
+const directCreateForm = await fs.readFile(path.join(root, "components", "direct-campaign-create-form.tsx"), "utf8");
+
+assert(directActions.includes("getAdminAccess"), "Pulse Direct admin mutations must use the canonical admin allowlist.");
+assert(directActions.includes("await requireAdmin()"), "Pulse Direct actions must require admin authorization before mutation.");
+assert(directActions.includes("createDirectCampaignAction"), "Pulse Direct creation action must remain explicit.");
+assert(directActions.includes("callbackSecret"), "Pulse Direct creation must preserve the one-time callback secret response.");
+assert(!directActions.includes("callback_secret="), "Pulse Direct callback secret must never be placed in a redirect query.");
+assert(!directActions.includes("callbackSecret="), "Pulse Direct callback secret must never be placed in a redirect query.");
+assert(directCreateForm.includes("state.callbackSecret"), "Pulse Direct callback secret must be displayed only in authenticated action state.");
+assert(directPage.includes('redirect("/auth?next=/admin/direct")'), "Pulse Direct cockpit must redirect unauthenticated users to auth.");
+assert(directPage.includes("notFound()"), "Pulse Direct cockpit must hide itself from unauthorized users.");
+
 const adminClient = await fs.readFile(path.join(root, "lib", "supabase", "admin.ts"), "utf8");
 const serverClient = await fs.readFile(path.join(root, "lib", "supabase", "server.ts"), "utf8");
 assert(adminClient.includes('import "server-only";'), "Service-role Supabase client must remain server-only.");
