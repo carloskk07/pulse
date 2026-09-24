@@ -62,11 +62,12 @@ export default async function EarnPage({ searchParams }: Props) {
   return (
     <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined}>
       <div className="app-page-head pc-luxe-turbo-head">
-        <div>
+        <div className="pc-earn-head-copy">
           <span className="app-eyebrow">Extra rewards · optional</span>
           <h1>More ways to earn between faucet claims.</h1>
           <p>Compare tasks, verified actions, cashback and partner rewards by value and time. The hourly faucet remains separate and does not require any of them.</p>
         </div>
+        <div className="pc-earn-head-visual" aria-hidden="true"><EarnSpectrumArtwork /></div>
         <div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
 
