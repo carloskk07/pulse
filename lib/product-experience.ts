@@ -56,12 +56,12 @@ export function getEarningExperience({
   surface,
   snapshot,
   payoutCredits,
-  claimResult,
+  claimSettled,
 }: {
   surface: "reward" | "earn";
   snapshot: RewardSnapshot;
   payoutCredits: number | null;
-  claimResult?: string | null;
+  claimSettled?: boolean;
 }): ProductExperience {
   const progress = payoutProgressPercent(snapshot.availableCredits, payoutCredits);
   const payoutState: PayoutFlowState = snapshot.preview || !payoutCredits
@@ -82,7 +82,7 @@ export function getEarningExperience({
       pulseFundingReady: snapshot.pulseFundingReady,
       claimReady: snapshot.claimReady,
     }),
-    event: snapshot.preview ? "none" : deriveEarningEvent({ claimResult }),
+    event: snapshot.preview ? "none" : deriveEarningEvent({ claimSettled: Boolean(claimSettled) }),
     journey: buildJourney(snapshot, payoutCredits, "earn", payoutState, payoutLabel),
   };
 }
