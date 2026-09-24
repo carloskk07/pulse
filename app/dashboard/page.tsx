@@ -53,7 +53,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const canScheduleReturn = state.signedIn && state.pulseFundingReady && !state.claimReady && Boolean(state.nextClaimAt);
   const claimSucceeded = params.claim === "success"
     && state.signedIn
-    && isRecentAuthoritativeEvent(state.lastClaimAt, Date.now());
+    && isRecentAuthoritativeEvent(state.lastClaimAt, Date.parse(state.observedAt));
   const experience = getEarningExperience({
     surface: "reward",
     snapshot: state,
