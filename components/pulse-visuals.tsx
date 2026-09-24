@@ -83,9 +83,11 @@ export function ReferralNetworkArtwork({
 export function VaultProgressArtwork({
   percent,
   value,
+  readout = true,
 }: {
   percent: number;
   value: string;
+  readout?: boolean;
 }) {
   return (
     <div className="pc-artifact pc-artifact-vault">
@@ -97,11 +99,29 @@ export function VaultProgressArtwork({
         height={650}
         sizes="(max-width: 760px) 90vw, 440px"
       />
-      <div className="pc-vault-visual-readout">
-        <small>Payout progress</small>
-        <strong>{percent}%</strong>
-        <span>{value}</span>
-      </div>
+      {readout ? (
+        <div className="pc-vault-visual-readout">
+          <small>Payout progress</small>
+          <strong>{percent}%</strong>
+          <span>{value}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+
+export function ProgressOrbitArtwork() {
+  return (
+    <div className="pc-artifact pc-artifact-progress" aria-hidden="true">
+      <Image
+        className="pc-artifact-image"
+        src="/visual/progress-orbit.svg"
+        alt=""
+        width={900}
+        height={650}
+        sizes="(max-width: 760px) 92vw, 520px"
+      />
     </div>
   );
 }
