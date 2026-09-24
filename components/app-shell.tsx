@@ -37,30 +37,46 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
   }
 
   const admin = user ? (await getAdminAllowlistStatus(user.id)) === "authorized" : false;
-  const sidebarLinks = admin ? [...links, ...adminLinks] : links;
   const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
 
   return (
-    <div className="app-frame">
-      <aside className="app-sidebar">
-        <PulsercuitBrand />
-        <nav className="app-nav" aria-label="Application">
-          {sidebarLinks.map(({ id, href, label: navLabel, Icon }) => (
-            <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon />{navLabel}</Link>
-          ))}
-        </nav>
-        <div className="sidebar-user">
-          <span className="avatar">{initials(label)}</span>
-          <div><strong>{label}</strong><small>{user ? "Signed in" : "Preview mode"}</small></div>
-          <div className="sidebar-tools">
-            <Link className={active === "account" ? "active" : ""} aria-current={active === "account" ? "page" : undefined} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
-            <Link className={active === "proof" ? "active" : ""} aria-current={active === "proof" ? "page" : undefined} href="/proof">Proof</Link>
-            <Link className={active === "ads" ? "active" : ""} aria-current={active === "ads" ? "page" : undefined} href="/advertise">Advertise</Link>
-            <Link className={active === "support" ? "active" : ""} aria-current={active === "support" ? "page" : undefined} href="/support">Help</Link>
-          </div>
-          {user ? <form action={signOut}><button className="sidebar-signout" type="submit">Sign out</button></form> : null}
+    <div className="app-frame" data-section={active}>
+      <aside className="app-sidebar" hidden aria-hidden="true" />
+      <header className="app-topbar">
+        <div className="app-topbar-inner">
+          <PulsercuitBrand />
+          <nav className="app-nav app-topbar-nav" aria-label="Application">
+            {links.map(({ id, href, label: navLabel, Icon }) => (
+              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}>
+                <Icon /><span>{navLabel}</span>
+              </Link>
+            ))}
+          </nav>
+          <details className="app-topbar-more">
+            <summary aria-label="Account and more">
+              <span className="avatar">{initials(label)}</span>
+              <span className="app-topbar-user-copy"><strong>{label}</strong><small>{user ? "Signed in" : "Preview"}</small></span>
+              <span className="app-topbar-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div className="app-topbar-menu">
+              <div className="app-topbar-menu-head"><strong>{label}</strong><small>{user ? "Signed in" : "Preview mode"}</small></div>
+              <Link className={active === "account" ? "active" : ""} aria-current={active === "account" ? "page" : undefined} href={user ? "/account" : "/auth?next=/account"}>Account</Link>
+              <Link className={active === "proof" ? "active" : ""} aria-current={active === "proof" ? "page" : undefined} href="/proof">Proof</Link>
+              <Link className={active === "ads" ? "active" : ""} aria-current={active === "ads" ? "page" : undefined} href="/advertise">Advertise</Link>
+              <Link className={active === "support" ? "active" : ""} aria-current={active === "support" ? "page" : undefined} href="/support">Help</Link>
+              {admin ? (
+                <div className="app-topbar-admin-links">
+                  <span>Operations</span>
+                  {adminLinks.map(({ id, href, label: navLabel, Icon }) => (
+                    <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon />{navLabel}</Link>
+                  ))}
+                </div>
+              ) : null}
+              {user ? <form action={signOut}><button type="submit">Sign out</button></form> : <Link href="/auth?next=/dashboard">Log in</Link>}
+            </div>
+          </details>
         </div>
-      </aside>
+      </header>
       <main className="app-content">{children}</main>
       <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
