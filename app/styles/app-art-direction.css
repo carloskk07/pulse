@@ -1,0 +1,371 @@
+/* Pulsercuit app art direction — editorial product mode.
+   The public Home already behaves like a brand. This layer makes the signed-in
+   product feel like the same brand instead of a separate SaaS dashboard. */
+
+.app-frame{
+  --app-accent:#dfff72;
+  --app-accent-soft:rgba(223,255,114,.10);
+  --app-accent-line:rgba(223,255,114,.22);
+  --app-accent-2:#efd17b;
+  --app-canvas:#020403;
+  min-height:100vh;
+  position:relative;
+  isolation:isolate;
+  background:
+    radial-gradient(circle at 52% -8%,var(--app-accent-soft),transparent 29rem),
+    linear-gradient(180deg,#020403 0%,#030504 54%,#020403 100%);
+  color:#f5f1e6;
+}
+.app-frame[data-section="progress"]{
+  --app-accent:#efd17b;
+  --app-accent-soft:rgba(239,209,123,.105);
+  --app-accent-line:rgba(239,209,123,.22);
+  --app-accent-2:#a491ff;
+}
+.app-frame[data-section="earn"]{
+  --app-accent:#77efff;
+  --app-accent-soft:rgba(119,239,255,.085);
+  --app-accent-line:rgba(119,239,255,.2);
+  --app-accent-2:#dfff72;
+}
+.app-frame[data-section="wallet"]{
+  --app-accent:#f1d27d;
+  --app-accent-soft:rgba(241,210,125,.09);
+  --app-accent-line:rgba(241,210,125,.21);
+  --app-accent-2:#f5f1e6;
+}
+.app-frame[data-section="invite"]{
+  --app-accent:#a491ff;
+  --app-accent-soft:rgba(164,145,255,.10);
+  --app-accent-line:rgba(164,145,255,.2);
+  --app-accent-2:#efd17b;
+}
+
+/* Product topbar */
+.app-topbar{
+  position:sticky;
+  z-index:120;
+  top:0;
+  width:100%;
+  border-bottom:1px solid rgba(255,255,255,.055);
+  background:linear-gradient(180deg,rgba(3,5,4,.94),rgba(3,5,4,.82));
+  box-shadow:0 20px 60px rgba(0,0,0,.18);
+  backdrop-filter:blur(24px) saturate(1.16);
+}
+.app-topbar:after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:-1px;
+  width:31%;
+  height:1px;
+  background:linear-gradient(90deg,transparent,var(--app-accent),transparent);
+  opacity:.52;
+}
+.app-topbar-inner{
+  width:min(1440px,calc(100% - 56px));
+  min-height:78px;
+  margin-inline:auto;
+  display:grid;
+  grid-template-columns:minmax(180px,230px) minmax(0,1fr) auto;
+  align-items:center;
+  gap:26px;
+}
+.app-topbar .pulsercuit-brand,
+.app-topbar .brand{
+  width:max-content;
+}
+.app-topbar-nav.app-nav{
+  min-width:0;
+  margin:0;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+.app-topbar-nav.app-nav a{
+  position:relative;
+  min-height:42px;
+  padding:0 14px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid transparent;
+  border-radius:12px;
+  color:#8c948e;
+  background:transparent;
+  font-size:11px;
+  font-weight:760;
+  letter-spacing:.01em;
+  transition:color .18s ease,background .18s ease,border-color .18s ease,transform .18s ease;
+}
+.app-topbar-nav.app-nav a svg{width:15px;height:15px}
+.app-topbar-nav.app-nav a:hover{
+  color:#f3eee1;
+  background:rgba(255,255,255,.024);
+}
+.app-topbar-nav.app-nav a.active{
+  color:#faf4e3;
+  border-color:var(--app-accent-line);
+  background:linear-gradient(180deg,var(--app-accent-soft),rgba(255,255,255,.01));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.app-topbar-nav.app-nav a.active:after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-19px;
+  width:26px;
+  height:2px;
+  transform:translateX(-50%);
+  border-radius:999px;
+  background:var(--app-accent);
+  box-shadow:0 0 18px var(--app-accent);
+}
+.app-topbar-more{position:relative}
+.app-topbar-more>summary{
+  min-width:150px;
+  min-height:46px;
+  padding:5px 9px 5px 6px;
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr) auto;
+  align-items:center;
+  gap:9px;
+  list-style:none;
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;
+  background:rgba(255,255,255,.018);
+}
+.app-topbar-more>summary::-webkit-details-marker{display:none}
+.app-topbar-more .avatar{
+  width:34px;
+  height:34px;
+  border:1px solid var(--app-accent-line);
+  color:#16160f;
+  background:linear-gradient(145deg,#fff0a8,var(--app-accent));
+  box-shadow:0 7px 22px var(--app-accent-soft);
+}
+.app-topbar-user-copy{min-width:0}
+.app-topbar-user-copy strong,
+.app-topbar-user-copy small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-topbar-user-copy strong{max-width:96px;color:#e9e5da;font-size:10px}
+.app-topbar-user-copy small{margin-top:2px;color:#717b75;font-size:8px}
+.app-topbar-chevron{color:#6f7872;font-size:12px}
+.app-topbar-menu{
+  position:absolute;
+  right:0;
+  top:calc(100% + 12px);
+  width:250px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.085);
+  border-radius:18px;
+  background:linear-gradient(155deg,rgba(13,17,14,.985),rgba(5,8,6,.99));
+  box-shadow:0 28px 80px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,255,255,.035);
+  backdrop-filter:blur(22px);
+}
+.app-topbar-menu-head{padding:10px 11px 12px;border-bottom:1px solid rgba(255,255,255,.055);margin-bottom:6px}
+.app-topbar-menu-head strong,.app-topbar-menu-head small{display:block}
+.app-topbar-menu-head strong{font-size:12px;color:#f5f0e5}
+.app-topbar-menu-head small{margin-top:3px;color:#77817b;font-size:9px}
+.app-topbar-menu>a,
+.app-topbar-menu form button,
+.app-topbar-admin-links>a{
+  width:100%;
+  min-height:38px;
+  padding:0 11px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  border:0;
+  border-radius:10px;
+  color:#9ba39e;
+  background:transparent;
+  font:inherit;
+  font-size:10px;
+  text-decoration:none;
+  cursor:pointer;
+}
+.app-topbar-menu>a:hover,
+.app-topbar-menu form button:hover,
+.app-topbar-admin-links>a:hover{color:#f5f0e5;background:rgba(255,255,255,.035)}
+.app-topbar-menu>a.active,.app-topbar-admin-links>a.active{color:var(--app-accent)}
+.app-topbar-admin-links{
+  display:grid;
+  gap:2px;
+  margin:7px 0;
+  padding:8px 0;
+  border-top:1px solid rgba(255,255,255,.05);
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.app-topbar-admin-links>span{
+  padding:4px 11px 6px;
+  color:#667068;
+  font-size:7px;
+  font-weight:850;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.app-topbar-admin-links>a svg{width:14px;height:14px}
+
+/* Editorial page canvas */
+.app-content{
+  position:relative;
+  isolation:isolate;
+}
+.app-content:before{
+  position:absolute;
+  z-index:-1;
+  right:clamp(20px,4vw,68px);
+  top:4px;
+  color:var(--app-accent);
+  opacity:.028;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:clamp(150px,18vw,300px);
+  line-height:.72;
+  letter-spacing:-.1em;
+  pointer-events:none;
+}
+.app-frame[data-section="home"] .app-content:before{content:"01"}
+.app-frame[data-section="progress"] .app-content:before{content:"02"}
+.app-frame[data-section="earn"] .app-content:before{content:"03"}
+.app-frame[data-section="wallet"] .app-content:before{content:"04"}
+.app-frame[data-section="invite"] .app-content:before{content:"05"}
+
+.app-frame[data-section="home"] .app-content,
+.app-frame[data-section="progress"] .app-content,
+.app-frame[data-section="earn"] .app-content,
+.app-frame[data-section="wallet"] .app-content,
+.app-frame[data-section="invite"] .app-content{
+  background:
+    radial-gradient(circle at 76% 3%,var(--app-accent-soft),transparent 24rem),
+    linear-gradient(90deg,transparent 0,rgba(255,255,255,.008) 50%,transparent 100%);
+}
+
+.app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-page-head{
+  position:relative;
+  min-height:180px;
+  margin-bottom:34px;
+  padding:18px 0 30px;
+  border-bottom:1px solid rgba(255,255,255,.075);
+}
+.app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-page-head:after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:-1px;
+  width:min(220px,26%);
+  height:1px;
+  background:linear-gradient(90deg,var(--app-accent),transparent);
+}
+.app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-page-head .app-eyebrow{
+  color:var(--app-accent);
+  letter-spacing:.2em;
+}
+.app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-page-head h1{
+  max-width:920px;
+  margin-top:12px;
+  color:#f7f1e4;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:clamp(54px,5.5vw,86px);
+  font-weight:500;
+  line-height:.89;
+  letter-spacing:-.072em;
+  text-wrap:balance;
+}
+.app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-page-head p{
+  max-width:740px;
+  margin-top:16px;
+  color:#949c96;
+  font-size:14px;
+  line-height:1.65;
+}
+
+/* Strip away the generic dashboard feeling from status summaries. */
+.app-frame[data-section="home"] .pc-v9-hud{
+  gap:0!important;
+  overflow:hidden;
+  border-top:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(255,255,255,.06);
+  border-radius:0!important;
+}
+.app-frame[data-section="home"] .pc-v9-hud article{
+  min-height:94px;
+  border:0!important;
+  border-right:1px solid rgba(255,255,255,.055)!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.app-frame[data-section="home"] .pc-v9-hud article:last-child{border-right:0!important}
+
+/* Secondary surfaces feel like editorial chapters, not a grid of widgets. */
+.app-frame:is([data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) :where(
+  .pc-weekly-card,.pc-retention-callout,.pc-achievement,.quick-win-card,
+  .transaction-card,.trust-card,.milestones
+){
+  border-color:rgba(255,255,255,.055)!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.018),rgba(255,255,255,.004))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.018)!important;
+}
+
+/* Page-specific hero atmosphere. */
+.app-frame[data-section="earn"] .pc-luxe-best-turbo{
+  background:
+    radial-gradient(circle at 76% 22%,rgba(119,239,255,.09),transparent 27%),
+    radial-gradient(circle at 12% 95%,rgba(223,255,114,.045),transparent 30%),
+    linear-gradient(142deg,#0b1110,#050807 66%)!important;
+}
+.app-frame[data-section="wallet"] .pc-v3-vault-balance{
+  border-color:rgba(241,210,125,.15)!important;
+  box-shadow:0 52px 145px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+.app-frame[data-section="progress"] .pc-v3-prestige-card{
+  border-color:rgba(239,209,123,.14)!important;
+  box-shadow:0 52px 145px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.app-frame[data-section="invite"] .pc-luxe-invite-hero{
+  border-color:rgba(164,145,255,.12)!important;
+  box-shadow:0 52px 145px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+
+/* Keep the application tactile without turning it into a light show. */
+@media(hover:hover){
+  .app-frame :where(.pc-v9-progress-card,.quick-win-card,.transaction-card,.trust-card,.pc-achievement){
+    transition:transform .22s ease,border-color .22s ease,background .22s ease;
+  }
+  .app-frame :where(.pc-v9-progress-card,.quick-win-card,.transaction-card,.trust-card,.pc-achievement):hover{
+    transform:translateY(-2px);
+    border-color:var(--app-accent-line)!important;
+  }
+}
+
+@media(max-width:1220px){
+  .app-topbar-inner{width:calc(100% - 36px);grid-template-columns:180px minmax(0,1fr) auto;gap:15px}
+  .app-topbar-nav.app-nav a{padding-inline:10px}
+  .app-topbar-user-copy{display:none}
+  .app-topbar-more>summary{min-width:48px;grid-template-columns:34px auto}
+}
+@media(max-width:1120px){
+  .app-topbar{display:none}
+  .app-content:before{top:20px;right:16px;font-size:190px}
+}
+@media(max-width:760px){
+  .app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-page-head{
+    min-height:0;
+    padding:4px 0 24px;
+    margin-bottom:24px;
+  }
+  .app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-page-head h1{
+    font-size:clamp(46px,13vw,62px);
+    line-height:.91;
+  }
+  .app-content:before{font-size:150px;opacity:.022}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-topbar-nav.app-nav a,
+  .app-frame :where(.pc-v9-progress-card,.quick-win-card,.transaction-card,.trust-card,.pc-achievement){
+    transition:none!important;
+  }
+}
