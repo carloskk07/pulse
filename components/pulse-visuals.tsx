@@ -5,11 +5,13 @@ export function RewardArtifact({
   eyebrow,
   meta,
   compact = false,
+  readout = true,
 }: {
   value: string;
   eyebrow: string;
   meta: string;
   compact?: boolean;
+  readout?: boolean;
 }) {
   return (
     <div className={"pc-artifact pc-artifact-reward" + (compact ? " is-compact" : "")}>
@@ -21,11 +23,13 @@ export function RewardArtifact({
         height={800}
         sizes={compact ? "280px" : "(max-width: 760px) 88vw, 450px"}
       />
-      <div className="pc-artifact-readout">
-        <small>{eyebrow}</small>
-        <strong>{value}</strong>
-        <span>{meta}</span>
-      </div>
+{readout ? (
+        <div className="pc-artifact-readout">
+          <small>{eyebrow}</small>
+          <strong>{value}</strong>
+          <span>{meta}</span>
+        </div>
+      ) : null}
       <span className="pc-artifact-tag tag-a" aria-hidden="true">01</span>
       <span className="pc-artifact-tag tag-b" aria-hidden="true">PULSE</span>
     </div>
