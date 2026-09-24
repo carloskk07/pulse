@@ -26,6 +26,7 @@ export type RewardSnapshot = {
   claimRewardMaxCredits: number;
   claimIntervalMinutes: number;
   nextClaimAt: string | null;
+  lastClaimAt: string | null;
   pulseFundingReady: boolean;
   hourlyClaimCount: number;
 };
@@ -53,6 +54,7 @@ export const disconnectedSnapshot: RewardSnapshot = {
   claimRewardMaxCredits: 0,
   claimIntervalMinutes: 60,
   nextClaimAt: null,
+  lastClaimAt: null,
   pulseFundingReady: false,
   hourlyClaimCount: 0,
 };
@@ -214,6 +216,7 @@ export function buildRewardSnapshotFromPayload(
     claimRewardMaxCredits,
     claimIntervalMinutes,
     nextClaimAt,
+    lastClaimAt: validLastClaimAt?.toISOString() ?? null,
     pulseFundingReady,
     hourlyClaimCount: Number(userSnapshot.hourly_claim_count ?? 0),
   };
