@@ -3,12 +3,14 @@ import { AppShell } from "@/components/app-shell";
 import { ContinuousEarnHub } from "@/components/continuous-earn-hub";
 import { CashbackStartButton } from "@/components/cashback-start-button";
 import { DirectStartButton } from "@/components/direct-start-button";
+import { ValueFlow } from "@/components/value-flow";
 import { EarnSpectrumArtwork } from "@/components/pulse-visuals";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getRewardEntryChannels } from "@/providers/registry";
+import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Earn" };
 
@@ -58,6 +60,9 @@ export default async function EarnPage({ searchParams }: Props) {
   const best = ranked[0] ?? null;
   const moreOptions = ranked.slice(1, 8);
   const sourcePulseClaimId = params.claim && UUID_RE.test(params.claim) ? params.claim : null;
+  const payout = getFaucetPayPackConfig();
+  const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
+  const payoutPercent = payoutCredits ? Math.max(0, Math.min(100, Math.round((state.availableCredits / payoutCredits) * 100))) : 0;
 
   return (
     <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined}>
@@ -70,6 +75,14 @@ export default async function EarnPage({ searchParams }: Props) {
         <div className="pc-earn-head-visual" aria-hidden="true"><EarnSpectrumArtwork /></div>
         <div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
       </div>
+
+      <ValueFlow
+        stage="earn"
+        balance={state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}
+        payoutProgress={state.preview ? 0 : payoutPercent}
+        payoutState={state.preview || !payoutCredits ? "paused" : payoutPercent >= 100 ? "ready" : "building"}
+        payoutLabel={state.preview || !payoutCredits ? "Preparing" : payoutPercent >= 100 ? "Ready" : `${payoutPercent}% to target`}
+      />
 
       <div className="pc-v10-turbo-criteria" aria-label="Earn ranking criteria">
         <span><small>01</small><strong>Reward</strong><b>What it is worth</b></span>
