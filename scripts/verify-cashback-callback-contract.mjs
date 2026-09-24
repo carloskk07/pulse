@@ -211,7 +211,8 @@ requireAll("app/earn/page.tsx", [
 requireAll("lib/public-launch-switch.ts", [
   "getAffiliateOfferAdminSnapshot",
   "hasFreshAdmitadOffer",
-  "admitadPostbackConfigured",
+  "CASHBACK_ADMITAD_POSTBACK_SECRET",
+  "secretReady",
   "admitad-postback-secret",
   "providerPostbacksReady",
 ]);
