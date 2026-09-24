@@ -347,7 +347,7 @@ requireText("app/styles/layout-authority.css", [
   "@media(max-width:1400px)",
   ".pc-v9-chamber{",
   "@media(max-width:1120px)",
-  ".app-sidebar{display:none!important}",
+  ".app-topbar{display:none!important}",
   ".completion-page{",
   "background:#f5f7f4!important",
   ".completion-page::before,.completion-page::after",
