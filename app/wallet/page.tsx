@@ -116,7 +116,7 @@ export default async function WalletPage({ searchParams }: Props) {
       row.label === "Withdrawal"
       && row.state === "withdrawn"
       && row.credits < 0
-      && isRecentAuthoritativeEvent(row.createdAt, Date.now(), 10 * 60_000)
+      && isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)
     );
   const experience = getWalletExperience({
     snapshot: state,
