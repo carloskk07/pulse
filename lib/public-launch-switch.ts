@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getAffiliateOfferAdminSnapshot } from "@/lib/affiliate-opportunities-admin";
 import { getControlledTechnicalReadiness } from "@/lib/controlled-technical-readiness";
 import { getProductLaunchReadiness } from "@/lib/product-launch-readiness";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -20,6 +21,7 @@ export type PublicLaunchSwitchState = {
   technicalReady: boolean;
   governanceReady: boolean;
   callbackSecretReady: boolean;
+  providerPostbacksReady: boolean;
   blockers: string[];
 };
 
@@ -41,14 +43,16 @@ export async function getPublicLaunchSwitchState(): Promise<PublicLaunchSwitchSt
       technicalReady: false,
       governanceReady: false,
       callbackSecretReady: false,
+      providerPostbacksReady: false,
       blockers: ["database"],
     };
   }
 
-  const [preflightResult, controlled, launch] = await Promise.all([
+  const [preflightResult, controlled, launch, affiliateSupply] = await Promise.all([
     admin.rpc("public_launch_preflight"),
     getControlledTechnicalReadiness(),
     getProductLaunchReadiness(),
+    getAffiliateOfferAdminSnapshot(),
   ]);
 
   const preflight = preflightResult.data && typeof preflightResult.data === "object" && !Array.isArray(preflightResult.data)
@@ -57,6 +61,7 @@ export async function getPublicLaunchSwitchState(): Promise<PublicLaunchSwitchSt
   const pilotMode = preflight.pilot_mode !== false;
   const databaseReady = !preflightResult.error && preflight.ready === true;
   const callbackSecretReady = Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim());
+  const providerPostbacksReady = !affiliateSupply.hasFreshAdmitadOffer || affiliateSupply.admitadPostbackConfigured;
   const governanceReady = launch.governanceAdvisories.length === 0;
   const nonAccessPublicBlockers = launch.publicProductBlockers.filter((item) => item.id !== "public-access");
   const technicalReady = controlled.ready && launch.technicalReady;
@@ -70,6 +75,7 @@ export async function getPublicLaunchSwitchState(): Promise<PublicLaunchSwitchSt
   for (const blocker of nonAccessPublicBlockers) blockers.add(blocker.id);
   for (const blocker of launch.governanceAdvisories) blockers.add(blocker.id);
   if (!callbackSecretReady) blockers.add("cashback-callback-secret");
+  if (!providerPostbacksReady) blockers.add("admitad-postback-secret");
 
   const readyToOpen = pilotMode
     && databaseReady
@@ -77,6 +83,7 @@ export async function getPublicLaunchSwitchState(): Promise<PublicLaunchSwitchSt
     && governanceReady
     && nonAccessPublicBlockers.length === 0
     && callbackSecretReady
+    && providerPostbacksReady
     && blockers.size === 0;
 
   return {
@@ -88,6 +95,7 @@ export async function getPublicLaunchSwitchState(): Promise<PublicLaunchSwitchSt
     technicalReady,
     governanceReady,
     callbackSecretReady,
+    providerPostbacksReady,
     blockers: [...blockers],
   };
 }
