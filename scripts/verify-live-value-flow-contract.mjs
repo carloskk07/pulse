@@ -13,6 +13,12 @@ function requireText(path, fragments) {
   }
 }
 
+requireText("lib/reward-state.ts", [
+  "observedAt: string;",
+  "const observedAtMs = Date.now();",
+  "const observedAt = new Date(observedAtMs).toISOString();",
+]);
+
 requireText("lib/product-experience-core.ts", [
   'export type CoreProductEvent =',
   '"reward-settled"',
@@ -96,7 +102,7 @@ requireText("components/app-shell.tsx", [
 ]);
 
 requireText("app/dashboard/page.tsx", [
-  "isRecentAuthoritativeEvent(state.lastClaimAt, Date.now())",
+  "isRecentAuthoritativeEvent(state.lastClaimAt, Date.parse(state.observedAt))",
   "claimSettled: claimSucceeded",
   '"Reward status refreshed. Your current balance is shown above."',
 ]);
@@ -104,7 +110,7 @@ requireText("app/dashboard/page.tsx", [
 requireText("app/wallet/page.tsx", [
   'row.label === "Withdrawal"',
   'row.state === "withdrawn"',
-  "isRecentAuthoritativeEvent(row.createdAt, Date.now(), 10 * 60_000)",
+  "isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)",
   "paid: paidConfirmed",
   '"Payment status refreshed. The authoritative payout state is shown below."',
   'const payoutFlowState = experience.journey?.payoutState ?? "paused";',
