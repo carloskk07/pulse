@@ -2,6 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { WithdrawalPassPanel } from "@/components/withdrawal-pass-panel";
+import { VaultProgressArtwork } from "@/components/pulse-visuals";
 import { getWalletPresentation } from "@/lib/experience-presentation";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 import { formatUsdFromCredits } from "@/lib/reward-state";
@@ -143,18 +144,26 @@ export default async function WalletPage({ searchParams }: Props) {
         </div>
       ) : null}
 
-      <section className="wallet-balance-card pc-luxe-vault-balance">
-        <div className="wallet-big-icon"><Wallet /></div>
-        <div>
-          <span>Available</span>
-          <strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong>
-          {!state.preview ? <small>{state.availableCredits.toLocaleString("en-US")} credits</small> : null}
-          {!state.preview && payoutCredits ? (
-            <div className="pc-v10-vault-meter">
-              <div aria-hidden="true"><i style={{ width: `${payoutPercent}%` }} /></div>
-              <small>{payoutPercent >= 100 ? "Payout target reached" : `${payoutPercent}% to payout target`}</small>
-            </div>
-          ) : null}
+      <section className="wallet-balance-card pc-luxe-vault-balance pc-v3-vault-balance">
+        <div className="pc-v3-vault-copy">
+          <div className="wallet-big-icon"><Wallet /></div>
+          <div>
+            <span>Available</span>
+            <strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong>
+            {!state.preview ? <small>{state.availableCredits.toLocaleString("en-US")} credits</small> : null}
+            {!state.preview && payoutCredits ? (
+              <div className="pc-v10-vault-meter">
+                <div aria-hidden="true"><i style={{ width: `${payoutPercent}%` }} /></div>
+                <small>{payoutPercent >= 100 ? "Payout target reached" : `${payoutPercent}% to payout target`}</small>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="pc-v3-vault-visual" aria-hidden="true">
+          <VaultProgressArtwork
+            percent={state.preview ? 0 : payoutPercent}
+            value={state.preview ? "Live after sign-in" : formatUsdFromCredits(state.availableCredits)}
+          />
         </div>
         <div className="payout-pack-label">
           <small>{activeWithdrawal ? "Current payment" : "Payout target"}</small>
