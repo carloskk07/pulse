@@ -19,6 +19,7 @@ requireText("components/value-flow.tsx", [
   'aria-label="Reward value path"',
   'href="/earn"',
   'href="/wallet"',
+  'aria-current={stage === "earn" ? "step" : undefined}',
   '"--pc-value-progress"',
 ]);
 
@@ -44,6 +45,7 @@ requireText("app/wallet/page.tsx", [
 requireText("app/progress/page.tsx", [
   '"--pc-signal"',
   'className="pc-live-signal-trace"',
+  '"is-preview" : "is-live"',
 ]);
 
 requireText("components/pulse-visuals.tsx", [
@@ -59,6 +61,7 @@ requireText("app/styles/app-art-direction.css", [
   ".pc-value-flow.is-balance .pc-value-flow-line.is-payout>i{",
   ".pc-value-flow.payout-processing .pc-value-flow-line.is-payout>i{",
   ".pc-live-signal-trace{",
+  ".pc-v3-prestige-card.is-preview .pc-live-signal-trace>i:after{display:none}",
   ".pc-v3-vault-balance.is-payout-ready{",
   ".pc-v3-vault-balance.is-payout-paid{",
   "@media(prefers-reduced-motion:reduce)",

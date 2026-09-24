@@ -53,7 +53,7 @@ export default async function ProgressPage() {
       </div>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
-        <article className="pc-identity-card pc-luxe-prestige-card pc-v3-prestige-card" style={{ "--pc-signal": `${state.preview ? 0 : signal.signal}%` } as CSSProperties}>
+        <article className={`pc-identity-card pc-luxe-prestige-card pc-v3-prestige-card ${state.preview ? "is-preview" : "is-live"}`} style={{ "--pc-signal": `${state.preview ? 0 : signal.signal}%` } as CSSProperties}>
           <div className="pc-luxe-prestige-halo" aria-hidden="true" />
           <span className="pc-live-signal-trace" aria-hidden="true"><i /></span>
           <div className="pc-v3-progress-orbit" aria-hidden="true"><ProgressOrbitArtwork /></div>

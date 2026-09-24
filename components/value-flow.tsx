@@ -26,7 +26,7 @@ export function ValueFlow({
       aria-label="Reward value path"
       style={style}
     >
-      <Link className={stage === "earn" ? "active" : ""} href="/earn">
+      <Link className={stage === "earn" ? "active" : ""} href="/earn" aria-current={stage === "earn" ? "step" : undefined}>
         <span className="pc-value-flow-index">01</span>
         <span className="pc-value-flow-copy">
           <small>Earn</small>
@@ -36,7 +36,7 @@ export function ValueFlow({
 
       <span className="pc-value-flow-line" aria-hidden="true"><i /></span>
 
-      <Link className={stage === "balance" ? "active" : ""} href="/wallet">
+      <Link className={stage === "balance" ? "active" : ""} href="/wallet" aria-current={stage === "balance" ? "step" : undefined}>
         <span className="pc-value-flow-index">02</span>
         <span className="pc-value-flow-copy">
           <small>Balance</small>
@@ -46,7 +46,7 @@ export function ValueFlow({
 
       <span className="pc-value-flow-line is-payout" aria-hidden="true"><i /></span>
 
-      <Link className={stage === "payout" ? "active" : ""} href="/wallet">
+      <Link className={stage === "payout" ? "active" : ""} href="/wallet" aria-current={stage === "payout" ? "step" : undefined}>
         <span className="pc-value-flow-index">03</span>
         <span className="pc-value-flow-copy">
           <small>Payout</small>
