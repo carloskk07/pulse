@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { ContinuousPulsePanel } from "@/components/continuous-pulse-panel";
 import { ArrowUpRight, Bolt, Shield, Spark, Users } from "@/components/icons";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
-import { VaultProgressArtwork } from "@/components/pulse-visuals";
+import { RewardArtifact, VaultProgressArtwork } from "@/components/pulse-visuals";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { getCircuitProgress } from "@/lib/circuit-progress";
@@ -137,6 +137,9 @@ export default async function DashboardPage({ searchParams }: Props) {
             </div>
 
             <div className="pulse-core-panel pc-luxe-core-panel pc-v9-core-panel" aria-label="Live reward state">
+              <div className="pc-dashboard-reward-art" aria-hidden="true">
+                <RewardArtifact value="" eyebrow="" meta="" readout={false} compact />
+              </div>
               <PulseCoreVisual state={visualState} eyebrow="Hourly reward" caption={pulseCaption}>
                 {state.pulseFundingReady && !state.claimReady
                   ? <PulseCountdown target={state.nextClaimAt} />
