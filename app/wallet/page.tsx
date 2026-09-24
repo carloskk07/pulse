@@ -5,6 +5,7 @@ import { WithdrawalPassPanel } from "@/components/withdrawal-pass-panel";
 import { ValueFlow } from "@/components/value-flow";
 import { VaultProgressArtwork } from "@/components/pulse-visuals";
 import { getWalletPresentation } from "@/lib/experience-presentation";
+import { getWalletExperience } from "@/lib/product-experience";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 import { getWalletState } from "@/lib/wallet-state";
@@ -109,7 +110,15 @@ export default async function WalletPage({ searchParams }: Props) {
   const extraWithdrawalFeeLabel = extraWithdrawalFeeCredits > 0
     ? formatUsdFromCredits(extraWithdrawalFeeCredits)
     : null;
-  const payoutPercent = payoutCredits ? Math.max(0, Math.min(100, Math.round((state.availableCredits / payoutCredits) * 100))) : 0;
+  const experience = getWalletExperience({
+    snapshot: state,
+    payoutCredits,
+    canWithdraw,
+    hasActiveWithdrawal: Boolean(activeWithdrawal),
+    paid: params.withdraw === "paid",
+  });
+  const payoutPercent = experience.journey?.payoutProgress ?? 0;
+  const payoutFlowState = experience.journey?.payoutState ?? "paused";
   const presentation = getWalletPresentation({
     signedIn: state.signedIn,
     preview: state.preview,
@@ -128,30 +137,9 @@ export default async function WalletPage({ searchParams }: Props) {
     : payout.ready && payoutCredits
       ? payout.display || formatUsdFromCredits(payoutCredits)
       : "Preparing";
-  const payoutFlowState = params.withdraw === "paid"
-    ? "paid"
-    : activeWithdrawal
-      ? "processing"
-      : canWithdraw
-        ? "ready"
-        : payoutCredits
-          ? "building"
-          : "paused";
-  const payoutFlowStage = payoutFlowState === "ready" || payoutFlowState === "processing" || payoutFlowState === "paid"
-    ? "payout"
-    : "balance";
-  const payoutFlowLabel = payoutFlowState === "paid"
-    ? "Paid"
-    : payoutFlowState === "processing"
-      ? "In progress"
-      : payoutFlowState === "ready"
-        ? "Ready"
-        : payoutCredits
-          ? `${payoutPercent}% to target`
-          : "Preparing";
 
   return (
-    <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined}>
+    <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="app-page-head pc-luxe-vault-head">
         <div>
           <span className="app-eyebrow">Balance & payout</span>
@@ -166,13 +154,7 @@ export default async function WalletPage({ searchParams }: Props) {
         </div>
       ) : null}
 
-      <ValueFlow
-        stage={payoutFlowStage}
-        balance={state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}
-        payoutProgress={state.preview ? 0 : payoutPercent}
-        payoutState={state.preview ? "paused" : payoutFlowState}
-        payoutLabel={state.preview ? "Preparing" : payoutFlowLabel}
-      />
+      {experience.journey ? <ValueFlow journey={experience.journey} /> : null}
 
       <section className={`wallet-balance-card pc-luxe-vault-balance pc-v3-vault-balance ${payoutFlowState === "ready" ? "is-payout-ready" : ""} ${payoutFlowState === "paid" ? "is-payout-paid" : ""}`}>
         <div className="pc-v3-vault-copy">

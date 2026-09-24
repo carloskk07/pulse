@@ -1,22 +1,9 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import type { ProductJourney } from "@/lib/product-experience";
 
-type ValueFlowStage = "earn" | "balance" | "payout";
-type PayoutState = "building" | "ready" | "processing" | "paid" | "paused";
-
-export function ValueFlow({
-  stage,
-  balance,
-  payoutProgress,
-  payoutState,
-  payoutLabel,
-}: {
-  stage: ValueFlowStage;
-  balance: string;
-  payoutProgress: number;
-  payoutState: PayoutState;
-  payoutLabel: string;
-}) {
+export function ValueFlow({ journey }: { journey: ProductJourney }) {
+  const { stage, balance, payoutProgress, payoutState, payoutLabel } = journey;
   const progress = Math.max(0, Math.min(100, Math.round(payoutProgress)));
   const style = { "--pc-value-progress": `${progress}%` } as CSSProperties;
 

@@ -5,6 +5,7 @@ import { CopyReferralLink } from "@/components/copy-referral-link";
 import { NetworkDepthPanel } from "@/components/network-depth-panel";
 import { ReferralNetworkArtwork } from "@/components/pulse-visuals";
 import { getInviteState } from "@/lib/invite-state";
+import { getNetworkExperience } from "@/lib/product-experience";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 
 export const metadata = { title: "Referrals" };
@@ -33,12 +34,13 @@ export default async function InvitePage() {
     inviteeBonus,
   } = await getInviteState();
 
+  const experience = getNetworkExperience({ signedIn, active: rewarded, waiting: pending });
   const site = configuredSiteUrl();
   const referralLink = signedIn && referralCode && site ? `${site}/r/${referralCode}` : null;
   const milestones = [[1, "First referral"], [3, "Growing circle"], [5, "Active network"], [10, "Referral milestone"]] as const;
 
   return (
-    <AppShell active="invite">
+    <AppShell active="invite" experience={experience}>
       <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Referrals</span><h1>Invite friends. See the reward before you share.</h1><p>Referral rewards are tied to verified eligible activity. When a bonus is active, its money value appears here before you send your link.</p></div></div>
 
       <section className="invite-hero-card pc-luxe-invite-hero">
