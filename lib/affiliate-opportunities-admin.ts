@@ -27,6 +27,10 @@ export type AffiliateOfferAdminSnapshot = {
   offers: AffiliateOfferAdminItem[];
 };
 
+function secretConfigured(value: string | undefined) {
+  return Boolean(value?.trim() && value.trim().length >= 32);
+}
+
 function objectValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -40,8 +44,8 @@ export async function getAffiliateOfferAdminSnapshot(): Promise<AffiliateOfferAd
       available: false,
       cashbackEnabled: false,
       cashbackUserShareBps: 0,
-      callbackSecretConfigured: Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim()),
-      admitadPostbackConfigured: Boolean(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET?.trim()),
+      callbackSecretConfigured: secretConfigured(process.env.CASHBACK_CALLBACK_SECRET),
+      admitadPostbackConfigured: secretConfigured(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET),
       hasFreshAdmitadOffer: false,
       launchRequirementsReady: false,
       liveOfferCount: 0,
@@ -65,8 +69,8 @@ export async function getAffiliateOfferAdminSnapshot(): Promise<AffiliateOfferAd
       available: false,
       cashbackEnabled: false,
       cashbackUserShareBps: 0,
-      callbackSecretConfigured: Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim()),
-      admitadPostbackConfigured: Boolean(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET?.trim()),
+      callbackSecretConfigured: secretConfigured(process.env.CASHBACK_CALLBACK_SECRET),
+      admitadPostbackConfigured: secretConfigured(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET),
       hasFreshAdmitadOffer: false,
       launchRequirementsReady: false,
       liveOfferCount: 0,
@@ -106,8 +110,8 @@ export async function getAffiliateOfferAdminSnapshot(): Promise<AffiliateOfferAd
     available: true,
     cashbackEnabled: String(economy.cashback_enabled ?? "false").toLowerCase() === "true",
     cashbackUserShareBps: Math.max(0, Math.min(7_500, Number(economy.cashback_user_share_bps ?? 0))),
-    callbackSecretConfigured: Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim()),
-    admitadPostbackConfigured: Boolean(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET?.trim()),
+    callbackSecretConfigured: secretConfigured(process.env.CASHBACK_CALLBACK_SECRET),
+    admitadPostbackConfigured: secretConfigured(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET),
     hasFreshAdmitadOffer: liveOffers.some((offer) => offer.provider.trim().toLowerCase() === "admitad"),
     launchRequirementsReady: !readyResult.error && readyResult.data === true,
     liveOfferCount: liveOffers.length,
