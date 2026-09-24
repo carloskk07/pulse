@@ -41,7 +41,6 @@ export async function AppShell({ children, active, userLabel }: { children: Reac
 
   return (
     <div className="app-frame" data-section={active}>
-      <aside className="app-sidebar" hidden aria-hidden="true" />
       <header className="app-topbar">
         <div className="app-topbar-inner">
           <PulsercuitBrand />
