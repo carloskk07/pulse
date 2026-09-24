@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" fill="none">
+<defs>
+  <radialGradient id="a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(400 385) rotate(90) scale(330)">
+    <stop stop-color="#DFFF72" stop-opacity=".18"/>
+    <stop offset=".5" stop-color="#EFD17B" stop-opacity=".06"/>
+    <stop offset="1" stop-color="#020404" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="b" x1="250" y1="150" x2="560" y2="650" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFF2B8"/>
+    <stop offset=".25" stop-color="#E8C768"/>
+    <stop offset=".55" stop-color="#55431F"/>
+    <stop offset=".76" stop-color="#D7FF70"/>
+    <stop offset="1" stop-color="#486022"/>
+  </linearGradient>
+  <linearGradient id="c" x1="320" y1="220" x2="500" y2="585" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#17211B" stop-opacity=".96"/>
+    <stop offset=".55" stop-color="#050806" stop-opacity=".96"/>
+    <stop offset="1" stop-color="#10150F" stop-opacity=".98"/>
+  </linearGradient>
+  <linearGradient id="d" x1="292" y1="240" x2="506" y2="512" gradientUnits="userSpaceOnUse">
+    <stop stop-color="white" stop-opacity=".35"/>
+    <stop offset=".3" stop-color="white" stop-opacity=".03"/>
+    <stop offset=".65" stop-color="#DFFF72" stop-opacity=".08"/>
+    <stop offset="1" stop-color="#EFD17B" stop-opacity=".22"/>
+  </linearGradient>
+  <filter id="blur" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="26"/></filter>
+  <filter id="shadow" x="-80%" y="-80%" width="260%" height="260%">
+    <feDropShadow dx="0" dy="36" stdDeviation="32" flood-color="#000" flood-opacity=".62"/>
+    <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#DFFF72" flood-opacity=".08"/>
+  </filter>
+  <filter id="soft" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter>
+</defs>
+<circle cx="400" cy="400" r="340" fill="url(#a)"/>
+<circle cx="400" cy="400" r="276" stroke="#EFD17B" stroke-opacity=".14"/>
+<circle cx="400" cy="400" r="226" stroke="#DFFF72" stroke-opacity=".12" stroke-dasharray="3 13"/>
+<ellipse cx="400" cy="670" rx="170" ry="36" fill="#000" fill-opacity=".65" filter="url(#blur)"/>
+<g filter="url(#shadow)">
+  <path d="M300 210C326 178 363 160 400 160C437 160 474 178 500 210L569 346C581 371 581 429 569 454L500 590C474 622 437 640 400 640C363 640 326 622 300 590L231 454C219 429 219 371 231 346L300 210Z" fill="url(#c)" stroke="url(#b)" stroke-width="2"/>
+  <path d="M323 236C344 210 372 196 400 196C428 196 456 210 477 236L535 351C545 373 545 427 535 449L477 564C456 590 428 604 400 604C372 604 344 590 323 564L265 449C255 427 255 373 265 351L323 236Z" fill="url(#d)" stroke="white" stroke-opacity=".08"/>
+  <path d="M339 287C355 266 376 256 400 256C424 256 445 266 461 287L500 363C507 378 507 422 500 437L461 513C445 534 424 544 400 544C376 544 355 534 339 513L300 437C293 422 293 378 300 363L339 287Z" fill="#030604" fill-opacity=".9" stroke="#DFFF72" stroke-opacity=".2"/>
+  <path d="M319 250C349 219 388 207 422 215" stroke="white" stroke-opacity=".34" stroke-width="8" stroke-linecap="round" filter="url(#soft)"/>
+  <path d="M301 482C336 533 373 555 418 555" stroke="#EFD17B" stroke-opacity=".26" stroke-width="5" stroke-linecap="round" filter="url(#soft)"/>
+</g>
+<g opacity=".9">
+  <circle cx="400" cy="400" r="102" stroke="#DFFF72" stroke-opacity=".22"/>
+  <circle cx="400" cy="400" r="72" stroke="#EFD17B" stroke-opacity=".32" stroke-dasharray="4 8"/>
+  <circle cx="400" cy="400" r="18" fill="#DFFF72" fill-opacity=".9"/>
+  <circle cx="400" cy="400" r="36" fill="#DFFF72" fill-opacity=".12" filter="url(#blur)"/>
+</g>
+<path d="M186 400H260M540 400H614" stroke="#EFD17B" stroke-opacity=".28"/>
+<path d="M400 126V188M400 612V674" stroke="#DFFF72" stroke-opacity=".2"/>
+<circle cx="186" cy="400" r="3" fill="#EFD17B"/>
+<circle cx="614" cy="400" r="3" fill="#EFD17B"/>
+<circle cx="400" cy="126" r="3" fill="#DFFF72"/>
+<circle cx="400" cy="674" r="3" fill="#DFFF72"/>
+</svg>
