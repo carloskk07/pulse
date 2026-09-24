@@ -230,7 +230,7 @@ export async function upsertAffiliateOffer(formData: FormData) {
   const title = requiredText(formData, "title", 180);
   const category = requiredText(formData, "category", 80) ?? "cashback";
   const destinationRaw = requiredText(formData, "destination_url", 2_000);
-  const trackingParam = requiredText(formData, "tracking_param", 64) ?? "subid";
+  const requestedTrackingParam = requiredText(formData, "tracking_param", 64) ?? "subid";
   const estimatedCommissionRaw = requiredText(formData, "estimated_commission_usd", 32);
   const publicRewardLabel = requiredText(formData, "public_reward_label", 80);
   const freshnessHours = optionalPositiveInt(formData, "freshness_hours", 168) ?? 24;
@@ -239,6 +239,7 @@ export async function upsertAffiliateOffer(formData: FormData) {
   const devicePlatforms = normalizeDevicePlatforms(formData.get("device_platforms"));
 
   const provider = providerRaw?.toLowerCase() ?? "";
+  const trackingParam = provider === "admitad" ? "subid4" : requestedTrackingParam;
   const destination = destinationRaw ? safeAffiliateDestination(destinationRaw) : null;
   const commissionMicros = estimatedCommissionRaw ? parseUsdMicros(estimatedCommissionRaw) : null;
 
