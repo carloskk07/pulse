@@ -41,6 +41,7 @@
 @import "./styles/dashboard-command-center.css";
 @import "./styles/dashboard-refinement.css";
 @import "./styles/current.css";
+@import "./styles/app-art-direction.css";
 
 /* Conversion and editorial system — scoped additions only; release hardening remains authoritative. */
 @import "./styles/conversion-system.css";
