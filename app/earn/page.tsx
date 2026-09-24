@@ -96,7 +96,7 @@ export default async function EarnPage({ searchParams }: Props) {
       <ContinuousEarnHub />
 
       <section className={"drop-stage turbo-stage pc-luxe-turbo-stage " + (best?.pulseProtected ? "drop-stage-protected" : "")}>
-        <article className="drop-card pc-luxe-best-turbo">
+        <article className={`drop-card pc-luxe-best-turbo ${best || primaryChannel ? "has-live-opportunity" : "is-empty-opportunity"}`}>
           <div className="drop-card-head">
             <span className="status-pill status-lime"><Spark /> {best ? "Best option now" : primaryChannel ? "Extra route available" : "No strong option"}</span>
             <div className={"pulse-line " + (best?.pulseProtected ? "protected" : "")}>{best?.pulseProtected ? "Funded before start" : "Optional"}</div>
