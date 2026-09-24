@@ -20,6 +20,8 @@ export type AffiliateOfferAdminSnapshot = {
   cashbackEnabled: boolean;
   cashbackUserShareBps: number;
   callbackSecretConfigured: boolean;
+  admitadPostbackConfigured: boolean;
+  hasFreshAdmitadOffer: boolean;
   launchRequirementsReady: boolean;
   liveOfferCount: number;
   offers: AffiliateOfferAdminItem[];
@@ -39,6 +41,8 @@ export async function getAffiliateOfferAdminSnapshot(): Promise<AffiliateOfferAd
       cashbackEnabled: false,
       cashbackUserShareBps: 0,
       callbackSecretConfigured: Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim()),
+      admitadPostbackConfigured: Boolean(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET?.trim()),
+      hasFreshAdmitadOffer: false,
       launchRequirementsReady: false,
       liveOfferCount: 0,
       offers: [],
@@ -62,6 +66,8 @@ export async function getAffiliateOfferAdminSnapshot(): Promise<AffiliateOfferAd
       cashbackEnabled: false,
       cashbackUserShareBps: 0,
       callbackSecretConfigured: Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim()),
+      admitadPostbackConfigured: Boolean(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET?.trim()),
+      hasFreshAdmitadOffer: false,
       launchRequirementsReady: false,
       liveOfferCount: 0,
       offers: [],
@@ -95,13 +101,16 @@ export async function getAffiliateOfferAdminSnapshot(): Promise<AffiliateOfferAd
     } satisfies AffiliateOfferAdminItem;
   });
 
+  const liveOffers = offers.filter((offer) => offer.fresh);
   return {
     available: true,
     cashbackEnabled: String(economy.cashback_enabled ?? "false").toLowerCase() === "true",
     cashbackUserShareBps: Math.max(0, Math.min(7_500, Number(economy.cashback_user_share_bps ?? 0))),
     callbackSecretConfigured: Boolean(process.env.CASHBACK_CALLBACK_SECRET?.trim()),
+    admitadPostbackConfigured: Boolean(process.env.CASHBACK_ADMITAD_POSTBACK_SECRET?.trim()),
+    hasFreshAdmitadOffer: liveOffers.some((offer) => offer.provider.trim().toLowerCase() === "admitad"),
     launchRequirementsReady: !readyResult.error && readyResult.data === true,
-    liveOfferCount: offers.filter((offer) => offer.fresh).length,
+    liveOfferCount: liveOffers.length,
     offers,
   };
 }
