@@ -105,3 +105,19 @@ export function VaultProgressArtwork({
     </div>
   );
 }
+
+
+export function ProgressOrbitArtwork() {
+  return (
+    <div className="pc-artifact pc-artifact-progress" aria-hidden="true">
+      <Image
+        className="pc-artifact-image"
+        src="/visual/progress-orbit.svg"
+        alt=""
+        width={900}
+        height={650}
+        sizes="(max-width: 760px) 92vw, 520px"
+      />
+    </div>
+  );
+}
