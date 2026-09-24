@@ -781,10 +781,11 @@
   }
   .pc-v3-vault-balance>.payout-pack-label strong{font-size:19px!important}
   .pc-v3-progress-orbit{
-    right:-112px;
-    top:24px;
-    width:92%;
-    opacity:.46;
+    right:-22px;
+    top:46px;
+    width:104%;
+    opacity:.42;
+    mask-image:linear-gradient(180deg,transparent 0,#000 13%,#000 68%,transparent 100%);
   }
   .pc-v3-prestige-card>.pc-luxe-rank-name,
   .pc-v3-prestige-card>.pc-identity-score{max-width:70%}
@@ -793,10 +794,11 @@
 @media(max-width:480px){
   .pc-v3-vault-visual{margin:-26px auto -52px}
   .pc-v3-progress-orbit{
-    right:-122px;
-    top:56px;
-    width:108%;
-    opacity:.35;
+    right:-12px;
+    top:58px;
+    width:112%;
+    opacity:.36;
+    mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 64%,transparent 100%);
   }
   .pc-v3-prestige-card>.pc-luxe-rank-name,
   .pc-v3-prestige-card>.pc-identity-score{max-width:78%}
