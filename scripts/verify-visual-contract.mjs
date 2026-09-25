@@ -348,7 +348,7 @@ requireText(".github/workflows/visual-smoke.yml", [
   "visual-smoke/local-preview/dense-state/desktop",
   "visual-smoke/local-preview/dense-state/mobile",
   "/visual-smoke-fixture/core-state?scene=reward",
-  'test "$count" -eq 100',
+  'test "$count" -eq 104',
 ]);
 
 requireText("app/earn/page.tsx", [
