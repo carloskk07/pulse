@@ -300,6 +300,32 @@ requireText("app/visual-smoke-fixture/claim-reveal/page.tsx", [
   "top:",
 ]);
 
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  'requestHeaders.get("host")',
+  'requestHeaders.get("x-forwarded-host")',
+  "const effectiveHost = forwardedHost || host",
+  'effectiveHost.startsWith("127.0.0.1:")',
+  'effectiveHost.startsWith("localhost:")',
+  "notFound()",
+  'type Scene = "reward" | "earn" | "wallet" | "progress" | "invite";',
+  'data-dense-scene="reward"',
+  'data-dense-scene="earn"',
+  'data-dense-scene="wallet"',
+  'data-dense-scene="progress"',
+  'data-dense-scene="invite"',
+  '<SceneTelemetry',
+  '<ValueFlow',
+]);
+
+requireText(".github/workflows/visual-smoke.yml", [
+  "Verify dense signed-in runtime geometry",
+  "scripts/verify-dense-state-runtime.mjs",
+  "visual-smoke/local-preview/dense-state/desktop",
+  "visual-smoke/local-preview/dense-state/mobile",
+  "/visual-smoke-fixture/core-state?scene=reward",
+  'test "$count" -eq 100',
+]);
+
 requireText("app/earn/page.tsx", [
   '<SceneTelemetry',
   'variant="earn"',
