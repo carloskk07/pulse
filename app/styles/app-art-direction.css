@@ -2862,6 +2862,7 @@
 }
 .app-frame[data-product-residue-dimension="value"] .pc-space-haze.haze-a{
   background:radial-gradient(circle,var(--pc-dimension-mass),transparent 66%);
+  box-shadow:0 0 90px var(--pc-dimension-mass);
 }
 .app-frame[data-product-residue-dimension="value"] .pc-route-carrier:before,
 .app-frame[data-product-residue-dimension="value"] .pc-route-carrier:after{
