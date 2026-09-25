@@ -221,6 +221,13 @@ requireText("app/styles/theme.css", [
   ".app-content .wallet-balance-card>div:nth-child(2)>small{color:var(--pc7-muted)!important}",
 ]);
 
+requireText("app/styles/app-art-direction.css", [
+  "/* V9.1 — screenshot-driven Balance contrast refinement.",
+  '.app-frame[data-section="wallet"] .pc-v10-vault-meter small{',
+  "color:#d8d2bc!important",
+  "text-shadow:0 1px 12px rgba(0,0,0,.36)",
+]);
+
 const contrastPairs = [
   ["completion microcopy", "#566159", "#f5f7f4"],
   ["completion success", "#245a35", "#eaf7ed"],
@@ -240,6 +247,7 @@ const contrastPairs = [
   ["Vault primary value", "#f7f2e6", "#111713"],
   ["Vault available label", "#d9ff72", "#111713"],
   ["Vault balance metadata", "#9b9d95", "#111713"],
+  ["Vault payout progress microcopy", "#d8d2bc", "#111713"],
   ["post-claim readable metadata", "#89948f", "#090d0d"],
   ["system state secondary copy", "#aeb6b0", "#050706"],
   ["system state metadata", "#89948f", "#050706"],

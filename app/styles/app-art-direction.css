@@ -2136,3 +2136,11 @@
     transition:none!important;
   }
 }
+
+
+/* V9.1 — screenshot-driven Balance contrast refinement.
+   The payout-progress microcopy must remain legible over the gold/black vault field. */
+.app-frame[data-section="wallet"] .pc-v10-vault-meter small{
+  color:#d8d2bc!important;
+  text-shadow:0 1px 12px rgba(0,0,0,.36);
+}
