@@ -91,7 +91,26 @@ requireText("app/styles/app-art-direction.css", [
   "pointer-events:none",
 ]);
 
+requireText("components/view-transition-runtime-fixture.tsx", [
+  '"use client";',
+  'startTransition',
+  'ViewTransition',
+  'update="auto"',
+  'id="vt-runtime-trigger"',
+  'id="vt-runtime-state"',
+]);
+
+requireText("app/visual-smoke-fixture/view-transition/page.tsx", [
+  'localVisualHost',
+  'if (!localVisualHost) notFound();',
+  '<ViewTransitionRuntimeFixture />',
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
+  "/visual-smoke-fixture/view-transition",
+  "verifyMinimalReactViewTransition",
+  'CSS.supports("view-transition-class", "pc-probe")',
+  "Minimal React ViewTransition runtime PASS",
   "/dashboard",
   "/earn",
   "/wallet",
