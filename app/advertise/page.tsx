@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
+import { PublicSignalField } from "@/components/public-signal-field";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { formatUsdMicros, getUserPulseAds } from "@/lib/pulse-ads";
 import { buildPulseAdsCheckoutCustom } from "@/lib/pulse-ads-checkout";
@@ -59,6 +60,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
     <AppShell active="ads" userLabel={user?.email?.split("@")[0] ?? undefined}>
       <div className="pc-ads-page">
         <header className="pc-ads-hero">
+          <PublicSignalField variant="ads" />
           <div>
             <span className="app-eyebrow">Pulsercuit Ads · qualified traffic</span>
             <h1>Reach crypto earners. <em>Pay for qualified clicks.</em></h1>
