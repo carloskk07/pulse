@@ -191,7 +191,7 @@ requireText(".github/workflows/visual-smoke.yml", [
 ]);
 
 requireText("scripts/verify-product-interaction-runtime.mjs", [
-  '"/visual-smoke-fixture/core-state?scene=reward"',
+  '/visual-smoke-fixture/core-state?scene=reward',
   '"prefers-reduced-motion", value: "no-preference"',
   '"prefers-reduced-motion", value: "reduce"',
   'surface.dispatchEvent(new PointerEvent("pointerdown"',
