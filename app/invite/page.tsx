@@ -8,7 +8,8 @@ import { ReferralNetworkArtwork } from "@/components/pulse-visuals";
 import { SceneTelemetry } from "@/components/scene-telemetry";
 import { getInviteState } from "@/lib/invite-state";
 import { getNetworkExperience } from "@/lib/product-experience";
-import { formatUsdFromCredits } from "@/lib/reward-state";
+import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
+import { formatUsdFromCredits, getLedgerItems } from "@/lib/reward-state";
 
 export const metadata = { title: "Referrals" };
 
@@ -25,8 +26,10 @@ function configuredSiteUrl() {
 }
 
 export default async function InvitePage() {
+  const [inviteState, ledger] = await Promise.all([getInviteState(), getLedgerItems()]);
   const {
     signedIn,
+    observedAt,
     referralCode,
     pending,
     rewarded,
@@ -34,16 +37,36 @@ export default async function InvitePage() {
     referralCredits,
     inviterBonus,
     inviteeBonus,
-  } = await getInviteState();
-
-  const experience = getNetworkExperience({ signedIn, active: rewarded, waiting: pending });
+  } = inviteState;
+  const recentReferralReward = ledger.find((row) =>
+    row.label === "Referral reward"
+    && row.credits > 0
+    && isRecentAuthoritativeEvent(row.createdAt, Date.parse(observedAt), 10 * 60_000)
+  ) ?? null;
+  const experience = getNetworkExperience({
+    signedIn,
+    active: rewarded,
+    waiting: pending,
+    referralConfirmed: Boolean(recentReferralReward),
+  });
   const site = configuredSiteUrl();
   const referralLink = signedIn && referralCode && site ? `${site}/r/${referralCode}` : null;
   const milestones = [[1, "First referral"], [3, "Growing circle"], [5, "Active network"], [10, "Referral milestone"]] as const;
+  const eventCue = recentReferralReward
+    ? {
+      id: `ledger:${recentReferralReward.id}`,
+      kind: "referral-confirmed" as const,
+      kicker: "Network verified",
+      title: "Referral confirmed",
+      value: formatUsdFromCredits(recentReferralReward.credits, true),
+      detail: "Verified referral activity was credited to your balance.",
+      markers: [`${rewarded} active`, `${pending} waiting`],
+    }
+    : null;
 
   return (
     <RoutePageTransition route="invite">
-      <AppShell active="invite" experience={experience}>
+      <AppShell active="invite" experience={experience} eventCue={eventCue}>
       <div className="app-page-head pc-luxe-share-head">
         <div><span className="app-eyebrow">Referrals</span><h1>Invite friends. See the reward before you share.</h1><p>Referral rewards are tied to verified eligible activity. When a bonus is active, its money value appears here before you send your link.</p></div>
         <SceneTelemetry

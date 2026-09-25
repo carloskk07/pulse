@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type InviteState = {
   signedIn: boolean;
+  observedAt: string;
   referralCode: string | null;
   pending: number;
   rewarded: number;
@@ -15,6 +16,7 @@ export type InviteState = {
 
 const EMPTY: InviteState = {
   signedIn: false,
+  observedAt: "1970-01-01T00:00:00.000Z",
   referralCode: null,
   pending: 0,
   rewarded: 0,
@@ -56,6 +58,7 @@ export async function getInviteState(): Promise<InviteState> {
 
   return {
     signedIn: true,
+    observedAt: new Date().toISOString(),
     referralCode: rawCode || null,
     pending: nonNegativeInteger(scopedUser.pending),
     rewarded: nonNegativeInteger(scopedUser.rewarded),

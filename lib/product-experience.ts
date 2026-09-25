@@ -93,12 +93,14 @@ export function getWalletExperience({
   canWithdraw,
   hasActiveWithdrawal,
   paid,
+  payoutReadyEvent = false,
 }: {
   snapshot: RewardSnapshot;
   payoutCredits: number | null;
   canWithdraw: boolean;
   hasActiveWithdrawal: boolean;
   paid: boolean;
+  payoutReadyEvent?: boolean;
 }): ProductExperience {
   const progress = payoutProgressPercent(snapshot.availableCredits, payoutCredits);
   const core = deriveWalletCore({
@@ -118,10 +120,18 @@ export function getWalletExperience({
           ? `${progress}% to target`
           : "Preparing";
 
+  const event: CoreProductEvent = paid
+    ? "payout-complete"
+    : hasActiveWithdrawal
+      ? "payout-processing"
+      : payoutReadyEvent
+        ? "payout-ready"
+        : "none";
+
   return {
     surface: core.surface,
     phase: core.phase,
-    event: core.event,
+    event,
     journey: buildJourney(snapshot, payoutCredits, core.stage, core.payoutState, payoutLabel),
   };
 }
@@ -138,15 +148,17 @@ export function getNetworkExperience({
   signedIn,
   active,
   waiting,
+  referralConfirmed = false,
 }: {
   signedIn: boolean;
   active: number;
   waiting: number;
+  referralConfirmed?: boolean;
 }): ProductExperience {
   return {
     surface: "network",
     phase: !signedIn ? "idle" : active > 0 || waiting > 0 ? "live" : "idle",
-    event: deriveNetworkEvent({ signedIn, active }),
+    event: deriveNetworkEvent({ signedIn, active: referralConfirmed ? 1 : 0 }),
   };
 }
 

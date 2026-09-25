@@ -50,11 +50,81 @@ requireText("components/spatial-atmosphere.tsx", [
 requireText("components/app-shell.tsx", [
   'import { SpatialAtmosphere } from "./spatial-atmosphere";',
   'import { ProductInteractionLayer } from "./product-interaction-layer";',
+  'import { SystemEventField, type SystemEventCue } from "./system-event-field";',
   "<SpatialAtmosphere active={active} />",
   "<ProductInteractionLayer />",
+  "<SystemEventField cue={eventCue} />",
+  "eventCue?: SystemEventCue | null",
   'data-product-surface={experience?.surface}',
   'data-product-phase={experience?.phase}',
   'data-product-event={experience?.event}',
+]);
+
+
+requireText("components/system-event-field.tsx", [
+  '"use client";',
+  'export type SystemEventKind =',
+  '"reward-settled"',
+  '"payout-ready"',
+  '"payout-complete"',
+  '"rank-up"',
+  '"referral-confirmed"',
+  'const SEEN_KEY = "pc-system-event-seen:v1"',
+  'window.sessionStorage',
+  'const rootRef = useRef<HTMLDivElement>(null)',
+  'frame?.setAttribute("data-system-event", cue.kind)',
+  'root.classList.add("is-visible")',
+  'data-system-event-cue={cue.kind}',
+  'aria-live="polite"',
+]);
+
+requireText("lib/product-experience.ts", [
+  "payoutReadyEvent = false",
+  "payoutReadyEvent?: boolean",
+  "referralConfirmed = false",
+  "referralConfirmed?: boolean",
+  'active: referralConfirmed ? 1 : 0',
+]);
+
+requireText("app/dashboard/claimed/page.tsx", [
+  'kind: "reward-settled" as const',
+  'kind: "rank-up" as const',
+  "previousSignal",
+  "rankAdvanced",
+  '"Progress advanced"',
+  "eventCue={eventCue}",
+]);
+
+requireText("app/wallet/page.tsx", [
+  "recentPositiveCredit",
+  "requiredWithdrawalCredits",
+  "&& canWithdraw",
+  "payoutReadyTargetLabel",
+  "payoutReadyEvent",
+  'kind: "payout-complete" as const',
+  'kind: "payout-ready" as const',
+  "eventCue={eventCue}",
+]);
+
+requireText("app/invite/page.tsx", [
+  "recentReferralReward",
+  "referralConfirmed: Boolean(recentReferralReward)",
+  'kind: "referral-confirmed" as const',
+  "eventCue={eventCue}",
+]);
+
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  'event?: string',
+  'params.event === "reward-settled"',
+  'kind: "reward-settled" as const',
+  "eventCue={eventCue}",
+]);
+
+requireText(".github/workflows/visual-smoke.yml", [
+  "local-preview/system-event/desktop/reward-settled.png",
+  "local-preview/system-event/mobile/reward-settled.png",
+  'test "$count" -eq 94',
+  'test "$count" -eq 106',
 ]);
 
 requireText("components/product-interaction-layer.tsx", [
@@ -106,6 +176,14 @@ requireText("app/styles/app-art-direction.css", [
   ".pc-scene-telemetry{",
   ".pc-scene-telemetry-item{",
   ".pc-scene-telemetry-orbit{",
+  "/* V11.4 — Authoritative System Event Field.",
+  ".pc-system-event-field{",
+  ".pc-system-event-field.is-visible{",
+  ".pc-system-event-card{",
+  ".pc-system-event-field.is-visible .pc-system-event-card{",
+  ".app-frame[data-system-event]:after{",
+  "@keyframes pcSystemEventCard",
+  "@keyframes pcSystemEventWave",
   "@media(prefers-reduced-motion:reduce)",
 ]);
 

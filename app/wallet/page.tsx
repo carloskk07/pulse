@@ -113,19 +113,34 @@ export default async function WalletPage({ searchParams }: Props) {
   const extraWithdrawalFeeLabel = extraWithdrawalFeeCredits > 0
     ? formatUsdFromCredits(extraWithdrawalFeeCredits)
     : null;
-  const paidConfirmed = params.withdraw === "paid"
-    && rows.some((row) =>
+  const paidRow = params.withdraw === "paid"
+    ? rows.find((row) =>
       row.label === "Withdrawal"
       && row.state === "withdrawn"
       && row.credits < 0
       && isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)
-    );
+    ) ?? null
+    : null;
+  const paidConfirmed = Boolean(paidRow);
+  const recentPositiveCredit = rows.find((row) =>
+    row.credits > 0
+    && isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)
+  ) ?? null;
+  const payoutReadyEvent = Boolean(
+    !paidConfirmed
+    && canWithdraw
+    && requiredWithdrawalCredits
+    && recentPositiveCredit
+    && state.availableCredits >= requiredWithdrawalCredits
+    && Math.max(0, state.availableCredits - recentPositiveCredit.credits) < requiredWithdrawalCredits
+  );
   const experience = getWalletExperience({
     snapshot: state,
     payoutCredits,
     canWithdraw,
     hasActiveWithdrawal: Boolean(activeWithdrawal),
     paid: paidConfirmed,
+    payoutReadyEvent,
   });
   const payoutPercent = experience.journey?.payoutProgress ?? 0;
   const payoutFlowState = experience.journey?.payoutState ?? "paused";
@@ -147,10 +162,34 @@ export default async function WalletPage({ searchParams }: Props) {
     : payout.ready && payoutCredits
       ? payout.display || formatUsdFromCredits(payoutCredits)
       : "Preparing";
+  const payoutReadyTargetLabel = requiredWithdrawalCredits
+    ? formatUsdFromCredits(requiredWithdrawalCredits)
+    : payoutPackLabel;
+  const eventCue = paidRow
+    ? {
+      id: `ledger:${paidRow.id}`,
+      kind: "payout-complete" as const,
+      kicker: "Payment confirmed",
+      title: "Payout complete",
+      value: formatUsdFromCredits(Math.abs(paidRow.credits)),
+      detail: "The completed withdrawal is recorded in your ledger.",
+      markers: [`Balance ${formatUsdFromCredits(state.availableCredits)}`, "Ledger confirmed"],
+    }
+    : payoutReadyEvent && recentPositiveCredit
+      ? {
+        id: `ledger:${recentPositiveCredit.id}:payout-ready`,
+        kind: "payout-ready" as const,
+        kicker: "Target reached",
+        title: "Payout is ready",
+        value: payoutReadyTargetLabel,
+        detail: "A recent verified credit moved your available balance across the current withdrawable threshold.",
+        markers: [`Balance ${formatUsdFromCredits(state.availableCredits)}`, `Threshold ${payoutReadyTargetLabel}`],
+      }
+      : null;
 
   return (
     <RoutePageTransition route="wallet">
-      <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
+      <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience} eventCue={eventCue}>
       <div className="app-page-head pc-luxe-vault-head">
         <div>
           <span className="app-eyebrow">Balance & payout</span>

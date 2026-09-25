@@ -186,9 +186,11 @@ requireText(".github/workflows/visual-smoke.yml", [
   "Verify reactive spatial interaction",
   "Verify native route continuity",
   "Capture full-page public evidence",
-  'test "$count" -eq 92',
-  'test "$count" -eq 104',
+  'test "$count" -eq 94',
+  'test "$count" -eq 106',
   "local-preview/claim-reveal/desktop",
+  "local-preview/system-event/desktop/reward-settled.png",
+  "local-preview/system-event/mobile/reward-settled.png",
   "production-fixture-isolation",
 ]);
 
@@ -348,7 +350,7 @@ requireText(".github/workflows/visual-smoke.yml", [
   "visual-smoke/local-preview/dense-state/desktop",
   "visual-smoke/local-preview/dense-state/mobile",
   "/visual-smoke-fixture/core-state?scene=reward",
-  'test "$count" -eq 104',
+  'test "$count" -eq 106',
 ]);
 
 requireText("app/advertise/page.tsx", [

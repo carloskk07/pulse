@@ -13,6 +13,7 @@ import { getRecentPulseReceipt } from "@/lib/pulse-receipt";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { getPulseAdPlacement } from "@/lib/pulse-ads";
+import { getEarningExperience } from "@/lib/product-experience";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 import { getFaucetLaunchState } from "@/lib/faucet-launch";
 
@@ -63,6 +64,18 @@ export default async function ClaimedPage() {
   const payout = getFaucetPayPackConfig();
   const payoutTargetCredits = payout.amountCredits && payout.amountCredits > 0 ? payout.amountCredits : null;
   const payoutRemaining = payoutTargetCredits ? Math.max(0, payoutTargetCredits - state.availableCredits) : null;
+  const previousSignal = getCircuitProgress({
+    hourlyClaimCount: Math.max(0, state.hourlyClaimCount - 1),
+    streakDays: state.streakDays,
+    trustLevel: state.trustLevel,
+  });
+  const rankAdvanced = previousSignal.stage !== signal.stage;
+  const experience = getEarningExperience({
+    surface: "reward",
+    snapshot: state,
+    payoutCredits: payoutTargetCredits,
+    claimSettled: true,
+  });
   const rewardValue = formatUsdFromCredits(receipt.rewardCredits);
   const variableReward = launch.rewardVariable && launch.rewardBands.length > 1;
   const matchedBand = launch.rewardBands.find((band) => band.credits === receipt.rewardCredits) ?? null;
@@ -80,9 +93,28 @@ export default async function ClaimedPage() {
       : variableReward
         ? "This claim was resolved from the live variable reward range and is already reflected in your balance."
         : "Your verified reward is already reflected in your balance and progress.";
+  const eventCue = rankAdvanced
+    ? {
+      id: `claim:${receipt.id}:rank-up`,
+      kind: "rank-up" as const,
+      kicker: "Progress advanced",
+      title: `${signal.stage} unlocked`,
+      value: `${signal.signal}/100`,
+      detail: "This verified claim moved your account into the next progress rank.",
+      markers: [`${rewardValue} settled`, `Balance ${formatUsdFromCredits(state.availableCredits)}`],
+    }
+    : {
+      id: `claim:${receipt.id}`,
+      kind: "reward-settled" as const,
+      kicker: "Verified reward",
+      title: "Reward settled",
+      value: rewardValue,
+      detail: "The claim is recorded and already reflected in your available balance.",
+      markers: [`Balance ${formatUsdFromCredits(state.availableCredits)}`],
+    };
 
   return (
-    <AppShell active="home">
+    <AppShell active="home" experience={experience} eventCue={eventCue}>
       <main className="pc-claim-handoff pc-v8-claim-handoff">
         <ClaimRevealHero
           availableBalance={formatUsdFromCredits(state.availableCredits)}
