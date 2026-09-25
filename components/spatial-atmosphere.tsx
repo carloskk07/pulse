@@ -20,6 +20,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <div className="pc-space-plane plane-c" />
       <div className="pc-space-orbit orbit-a" />
       <div className="pc-space-orbit orbit-b" />
+      <div className="pc-route-carrier"><i /><b /></div>
       <div className="pc-space-beam beam-a" />
       <div className="pc-space-beam beam-b" />
       <span className="pc-space-node node-a" />
