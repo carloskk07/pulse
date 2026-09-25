@@ -93,18 +93,25 @@ export default async function ClaimedPage() {
       : variableReward
         ? "This claim was resolved from the live variable reward range and is already reflected in your balance."
         : "Your verified reward is already reflected in your balance and progress.";
-  const eventCue = {
-    id: `claim:${receipt.id}`,
-    kind: "reward-settled" as const,
-    kicker: "Verified reward",
-    title: "Reward settled",
-    value: rewardValue,
-    detail: "The claim is recorded and already reflected in your available balance.",
-    markers: [
-      `Balance ${formatUsdFromCredits(state.availableCredits)}`,
-      ...(rankAdvanced ? [`Rank ${previousSignal.stage} → ${signal.stage}`] : []),
-    ],
-  };
+  const eventCue = rankAdvanced
+    ? {
+      id: `claim:${receipt.id}:rank-up`,
+      kind: "rank-up" as const,
+      kicker: "Progress advanced",
+      title: `${signal.stage} unlocked`,
+      value: `${signal.signal}/100`,
+      detail: "This verified claim moved your account into the next progress rank.",
+      markers: [`${rewardValue} settled`, `Balance ${formatUsdFromCredits(state.availableCredits)}`],
+    }
+    : {
+      id: `claim:${receipt.id}`,
+      kind: "reward-settled" as const,
+      kicker: "Verified reward",
+      title: "Reward settled",
+      value: rewardValue,
+      detail: "The claim is recorded and already reflected in your available balance.",
+      markers: [`Balance ${formatUsdFromCredits(state.availableCredits)}`],
+    };
 
   return (
     <AppShell active="home" experience={experience} eventCue={eventCue}>
