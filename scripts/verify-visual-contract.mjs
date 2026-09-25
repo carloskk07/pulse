@@ -383,6 +383,43 @@ if (legacyBrandHits.length) {
   throw new Error(`Legacy Reward Pulse UI copy remains in: ${legacyBrandHits.join(", ")}`);
 }
 
+requireText("components/public-signal-field.tsx", [
+  'type PublicSignalVariant = "auth" | "business" | "ads";',
+  'className={\`pc-public-signal-field is-\${variant}\`}',
+  'aria-hidden="true"',
+  'className="pc-public-signal-orbit orbit-a"',
+  'className="pc-public-signal-carrier"',
+]);
+
+for (const [path, variant] of [
+  ["app/auth/page.tsx", 'variant="auth"'],
+  ["app/business/page.tsx", 'variant="business"'],
+  ["app/advertise/page.tsx", 'variant="ads"'],
+]) {
+  requireText(path, [
+    'import { PublicSignalField } from "@/components/public-signal-field";',
+    "<PublicSignalField",
+    variant,
+  ]);
+}
+
+requireText("app/styles/public-conversion.css", [
+  "/* V11 — public conversion signal field.",
+  ".pc-public-signal-field{",
+  ".pc-public-signal-carrier{",
+  ".auth-page>.pc-public-signal-field",
+  ".business-hero>.pc-public-signal-field",
+  ".pc-ads-hero>.pc-public-signal-field",
+  "@media(prefers-reduced-motion:reduce)",
+]);
+
+const publicSignalSource = read("components/public-signal-field.tsx");
+for (const forbidden of ["availableCredits", "rewardCredits", "payoutCredits", "claimReady", "ledger"]) {
+  if (publicSignalSource.includes(forbidden)) {
+    throw new Error(`Public signal field must remain decorative and stateless: ${forbidden}`);
+  }
+}
+
 for (const path of [
   "app/business/page.tsx",
   "app/business/integration/page.tsx",
