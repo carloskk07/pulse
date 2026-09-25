@@ -109,6 +109,20 @@ requireText("app/invite/page.tsx", [
   "eventCue={eventCue}",
 ]);
 
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  'event?: string',
+  'params.event === "reward-settled"',
+  'kind: "reward-settled" as const',
+  "eventCue={eventCue}",
+]);
+
+requireText(".github/workflows/visual-smoke.yml", [
+  "local-preview/system-event/desktop/reward-settled.png",
+  "local-preview/system-event/mobile/reward-settled.png",
+  'test "$count" -eq 94',
+  'test "$count" -eq 106',
+]);
+
 requireText("components/product-interaction-layer.tsx", [
   '"use client";',
   'const REACTIVE_SELECTOR = [',
