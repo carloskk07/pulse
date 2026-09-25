@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { TurnstileField } from "@/components/turnstile-field";
+import { PublicSignalField } from "@/components/public-signal-field";
 import { ArrowUpRight, Check, Shield, Trend } from "@/components/icons";
 
 export const metadata = {
@@ -27,6 +28,7 @@ export default async function BusinessPage({ searchParams }: Props) {
       <SiteHeader />
 
       <section className="business-hero shell">
+        <PublicSignalField variant="business" />
         <div className="business-hero-copy">
           <div className="eyebrow"><span className="live-dot" /> Pulse for Business</div>
           <h1>Pay for <em>verified actions.</em> Not promises.</h1>
