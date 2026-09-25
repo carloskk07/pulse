@@ -21,6 +21,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <div className="pc-space-plane plane-b" />
       <div className="pc-space-plane plane-c" />
       <ViewTransition
+        key={`orbit-${active}`}
         name="pc-route-orbit"
         default="none"
         update={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
@@ -30,6 +31,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       </ViewTransition>
       <div className="pc-space-orbit orbit-b" />
       <ViewTransition
+        key={`carrier-${active}`}
         name="pc-route-carrier"
         default="none"
         update={{ default: "pc-route-carrier-share", "pc-forward": "pc-route-carrier-forward", "pc-back": "pc-route-carrier-back" }}
@@ -43,6 +45,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <span className="pc-space-node node-b" />
       <span className="pc-space-node node-c" />
       <ViewTransition
+        key={`index-${active}`}
         name="pc-route-index"
         default="none"
         update={{ default: "pc-route-index-share", "pc-forward": "pc-route-index-forward", "pc-back": "pc-route-index-back" }}

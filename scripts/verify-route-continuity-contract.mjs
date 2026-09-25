@@ -20,6 +20,9 @@ if (nextConfig.includes("viewTransition:")) {
 
 requireText("components/spatial-atmosphere.tsx", [
   'import { ViewTransition } from "react";',
+  'key={`carrier-${active}`}',
+  'key={`orbit-${active}`}',
+  'key={`index-${active}`}',
   'name="pc-route-carrier"',
   'name="pc-route-orbit"',
   'name="pc-route-index"',
