@@ -40,10 +40,16 @@ requireText("components/spatial-atmosphere.tsx", [
 ]);
 
 requireText("components/app-shell.tsx", [
+  'import { ViewTransition } from "react";',
   "const routeOrder = new Map",
   "function routeTransitionTypes",
-  '"pc-forward"',
-  '"pc-back"',
+  'const routeContentTransition = {',
+  '"pc-forward": "pc-route-content-forward"',
+  '"pc-back": "pc-route-content-back"',
+  'key={`route-content-${active}`}',
+  "enter={routeContentTransition}",
+  "exit={routeContentTransition}",
+  'default="none"',
   "transitionTypes={routeTransitionTypes(active, id)}",
 ]);
 
@@ -74,6 +80,15 @@ requireText("app/styles/app-art-direction.css", [
   "@media(prefers-reduced-motion:reduce)",
   "--pc-route-vt-motion:0",
   "--pc-route-vt-carrier-duration:.001ms",
+  "/* V10.4 — replaced route-content boundary.",
+  "::view-transition-old(.pc-route-content-forward)",
+  "::view-transition-new(.pc-route-content-forward)",
+  "::view-transition-old(.pc-route-content-back)",
+  "::view-transition-new(.pc-route-content-back)",
+  "@keyframes pcRouteContentSlide",
+  "@keyframes pcRouteContentFade",
+  "::view-transition{",
+  "pointer-events:none",
 ]);
 
 requireText("scripts/verify-route-continuity-runtime.mjs", [
