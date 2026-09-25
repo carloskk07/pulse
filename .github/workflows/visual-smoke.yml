@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/visual-smoke.yml"
+      - "next.config.ts"
       - "app/globals.css"
       - "app/styles/**"
       - "app/**/*.tsx"
