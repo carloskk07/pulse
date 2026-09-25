@@ -15,6 +15,8 @@ export function ValueFlow({ journey }: { journey: ProductJourney }) {
           ? "Paid"
           : "Preparing";
   const style = { "--pc-value-progress": `${progress}%` } as CSSProperties;
+  const earnTransitionTypes = stage === "earn" ? undefined : ["pc-back"];
+  const walletTransitionTypes = stage === "earn" ? ["pc-forward"] : undefined;
 
   return (
     <nav
@@ -22,7 +24,7 @@ export function ValueFlow({ journey }: { journey: ProductJourney }) {
       aria-label="Reward value path"
       style={style}
     >
-      <Link className={stage === "earn" ? "active" : ""} href="/earn" aria-current={stage === "earn" ? "step" : undefined}>
+      <Link className={stage === "earn" ? "active" : ""} href="/earn" aria-current={stage === "earn" ? "step" : undefined} transitionTypes={earnTransitionTypes}>
         <span className="pc-value-flow-index">01</span>
         <span className="pc-value-flow-copy">
           <small>Earn</small>
@@ -32,7 +34,7 @@ export function ValueFlow({ journey }: { journey: ProductJourney }) {
 
       <span className="pc-value-flow-line" aria-hidden="true"><i /></span>
 
-      <Link className={stage === "balance" ? "active" : ""} href="/wallet" aria-current={stage === "balance" ? "step" : undefined}>
+      <Link className={stage === "balance" ? "active" : ""} href="/wallet" aria-current={stage === "balance" ? "step" : undefined} transitionTypes={walletTransitionTypes}>
         <span className="pc-value-flow-index">02</span>
         <span className="pc-value-flow-copy">
           <small>Balance</small>
@@ -42,7 +44,7 @@ export function ValueFlow({ journey }: { journey: ProductJourney }) {
 
       <span className="pc-value-flow-line is-payout" aria-hidden="true"><i /></span>
 
-      <Link className={stage === "payout" ? "active" : ""} href="/wallet" aria-current={stage === "payout" ? "step" : undefined}>
+      <Link className={stage === "payout" ? "active" : ""} href="/wallet" aria-current={stage === "payout" ? "step" : undefined} transitionTypes={walletTransitionTypes}>
         <span className="pc-value-flow-index">03</span>
         <span className="pc-value-flow-copy">
           <small>Payout</small>
