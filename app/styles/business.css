@@ -58,3 +58,33 @@
     justify-content:center;
   }
 }
+
+
+/* V11.3 — Business compact hierarchy.
+   Collapse the desktop split heading before the explanatory copy becomes a
+   narrow side column on phones/tablets. */
+@media(max-width:980px){
+  .business-value-section .split-heading{
+    grid-template-columns:minmax(0,1fr);
+    gap:18px;
+    align-items:start;
+  }
+  .business-value-section .split-heading>div,
+  .business-value-section .split-heading>p{
+    width:100%;
+    min-width:0;
+  }
+  .business-value-section .split-heading>p{
+    max-width:36rem;
+    margin:0;
+    font-size:15px;
+    line-height:1.65;
+  }
+}
+@media(max-width:640px){
+  .business-value-section .split-heading{gap:14px}
+  .business-value-section .split-heading>p{
+    max-width:32rem;
+    font-size:14px;
+  }
+}
