@@ -340,8 +340,19 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   'data-dense-scene="wallet"',
   'data-dense-scene="progress"',
   'data-dense-scene="invite"',
+  'residue: "balance-funded"',
+  'residue: "rank-circuit"',
+  'residue: "network-active"',
   '<SceneTelemetry',
   '<ValueFlow',
+]);
+
+requireText("scripts/verify-dense-state-runtime.mjs", [
+  '"balance-funded"',
+  '"rank-circuit"',
+  '"network-active"',
+  "productResidue",
+  "expectedResidue",
 ]);
 
 requireText(".github/workflows/visual-smoke.yml", [
