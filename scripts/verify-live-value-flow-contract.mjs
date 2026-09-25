@@ -42,7 +42,11 @@ requireText("lib/product-experience.ts", [
   "export function getProgressExperience",
   "export function getNetworkExperience",
   "deriveWalletCore({",
-  "event: core.event",
+  "payoutReadyEvent = false",
+  "const event: CoreProductEvent = paid",
+  'payoutReadyEvent ? "payout-ready"',
+  "referralConfirmed = false",
+  'active: referralConfirmed ? 1 : 0',
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -116,6 +120,9 @@ requireText("app/wallet/page.tsx", [
   'row.state === "withdrawn"',
   "isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)",
   "paid: paidConfirmed",
+  "payoutReadyEvent,",
+  "requiredWithdrawalCredits",
+  "recentPositiveCredit",
   '"Payment status refreshed. The authoritative payout state is shown below."',
   'const payoutFlowState = experience.journey?.payoutState ?? "paused";',
 ]);
