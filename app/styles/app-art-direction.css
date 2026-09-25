@@ -2389,3 +2389,9 @@
     translate:0 0!important;
   }
 }
+
+
+/* V10.8 page-root navigation anchor */
+::view-transition-group(.pc-route-nav-anchor){animation:none!important;z-index:120}
+::view-transition-old(.pc-route-nav-anchor){display:none}
+::view-transition-new(.pc-route-nav-anchor){animation:none!important}
