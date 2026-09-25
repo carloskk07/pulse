@@ -59,6 +59,8 @@ requireText("components/app-shell.tsx", [
   'data-product-phase={experience?.phase}',
   'data-product-event={experience?.event}',
   'data-product-residue={experience?.residue}',
+  'data-product-residue-strength={residueStrength}',
+  '"--pc-residue-strength"',
 ]);
 
 
@@ -82,10 +84,15 @@ requireText("components/system-event-field.tsx", [
 requireText("lib/product-experience.ts", [
   "export type ProductResidue = CoreProductResidue",
   "residue: ProductResidue;",
+  "residueStrength: number;",
   "residue: deriveEarningResidue",
   "residue: deriveWalletResidue",
   "residue: deriveProgressResidue",
   "residue: deriveNetworkResidue",
+  "residueStrength: deriveEarningResidueStrength",
+  "residueStrength: deriveWalletResidueStrength",
+  "residueStrength: deriveProgressResidueStrength",
+  "residueStrength: deriveNetworkResidueStrength",
   "payoutReadyEvent = false",
   "payoutReadyEvent?: boolean",
   "referralConfirmed = false",
@@ -192,6 +199,9 @@ requireText("app/styles/app-art-direction.css", [
   "@keyframes pcSystemEventCard",
   "@keyframes pcSystemEventWave",
   "/* V11.5 — Authoritative State Residue.",
+  "/* V11.6 — Proportional Residue Energy.",
+  "--pc-residue-line-max:",
+  "--pc-residue-glow:",
   '.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-route-carrier',
   '.app-frame[data-product-residue="balance-funded"] :is(',
   '.app-frame[data-product-residue="payout-ready"] .pc-v3-vault-balance',
