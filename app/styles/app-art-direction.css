@@ -2013,3 +2013,126 @@
   .pc-value-flow-label-wide{display:none}
   .pc-value-flow-label-compact{display:block}
 }
+
+
+/* V9 — Reactive Spatial Continuity.
+   Pointer/touch input only moves decorative depth. Product values and authority
+   remain server-rendered and untouched. */
+@keyframes pcRouteFieldArrive{
+  from{filter:brightness(.82);translate:0 7px}
+  to{filter:brightness(1);translate:0 0}
+}
+.app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .pc-spatial-atmosphere{
+  animation:pcRouteFieldArrive .52s cubic-bezier(.2,.8,.2,1) both;
+}
+.app-frame[data-product-interaction="reactive"] .pc-space-grid,
+.app-frame[data-product-interaction="reactive"] .pc-space-haze,
+.app-frame[data-product-interaction="reactive"] .pc-space-plane,
+.app-frame[data-product-interaction="reactive"] .pc-space-orbit,
+.app-frame[data-product-interaction="reactive"] .pc-space-beam,
+.app-frame[data-product-interaction="reactive"] .pc-space-node,
+.app-frame[data-product-interaction="reactive"] .pc-space-datum{
+  will-change:translate;
+  transition:translate .22s cubic-bezier(.2,.8,.2,1);
+}
+.app-frame[data-product-interaction="reactive"] :is(
+  .pc-space-plane.plane-a,
+  .pc-space-orbit.orbit-a,
+  .pc-space-haze.haze-a,
+  .pc-space-beam.beam-a,
+  .pc-space-node.node-a,
+  .pc-space-datum.datum-a
+){
+  translate:var(--pc-field-x-near,0px) var(--pc-field-y-near,0px);
+}
+.app-frame[data-product-interaction="reactive"] :is(
+  .pc-space-grid,
+  .pc-space-plane.plane-c,
+  .pc-space-node.node-c,
+  .pc-space-datum.datum-c
+){
+  translate:var(--pc-field-x-far,0px) var(--pc-field-y-far,0px);
+}
+.app-frame[data-product-interaction="reactive"] :is(
+  .pc-space-plane.plane-b,
+  .pc-space-orbit.orbit-b,
+  .pc-space-haze.haze-b,
+  .pc-space-beam.beam-b,
+  .pc-space-node.node-b,
+  .pc-space-datum.datum-b
+){
+  translate:var(--pc-field-x-counter,0px) var(--pc-field-y-counter,0px);
+}
+
+.app-frame[data-product-interaction="reactive"] :is(
+  .pc-dashboard-reward-art,
+  .pulse-core-orbit,
+  .pc-turbo-orb,
+  .pc-v3-vault-visual,
+  .pc-v3-progress-orbit,
+  .pc-invite-visual-stage,
+  .pc-value-flow>a.active .pc-value-flow-index
+){
+  will-change:translate,scale;
+  transition:
+    translate .16s cubic-bezier(.2,.8,.2,1),
+    scale .16s cubic-bezier(.2,.8,.2,1);
+}
+.pc-v9-chamber.pc-interaction-active .pc-dashboard-reward-art,
+.pc-luxe-best-turbo.pc-interaction-active .pc-turbo-orb,
+.pc-v3-vault-balance.pc-interaction-active .pc-v3-vault-visual,
+.pc-v3-prestige-card.pc-interaction-active .pc-v3-progress-orbit,
+.pc-luxe-invite-hero.pc-interaction-active .pc-invite-visual-stage{
+  translate:var(--pc-surface-x,0px) var(--pc-surface-y,0px);
+}
+.pc-v9-chamber.pc-interaction-active .pulse-core-orbit,
+.pc-value-flow.pc-interaction-active>a.active .pc-value-flow-index{
+  translate:var(--pc-surface-counter-x,0px) var(--pc-surface-counter-y,0px);
+}
+.pc-interaction-pressed :is(
+  .pc-dashboard-reward-art,
+  .pulse-core-orbit,
+  .pc-turbo-orb,
+  .pc-v3-vault-visual,
+  .pc-v3-progress-orbit,
+  .pc-invite-visual-stage
+){
+  scale:.985;
+}
+.pc-value-flow.pc-interaction-pressed>a.active .pc-value-flow-index{scale:.94}
+
+/* Keyboard users receive the same sense of an active product surface without
+   requiring pointer tracking. */
+.app-frame :is(
+  .pc-v9-chamber,
+  .pc-luxe-best-turbo,
+  .pc-v3-vault-balance,
+  .pc-v3-prestige-card,
+  .pc-luxe-invite-hero,
+  .pc-value-flow
+):focus-within{
+  outline:1px solid var(--app-accent-line);
+  outline-offset:3px;
+}
+
+@media(max-width:820px){
+  /* Touch keeps press feedback, but background parallax stays still to avoid
+     fighting scroll gestures. */
+  .app-frame[data-product-interaction="touch"] .pc-spatial-atmosphere :is(
+    .pc-space-grid,.pc-space-haze,.pc-space-plane,.pc-space-orbit,.pc-space-beam,.pc-space-node,.pc-space-datum
+  ){
+    translate:0 0;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .app-frame .pc-spatial-atmosphere{animation:none!important}
+  .app-frame :is(
+    .pc-space-grid,.pc-space-haze,.pc-space-plane,.pc-space-orbit,.pc-space-beam,.pc-space-node,.pc-space-datum,
+    .pc-dashboard-reward-art,.pulse-core-orbit,.pc-turbo-orb,.pc-v3-vault-visual,.pc-v3-progress-orbit,.pc-invite-visual-stage,
+    .pc-value-flow>a.active .pc-value-flow-index
+  ){
+    translate:0 0!important;
+    scale:1!important;
+    transition:none!important;
+  }
+}

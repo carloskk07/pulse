@@ -5,6 +5,7 @@ import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 import { SpatialAtmosphere } from "./spatial-atmosphere";
+import { ProductInteractionLayer } from "./product-interaction-layer";
 import { Bolt, Home, Shield, Spark, Trend, Users, Wallet } from "./icons";
 
 const links = [
@@ -54,6 +55,7 @@ export async function AppShell({
   return (
     <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase} data-product-event={experience?.event}>
       <SpatialAtmosphere active={active} />
+      <ProductInteractionLayer />
       <header className="app-topbar">
         <div className="app-topbar-inner">
           <PulsercuitBrand />

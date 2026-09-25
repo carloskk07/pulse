@@ -49,10 +49,29 @@ requireText("components/spatial-atmosphere.tsx", [
 
 requireText("components/app-shell.tsx", [
   'import { SpatialAtmosphere } from "./spatial-atmosphere";',
+  'import { ProductInteractionLayer } from "./product-interaction-layer";',
   "<SpatialAtmosphere active={active} />",
+  "<ProductInteractionLayer />",
   'data-product-surface={experience?.surface}',
   'data-product-phase={experience?.phase}',
   'data-product-event={experience?.event}',
+]);
+
+requireText("components/product-interaction-layer.tsx", [
+  '"use client";',
+  'const REACTIVE_SELECTOR = [',
+  '".pc-v9-chamber"',
+  '".pc-luxe-best-turbo"',
+  '".pc-v3-vault-balance"',
+  '".pc-v3-prestige-card"',
+  '".pc-luxe-invite-hero"',
+  '".pc-value-flow"',
+  '"--pc-field-x-near"',
+  '"--pc-surface-x"',
+  'frame.dataset.productInteraction',
+  'frame.addEventListener("pointermove"',
+  'frame.addEventListener("pointerdown"',
+  'window.matchMedia("(prefers-reduced-motion: reduce)")',
 ]);
 
 requireText("app/styles/app-art-direction.css", [
@@ -64,6 +83,16 @@ requireText("app/styles/app-art-direction.css", [
   '.pc-spatial-atmosphere[data-scene="progress"]',
   '.pc-spatial-atmosphere[data-scene="invite"]',
   ".pc-value-flow{",
+  "/* V9 — Reactive Spatial Continuity.",
+  '@keyframes pcRouteFieldArrive',
+  '.app-frame[data-product-interaction="reactive"] .pc-space-grid',
+  '.pc-v9-chamber.pc-interaction-active .pc-dashboard-reward-art',
+  '.pc-luxe-best-turbo.pc-interaction-active .pc-turbo-orb',
+  '.pc-v3-vault-balance.pc-interaction-active .pc-v3-vault-visual',
+  '.pc-v3-prestige-card.pc-interaction-active .pc-v3-progress-orbit',
+  '.pc-luxe-invite-hero.pc-interaction-active .pc-invite-visual-stage',
+  '.pc-value-flow.pc-interaction-active>a.active .pc-value-flow-index',
+  '.pc-interaction-pressed :is(',
   '.app-frame[data-section="home"] .pc-v9-chamber',
   '.app-frame[data-section="earn"] .pc-luxe-best-turbo',
   '.app-frame[data-section="wallet"] .pc-v3-vault-balance',
