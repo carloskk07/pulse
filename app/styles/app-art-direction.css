@@ -2586,3 +2586,157 @@
   .pc-system-event-wave{display:none}
   .pc-system-event-card{opacity:1;transform:none;filter:none}
 }
+
+
+/* V11.5 — Authoritative State Residue.
+   A completed event leaves a static visual consequence only while the current
+   server-derived product state continues to justify it. No client history is
+   used to manufacture persistence. */
+.app-frame[data-product-residue]{
+  --pc-residue-color:var(--app-accent,#cfff67);
+  --pc-residue-soft:color-mix(in srgb,var(--pc-residue-color) 12%,transparent);
+}
+.app-frame[data-product-residue="reward-history"]{
+  --pc-residue-color:#b8c7c1;
+}
+.app-frame[data-product-residue="balance-funded"]{
+  --pc-residue-color:var(--pulse-v3-lime,#cfff67);
+}
+.app-frame[data-product-residue="payout-ready"]{
+  --pc-residue-color:var(--pulse-v3-cyan,#71ebff);
+}
+.app-frame[data-product-residue="payout-processing"]{
+  --pc-residue-color:#a9dff0;
+}
+.app-frame[data-product-residue="payout-paid"]{
+  --pc-residue-color:#dfff72;
+}
+.app-frame[data-product-residue="rank-spark"]{
+  --pc-residue-color:#b9c8c2;
+}
+.app-frame[data-product-residue="rank-flow"]{
+  --pc-residue-color:#8edfff;
+}
+.app-frame[data-product-residue="rank-rhythm"]{
+  --pc-residue-color:#9ff1ca;
+}
+.app-frame[data-product-residue="rank-circuit"]{
+  --pc-residue-color:#cbb8ff;
+}
+.app-frame[data-product-residue="rank-resonance"]{
+  --pc-residue-color:#efff91;
+}
+.app-frame[data-product-residue="network-waiting"]{
+  --pc-residue-color:#d9c58b;
+}
+.app-frame[data-product-residue="network-active"]{
+  --pc-residue-color:#9ff7df;
+}
+
+/* The shared field retains a faint physical memory of the authoritative state. */
+.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-route-carrier{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 36%,transparent);
+  box-shadow:
+    0 0 0 14px rgba(255,255,255,.008),
+    0 0 54px color-mix(in srgb,var(--pc-residue-color) 16%,transparent),
+    inset 0 0 28px color-mix(in srgb,var(--pc-residue-color) 7%,transparent);
+}
+.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-route-carrier>b{
+  background:var(--pc-residue-color);
+  box-shadow:0 0 24px color-mix(in srgb,var(--pc-residue-color) 62%,transparent);
+}
+.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-space-datum.datum-a{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 24%,transparent);
+  box-shadow:0 0 18px color-mix(in srgb,var(--pc-residue-color) 12%,transparent);
+}
+
+/* Reward history does not replay the event; it leaves the earned surface settled. */
+.app-frame[data-section="home"][data-product-residue="reward-history"] .pc-v9-chamber{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 13%,rgba(255,255,255,.06));
+}
+.app-frame[data-section="home"][data-product-residue="reward-history"] .pulse-core-panel{
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pc-residue-color) 8%,transparent);
+}
+
+/* A real balance becomes a persistent visual mass in every Vault representation. */
+.app-frame[data-product-residue="balance-funded"] :is(
+  .pc-v9-progress-card.vault-card,
+  .pc-v3-vault-balance
+){
+  border-color:color-mix(in srgb,var(--pc-residue-color) 18%,rgba(255,255,255,.05));
+  box-shadow:
+    0 54px 130px rgba(0,0,0,.38),
+    0 0 54px color-mix(in srgb,var(--pc-residue-color) 6%,transparent),
+    inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.app-frame[data-product-residue="balance-funded"] :is(
+  .pc-dashboard-vault-art,
+  .pc-v3-vault-visual
+){
+  filter:drop-shadow(0 0 24px color-mix(in srgb,var(--pc-residue-color) 10%,transparent));
+}
+
+/* Payout states remain physically distinct after the transient event field clears. */
+.app-frame[data-product-residue="payout-ready"] .pc-v3-vault-balance{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 32%,rgba(255,255,255,.06));
+  box-shadow:
+    0 58px 145px rgba(0,0,0,.4),
+    0 0 72px color-mix(in srgb,var(--pc-residue-color) 11%,transparent),
+    inset 0 0 0 1px color-mix(in srgb,var(--pc-residue-color) 10%,transparent)!important;
+}
+.app-frame[data-product-residue="payout-ready"] .pc-v3-vault-visual{
+  filter:drop-shadow(0 0 30px color-mix(in srgb,var(--pc-residue-color) 16%,transparent));
+}
+.app-frame[data-product-residue="payout-processing"] .pc-value-flow-line.is-payout:after{
+  opacity:.78;
+  transform:scaleX(.56);
+  background:linear-gradient(90deg,transparent,var(--pc-residue-color),transparent);
+}
+.app-frame[data-product-residue="payout-processing"] .pc-v3-vault-balance{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 24%,rgba(255,255,255,.05));
+}
+.app-frame[data-product-residue="payout-paid"] .pc-v3-vault-balance{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 28%,rgba(255,255,255,.06));
+  box-shadow:
+    0 58px 140px rgba(0,0,0,.38),
+    0 0 58px color-mix(in srgb,var(--pc-residue-color) 9%,transparent),
+    inset 0 0 0 1px color-mix(in srgb,var(--pc-residue-color) 9%,transparent)!important;
+}
+.app-frame[data-product-residue="payout-paid"] .state-list span:last-child{
+  color:var(--pc-residue-color);
+  border-color:color-mix(in srgb,var(--pc-residue-color) 22%,transparent);
+}
+
+/* Rank is incorporated into the Progress field itself, not replayed as a celebration. */
+.app-frame[data-product-residue^="rank-"] .pc-v3-prestige-card{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 22%,rgba(255,255,255,.06));
+  box-shadow:
+    0 70px 160px rgba(0,0,0,.44),
+    0 0 70px color-mix(in srgb,var(--pc-residue-color) 8%,transparent),
+    inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.app-frame[data-product-residue^="rank-"] .pc-luxe-prestige-halo{
+  opacity:.72;
+  filter:drop-shadow(0 0 32px color-mix(in srgb,var(--pc-residue-color) 22%,transparent));
+}
+.app-frame[data-product-residue^="rank-"] .pc-luxe-rank-name{
+  text-shadow:0 0 32px color-mix(in srgb,var(--pc-residue-color) 18%,transparent);
+}
+.app-frame[data-product-residue="rank-resonance"] .pc-v3-prestige-card{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 34%,rgba(255,255,255,.07));
+}
+
+/* Verified network depth changes the topology's resting state. */
+.app-frame[data-product-residue="network-waiting"] .pc-luxe-invite-hero{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 15%,rgba(255,255,255,.05));
+}
+.app-frame[data-product-residue="network-active"] .pc-luxe-invite-hero{
+  border-color:color-mix(in srgb,var(--pc-residue-color) 24%,rgba(255,255,255,.06));
+  box-shadow:
+    0 68px 150px rgba(0,0,0,.4),
+    0 0 62px color-mix(in srgb,var(--pc-residue-color) 8%,transparent),
+    inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.app-frame[data-product-residue="network-active"] .pc-invite-visual-stage{
+  filter:drop-shadow(0 0 30px color-mix(in srgb,var(--pc-residue-color) 14%,transparent));
+}
