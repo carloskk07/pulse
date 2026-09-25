@@ -226,6 +226,14 @@ jobs:
             capture_one "visual-smoke/local-preview/dense-state/mobile/$scene.png" 390,844 "http://127.0.0.1:3100/visual-smoke-fixture/core-state?scene=$scene" "local-preview/dense-state/mobile/$scene"
           done
 
+          # The event-field fixture reuses the protected dense route and proves
+          # the real client-mounted overlay on both desktop and mobile.
+          mkdir -p visual-smoke/local-preview/system-event/desktop visual-smoke/local-preview/system-event/mobile
+          event_url="http://127.0.0.1:3100/visual-smoke-fixture/core-state?scene=reward&event=reward-settled"
+          curl --fail --silent --show-error "$event_url" > /dev/null
+          capture_one "visual-smoke/local-preview/system-event/desktop/reward-settled.png" 1440,900 "$event_url" "local-preview/system-event/desktop/reward-settled"
+          capture_one "visual-smoke/local-preview/system-event/mobile/reward-settled.png" 390,844 "$event_url" "local-preview/system-event/mobile/reward-settled"
+
       - name: Verify responsive runtime geometry
         shell: bash
         env:
@@ -578,9 +586,10 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
-          # 40 canonical local-preview PNGs + 6 claim-reveal PNGs + 10 dense-state PNGs + 36 production PNGs.
+          # 40 canonical local-preview PNGs + 6 claim-reveal PNGs + 10 dense-state PNGs
+          # + 2 authoritative system-event PNGs + 36 production PNGs.
           # Dense fixtures cover Rewards / Earn / Balance / Progress / Referrals on desktop and mobile.
-          test "$count" -eq 92
+          test "$count" -eq 94
 
       - name: Capture full-page public evidence
         shell: bash
@@ -594,9 +603,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots after targeted full-page evidence."
-          # Existing 92 viewport/fixture screenshots + 12 full-page public screenshots:
+          # Existing 94 viewport/fixture screenshots + 12 full-page public screenshots:
           # Home, Faucet, Proof, Auth, Business and Ads × desktop/mobile.
-          test "$count" -eq 104
+          test "$count" -eq 106
 
       - name: Stop local preview
         if: always()
