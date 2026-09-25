@@ -30,6 +30,11 @@ requireText("lib/product-experience-core.ts", [
   "export function isRecentAuthoritativeEvent",
   "export function deriveEarningPhase",
   "export function deriveEarningEvent",
+  "export type CoreProductResidue =",
+  "export function deriveEarningResidue",
+  "export function deriveWalletResidue",
+  "export function deriveProgressResidue",
+  "export function deriveNetworkResidue",
   "export function deriveWalletCore",
   "export function deriveNetworkEvent",
 ]);
@@ -37,6 +42,8 @@ requireText("lib/product-experience-core.ts", [
 requireText("lib/product-experience.ts", [
   'export type ProductSurface = "reward" | "earn" | "balance" | "payout" | "progress" | "network"',
   "export type ProductEvent = CoreProductEvent",
+  "export type ProductResidue = CoreProductResidue",
+  "residue: ProductResidue;",
   "export function getEarningExperience",
   "export function getWalletExperience",
   "export function getProgressExperience",
@@ -48,6 +55,10 @@ requireText("lib/product-experience.ts", [
   '? "payout-ready"',
   "referralConfirmed = false",
   'active: referralConfirmed ? 1 : 0',
+  "residue: deriveEarningResidue",
+  "residue: deriveWalletResidue",
+  "residue: deriveProgressResidue",
+  "residue: deriveNetworkResidue",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -108,6 +119,7 @@ requireText("components/app-shell.tsx", [
   "data-product-surface={experience?.surface}",
   "data-product-phase={experience?.phase}",
   "data-product-event={experience?.event}",
+  "data-product-residue={experience?.residue}",
 ]);
 
 requireText("app/dashboard/page.tsx", [
