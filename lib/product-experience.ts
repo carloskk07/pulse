@@ -4,11 +4,15 @@ import {
   deriveEarningEvent,
   deriveEarningPhase,
   deriveEarningResidue,
+  deriveEarningResidueStrength,
   deriveNetworkEvent,
   deriveNetworkResidue,
+  deriveNetworkResidueStrength,
   deriveProgressResidue,
+  deriveProgressResidueStrength,
   deriveWalletCore,
   deriveWalletResidue,
+  deriveWalletResidueStrength,
   payoutProgressPercent,
   type CorePayoutFlowState,
   type CoreProductEvent,
@@ -37,6 +41,7 @@ export type ProductExperience = {
   phase: ProductPhase;
   event: ProductEvent;
   residue: ProductResidue;
+  residueStrength: number;
   journey?: ProductJourney;
 };
 
@@ -96,6 +101,11 @@ export function getEarningExperience({
       availableCredits: snapshot.availableCredits,
       claimCount: snapshot.hourlyClaimCount,
     }),
+    residueStrength: deriveEarningResidueStrength({
+      preview: snapshot.preview,
+      availableCredits: snapshot.availableCredits,
+      payoutCredits,
+    }),
     journey: buildJourney(snapshot, payoutCredits, "earn", payoutState, payoutLabel),
   };
 }
@@ -150,6 +160,12 @@ export function getWalletExperience({
       payoutState: core.payoutState,
       availableCredits: snapshot.availableCredits,
     }),
+    residueStrength: deriveWalletResidueStrength({
+      preview: snapshot.preview,
+      payoutState: core.payoutState,
+      availableCredits: snapshot.availableCredits,
+      payoutCredits,
+    }),
     journey: buildJourney(snapshot, payoutCredits, core.stage, core.payoutState, payoutLabel),
   };
 }
@@ -170,6 +186,11 @@ export function getProgressExperience(snapshot: RewardSnapshot): ProductExperien
       signedIn: snapshot.signedIn,
       stage: signal.stage,
     }),
+    residueStrength: deriveProgressResidueStrength({
+      preview: snapshot.preview,
+      signedIn: snapshot.signedIn,
+      signal: signal.signal,
+    }),
   };
 }
 
@@ -189,6 +210,7 @@ export function getNetworkExperience({
     phase: !signedIn ? "idle" : active > 0 || waiting > 0 ? "live" : "idle",
     event: deriveNetworkEvent({ signedIn, active: referralConfirmed ? 1 : 0 }),
     residue: deriveNetworkResidue({ signedIn, active, waiting }),
+    residueStrength: deriveNetworkResidueStrength({ signedIn, active, waiting }),
   };
 }
 
