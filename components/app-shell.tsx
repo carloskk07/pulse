@@ -26,12 +26,6 @@ function routeTransitionTypes(active: string, target: string) {
   return [targetIndex > currentIndex ? "pc-forward" : "pc-back"];
 }
 
-const routeContentTransition = {
-  default: "none",
-  "pc-forward": "pc-route-content-forward",
-  "pc-back": "pc-route-content-back",
-} as const;
-
 const adminLinks = [
   { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
   { id: "faucetpay-admin", href: "/admin/faucetpay", label: "Payments", Icon: Wallet },
@@ -72,7 +66,8 @@ export async function AppShell({
     <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase} data-product-event={experience?.event}>
       <SpatialAtmosphere active={active} />
       <ProductInteractionLayer />
-      <header className="app-topbar">
+      <ViewTransition name="pc-route-topbar" share="pc-route-nav-anchor" default="none">
+        <header className="app-topbar">
         <div className="app-topbar-inner">
           <PulsercuitBrand />
           <nav className="app-nav app-topbar-nav" aria-label="Application">
@@ -106,16 +101,11 @@ export async function AppShell({
             </div>
           </details>
         </div>
-      </header>
-      <ViewTransition
-        key={`route-content-${active}`}
-        enter={routeContentTransition}
-        exit={routeContentTransition}
-        default="none"
-      >
-        <main className="app-content">{children}</main>
+        </header>
       </ViewTransition>
-      <nav className="bottom-nav" aria-label="Mobile application navigation">
+      <main className="app-content">{children}</main>
+      <ViewTransition name="pc-route-bottom-nav" share="pc-route-nav-anchor" default="none">
+        <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
           <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
         ))}
@@ -139,7 +129,8 @@ export async function AppShell({
             {user ? <form action={signOut}><button type="submit">Sign out</button></form> : <Link href="/auth?next=/dashboard">Log in</Link>}
           </div>
         </details>
-      </nav>
+        </nav>
+      </ViewTransition>
     </div>
   );
 }
