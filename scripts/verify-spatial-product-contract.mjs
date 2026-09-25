@@ -86,8 +86,6 @@ requireText("lib/product-experience.ts", [
 
 requireText("app/dashboard/claimed/page.tsx", [
   'kind: "reward-settled" as const',
-  "availableBeforeClaim",
-  "payoutBecameReady",
   "previousSignal",
   "rankAdvanced",
   "eventCue={eventCue}",
@@ -95,6 +93,9 @@ requireText("app/dashboard/claimed/page.tsx", [
 
 requireText("app/wallet/page.tsx", [
   "recentPositiveCredit",
+  "requiredWithdrawalCredits",
+  "&& canWithdraw",
+  "payoutReadyTargetLabel",
   "payoutReadyEvent",
   'kind: "payout-complete" as const',
   'kind: "payout-ready" as const',
