@@ -5,6 +5,7 @@ import {
   deriveEarningPhase,
   deriveEarningResidue,
   deriveEarningResidueStrength,
+  deriveResidueDimension,
   deriveNetworkEvent,
   deriveNetworkResidue,
   deriveNetworkResidueStrength,
@@ -18,6 +19,7 @@ import {
   type CoreProductEvent,
   type CoreProductPhase,
   type CoreProductResidue,
+  type CoreResidueDimension,
   type CoreValueFlowStage,
 } from "@/lib/product-experience-core";
 
@@ -25,6 +27,7 @@ export type ProductSurface = "reward" | "earn" | "balance" | "payout" | "progres
 export type ProductPhase = CoreProductPhase;
 export type ProductEvent = CoreProductEvent;
 export type ProductResidue = CoreProductResidue;
+export type ProductResidueDimension = CoreResidueDimension;
 export type ValueFlowStage = CoreValueFlowStage;
 export type PayoutFlowState = CorePayoutFlowState;
 
@@ -42,6 +45,7 @@ export type ProductExperience = {
   event: ProductEvent;
   residue: ProductResidue;
   residueStrength: number;
+  residueDimension: ProductResidueDimension;
   journey?: ProductJourney;
 };
 
@@ -101,6 +105,11 @@ export function getEarningExperience({
       availableCredits: snapshot.availableCredits,
       claimCount: snapshot.hourlyClaimCount,
     }),
+    residueDimension: deriveResidueDimension(deriveEarningResidue({
+      preview: snapshot.preview,
+      availableCredits: snapshot.availableCredits,
+      claimCount: snapshot.hourlyClaimCount,
+    })),
     residueStrength: deriveEarningResidueStrength({
       preview: snapshot.preview,
       availableCredits: snapshot.availableCredits,
@@ -160,6 +169,11 @@ export function getWalletExperience({
       payoutState: core.payoutState,
       availableCredits: snapshot.availableCredits,
     }),
+    residueDimension: deriveResidueDimension(deriveWalletResidue({
+      preview: snapshot.preview,
+      payoutState: core.payoutState,
+      availableCredits: snapshot.availableCredits,
+    })),
     residueStrength: deriveWalletResidueStrength({
       preview: snapshot.preview,
       payoutState: core.payoutState,
@@ -186,6 +200,11 @@ export function getProgressExperience(snapshot: RewardSnapshot): ProductExperien
       signedIn: snapshot.signedIn,
       stage: signal.stage,
     }),
+    residueDimension: deriveResidueDimension(deriveProgressResidue({
+      preview: snapshot.preview,
+      signedIn: snapshot.signedIn,
+      stage: signal.stage,
+    })),
     residueStrength: deriveProgressResidueStrength({
       preview: snapshot.preview,
       signedIn: snapshot.signedIn,
@@ -210,6 +229,7 @@ export function getNetworkExperience({
     phase: !signedIn ? "idle" : active > 0 || waiting > 0 ? "live" : "idle",
     event: deriveNetworkEvent({ signedIn, active: referralConfirmed ? 1 : 0 }),
     residue: deriveNetworkResidue({ signedIn, active, waiting }),
+    residueDimension: deriveResidueDimension(deriveNetworkResidue({ signedIn, active, waiting })),
     residueStrength: deriveNetworkResidueStrength({ signedIn, active, waiting }),
   };
 }
