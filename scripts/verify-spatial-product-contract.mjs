@@ -86,8 +86,10 @@ requireText("lib/product-experience.ts", [
 
 requireText("app/dashboard/claimed/page.tsx", [
   'kind: "reward-settled" as const',
+  'kind: "rank-up" as const',
   "previousSignal",
   "rankAdvanced",
+  '"Progress advanced"',
   "eventCue={eventCue}",
 ]);
 
