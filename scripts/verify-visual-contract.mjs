@@ -182,8 +182,8 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"/__visual-smoke-not-found__"',
   '"scripts/capture-public-full-page.mjs"',
   "Capture full-page public evidence",
-  'test "$count" -eq 82',
-  'test "$count" -eq 90',
+  'test "$count" -eq 92',
+  'test "$count" -eq 100',
   "local-preview/claim-reveal/desktop",
   "production-fixture-isolation",
 ]);
