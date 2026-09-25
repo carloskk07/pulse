@@ -88,32 +88,36 @@ async function waitForPath(send, path) {
   throw new Error(`Route ${path} did not settle.`);
 }
 
-async function installTransitionProbe(send) {
-  const result = await send("Runtime.evaluate", {
-    expression: `(() => {
-      if (window.__pcRouteTransitionProbeInstalled) return true;
-      if (typeof Document.prototype.startViewTransition !== "function") return false;
-      const original = Document.prototype.startViewTransition;
-      window.__pcRouteTransitionCalls = 0;
-      window.__pcRouteTransitionReturned = false;
-      window.__pcRouteTransitionTypes = [];
-      Document.prototype.startViewTransition = function(...args) {
-        window.__pcRouteTransitionCalls += 1;
-        const options = args[0];
-        window.__pcRouteTransitionTypes =
-          options && typeof options === "object" && Array.isArray(options.types)
-            ? [...options.types]
-            : [];
-        const transition = original.apply(this, args);
-        window.__pcRouteTransitionReturned = !!transition;
-        return transition;
-      };
-      window.__pcRouteTransitionProbeInstalled = true;
-      return true;
-    })()`,
-    returnByValue: true,
-  });
-  return result.result?.value === true;
+async function installTransitionProbeBeforeHydration(send) {
+  const source = [
+    "(() => {",
+    "  if (window.__pcRouteTransitionProbeInstalled) return;",
+    "  const original = Document.prototype.startViewTransition;",
+    "  if (typeof original !== 'function') { window.__pcRouteTransitionUnsupported = true; return; }",
+    "  window.__pcRouteTransitionCalls = 0;",
+    "  window.__pcRouteTransitionReturned = false;",
+    "  window.__pcRouteTransitionTypes = [];",
+    "  window.__pcRouteTransitionAnimations = [];",
+    "  Document.prototype.startViewTransition = function(...args) {",
+    "    window.__pcRouteTransitionCalls += 1;",
+    "    const options = args[0];",
+    "    window.__pcRouteTransitionTypes = options && typeof options === 'object' && Array.isArray(options.types) ? [...options.types] : [];",
+    "    const transition = original.apply(this, args);",
+    "    window.__pcRouteTransitionReturned = !!transition;",
+    "    Promise.resolve(transition?.ready).then(() => {",
+    "      window.__pcRouteTransitionAnimations = document.getAnimations().map((animation) => ({",
+    "        name: typeof animation.animationName === 'string' ? animation.animationName : '',",
+    "        pseudo: animation.effect && typeof animation.effect.pseudoElement === 'string' ? animation.effect.pseudoElement : '',",
+    "        playState: animation.playState,",
+    "      }));",
+    "    }).catch(() => {});",
+    "    return transition;",
+    "  };",
+    "  window.__pcRouteTransitionProbeInstalled = true;",
+    "})();",
+  ].join("\\n");
+
+  await send("Page.addScriptToEvaluateOnNewDocument", { source });
 }
 
 async function readState(send) {
@@ -126,6 +130,9 @@ async function readState(send) {
         calls: window.__pcRouteTransitionCalls ?? 0,
         returnedTransition: window.__pcRouteTransitionReturned ?? false,
         types: window.__pcRouteTransitionTypes ?? [],
+        animations: window.__pcRouteTransitionAnimations ?? [],
+        probeInstalled: window.__pcRouteTransitionProbeInstalled === true,
+        probeUnsupported: window.__pcRouteTransitionUnsupported === true,
         reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
         motion: rootStyle.getPropertyValue("--pc-route-vt-motion").trim(),
         carrier: !!document.querySelector(".pc-route-carrier"),
@@ -177,6 +184,7 @@ try {
 
   await send("Page.enable");
   await send("Runtime.enable");
+  await installTransitionProbeBeforeHydration(send);
   await send("Emulation.setDeviceMetricsOverride", {
     width: 1440,
     height: 900,
@@ -192,11 +200,10 @@ try {
   await send("Page.navigate", { url: `${baseUrl}/dashboard` });
   await waitForPath(send, "/dashboard");
 
-  if (!(await installTransitionProbe(send))) {
-    throw new Error("Browser does not expose document.startViewTransition.");
-  }
-
   const before = await readState(send);
+  if (before?.probeUnsupported || !before?.probeInstalled) {
+    throw new Error(`Pre-hydration route transition probe did not install: ${JSON.stringify(before)}`);
+  }
   if (!before?.supports || before.motion !== "1" || !before.carrier || !before.orbit || !before.index) {
     throw new Error(`Initial route continuity state is incomplete: ${JSON.stringify(before)}`);
   }
