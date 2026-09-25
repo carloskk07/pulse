@@ -181,11 +181,24 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"advertise|/advertise"',
   '"/__visual-smoke-not-found__"',
   '"scripts/capture-public-full-page.mjs"',
+  '"scripts/verify-product-interaction-runtime.mjs"',
+  "Verify reactive spatial interaction",
   "Capture full-page public evidence",
   'test "$count" -eq 92',
   'test "$count" -eq 100',
   "local-preview/claim-reveal/desktop",
   "production-fixture-isolation",
+]);
+
+requireText("scripts/verify-product-interaction-runtime.mjs", [
+  '"/visual-smoke-fixture/core-state?scene=reward"',
+  '"prefers-reduced-motion", value: "no-preference"',
+  '"prefers-reduced-motion", value: "reduce"',
+  'surface.dispatchEvent(new PointerEvent("pointerdown"',
+  '"pc-interaction-active"',
+  '"pc-interaction-pressed"',
+  '"--pc-surface-x"',
+  'Reactive spatial interaction contract PASS',
 ]);
 
 requireText("scripts/capture-public-full-page.mjs", [
