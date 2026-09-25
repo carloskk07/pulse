@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ViewTransition, type CSSProperties } from "react";
+import { ViewTransition } from "react";
+import type { CSSProperties } from "react";
 import { signOut } from "@/app/auth/actions";
 import type { ProductExperience } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
