@@ -25,3 +25,36 @@
 
 @media(max-width:980px){.business-hero{grid-template-columns:1fr;gap:50px;min-height:auto}.business-console{max-width:700px}.business-principles,.business-value-grid{grid-template-columns:1fr}.business-principles{gap:1px}.business-principles article{min-height:190px}.business-principles h3{margin-top:34px}.business-flow{grid-template-columns:1fr 1fr}.business-flow>i{display:none}.business-pilot-section{grid-template-columns:1fr;gap:42px}.business-pilot-copy{position:static}.business-form{max-width:760px}}
 @media(max-width:640px){.business-hero{padding-block:58px 78px}.business-hero-copy h1{font-size:52px}.business-console{padding:18px;border-radius:24px}.business-console-main{padding:42px 2px 26px}.business-console-main h2{font-size:27px}.business-console-head{align-items:flex-start}.business-principles article,.business-value-grid article{padding:25px}.business-flow{grid-template-columns:1fr}.business-flow>div{min-height:160px}.business-form{padding:20px;border-radius:24px}.business-form-grid{grid-template-columns:1fr}.business-pilot-section{padding-top:80px}.business-final-cta{margin-top:80px}}
+
+
+/* V11.2 — screenshot-driven Business mobile CTA repair.
+   The final proof CTA must use the full compact width instead of preserving
+   the desktop flex split that squeezed the headline word-by-word. */
+@media(max-width:640px){
+  .business-final-cta{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    align-items:start;
+    gap:24px;
+    padding:34px 26px;
+  }
+  .business-final-cta>div{
+    width:100%;
+    min-width:0;
+  }
+  .business-final-cta h2{
+    max-width:11ch;
+    font-size:clamp(38px,12vw,52px);
+    line-height:.94;
+    overflow-wrap:normal;
+    word-break:normal;
+  }
+  .business-final-cta p{
+    max-width:34rem;
+    font-size:14px;
+  }
+  .business-final-cta .button{
+    width:100%;
+    justify-content:center;
+  }
+}
