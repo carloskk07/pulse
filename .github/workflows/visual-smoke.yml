@@ -13,6 +13,7 @@ on:
       - "public/**"
       - "proxy.ts"
       - "scripts/verify-responsive-runtime.mjs"
+      - "scripts/verify-dense-state-runtime.mjs"
       - "scripts/capture-public-full-page.mjs"
       - "scripts/capture-viewport.mjs"
 
@@ -213,11 +214,26 @@ jobs:
             capture_one "visual-smoke/local-preview/claim-reveal/mobile/$tone.png" 390,844 "http://127.0.0.1:3100/visual-smoke-fixture/claim-reveal?tone=$tone" "local-preview/claim-reveal/mobile/$tone"
           done
 
+          # Dense signed-in fixtures exercise real first-fold components under
+          # representative high-density values without exposing debug state in production.
+          mkdir -p visual-smoke/local-preview/dense-state/desktop visual-smoke/local-preview/dense-state/mobile
+          for scene in reward earn wallet progress invite; do
+            curl --fail --silent --show-error "http://127.0.0.1:3100/visual-smoke-fixture/core-state?scene=$scene" > /dev/null
+            capture_one "visual-smoke/local-preview/dense-state/desktop/$scene.png" 1440,900 "http://127.0.0.1:3100/visual-smoke-fixture/core-state?scene=$scene" "local-preview/dense-state/desktop/$scene"
+            capture_one "visual-smoke/local-preview/dense-state/mobile/$scene.png" 390,844 "http://127.0.0.1:3100/visual-smoke-fixture/core-state?scene=$scene" "local-preview/dense-state/mobile/$scene"
+          done
+
       - name: Verify responsive runtime geometry
         shell: bash
         env:
           RESPONSIVE_BASE_URL: http://127.0.0.1:3100
         run: node scripts/verify-responsive-runtime.mjs
+
+      - name: Verify dense signed-in runtime geometry
+        shell: bash
+        env:
+          DENSE_STATE_BASE_URL: http://127.0.0.1:3100
+        run: node scripts/verify-dense-state-runtime.mjs
 
       - name: Resolve canonical production release authority
         shell: bash
@@ -415,13 +431,18 @@ jobs:
           NODE
           echo "production-not-found requested=$not_found_path effective=$effective HTTP=$status" >> visual-smoke/manifest.txt
 
-          fixture_path="/visual-smoke-fixture/claim-reveal?tone=top"
-          fixture_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://pulsercuit.pro$fixture_path")"
-          if [ "$fixture_status" != "404" ]; then
-            echo "Visual fixture must remain unavailable in production; received HTTP $fixture_status"
-            exit 1
-          fi
-          echo "production-fixture-isolation requested=$fixture_path HTTP=$fixture_status" >> visual-smoke/manifest.txt
+          fixture_paths=(
+            "/visual-smoke-fixture/claim-reveal?tone=top"
+            "/visual-smoke-fixture/core-state?scene=reward"
+          )
+          for fixture_path in "${fixture_paths[@]}"; do
+            fixture_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://pulsercuit.pro$fixture_path")"
+            if [ "$fixture_status" != "404" ]; then
+              echo "Visual fixture must remain unavailable in production; $fixture_path returned HTTP $fixture_status"
+              exit 1
+            fi
+            echo "production-fixture-isolation requested=$fixture_path HTTP=$fixture_status" >> visual-smoke/manifest.txt
+          done
 
       - name: Capture production direct views and auth redirects
         shell: bash
@@ -541,9 +562,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
-          # 40 canonical local-preview PNGs + 6 gated claim-reveal fixture PNGs + 36 production PNGs.
-          # The reveal fixtures cover standard / boosted / top rewards on desktop and mobile.
-          test "$count" -eq 82
+          # 40 canonical local-preview PNGs + 6 claim-reveal PNGs + 10 dense-state PNGs + 36 production PNGs.
+          # Dense fixtures cover Rewards / Earn / Balance / Progress / Referrals on desktop and mobile.
+          test "$count" -eq 92
 
       - name: Capture full-page public evidence
         shell: bash
@@ -557,9 +578,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots after targeted full-page evidence."
-          # Existing 82 viewport/fixture screenshots + 8 full-page public screenshots:
+          # Existing 92 viewport/fixture screenshots + 8 full-page public screenshots:
           # Home, Faucet, Proof and Auth × desktop/mobile.
-          test "$count" -eq 90
+          test "$count" -eq 100
 
       - name: Stop local preview
         if: always()
