@@ -2019,8 +2019,8 @@
    Pointer/touch input only moves decorative depth. Product values and authority
    remain server-rendered and untouched. */
 @keyframes pcRouteFieldArrive{
-  from{opacity:.58;translate:0 7px}
-  to{opacity:1;translate:0 0}
+  from{filter:brightness(.82);translate:0 7px}
+  to{filter:brightness(1);translate:0 0}
 }
 .app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .pc-spatial-atmosphere{
   animation:pcRouteFieldArrive .52s cubic-bezier(.2,.8,.2,1) both;
