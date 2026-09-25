@@ -11,11 +11,11 @@ if (!chrome) {
 }
 
 const scenes = [
-  ["reward", "/visual-smoke-fixture/core-state?scene=reward", "balance-funded", 83],
-  ["earn", "/visual-smoke-fixture/core-state?scene=earn", "balance-funded", 83],
-  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "payout-ready", 100],
-  ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-circuit", 94],
-  ["invite", "/visual-smoke-fixture/core-state?scene=invite", "network-active", 100],
+  ["reward", "/visual-smoke-fixture/core-state?scene=reward", "balance-funded", "value", 83],
+  ["earn", "/visual-smoke-fixture/core-state?scene=earn", "balance-funded", "value", 83],
+  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "payout-ready", "value", 100],
+  ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-circuit", "signal", 94],
+  ["invite", "/visual-smoke-fixture/core-state?scene=invite", "network-active", "network", 100],
 ];
 
 const viewports = [
@@ -104,6 +104,9 @@ const runtimeProbe = `(() => {
   const frame = document.querySelector(".app-frame");
   const appContent = document.querySelector(".app-content");
   const topbar = document.querySelector(".app-topbar");
+  const valueDepth = document.querySelector(".pc-space-haze.haze-a");
+  const signalOrbit = document.querySelector(".pc-space-orbit.orbit-a");
+  const networkOrbit = document.querySelector(".pc-space-orbit.orbit-b");
   const bottomNav = document.querySelector(".bottom-nav");
   const telemetry = document.querySelector(".pc-scene-telemetry");
   const scene = document.querySelector("[data-dense-scene]");
@@ -136,8 +139,13 @@ const runtimeProbe = `(() => {
   return {
     sceneName: scene?.getAttribute("data-dense-scene") ?? null,
     productResidue: frame?.getAttribute("data-product-residue") ?? null,
+    productResidueDimension: frame?.getAttribute("data-product-residue-dimension") ?? null,
     productResidueStrength: frame?.getAttribute("data-product-residue-strength") ?? null,
     productResidueStrengthCss: frame ? getComputedStyle(frame).getPropertyValue("--pc-residue-strength").trim() : null,
+    dimensionLineCss: frame ? getComputedStyle(frame).getPropertyValue("--pc-dimension-line").trim() : null,
+    valueDepthBoxShadow: valueDepth ? getComputedStyle(valueDepth).boxShadow : null,
+    signalOrbitBoxShadow: signalOrbit ? getComputedStyle(signalOrbit).boxShadow : null,
+    networkOrbitBoxShadow: networkOrbit ? getComputedStyle(networkOrbit).boxShadow : null,
     innerWidth,
     clientWidth: root.clientWidth,
     scrollWidth: Math.max(root.scrollWidth, body?.scrollWidth ?? 0),
@@ -198,7 +206,7 @@ try {
       screenHeight: height,
     });
 
-    for (const [sceneName, route, expectedResidue, expectedStrength] of scenes) {
+    for (const [sceneName, route, expectedResidue, expectedDimension, expectedStrength] of scenes) {
       await send("Page.navigate", { url: `${baseUrl}${route}` });
       await waitForDocument(send);
 
@@ -221,6 +229,21 @@ try {
       }
       if (state.productResidue !== expectedResidue) {
         failures.push(`${label}: expected residue ${expectedResidue}, rendered ${state.productResidue ?? "missing"}`);
+      }
+      if (state.productResidueDimension !== expectedDimension) {
+        failures.push(`${label}: expected residue dimension ${expectedDimension}, rendered ${state.productResidueDimension ?? "missing"}`);
+      }
+      if (!state.dimensionLineCss) {
+        failures.push(`${label}: dimensional field did not resolve --pc-dimension-line`);
+      }
+      if (expectedDimension === "value" && (!state.valueDepthBoxShadow || state.valueDepthBoxShadow === "none")) {
+        failures.push(`${label}: value dimension did not produce field depth`);
+      }
+      if (expectedDimension === "signal" && (!state.signalOrbitBoxShadow || state.signalOrbitBoxShadow === "none")) {
+        failures.push(`${label}: signal dimension did not produce orbital precision`);
+      }
+      if (expectedDimension === "network" && (!state.networkOrbitBoxShadow || state.networkOrbitBoxShadow === "none")) {
+        failures.push(`${label}: network dimension did not produce topology linkage`);
       }
       if (Number(state.productResidueStrength) !== expectedStrength) {
         failures.push(`${label}: expected residue strength ${expectedStrength}, rendered ${state.productResidueStrength ?? "missing"}`);
@@ -288,7 +311,7 @@ try {
       }
 
       console.log(
-        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
+        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
       );
     }
   }
