@@ -136,8 +136,13 @@ export function ProductInteractionLayer() {
       surface.classList.add("pc-interaction-pressed");
     };
 
-    const releasePress = () => {
+    const releasePress = (event: PointerEvent) => {
       activeSurface?.classList.remove("pc-interaction-pressed");
+      if (event.pointerType === "touch" || !finePointer.matches) {
+        clearSurface(activeSurface);
+        activeSurface = null;
+        resetField(frame);
+      }
     };
 
     const onPointerLeave = () => {
