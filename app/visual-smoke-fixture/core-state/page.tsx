@@ -38,29 +38,34 @@ const experiences: Record<Scene, ProductExperience> = {
     surface: "reward",
     phase: "ready",
     event: "none",
+    residue: "balance-funded",
     journey: journey("earn", "$24.875", 83, "building", "83% to target"),
   },
   earn: {
     surface: "earn",
     phase: "live",
     event: "none",
+    residue: "balance-funded",
     journey: journey("earn", "$24.875", 83, "building", "83% to target"),
   },
   wallet: {
     surface: "balance",
     phase: "live",
     event: "none",
+    residue: "balance-funded",
     journey: journey("balance", "$48.725", 97, "building", "97% to target"),
   },
   progress: {
     surface: "progress",
     phase: "live",
     event: "none",
+    residue: "rank-circuit",
   },
   invite: {
     surface: "network",
     phase: "live",
-    event: "network-live",
+    event: "none",
+    residue: "network-active",
   },
 };
 
