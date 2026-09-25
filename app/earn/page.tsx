@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { RoutePageTransition } from "@/components/route-page-transition";
 import { ContinuousEarnHub } from "@/components/continuous-earn-hub";
 import { CashbackStartButton } from "@/components/cashback-start-button";
 import { DirectStartButton } from "@/components/direct-start-button";
@@ -67,7 +68,8 @@ export default async function EarnPage({ searchParams }: Props) {
   const experience = getEarningExperience({ surface: "earn", snapshot: state, payoutCredits });
 
   return (
-    <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
+    <RoutePageTransition route="earn">
+      <AppShell active="earn" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="app-page-head pc-luxe-turbo-head">
         <div className="pc-earn-head-copy">
           <span className="app-eyebrow">Extra rewards · optional</span>
@@ -192,6 +194,7 @@ export default async function EarnPage({ searchParams }: Props) {
           </div>
         </details>
       ) : null}
-    </AppShell>
+      </AppShell>
+    </RoutePageTransition>
   );
 }
