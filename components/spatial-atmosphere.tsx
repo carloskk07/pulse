@@ -23,6 +23,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <ViewTransition
         name="pc-route-orbit"
         default="none"
+        update={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
         share={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
       >
         <div className="pc-space-orbit orbit-a" />
@@ -31,6 +32,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <ViewTransition
         name="pc-route-carrier"
         default="none"
+        update={{ default: "pc-route-carrier-share", "pc-forward": "pc-route-carrier-forward", "pc-back": "pc-route-carrier-back" }}
         share={{ default: "pc-route-carrier-share", "pc-forward": "pc-route-carrier-forward", "pc-back": "pc-route-carrier-back" }}
       >
         <div className="pc-route-carrier"><i /><b /></div>
@@ -43,6 +45,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <ViewTransition
         name="pc-route-index"
         default="none"
+        update={{ default: "pc-route-index-share", "pc-forward": "pc-route-index-forward", "pc-back": "pc-route-index-back" }}
         share={{ default: "pc-route-index-share", "pc-forward": "pc-route-index-forward", "pc-back": "pc-route-index-back" }}
       >
         <span className="pc-space-datum datum-a">{meta.index}</span>
