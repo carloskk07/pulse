@@ -1,0 +1,33 @@
+const sceneMeta: Record<string, { index: string; label: string; secondary: string }> = {
+  home: { index: "01", label: "REWARD FIELD", secondary: "VALUE / TIME" },
+  progress: { index: "02", label: "PROGRESS FIELD", secondary: "RANK / MOMENTUM" },
+  earn: { index: "03", label: "EARNING FIELD", secondary: "VALUE / ROUTES" },
+  wallet: { index: "04", label: "PAYOUT FIELD", secondary: "BALANCE / RELEASE" },
+  invite: { index: "05", label: "NETWORK FIELD", secondary: "REFERRALS / REACH" },
+};
+
+export function SpatialAtmosphere({ active }: { active: string }) {
+  const meta = sceneMeta[active];
+  if (!meta) return null;
+
+  return (
+    <div className="pc-spatial-atmosphere" data-scene={active} aria-hidden="true">
+      <div className="pc-space-grid" />
+      <div className="pc-space-haze haze-a" />
+      <div className="pc-space-haze haze-b" />
+      <div className="pc-space-plane plane-a" />
+      <div className="pc-space-plane plane-b" />
+      <div className="pc-space-plane plane-c" />
+      <div className="pc-space-orbit orbit-a" />
+      <div className="pc-space-orbit orbit-b" />
+      <div className="pc-space-beam beam-a" />
+      <div className="pc-space-beam beam-b" />
+      <span className="pc-space-node node-a" />
+      <span className="pc-space-node node-b" />
+      <span className="pc-space-node node-c" />
+      <span className="pc-space-datum datum-a">{meta.index}</span>
+      <span className="pc-space-datum datum-b">{meta.label}</span>
+      <span className="pc-space-datum datum-c">{meta.secondary}</span>
+    </div>
+  );
+}
