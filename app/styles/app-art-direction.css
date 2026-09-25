@@ -2002,3 +2002,14 @@
   .pc-dense-network-depth article{min-height:94px;padding:18px}
   .pc-dense-network-depth strong{font-size:29px}
 }
+
+
+/* V8.1 — compact value-path readout.
+   Keep the authoritative payout label for assistive tech and desktop, while
+   narrow screens use a short state/value readout that does not ellipsize. */
+.pc-value-flow-label-wide{display:block}
+.pc-value-flow-label-compact{display:none}
+@media(max-width:760px){
+  .pc-value-flow-label-wide{display:none}
+  .pc-value-flow-label-compact{display:block}
+}
