@@ -66,7 +66,7 @@ export async function AppShell({
   const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
 
   return (
-    <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase} data-product-event={experience?.event}>
+    <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase} data-product-event={experience?.event} data-product-residue={experience?.residue}>
       <SpatialAtmosphere active={active} />
       <ProductInteractionLayer />
       <SystemEventField cue={eventCue} />
