@@ -71,8 +71,10 @@ requireText("components/system-event-field.tsx", [
   '"referral-confirmed"',
   'const SEEN_KEY = "pc-system-event-seen:v1"',
   'window.sessionStorage',
+  'const rootRef = useRef<HTMLDivElement>(null)',
   'frame?.setAttribute("data-system-event", cue.kind)',
-  'data-system-event-cue={activeCue.kind}',
+  'root.classList.add("is-visible")',
+  'data-system-event-cue={cue.kind}',
   'aria-live="polite"',
 ]);
 
@@ -176,7 +178,9 @@ requireText("app/styles/app-art-direction.css", [
   ".pc-scene-telemetry-orbit{",
   "/* V11.4 — Authoritative System Event Field.",
   ".pc-system-event-field{",
+  ".pc-system-event-field.is-visible{",
   ".pc-system-event-card{",
+  ".pc-system-event-field.is-visible .pc-system-event-card{",
   ".app-frame[data-system-event]:after{",
   "@keyframes pcSystemEventCard",
   "@keyframes pcSystemEventWave",
