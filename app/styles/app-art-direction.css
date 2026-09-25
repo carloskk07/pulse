@@ -2740,3 +2740,100 @@
 .app-frame[data-product-residue="network-active"] .pc-invite-visual-stage{
   filter:drop-shadow(0 0 30px color-mix(in srgb,var(--pc-residue-color) 14%,transparent));
 }
+
+
+/* V11.6 — Proportional Residue Energy.
+   The residue kind remains categorical, while visual energy is driven by an
+   authoritative 0–100 source already present in the product state. */
+.app-frame[data-product-residue]{
+  --pc-residue-strength:0%;
+  --pc-residue-line-max:color-mix(in srgb,var(--pc-residue-color) 34%,rgba(255,255,255,.05));
+  --pc-residue-line:color-mix(in srgb,var(--pc-residue-line-max) var(--pc-residue-strength),rgba(255,255,255,.05));
+  --pc-residue-glow-max:color-mix(in srgb,var(--pc-residue-color) 18%,transparent);
+  --pc-residue-glow:color-mix(in srgb,var(--pc-residue-glow-max) var(--pc-residue-strength),transparent);
+  --pc-residue-glow-soft-max:color-mix(in srgb,var(--pc-residue-color) 10%,transparent);
+  --pc-residue-glow-soft:color-mix(in srgb,var(--pc-residue-glow-soft-max) var(--pc-residue-strength),transparent);
+}
+.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-route-carrier{
+  border-color:var(--pc-residue-line);
+  box-shadow:
+    0 0 0 14px rgba(255,255,255,.008),
+    0 0 54px var(--pc-residue-glow),
+    inset 0 0 28px var(--pc-residue-glow-soft);
+}
+.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-route-carrier>b{
+  background:color-mix(in srgb,var(--pc-residue-color) var(--pc-residue-strength),rgba(255,255,255,.12));
+  box-shadow:0 0 24px var(--pc-residue-glow);
+}
+.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-space-datum.datum-a{
+  border-color:var(--pc-residue-line);
+  box-shadow:0 0 18px var(--pc-residue-glow-soft);
+}
+
+.app-frame[data-product-residue="balance-funded"] :is(
+  .pc-v9-progress-card.vault-card,
+  .pc-v3-vault-balance
+){
+  border-color:var(--pc-residue-line);
+  box-shadow:
+    0 54px 130px rgba(0,0,0,.38),
+    0 0 54px var(--pc-residue-glow-soft),
+    inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.app-frame[data-product-residue="balance-funded"] :is(
+  .pc-dashboard-vault-art,
+  .pc-v3-vault-visual
+){
+  filter:drop-shadow(0 0 24px var(--pc-residue-glow-soft));
+}
+
+.app-frame[data-product-residue="payout-ready"] .pc-v3-vault-balance,
+.app-frame[data-product-residue="payout-processing"] .pc-v3-vault-balance,
+.app-frame[data-product-residue="payout-paid"] .pc-v3-vault-balance{
+  border-color:var(--pc-residue-line);
+  box-shadow:
+    0 58px 145px rgba(0,0,0,.4),
+    0 0 72px var(--pc-residue-glow),
+    inset 0 0 0 1px var(--pc-residue-glow-soft)!important;
+}
+.app-frame[data-product-residue="payout-ready"] .pc-v3-vault-visual,
+.app-frame[data-product-residue="payout-processing"] .pc-v3-vault-visual,
+.app-frame[data-product-residue="payout-paid"] .pc-v3-vault-visual{
+  filter:drop-shadow(0 0 30px var(--pc-residue-glow));
+}
+.app-frame[data-product-residue="payout-processing"] .pc-value-flow-line.is-payout:after{
+  opacity:1;
+  background:linear-gradient(90deg,transparent,var(--pc-residue-glow),transparent);
+}
+.app-frame[data-product-residue="payout-paid"] .state-list span:last-child{
+  color:color-mix(in srgb,var(--pc-residue-color) var(--pc-residue-strength),#d7ded9);
+  border-color:var(--pc-residue-line);
+}
+
+.app-frame[data-product-residue^="rank-"] .pc-v3-prestige-card{
+  border-color:var(--pc-residue-line);
+  box-shadow:
+    0 70px 160px rgba(0,0,0,.44),
+    0 0 70px var(--pc-residue-glow-soft),
+    inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.app-frame[data-product-residue^="rank-"] .pc-luxe-prestige-halo{
+  opacity:1;
+  filter:drop-shadow(0 0 32px var(--pc-residue-glow));
+}
+.app-frame[data-product-residue^="rank-"] .pc-luxe-rank-name{
+  text-shadow:0 0 32px var(--pc-residue-glow);
+}
+
+.app-frame[data-product-residue="network-waiting"] .pc-luxe-invite-hero,
+.app-frame[data-product-residue="network-active"] .pc-luxe-invite-hero{
+  border-color:var(--pc-residue-line);
+  box-shadow:
+    0 68px 150px rgba(0,0,0,.4),
+    0 0 62px var(--pc-residue-glow-soft),
+    inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.app-frame[data-product-residue="network-waiting"] .pc-invite-visual-stage,
+.app-frame[data-product-residue="network-active"] .pc-invite-visual-stage{
+  filter:drop-shadow(0 0 30px var(--pc-residue-glow));
+}
