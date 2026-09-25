@@ -222,19 +222,31 @@ async function installTransitionProbeBeforeHydration(send) {
     "  window.__pcRouteTransitionReturned = false;",
     "  window.__pcRouteTransitionTypes = [];",
     "  window.__pcRouteTransitionAnimations = [];",
+    "  window.__pcRouteTransitionHistory = [];",
     "  Document.prototype.startViewTransition = function(...args) {",
-    "    window.__pcRouteTransitionCalls += 1;",
+    "    const call = ++window.__pcRouteTransitionCalls;",
     "    const options = args[0];",
-    "    window.__pcRouteTransitionTypes = options && typeof options === 'object' && Array.isArray(options.types) ? [...options.types] : [];",
+    "    const initialTypes = options && typeof options === 'object' && Array.isArray(options.types) ? [...options.types] : [];",
+    "    const entry = { call, returned: false, initialTypes, types: [...initialTypes], animations: [] };",
+    "    window.__pcRouteTransitionHistory.push(entry);",
     "    const transition = original.apply(this, args);",
+    "    entry.returned = !!transition;",
     "    window.__pcRouteTransitionReturned = !!transition;",
-    "    Promise.resolve(transition?.ready).then(() => {",
-    "      window.__pcRouteTransitionAnimations = document.getAnimations().map((animation) => ({",
+    "    const collect = () => {",
+    "      const runtimeTypes = transition?.types ? Array.from(transition.types) : [];",
+    "      const selectorTypes = ['pc-forward', 'pc-back'].filter((type) => {",
+    "        try { return document.documentElement.matches(':active-view-transition-type(' + type + ')'); } catch { return false; }",
+    "      });",
+    "      entry.types = [...new Set([...initialTypes, ...runtimeTypes, ...selectorTypes])];",
+    "      entry.animations = document.getAnimations().map((animation) => ({",
     "        name: typeof animation.animationName === 'string' ? animation.animationName : '',",
     "        pseudo: animation.effect && typeof animation.effect.pseudoElement === 'string' ? animation.effect.pseudoElement : '',",
     "        playState: animation.playState,",
     "      }));",
-    "    }).catch(() => {});",
+    "      window.__pcRouteTransitionTypes = [...entry.types];",
+    "      window.__pcRouteTransitionAnimations = [...entry.animations];",
+    "    };",
+    "    Promise.resolve(transition?.ready).then(collect).catch(() => {});",
     "    return transition;",
     "  };",
     "  window.__pcRouteTransitionProbeInstalled = true;",
@@ -256,6 +268,7 @@ async function readState(send) {
         returnedTransition: window.__pcRouteTransitionReturned ?? false,
         types: window.__pcRouteTransitionTypes ?? [],
         animations: window.__pcRouteTransitionAnimations ?? [],
+        history: window.__pcRouteTransitionHistory ?? [],
         probeInstalled: window.__pcRouteTransitionProbeInstalled === true,
         probeUnsupported: window.__pcRouteTransitionUnsupported === true,
         reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -284,10 +297,29 @@ async function clickRoute(send, href) {
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
 }
 
-function assertTypes(state, expected, label) {
-  if (!Array.isArray(state?.types) || !state.types.includes(expected)) {
-    throw new Error(`${label} expected transition type ${expected}: ${JSON.stringify(state)}`);
+async function waitForTransitionType(send, expected, afterCall, label) {
+  let lastState = null;
+  for (let attempt = 0; attempt < 160; attempt += 1) {
+    const state = await readState(send);
+    lastState = state;
+    const entries = Array.isArray(state?.history)
+      ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+      : [];
+    if (
+      entries.some(
+        (entry) =>
+          entry?.returned === true &&
+          Array.isArray(entry?.types) &&
+          entry.types.includes(expected),
+      )
+    ) {
+      return state;
+    }
+    await sleep(25);
   }
+  throw new Error(
+    `${label} expected transition type ${expected} after call ${afterCall}: ${JSON.stringify(lastState)}`,
+  );
 }
 
 try {
@@ -337,17 +369,17 @@ try {
     throw new Error(`Initial route continuity state is incomplete: ${JSON.stringify(before)}`);
   }
 
+  const earnCallsBefore = before.calls;
   await clickRoute(send, "/earn");
   await waitForPath(send, "/earn");
   await waitForHydratedLink(send, "/wallet");
-  const earn = await readState(send);
+  const earn = await waitForTransitionType(send, "pc-forward", earnCallsBefore, "Rewards → Earn");
   if (earn?.documentId !== before.documentId) {
     throw new Error(`Rewards → Earn performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${earn?.documentId}`);
   }
   if (earn?.calls < 1 || !earn.returnedTransition || earn.motion !== "1") {
     throw new Error(`Rewards → Earn did not activate native route continuity: ${JSON.stringify(earn)}`);
   }
-  assertTypes(earn, "pc-forward", "Rewards → Earn");
 
   await send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "reduce" }],
@@ -363,14 +395,13 @@ try {
   await clickRoute(send, "/wallet");
   await waitForPath(send, "/wallet");
   await waitForHydratedLink(send, "/progress");
-  const wallet = await readState(send);
+  const wallet = await waitForTransitionType(send, "pc-forward", reducedCalls, "Earn → Balance under reduced motion");
   if (wallet?.documentId !== before.documentId) {
     throw new Error(`Earn → Balance performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${wallet?.documentId}`);
   }
   if (wallet?.calls <= reducedCalls || wallet.reduced !== true || wallet.motion !== "0") {
     throw new Error(`Reduced-motion Earn → Balance navigation failed: ${JSON.stringify(wallet)}`);
   }
-  assertTypes(wallet, "pc-forward", "Earn → Balance under reduced motion");
 
   await send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
@@ -380,14 +411,13 @@ try {
   await waitForHydratedLink(send, "/progress");
   await clickRoute(send, "/progress");
   await waitForPath(send, "/progress");
-  const progress = await readState(send);
+  const progress = await waitForTransitionType(send, "pc-back", backCalls, "Balance → Progress");
   if (progress?.documentId !== before.documentId) {
     throw new Error(`Balance → Progress performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${progress?.documentId}`);
   }
   if (progress?.calls <= backCalls || progress.motion !== "1") {
     throw new Error(`Balance → Progress did not reactivate route continuity: ${JSON.stringify(progress)}`);
   }
-  assertTypes(progress, "pc-back", "Balance → Progress");
 
   console.log(
     `Native route continuity PASS: forward + reduced-motion + back (calls=${progress.calls}).`,
