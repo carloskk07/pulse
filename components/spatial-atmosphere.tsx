@@ -1,4 +1,6 @@
-import { ViewTransition } from "react";\n\nconst sceneMeta: Record<string, { index: string; label: string; secondary: string }> = {
+import { ViewTransition } from "react";
+
+const sceneMeta: Record<string, { index: string; label: string; secondary: string }> = {
   home: { index: "01", label: "REWARD FIELD", secondary: "VALUE / TIME" },
   progress: { index: "02", label: "PROGRESS FIELD", secondary: "RANK / MOMENTUM" },
   earn: { index: "03", label: "EARNING FIELD", secondary: "VALUE / ROUTES" },
