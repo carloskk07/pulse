@@ -594,9 +594,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots after targeted full-page evidence."
-          # Existing 92 viewport/fixture screenshots + 8 full-page public screenshots:
-          # Home, Faucet, Proof and Auth × desktop/mobile.
-          test "$count" -eq 100
+          # Existing 92 viewport/fixture screenshots + 12 full-page public screenshots:
+          # Home, Faucet, Proof, Auth, Business and Ads × desktop/mobile.
+          test "$count" -eq 104
 
       - name: Stop local preview
         if: always()
