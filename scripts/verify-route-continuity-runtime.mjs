@@ -286,6 +286,9 @@ async function readState(send) {
         probeUnsupported: window.__pcRouteTransitionUnsupported === true,
         reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
         motion: rootStyle.getPropertyValue("--pc-route-vt-motion").trim(),
+        carrierDuration: rootStyle.getPropertyValue("--pc-route-vt-carrier-duration").trim(),
+        orbitDuration: rootStyle.getPropertyValue("--pc-route-vt-orbit-duration").trim(),
+        indexDuration: rootStyle.getPropertyValue("--pc-route-vt-index-duration").trim(),
         carrier: !!document.querySelector(".pc-route-carrier"),
         orbit: !!document.querySelector(".pc-space-orbit.orbit-a"),
         index: !!document.querySelector(".pc-space-datum.datum-a"),
@@ -333,6 +336,19 @@ async function waitForTransitionType(send, expected, afterCall, label) {
   throw new Error(
     `${label} expected transition type ${expected} after call ${afterCall}: ${JSON.stringify(lastState)}`,
   );
+}
+
+function assertReducedMotionState(state, label) {
+  const nearZero = new Set([".001ms", "0.001ms"]);
+  if (
+    state?.reduced !== true
+    || state?.motion !== "0"
+    || !nearZero.has(state?.carrierDuration)
+    || !nearZero.has(state?.orbitDuration)
+    || !nearZero.has(state?.indexDuration)
+  ) {
+    throw new Error(`${label} reduced-motion authority is incomplete: ${JSON.stringify(state)}`);
+  }
 }
 
 try {
@@ -408,12 +424,17 @@ try {
   await clickRoute(send, "/wallet");
   await waitForPath(send, "/wallet");
   await waitForHydratedLink(send, "/progress");
-  const wallet = await waitForTransitionType(send, "pc-forward", reducedCalls, "Earn → Balance under reduced motion");
+  await sleep(120);
+  const wallet = await readState(send);
   if (wallet?.documentId !== before.documentId) {
     throw new Error(`Earn → Balance performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${wallet?.documentId}`);
   }
-  if (wallet?.calls <= reducedCalls || wallet.reduced !== true || wallet.motion !== "0") {
-    throw new Error(`Reduced-motion Earn → Balance navigation failed: ${JSON.stringify(wallet)}`);
+  assertReducedMotionState(wallet, "Earn → Balance");
+  if (wallet?.path !== "/wallet") {
+    throw new Error(`Reduced-motion Earn → Balance did not reach /wallet: ${JSON.stringify(wallet)}`);
+  }
+  if (wallet?.calls < reducedCalls) {
+    throw new Error(`Reduced-motion transition call counter regressed: before=${reducedCalls} after=${wallet?.calls}`);
   }
 
   await send("Emulation.setEmulatedMedia", {
@@ -433,7 +454,7 @@ try {
   }
 
   console.log(
-    `Native route continuity PASS: forward + reduced-motion + back (calls=${progress.calls}).`,
+    `Native route continuity PASS: pc-forward + reduced-motion SPA + pc-back (calls=${progress.calls}).`,
   );
   socket.close();
 } finally {
