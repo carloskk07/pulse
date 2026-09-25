@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { RoutePageTransition } from "@/components/route-page-transition";
 import { Check, Users } from "@/components/icons";
 import { CopyReferralLink } from "@/components/copy-referral-link";
 import { NetworkDepthPanel } from "@/components/network-depth-panel";
@@ -41,7 +42,8 @@ export default async function InvitePage() {
   const milestones = [[1, "First referral"], [3, "Growing circle"], [5, "Active network"], [10, "Referral milestone"]] as const;
 
   return (
-    <AppShell active="invite" experience={experience}>
+    <RoutePageTransition route="invite">
+      <AppShell active="invite" experience={experience}>
       <div className="app-page-head pc-luxe-share-head">
         <div><span className="app-eyebrow">Referrals</span><h1>Invite friends. See the reward before you share.</h1><p>Referral rewards are tied to verified eligible activity. When a bonus is active, its money value appears here before you send your link.</p></div>
         <SceneTelemetry
@@ -101,6 +103,7 @@ export default async function InvitePage() {
       <details className="milestones pc-luxe-referral-milestones"><summary><strong>Invite milestones</strong></summary><div className="app-section-head"><div><span className="app-eyebrow">Referral milestones</span><h2>Grow through verified activity.</h2></div></div>{milestones.map(([n,title]) => { const done = signedIn && rewarded >= n; return <div className={`milestone-row ${done ? "done" : ""}`} key={n}><span className="milestone-number">{done ? <Check /> : n}</span><div><strong>{title}</strong><small>{n} verified {n === 1 ? "referral" : "referrals"}</small></div><b>{!signedIn ? "Locked" : done ? "Unlocked" : `${Math.max(0, n - rewarded)} to go`}</b></div>; })}</details>
 
       {signedIn && reversed > 0 ? <div className="pc-luxe-reversal-note">{reversed} referral qualification{reversed === 1 ? " was" : "s were"} reversed and excluded from progress.</div> : null}
-    </AppShell>
+      </AppShell>
+    </RoutePageTransition>
   );
 }
