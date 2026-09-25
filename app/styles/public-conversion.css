@@ -515,3 +515,42 @@
     animation:none!important;
   }
 }
+
+
+/* V11.2 — screenshot-driven Business mobile CTA repair.
+   Full-page evidence exposed the shared horizontal final CTA squeezing copy into
+   a character-wide column on narrow screens. Desktop composition is unchanged. */
+@media(max-width:640px){
+  .business-final-cta{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    align-items:start;
+    justify-content:stretch;
+    gap:24px;
+    padding:30px 26px;
+    border-radius:26px;
+  }
+  .business-final-cta>div{
+    width:100%;
+    min-width:0;
+  }
+  .business-final-cta h2{
+    max-width:100%;
+    font-size:clamp(38px,11.8vw,50px);
+    line-height:.92;
+    letter-spacing:-.06em;
+    overflow-wrap:normal;
+    word-break:normal;
+    text-wrap:balance;
+  }
+  .business-final-cta p{
+    max-width:100%;
+    font-size:13px;
+    line-height:1.58;
+  }
+  .business-final-cta .button{
+    width:max-content;
+    max-width:100%;
+    justify-self:start;
+  }
+}
