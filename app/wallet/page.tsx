@@ -4,6 +4,7 @@ import { TurnstileField } from "@/components/turnstile-field";
 import { WithdrawalPassPanel } from "@/components/withdrawal-pass-panel";
 import { ValueFlow } from "@/components/value-flow";
 import { VaultProgressArtwork } from "@/components/pulse-visuals";
+import { SceneTelemetry } from "@/components/scene-telemetry";
 import { getWalletPresentation } from "@/lib/experience-presentation";
 import { getWalletExperience } from "@/lib/product-experience";
 import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
@@ -154,6 +155,15 @@ export default async function WalletPage({ searchParams }: Props) {
           <h1>Your money. Your next payout in view.</h1>
           <p>See your available reward value, how close you are to payout, and what happens after a withdrawal starts.</p>
         </div>
+        <SceneTelemetry
+          variant="wallet"
+          status={payoutFlowState === "paid" ? "Paid" : payoutFlowState === "processing" ? "Processing" : payoutFlowState === "ready" ? "Ready" : payoutFlowState === "building" ? "Building" : "Preparing"}
+          items={[
+            { label: "Available", value: state.preview ? "—" : formatUsdFromCredits(state.availableCredits), meta: "Current balance" },
+            { label: "Payout", value: state.preview ? "—" : `${payoutPercent}%`, meta: payoutPercent >= 100 ? "Target reached" : "Toward target" },
+            { label: "Target", value: payoutPackLabel, meta: activeWithdrawal ? "Current payment" : "Current pack" },
+          ]}
+        />
       </div>
 
       {params.withdraw ? (

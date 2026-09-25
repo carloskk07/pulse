@@ -13,6 +13,27 @@ function requireText(path, fragments) {
   }
 }
 
+requireText("components/scene-telemetry.tsx", [
+  'variant: "reward" | "earn" | "wallet" | "progress" | "invite"',
+  'aria-label="Current product state"',
+  'className="pc-scene-telemetry-orbit"',
+  'className={\`pc-scene-telemetry-item item-\${index + 1}\`}',
+]);
+
+for (const [path, variant] of [
+  ["app/dashboard/page.tsx", 'variant="reward"'],
+  ["app/earn/page.tsx", 'variant="earn"'],
+  ["app/wallet/page.tsx", 'variant="wallet"'],
+  ["app/progress/page.tsx", 'variant="progress"'],
+  ["app/invite/page.tsx", 'variant="invite"'],
+]) {
+  requireText(path, [
+    'import { SceneTelemetry } from "@/components/scene-telemetry";',
+    "<SceneTelemetry",
+    variant,
+  ]);
+}
+
 requireText("components/spatial-atmosphere.tsx", [
   'home: { index: "01", label: "REWARD FIELD"',
   'progress: { index: "02", label: "PROGRESS FIELD"',
@@ -50,6 +71,9 @@ requireText("app/styles/app-art-direction.css", [
   '.app-frame[data-section="invite"] .pc-luxe-invite-hero',
   "@media(max-width:820px)",
   "@media(max-width:560px)",
+  ".pc-scene-telemetry{",
+  ".pc-scene-telemetry-item{",
+  ".pc-scene-telemetry-orbit{",
   "@media(prefers-reduced-motion:reduce)",
 ]);
 

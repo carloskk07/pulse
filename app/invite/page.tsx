@@ -4,6 +4,7 @@ import { Check, Users } from "@/components/icons";
 import { CopyReferralLink } from "@/components/copy-referral-link";
 import { NetworkDepthPanel } from "@/components/network-depth-panel";
 import { ReferralNetworkArtwork } from "@/components/pulse-visuals";
+import { SceneTelemetry } from "@/components/scene-telemetry";
 import { getInviteState } from "@/lib/invite-state";
 import { getNetworkExperience } from "@/lib/product-experience";
 import { formatUsdFromCredits } from "@/lib/reward-state";
@@ -41,7 +42,18 @@ export default async function InvitePage() {
 
   return (
     <AppShell active="invite" experience={experience}>
-      <div className="app-page-head pc-luxe-share-head"><div><span className="app-eyebrow">Referrals</span><h1>Invite friends. See the reward before you share.</h1><p>Referral rewards are tied to verified eligible activity. When a bonus is active, its money value appears here before you send your link.</p></div></div>
+      <div className="app-page-head pc-luxe-share-head">
+        <div><span className="app-eyebrow">Referrals</span><h1>Invite friends. See the reward before you share.</h1><p>Referral rewards are tied to verified eligible activity. When a bonus is active, its money value appears here before you send your link.</p></div>
+        <SceneTelemetry
+          variant="invite"
+          status={!signedIn ? "Sign in" : rewarded > 0 ? "Growing" : referralLink ? "Ready" : "Preparing"}
+          items={[
+            { label: "Active", value: signedIn ? String(rewarded) : "—", meta: "Confirmed" },
+            { label: "Waiting", value: signedIn ? String(pending) : "—", meta: "First activity" },
+            { label: "Rewards", value: signedIn ? formatUsdFromCredits(referralCredits) : "—", meta: "Net value" },
+          ]}
+        />
+      </div>
 
       <section className="invite-hero-card pc-luxe-invite-hero">
         <div className="pc-invite-copy">
