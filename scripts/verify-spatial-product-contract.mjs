@@ -27,7 +27,7 @@ requireText("components/spatial-atmosphere.tsx", [
 ]);
 
 requireText("components/app-shell.tsx", [
-  'import { SpatialAtmosphere } from "@/components/spatial-atmosphere";',
+  'import { SpatialAtmosphere } from "./spatial-atmosphere";',
   "<SpatialAtmosphere active={active} />",
   'data-product-surface={experience?.surface}',
   'data-product-phase={experience?.phase}',
