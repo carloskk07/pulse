@@ -16,6 +16,15 @@ const links = [
   { id: "invite", href: "/invite", label: "Referrals", Icon: Users },
 ];
 
+const routeOrder = new Map(links.map((link, index) => [link.id, index]));
+
+function routeTransitionTypes(active: string, target: string) {
+  const currentIndex = routeOrder.get(active);
+  const targetIndex = routeOrder.get(target);
+  if (currentIndex === undefined || targetIndex === undefined || currentIndex === targetIndex) return undefined;
+  return [targetIndex > currentIndex ? "pc-forward" : "pc-back"];
+}
+
 const adminLinks = [
   { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
   { id: "faucetpay-admin", href: "/admin/faucetpay", label: "Payments", Icon: Wallet },
@@ -61,7 +70,7 @@ export async function AppShell({
           <PulsercuitBrand />
           <nav className="app-nav app-topbar-nav" aria-label="Application">
             {links.map(({ id, href, label: navLabel, Icon }) => (
-              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}>
+              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}>
                 <Icon /><span>{navLabel}</span>
               </Link>
             ))}
@@ -94,7 +103,7 @@ export async function AppShell({
       <main className="app-content">{children}</main>
       <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
-          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon /><span>{navLabel}</span></Link>
+          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
         ))}
         <details className="bottom-nav-more">
           <summary className={utilityMobileActive ? "active" : ""} aria-label="More navigation and account actions">
