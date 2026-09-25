@@ -38,29 +38,34 @@ const experiences: Record<Scene, ProductExperience> = {
     surface: "reward",
     phase: "ready",
     event: "none",
+    residue: "balance-funded",
     journey: journey("earn", "$24.875", 83, "building", "83% to target"),
   },
   earn: {
     surface: "earn",
     phase: "live",
     event: "none",
+    residue: "balance-funded",
     journey: journey("earn", "$24.875", 83, "building", "83% to target"),
   },
   wallet: {
-    surface: "balance",
-    phase: "live",
+    surface: "payout",
+    phase: "ready",
     event: "none",
-    journey: journey("balance", "$48.725", 97, "building", "97% to target"),
+    residue: "payout-ready",
+    journey: journey("payout", "$50.000", 100, "ready", "Ready"),
   },
   progress: {
     surface: "progress",
     phase: "live",
     event: "none",
+    residue: "rank-circuit",
   },
   invite: {
     surface: "network",
     phase: "live",
-    event: "network-live",
+    event: "none",
+    residue: "network-active",
   },
 };
 
@@ -225,17 +230,17 @@ function WalletScene() {
           variant="wallet"
           status="Building"
           items={[
-            { label: "Available", value: "$48.725", meta: "Current balance" },
-            { label: "Payout", value: "97%", meta: "Toward target" },
+            { label: "Available", value: "$50.000", meta: "Current balance" },
+            { label: "Payout", value: "100%", meta: "Toward target" },
             { label: "Target", value: "$50.000 · USDT", meta: "Current pack" },
           ]}
         />
       </div>
 
       <ValueFlow journey={experiences.wallet.journey!} />
-      <FixtureNote>Dense signed-in state · payout nearly ready · transaction history populated</FixtureNote>
+      <FixtureNote>Dense signed-in state · payout ready · transaction history populated</FixtureNote>
 
-      <section className="wallet-balance-card pc-luxe-vault-balance pc-v3-vault-balance">
+      <section className="wallet-balance-card pc-luxe-vault-balance pc-v3-vault-balance is-payout-ready">
         <div className="pc-v3-vault-copy">
           <div className="wallet-big-icon"><Wallet /></div>
           <div>
@@ -243,13 +248,13 @@ function WalletScene() {
             <strong>$48.725</strong>
             <small>48,725 credits</small>
             <div className="pc-v10-vault-meter">
-              <div aria-hidden="true"><i style={{ width: "97%" }} /></div>
-              <small>97% to payout target</small>
+              <div aria-hidden="true"><i style={{ width: "100%" }} /></div>
+              <small>100% · payout target reached</small>
             </div>
           </div>
         </div>
         <div className="pc-v3-vault-visual" aria-hidden="true">
-          <VaultProgressArtwork percent={97} value="$48.725" readout={false} />
+          <VaultProgressArtwork percent={100} value="$50.000" readout={false} />
         </div>
         <div className="payout-pack-label">
           <small>Payout target</small>
@@ -259,11 +264,11 @@ function WalletScene() {
 
       <section className="withdrawal-panel pc-luxe-vault-action">
         <div>
-          <span className="app-eyebrow">Almost ready</span>
-          <h2>$1.275 remains before the current payout target.</h2>
+          <span className="app-eyebrow">Ready</span>
+          <h2>Your current payout target is reached.</h2>
           <p>Your available balance stays untouched until a payout request is actually reserved.</p>
         </div>
-        <button className="button button-light button-lg" type="button" disabled>Reach payout target first</button>
+        <button className="button button-light button-lg" type="button">Withdraw $50.000</button>
       </section>
 
       <div className="wallet-grid pc-luxe-vault-grid">

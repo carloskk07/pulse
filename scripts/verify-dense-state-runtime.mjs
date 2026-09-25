@@ -11,11 +11,11 @@ if (!chrome) {
 }
 
 const scenes = [
-  ["reward", "/visual-smoke-fixture/core-state?scene=reward"],
-  ["earn", "/visual-smoke-fixture/core-state?scene=earn"],
-  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet"],
-  ["progress", "/visual-smoke-fixture/core-state?scene=progress"],
-  ["invite", "/visual-smoke-fixture/core-state?scene=invite"],
+  ["reward", "/visual-smoke-fixture/core-state?scene=reward", "balance-funded"],
+  ["earn", "/visual-smoke-fixture/core-state?scene=earn", "balance-funded"],
+  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "payout-ready"],
+  ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-circuit"],
+  ["invite", "/visual-smoke-fixture/core-state?scene=invite", "network-active"],
 ];
 
 const viewports = [
@@ -101,6 +101,7 @@ async function waitForDocument(send) {
 const runtimeProbe = `(() => {
   const root = document.documentElement;
   const body = document.body;
+  const frame = document.querySelector(".app-frame");
   const appContent = document.querySelector(".app-content");
   const topbar = document.querySelector(".app-topbar");
   const bottomNav = document.querySelector(".bottom-nav");
@@ -134,6 +135,7 @@ const runtimeProbe = `(() => {
 
   return {
     sceneName: scene?.getAttribute("data-dense-scene") ?? null,
+    productResidue: frame?.getAttribute("data-product-residue") ?? null,
     innerWidth,
     clientWidth: root.clientWidth,
     scrollWidth: Math.max(root.scrollWidth, body?.scrollWidth ?? 0),
@@ -194,7 +196,7 @@ try {
       screenHeight: height,
     });
 
-    for (const [sceneName, route] of scenes) {
+    for (const [sceneName, route, expectedResidue] of scenes) {
       await send("Page.navigate", { url: `${baseUrl}${route}` });
       await waitForDocument(send);
 
@@ -214,6 +216,9 @@ try {
       const rawOverflow = state.scrollWidth - state.clientWidth;
       if (state.sceneName !== sceneName) {
         failures.push(`${label}: expected scene ${sceneName}, rendered ${state.sceneName ?? "missing"}`);
+      }
+      if (state.productResidue !== expectedResidue) {
+        failures.push(`${label}: expected residue ${expectedResidue}, rendered ${state.productResidue ?? "missing"}`);
       }
       if (state.maxScrollX > tolerance) {
         failures.push(`${label}: horizontal scrolling possible maxScrollX=${state.maxScrollX}, rawOverflow=${rawOverflow}`);
@@ -275,7 +280,7 @@ try {
       }
 
       console.log(
-        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
+        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
       );
     }
   }

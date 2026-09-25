@@ -58,6 +58,7 @@ requireText("components/app-shell.tsx", [
   'data-product-surface={experience?.surface}',
   'data-product-phase={experience?.phase}',
   'data-product-event={experience?.event}',
+  'data-product-residue={experience?.residue}',
 ]);
 
 
@@ -79,6 +80,12 @@ requireText("components/system-event-field.tsx", [
 ]);
 
 requireText("lib/product-experience.ts", [
+  "export type ProductResidue = CoreProductResidue",
+  "residue: ProductResidue;",
+  "residue: deriveEarningResidue",
+  "residue: deriveWalletResidue",
+  "residue: deriveProgressResidue",
+  "residue: deriveNetworkResidue",
   "payoutReadyEvent = false",
   "payoutReadyEvent?: boolean",
   "referralConfirmed = false",
@@ -184,6 +191,12 @@ requireText("app/styles/app-art-direction.css", [
   ".app-frame[data-system-event]:after{",
   "@keyframes pcSystemEventCard",
   "@keyframes pcSystemEventWave",
+  "/* V11.5 — Authoritative State Residue.",
+  '.app-frame[data-product-residue]:not([data-product-residue="none"]) .pc-route-carrier',
+  '.app-frame[data-product-residue="balance-funded"] :is(',
+  '.app-frame[data-product-residue="payout-ready"] .pc-v3-vault-balance',
+  '.app-frame[data-product-residue^="rank-"] .pc-v3-prestige-card',
+  '.app-frame[data-product-residue="network-active"] .pc-luxe-invite-hero',
   "@media(prefers-reduced-motion:reduce)",
 ]);
 

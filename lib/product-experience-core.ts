@@ -20,6 +20,23 @@ export type CoreProductEvent =
   | "payout-complete"
   | "network-live";
 
+export type CoreProductResidue =
+  | "none"
+  | "reward-history"
+  | "balance-funded"
+  | "payout-ready"
+  | "payout-processing"
+  | "payout-paid"
+  | "rank-spark"
+  | "rank-flow"
+  | "rank-rhythm"
+  | "rank-circuit"
+  | "rank-resonance"
+  | "network-waiting"
+  | "network-active";
+
+export type CoreRankStage = "Spark" | "Flow" | "Rhythm" | "Circuit" | "Resonance";
+
 export function clampPercent(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -116,4 +133,52 @@ export function deriveNetworkEvent(input: {
   active: number;
 }): CoreProductEvent {
   return input.signedIn && input.active > 0 ? "network-live" : "none";
+}
+
+
+export function deriveEarningResidue(input: {
+  preview: boolean;
+  availableCredits: number;
+  claimCount: number;
+}): CoreProductResidue {
+  if (input.preview) return "none";
+  if (Number(input.availableCredits) > 0) return "balance-funded";
+  if (Number(input.claimCount) > 0) return "reward-history";
+  return "none";
+}
+
+export function deriveWalletResidue(input: {
+  preview: boolean;
+  payoutState: CorePayoutFlowState;
+  availableCredits: number;
+}): CoreProductResidue {
+  if (input.preview) return "none";
+  if (input.payoutState === "paid") return "payout-paid";
+  if (input.payoutState === "processing") return "payout-processing";
+  if (input.payoutState === "ready") return "payout-ready";
+  return Number(input.availableCredits) > 0 ? "balance-funded" : "none";
+}
+
+export function deriveProgressResidue(input: {
+  preview: boolean;
+  signedIn: boolean;
+  stage: CoreRankStage;
+}): CoreProductResidue {
+  if (input.preview || !input.signedIn) return "none";
+  if (input.stage === "Resonance") return "rank-resonance";
+  if (input.stage === "Circuit") return "rank-circuit";
+  if (input.stage === "Rhythm") return "rank-rhythm";
+  if (input.stage === "Flow") return "rank-flow";
+  return "rank-spark";
+}
+
+export function deriveNetworkResidue(input: {
+  signedIn: boolean;
+  active: number;
+  waiting: number;
+}): CoreProductResidue {
+  if (!input.signedIn) return "none";
+  if (Number(input.active) > 0) return "network-active";
+  if (Number(input.waiting) > 0) return "network-waiting";
+  return "none";
 }
