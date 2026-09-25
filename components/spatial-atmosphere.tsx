@@ -20,11 +20,19 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <div className="pc-space-plane plane-a" />
       <div className="pc-space-plane plane-b" />
       <div className="pc-space-plane plane-c" />
-      <ViewTransition name="pc-route-orbit" share="pc-route-orbit" default="none">
+      <ViewTransition
+        name="pc-route-orbit"
+        default="none"
+        share={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
+      >
         <div className="pc-space-orbit orbit-a" />
       </ViewTransition>
       <div className="pc-space-orbit orbit-b" />
-      <ViewTransition name="pc-route-carrier" share="pc-route-carrier" default="none">
+      <ViewTransition
+        name="pc-route-carrier"
+        default="none"
+        share={{ default: "pc-route-carrier-share", "pc-forward": "pc-route-carrier-forward", "pc-back": "pc-route-carrier-back" }}
+      >
         <div className="pc-route-carrier"><i /><b /></div>
       </ViewTransition>
       <div className="pc-space-beam beam-a" />
@@ -32,7 +40,11 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <span className="pc-space-node node-a" />
       <span className="pc-space-node node-b" />
       <span className="pc-space-node node-c" />
-      <ViewTransition name="pc-route-index" share="pc-route-index" default="none">
+      <ViewTransition
+        name="pc-route-index"
+        default="none"
+        share={{ default: "pc-route-index-share", "pc-forward": "pc-route-index-forward", "pc-back": "pc-route-index-back" }}
+      >
         <span className="pc-space-datum datum-a">{meta.index}</span>
       </ViewTransition>
       <span className="pc-space-datum datum-b">{meta.label}</span>
