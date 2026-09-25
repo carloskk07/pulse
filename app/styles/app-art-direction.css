@@ -2837,3 +2837,103 @@
 .app-frame[data-product-residue="network-active"] .pc-invite-visual-stage{
   filter:drop-shadow(0 0 30px var(--pc-residue-glow));
 }
+
+
+/* V11.7 — Dimensional Residue Field.
+   Magnitude remains residueStrength. Dimension decides which physical grammar
+   carries that magnitude, preventing equal numbers from becoming equal visuals. */
+.app-frame[data-product-residue-dimension="value"]{
+  --pc-dimension-line-max:color-mix(in srgb,var(--pc-residue-color) 42%,rgba(255,255,255,.05));
+  --pc-dimension-line:color-mix(in srgb,var(--pc-dimension-line-max) var(--pc-residue-strength),rgba(255,255,255,.045));
+  --pc-dimension-mass-max:color-mix(in srgb,var(--pc-residue-color) 20%,transparent);
+  --pc-dimension-mass:color-mix(in srgb,var(--pc-dimension-mass-max) var(--pc-residue-strength),transparent);
+}
+.app-frame[data-product-residue-dimension="value"] .pc-space-plane{
+  border-color:var(--pc-dimension-line);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.03),
+    0 72px 150px rgba(0,0,0,.22),
+    0 0 58px var(--pc-dimension-mass);
+}
+.app-frame[data-product-residue-dimension="value"] .pc-space-plane.plane-a{
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.03),rgba(255,255,255,.004) 58%,transparent),
+    radial-gradient(circle at 24% 16%,var(--pc-dimension-mass),transparent 44%);
+}
+.app-frame[data-product-residue-dimension="value"] .pc-space-haze.haze-a{
+  background:radial-gradient(circle,var(--pc-dimension-mass),transparent 66%);
+}
+.app-frame[data-product-residue-dimension="value"] .pc-route-carrier:before,
+.app-frame[data-product-residue-dimension="value"] .pc-route-carrier:after{
+  border-color:var(--pc-dimension-line);
+}
+
+.app-frame[data-product-residue-dimension="signal"]{
+  --pc-dimension-line-max:color-mix(in srgb,var(--pc-residue-color) 56%,rgba(255,255,255,.045));
+  --pc-dimension-line:color-mix(in srgb,var(--pc-dimension-line-max) var(--pc-residue-strength),rgba(255,255,255,.035));
+  --pc-dimension-focus-max:color-mix(in srgb,var(--pc-residue-color) 24%,transparent);
+  --pc-dimension-focus:color-mix(in srgb,var(--pc-dimension-focus-max) var(--pc-residue-strength),transparent);
+}
+.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit{
+  border-color:var(--pc-dimension-line);
+  box-shadow:0 0 46px var(--pc-dimension-focus);
+}
+.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit:before,
+.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit:after{
+  border-color:var(--pc-dimension-line);
+}
+.app-frame[data-product-residue-dimension="signal"] .pc-space-beam{
+  background:linear-gradient(90deg,transparent,var(--pc-dimension-line),var(--pc-residue-color),var(--pc-dimension-line),transparent);
+  box-shadow:0 0 20px var(--pc-dimension-focus);
+}
+.app-frame[data-product-residue-dimension="signal"] .pc-scene-telemetry-orbit{
+  border-color:var(--pc-dimension-line);
+  box-shadow:
+    0 0 0 24px rgba(255,255,255,.006),
+    0 0 0 48px rgba(255,255,255,.003),
+    0 0 34px var(--pc-dimension-focus);
+}
+.app-frame[data-product-residue-dimension="signal"] .pc-scene-telemetry-orbit:before{
+  border-color:var(--pc-dimension-line);
+}
+
+.app-frame[data-product-residue-dimension="network"]{
+  --pc-dimension-line-max:color-mix(in srgb,var(--pc-residue-color) 62%,rgba(255,255,255,.04));
+  --pc-dimension-line:color-mix(in srgb,var(--pc-dimension-line-max) var(--pc-residue-strength),rgba(255,255,255,.03));
+  --pc-dimension-link-max:color-mix(in srgb,var(--pc-residue-color) 28%,transparent);
+  --pc-dimension-link:color-mix(in srgb,var(--pc-dimension-link-max) var(--pc-residue-strength),transparent);
+}
+.app-frame[data-product-residue-dimension="network"] .pc-space-beam{
+  height:1px;
+  background:linear-gradient(90deg,transparent,var(--pc-dimension-line),var(--pc-residue-color),var(--pc-dimension-line),transparent);
+  box-shadow:0 0 26px var(--pc-dimension-link);
+}
+.app-frame[data-product-residue-dimension="network"] .pc-space-node{
+  border-color:var(--pc-dimension-line);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb,var(--pc-dimension-link) 34%,transparent),
+    0 0 28px var(--pc-dimension-link);
+}
+.app-frame[data-product-residue-dimension="network"] .pc-space-orbit.orbit-b{
+  border-color:var(--pc-dimension-line);
+  box-shadow:0 0 54px var(--pc-dimension-link);
+}
+.app-frame[data-product-residue-dimension="network"] .pc-space-orbit.orbit-b:before,
+.app-frame[data-product-residue-dimension="network"] .pc-space-orbit.orbit-b:after{
+  border-color:var(--pc-dimension-line);
+}
+.app-frame[data-product-residue-dimension="network"] .pc-invite-visual-stage{
+  filter:drop-shadow(0 0 34px var(--pc-dimension-link));
+}
+
+@media(max-width:560px){
+  .app-frame[data-product-residue-dimension="value"] .pc-space-plane{
+    display:none;
+  }
+  .app-frame[data-product-residue-dimension="signal"] .pc-space-orbit.orbit-a{
+    opacity:.34;
+  }
+  .app-frame[data-product-residue-dimension="network"] .pc-space-beam{
+    opacity:.34;
+  }
+}
