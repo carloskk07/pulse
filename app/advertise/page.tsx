@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { SiteHeader } from "@/components/site-header";
 import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { PublicSignalField } from "@/components/public-signal-field";
@@ -56,9 +57,8 @@ export default async function AdvertisePage({ searchParams }: Props) {
   const merchantUsername = process.env.PULSE_ADS_MERCHANT_USERNAME?.trim() ?? "";
   const origin = getCanonicalSiteUrl().origin;
 
-  return (
-    <AppShell active="ads" userLabel={user?.email?.split("@")[0] ?? undefined}>
-      <div className="pc-ads-page">
+  const page = (
+    <div className="pc-ads-page">
         <header className="pc-ads-hero">
           <PublicSignalField variant="ads" />
           <div>
@@ -219,7 +219,21 @@ export default async function AdvertisePage({ searchParams }: Props) {
           <div><span className="app-eyebrow">Faucet-first rule</span><h2>Ads appear after the reward, not in front of it.</h2></div>
           <p>Sponsored placements appear after successful reward activity. The faucet claim stays direct, while verified-action campaigns remain a separate path for advertisers that need outcomes instead of traffic.</p>
         </section>
-      </div>
-    </AppShell>
+    </div>
+  );
+
+  if (user) {
+    return <AppShell active="ads" userLabel={user.email?.split("@")[0] ?? undefined}>{page}</AppShell>;
+  }
+
+  return (
+    <main className="marketing-page pc-ads-public-page">
+      <SiteHeader />
+      <div className="shell pc-ads-public-shell">{page}</div>
+      <footer className="footer shell pc-ads-public-footer">
+        <div><strong>Pulsercuit</strong><span>© 2026. Qualified traffic with bounded spend.</span></div>
+        <div><Link href="/">For users</Link><Link href="/business">Verified actions</Link><Link href="/proof">Proof</Link><Link href="/support">Help</Link></div>
+      </footer>
+    </main>
   );
 }

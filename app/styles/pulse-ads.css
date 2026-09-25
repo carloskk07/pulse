@@ -63,3 +63,36 @@
 .pc-ads-admin-review>div{display:flex;gap:8px}
 .pc-ads-admin-review .button svg{width:13px;height:13px}
 @media(max-width:760px){.pc-ads-admin-review{grid-template-columns:1fr}.pc-ads-admin-review>div{display:grid;grid-template-columns:1fr 1fr}}
+
+
+/* V11.2 — public Ads surface coherence.
+   Visitors see the public marketing shell; signed-in advertisers keep AppShell. */
+.pc-ads-public-page{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 78% 7%,rgba(207,255,103,.055),transparent 28%),
+    radial-gradient(circle at 12% 34%,rgba(113,235,255,.025),transparent 24%),
+    #050807;
+}
+.pc-ads-public-shell{
+  padding-block:clamp(46px,6vw,78px) 88px;
+}
+.pc-ads-public-page .pc-ads-page{
+  max-width:none;
+  margin:0;
+}
+.pc-ads-public-footer{
+  margin-top:8px;
+}
+@media(max-width:620px){
+  .pc-ads-public-shell{padding-block:28px 58px}
+  .pc-ads-public-page .pc-ads-hero{margin-top:0}
+  .pc-ads-public-footer{
+    height:auto;
+    min-height:110px;
+    padding-block:24px;
+    align-items:flex-start;
+    gap:18px;
+  }
+  .pc-ads-public-footer>div{flex-wrap:wrap}
+}
