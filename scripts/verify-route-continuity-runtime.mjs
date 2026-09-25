@@ -111,6 +111,107 @@ async function waitForHydratedLink(send, href) {
   throw new Error(`Next/React navigation link ${href} did not hydrate.`);
 }
 
+async function waitForHydratedSelector(send, selector) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const result = await send("Runtime.evaluate", {
+      expression: `(() => {
+        const node = document.querySelector(${JSON.stringify(selector)});
+        if (!node) return { exists: false, hydrated: false, keys: [] };
+        const keys = Object.keys(node);
+        return {
+          exists: true,
+          hydrated: keys.some((key) => key.startsWith("__reactProps$") || key.startsWith("__reactFiber$")),
+          keys: keys.filter((key) => key.startsWith("__react")).slice(0, 8),
+        };
+      })()`,
+      returnByValue: true,
+    });
+    const value = result.result?.value;
+    if (value?.exists && value?.hydrated) return value;
+    await sleep(50);
+  }
+  throw new Error(`React node ${selector} did not hydrate.`);
+}
+
+async function verifyMinimalReactViewTransition(send) {
+  await send("Page.navigate", { url: `${baseUrl}/visual-smoke-fixture/view-transition` });
+
+  for (let attempt = 0; attempt < 180; attempt += 1) {
+    const result = await send("Runtime.evaluate", {
+      expression: `({
+        ready: document.readyState,
+        trigger: !!document.querySelector("#vt-runtime-trigger"),
+        state: document.querySelector("#vt-runtime-state")?.getAttribute("data-step") ?? null
+      })`,
+      returnByValue: true,
+    });
+    const value = result.result?.value;
+    if (value?.ready === "complete" && value?.trigger && value?.state === "0") break;
+    if (attempt === 179) throw new Error("Minimal React ViewTransition fixture did not settle.");
+    await sleep(50);
+  }
+
+  await waitForHydratedSelector(send, "#vt-runtime-trigger");
+
+  const capabilities = await send("Runtime.evaluate", {
+    expression: `({
+      native: typeof document.startViewTransition === "function",
+      classSupport: CSS.supports("view-transition-class", "pc-probe"),
+      nameSupport: CSS.supports("view-transition-name", "pc-probe"),
+      probeInstalled: window.__pcRouteTransitionProbeInstalled === true,
+      calls: window.__pcRouteTransitionCalls ?? 0
+    })`,
+    returnByValue: true,
+  });
+  const before = capabilities.result?.value;
+  if (!before?.native || !before?.classSupport || !before?.nameSupport || !before?.probeInstalled) {
+    throw new Error(`Minimal React ViewTransition fixture lacks browser/runtime capability: ${JSON.stringify(before)}`);
+  }
+
+  const clicked = await send("Runtime.evaluate", {
+    expression: `(() => {
+      const button = document.querySelector("#vt-runtime-trigger");
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`,
+    returnByValue: true,
+  });
+  if (clicked.result?.value !== true) {
+    throw new Error("Minimal React ViewTransition fixture trigger was unavailable.");
+  }
+
+  for (let attempt = 0; attempt < 160; attempt += 1) {
+    const result = await send("Runtime.evaluate", {
+      expression: `({
+        step: document.querySelector("#vt-runtime-state")?.getAttribute("data-step") ?? null,
+        calls: window.__pcRouteTransitionCalls ?? 0,
+        returnedTransition: window.__pcRouteTransitionReturned ?? false,
+        animations: window.__pcRouteTransitionAnimations ?? []
+      })`,
+      returnByValue: true,
+    });
+    const value = result.result?.value;
+    if (value?.step === "1" && value?.calls >= 1 && value?.returnedTransition) {
+      console.log(`Minimal React ViewTransition runtime PASS: calls=${value.calls} animations=${JSON.stringify(value.animations)}`);
+      return;
+    }
+    await sleep(50);
+  }
+
+  const result = await send("Runtime.evaluate", {
+    expression: `({
+      step: document.querySelector("#vt-runtime-state")?.getAttribute("data-step") ?? null,
+      calls: window.__pcRouteTransitionCalls ?? 0,
+      returnedTransition: window.__pcRouteTransitionReturned ?? false,
+      animations: window.__pcRouteTransitionAnimations ?? [],
+      reactKeys: Object.keys(document.querySelector("#vt-runtime-trigger") ?? {}).filter((key) => key.startsWith("__react")).slice(0, 8)
+    })`,
+    returnByValue: true,
+  });
+  throw new Error(`Minimal React ViewTransition fixture did not call the native API: ${JSON.stringify(result.result?.value)}`);
+}
+
 async function installTransitionProbeBeforeHydration(send) {
   const source = [
     "(() => {",
@@ -221,6 +322,9 @@ try {
   await send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
   });
+
+  await verifyMinimalReactViewTransition(send);
+
   await send("Page.navigate", { url: `${baseUrl}/dashboard` });
   await waitForPath(send, "/dashboard");
 
