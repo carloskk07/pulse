@@ -4,6 +4,7 @@ import { ContinuousPulsePanel } from "@/components/continuous-pulse-panel";
 import { ArrowUpRight, Bolt, Shield, Spark, Users } from "@/components/icons";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import { RewardArtifact, VaultProgressArtwork } from "@/components/pulse-visuals";
+import { SceneTelemetry } from "@/components/scene-telemetry";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { ValueFlow } from "@/components/value-flow";
@@ -98,12 +99,15 @@ export default async function DashboardPage({ searchParams }: Props) {
               : "Sign in to see your reward timing, balance and payout progress."}</p>
           </div>
 
-          <Link href="/wallet" className="balance-chip balance-chip-v2 pc-luxe-vault-chip pc-v9-vault-chip" aria-label="Open balance">
-            <div className="pc-v9-vault-chip-head"><small>Balance</small><span>{vaultPercent}%</span></div>
-            <strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong>
-            {!state.preview ? <span>{away === null ? payoutTargetLabel : away <= 0 ? "Payout target reached" : `${formatUsdFromCredits(away)} to payout`}</span> : null}
-            <div className="pc-v9-vault-mini-track" aria-hidden="true"><i style={{ width: `${state.preview ? 0 : vaultPercent}%` }} /></div>
-          </Link>
+          <SceneTelemetry
+            variant="reward"
+            status={state.preview ? "Preview" : !state.pulseFundingReady ? "Paused" : state.claimReady ? "Ready" : "Waiting"}
+            items={[
+              { label: "Reward", value: state.preview ? "—" : pulseCaption, meta: state.claimReady ? "Available now" : "Current window" },
+              { label: "Balance", value: state.preview ? "—" : formatUsdFromCredits(state.availableCredits), meta: away === null ? payoutTargetLabel : away <= 0 ? "Payout target reached" : `${formatUsdFromCredits(away)} to payout` },
+              { label: "Signal", value: state.preview ? "—" : `${signal.signal}/100`, meta: state.preview ? "Live after sign-in" : signal.stage },
+            ]}
+          />
         </div>
 
         {experience.journey ? <ValueFlow journey={experience.journey} /> : null}
