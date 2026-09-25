@@ -39,6 +39,7 @@ const experiences: Record<Scene, ProductExperience> = {
     phase: "ready",
     event: "none",
     residue: "balance-funded",
+    residueStrength: 83,
     journey: journey("earn", "$24.875", 83, "building", "83% to target"),
   },
   earn: {
@@ -46,6 +47,7 @@ const experiences: Record<Scene, ProductExperience> = {
     phase: "live",
     event: "none",
     residue: "balance-funded",
+    residueStrength: 83,
     journey: journey("earn", "$24.875", 83, "building", "83% to target"),
   },
   wallet: {
@@ -53,6 +55,7 @@ const experiences: Record<Scene, ProductExperience> = {
     phase: "ready",
     event: "none",
     residue: "payout-ready",
+    residueStrength: 100,
     journey: journey("payout", "$50.000", 100, "ready", "Ready"),
   },
   progress: {
@@ -60,12 +63,14 @@ const experiences: Record<Scene, ProductExperience> = {
     phase: "live",
     event: "none",
     residue: "rank-circuit",
+    residueStrength: 94,
   },
   invite: {
     surface: "network",
     phase: "live",
     event: "none",
     residue: "network-active",
+    residueStrength: 100,
   },
 };
 
