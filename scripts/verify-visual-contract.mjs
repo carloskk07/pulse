@@ -344,6 +344,9 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   'residue: "payout-ready"',
   'residue: "rank-circuit"',
   'residue: "network-active"',
+  'residueDimension: "value"',
+  'residueDimension: "signal"',
+  'residueDimension: "network"',
   "residueStrength: 83",
   "residueStrength: 94",
   "residueStrength: 100",
@@ -357,9 +360,11 @@ requireText("scripts/verify-dense-state-runtime.mjs", [
   '"rank-circuit"',
   '"network-active"',
   "productResidue",
+  "productResidueDimension",
   "productResidueStrength",
   "productResidueStrengthCss",
   "expectedResidue",
+  "expectedDimension",
   "expectedStrength",
 ]);
 

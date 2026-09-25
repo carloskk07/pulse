@@ -5,6 +5,7 @@ import {
   deriveEarningPhase,
   deriveEarningResidue,
   deriveEarningResidueStrength,
+  deriveResidueDimension,
   deriveNetworkEvent,
   deriveNetworkResidue,
   deriveNetworkResidueStrength,
@@ -18,6 +19,7 @@ import {
   type CoreProductEvent,
   type CoreProductPhase,
   type CoreProductResidue,
+  type CoreResidueDimension,
   type CoreValueFlowStage,
 } from "@/lib/product-experience-core";
 
@@ -25,6 +27,7 @@ export type ProductSurface = "reward" | "earn" | "balance" | "payout" | "progres
 export type ProductPhase = CoreProductPhase;
 export type ProductEvent = CoreProductEvent;
 export type ProductResidue = CoreProductResidue;
+export type ProductResidueDimension = CoreResidueDimension;
 export type ValueFlowStage = CoreValueFlowStage;
 export type PayoutFlowState = CorePayoutFlowState;
 
@@ -42,6 +45,7 @@ export type ProductExperience = {
   event: ProductEvent;
   residue: ProductResidue;
   residueStrength: number;
+  residueDimension: ProductResidueDimension;
   journey?: ProductJourney;
 };
 
@@ -87,6 +91,11 @@ export function getEarningExperience({
     : progress >= 100
       ? "Ready"
       : `${progress}% to target`;
+  const residue = deriveEarningResidue({
+    preview: snapshot.preview,
+    availableCredits: snapshot.availableCredits,
+    claimCount: snapshot.hourlyClaimCount,
+  });
 
   return {
     surface,
@@ -96,11 +105,8 @@ export function getEarningExperience({
       claimReady: snapshot.claimReady,
     }),
     event: snapshot.preview ? "none" : deriveEarningEvent({ claimSettled: Boolean(claimSettled) }),
-    residue: deriveEarningResidue({
-      preview: snapshot.preview,
-      availableCredits: snapshot.availableCredits,
-      claimCount: snapshot.hourlyClaimCount,
-    }),
+    residue,
+    residueDimension: deriveResidueDimension(residue),
     residueStrength: deriveEarningResidueStrength({
       preview: snapshot.preview,
       availableCredits: snapshot.availableCredits,
@@ -150,16 +156,18 @@ export function getWalletExperience({
       : payoutReadyEvent
         ? "payout-ready"
         : "none";
+  const residue = deriveWalletResidue({
+    preview: snapshot.preview,
+    payoutState: core.payoutState,
+    availableCredits: snapshot.availableCredits,
+  });
 
   return {
     surface: core.surface,
     phase: core.phase,
     event,
-    residue: deriveWalletResidue({
-      preview: snapshot.preview,
-      payoutState: core.payoutState,
-      availableCredits: snapshot.availableCredits,
-    }),
+    residue,
+    residueDimension: deriveResidueDimension(residue),
     residueStrength: deriveWalletResidueStrength({
       preview: snapshot.preview,
       payoutState: core.payoutState,
@@ -176,16 +184,18 @@ export function getProgressExperience(snapshot: RewardSnapshot): ProductExperien
     streakDays: snapshot.streakDays,
     trustLevel: snapshot.trustLevel,
   });
+  const residue = deriveProgressResidue({
+    preview: snapshot.preview,
+    signedIn: snapshot.signedIn,
+    stage: signal.stage,
+  });
 
   return {
     surface: "progress",
     phase: snapshot.preview ? "preview" : snapshot.signedIn ? "live" : "idle",
     event: "none",
-    residue: deriveProgressResidue({
-      preview: snapshot.preview,
-      signedIn: snapshot.signedIn,
-      stage: signal.stage,
-    }),
+    residue,
+    residueDimension: deriveResidueDimension(residue),
     residueStrength: deriveProgressResidueStrength({
       preview: snapshot.preview,
       signedIn: snapshot.signedIn,
@@ -205,11 +215,14 @@ export function getNetworkExperience({
   waiting: number;
   referralConfirmed?: boolean;
 }): ProductExperience {
+  const residue = deriveNetworkResidue({ signedIn, active, waiting });
+
   return {
     surface: "network",
     phase: !signedIn ? "idle" : active > 0 || waiting > 0 ? "live" : "idle",
     event: deriveNetworkEvent({ signedIn, active: referralConfirmed ? 1 : 0 }),
-    residue: deriveNetworkResidue({ signedIn, active, waiting }),
+    residue,
+    residueDimension: deriveResidueDimension(residue),
     residueStrength: deriveNetworkResidueStrength({ signedIn, active, waiting }),
   };
 }

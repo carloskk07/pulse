@@ -76,6 +76,7 @@ export async function AppShell({
       data-product-phase={experience?.phase}
       data-product-event={experience?.event}
       data-product-residue={experience?.residue}
+      data-product-residue-dimension={experience?.residueDimension}
       data-product-residue-strength={residueStrength}
       style={residueStyle}
     >
