@@ -109,6 +109,7 @@ const runtimeProbe = `(() => {
   const headline = document.querySelector(".app-page-head h1");
   const telemetryItems = [...document.querySelectorAll(".pc-scene-telemetry-item")];
   const telemetryValues = [...document.querySelectorAll(".pc-scene-telemetry-item strong")];
+  const valueFlowLabels = [...document.querySelectorAll(".pc-value-flow-copy strong")];
 
   const inspect = (element) => {
     if (!element) return null;
@@ -148,6 +149,16 @@ const runtimeProbe = `(() => {
       scrollWidth: value.scrollWidth,
       clientWidth: value.clientWidth,
     })),
+    valueFlowOverflow: valueFlowLabels.map((value) => {
+      const visibleLabel = [...value.children].find((child) => getComputedStyle(child).display !== "none");
+      const target = visibleLabel ?? value;
+      return {
+        text: target.textContent?.trim() ?? "",
+        display: getComputedStyle(target).display,
+        scrollWidth: target.scrollWidth,
+        clientWidth: target.clientWidth,
+      };
+    }),
   };
 })()`;
 
@@ -235,6 +246,14 @@ try {
         if (value.scrollWidth > value.clientWidth + tolerance) {
           failures.push(
             `${label}: telemetry value "${value.text}" clips ${value.scrollWidth}/${value.clientWidth}`,
+          );
+        }
+      }
+
+      for (const value of state.valueFlowOverflow ?? []) {
+        if (value.display !== "none" && value.scrollWidth > value.clientWidth + tolerance) {
+          failures.push(
+            `${label}: value-flow label "${value.text}" clips ${value.scrollWidth}/${value.clientWidth}`,
           );
         }
       }
