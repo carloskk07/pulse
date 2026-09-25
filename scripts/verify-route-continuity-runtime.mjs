@@ -68,7 +68,7 @@ function createRpc(webSocketUrl) {
 }
 
 async function waitForPath(send, path) {
-  for (let attempt = 0; attempt < 160; attempt += 1) {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
     const result = await send("Runtime.evaluate", {
       expression: `({
         path: location.pathname,
@@ -80,39 +80,12 @@ async function waitForPath(send, path) {
     });
     const value = result.result?.value;
     if (value?.path === path && value?.ready === "complete" && value?.frame && value?.carrier) {
-      await sleep(120);
+      await sleep(100);
       return;
     }
     await sleep(50);
   }
   throw new Error(`Route ${path} did not settle.`);
-}
-
-async function readContinuityState(send) {
-  const result = await send("Runtime.evaluate", {
-    expression: `(() => {
-      const carrier = document.querySelector(".pc-route-carrier");
-      const orbit = document.querySelector(".pc-space-orbit.orbit-a");
-      const index = document.querySelector(".pc-space-datum.datum-a");
-      const activeTop = document.querySelector(".app-topbar-nav a.active");
-      const activeBottom = document.querySelector(".bottom-nav > a.active");
-      const readName = (node) => node ? getComputedStyle(node).viewTransitionName : null;
-      return {
-        path: location.pathname,
-        supports: typeof document.startViewTransition === "function",
-        carrier: readName(carrier),
-        orbit: readName(orbit),
-        index: readName(index),
-        activeTop: readName(activeTop),
-        activeBottom: readName(activeBottom),
-        reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
-        calls: window.__pcRouteTransitionCalls ?? 0,
-        returnedTransition: window.__pcRouteTransitionReturned ?? false,
-      };
-    })()`,
-    returnByValue: true,
-  });
-  return result.result?.value;
 }
 
 async function installTransitionProbe(send) {
@@ -123,8 +96,14 @@ async function installTransitionProbe(send) {
       const original = Document.prototype.startViewTransition;
       window.__pcRouteTransitionCalls = 0;
       window.__pcRouteTransitionReturned = false;
+      window.__pcRouteTransitionTypes = [];
       Document.prototype.startViewTransition = function(...args) {
         window.__pcRouteTransitionCalls += 1;
+        const options = args[0];
+        window.__pcRouteTransitionTypes =
+          options && typeof options === "object" && Array.isArray(options.types)
+            ? [...options.types]
+            : [];
         const transition = original.apply(this, args);
         window.__pcRouteTransitionReturned = !!transition;
         return transition;
@@ -135,6 +114,28 @@ async function installTransitionProbe(send) {
     returnByValue: true,
   });
   return result.result?.value === true;
+}
+
+async function readState(send) {
+  const result = await send("Runtime.evaluate", {
+    expression: `(() => {
+      const rootStyle = getComputedStyle(document.documentElement);
+      return {
+        path: location.pathname,
+        supports: typeof document.startViewTransition === "function",
+        calls: window.__pcRouteTransitionCalls ?? 0,
+        returnedTransition: window.__pcRouteTransitionReturned ?? false,
+        types: window.__pcRouteTransitionTypes ?? [],
+        reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+        motion: rootStyle.getPropertyValue("--pc-route-vt-motion").trim(),
+        carrier: !!document.querySelector(".pc-route-carrier"),
+        orbit: !!document.querySelector(".pc-space-orbit.orbit-a"),
+        index: !!document.querySelector(".pc-space-datum.datum-a"),
+      };
+    })()`,
+    returnByValue: true,
+  });
+  return result.result?.value;
 }
 
 async function clickRoute(send, href) {
@@ -149,6 +150,12 @@ async function clickRoute(send, href) {
     returnByValue: true,
   });
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
+}
+
+function assertTypes(state, expected, label) {
+  if (!Array.isArray(state?.types) || !state.types.includes(expected)) {
+    throw new Error(`${label} expected transition type ${expected}: ${JSON.stringify(state)}`);
+  }
 }
 
 try {
@@ -182,73 +189,59 @@ try {
   await send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
   });
-
   await send("Page.navigate", { url: `${baseUrl}/dashboard` });
   await waitForPath(send, "/dashboard");
 
-  const installed = await installTransitionProbe(send);
-  if (!installed) throw new Error("Browser does not expose document.startViewTransition.");
+  if (!(await installTransitionProbe(send))) {
+    throw new Error("Browser does not expose document.startViewTransition.");
+  }
 
-  const before = await readContinuityState(send);
-  if (
-    !before?.supports
-    || before.carrier !== "pc-route-carrier"
-    || before.orbit !== "pc-route-orbit"
-    || before.index !== "pc-route-index"
-    || before.activeTop !== "pc-active-nav"
-  ) {
-    throw new Error(`Named route geometry is incomplete before navigation: ${JSON.stringify(before)}`);
+  const before = await readState(send);
+  if (!before?.supports || before.motion !== "1" || !before.carrier || !before.orbit || !before.index) {
+    throw new Error(`Initial route continuity state is incomplete: ${JSON.stringify(before)}`);
   }
 
   await clickRoute(send, "/earn");
   await waitForPath(send, "/earn");
-  const earn = await readContinuityState(send);
-  if (
-    earn?.path !== "/earn"
-    || earn.calls < 1
-    || !earn.returnedTransition
-    || earn.carrier !== "pc-route-carrier"
-    || earn.orbit !== "pc-route-orbit"
-    || earn.index !== "pc-route-index"
-    || earn.activeTop !== "pc-active-nav"
-  ) {
-    throw new Error(`Rewards → Earn continuity failed: ${JSON.stringify(earn)}`);
+  const earn = await readState(send);
+  if (earn?.calls < 1 || !earn.returnedTransition || earn.motion !== "1") {
+    throw new Error(`Rewards → Earn did not activate native route continuity: ${JSON.stringify(earn)}`);
   }
+  assertTypes(earn, "pc-forward", "Rewards → Earn");
 
   await send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "reduce" }],
   });
   await sleep(80);
-
-  const reducedBefore = await readContinuityState(send);
-  if (
-    reducedBefore?.reduced !== true
-    || reducedBefore.carrier !== "none"
-    || reducedBefore.orbit !== "none"
-    || reducedBefore.index !== "none"
-    || reducedBefore.activeTop !== "none"
-  ) {
-    throw new Error(`Reduced-motion geometry must opt out of named transitions: ${JSON.stringify(reducedBefore)}`);
+  const reducedBefore = await readState(send);
+  if (reducedBefore?.reduced !== true || reducedBefore.motion !== "0") {
+    throw new Error(`Reduced-motion CSS authority did not activate: ${JSON.stringify(reducedBefore)}`);
   }
 
-  const callsBeforeReducedNavigation = reducedBefore.calls;
+  const reducedCalls = reducedBefore.calls;
   await clickRoute(send, "/wallet");
   await waitForPath(send, "/wallet");
-  const wallet = await readContinuityState(send);
-  if (
-    wallet?.path !== "/wallet"
-    || wallet.reduced !== true
-    || wallet.carrier !== "none"
-    || wallet.orbit !== "none"
-    || wallet.index !== "none"
-    || wallet.activeTop !== "none"
-    || wallet.calls <= callsBeforeReducedNavigation
-  ) {
+  const wallet = await readState(send);
+  if (wallet?.calls <= reducedCalls || wallet.reduced !== true || wallet.motion !== "0") {
     throw new Error(`Reduced-motion Earn → Balance navigation failed: ${JSON.stringify(wallet)}`);
   }
+  assertTypes(wallet, "pc-forward", "Earn → Balance under reduced motion");
+
+  await send("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
+  });
+  await sleep(80);
+  const backCalls = (await readState(send)).calls;
+  await clickRoute(send, "/progress");
+  await waitForPath(send, "/progress");
+  const progress = await readState(send);
+  if (progress?.calls <= backCalls || progress.motion !== "1") {
+    throw new Error(`Balance → Progress did not reactivate route continuity: ${JSON.stringify(progress)}`);
+  }
+  assertTypes(progress, "pc-back", "Balance → Progress");
 
   console.log(
-    `Native route continuity PASS: Rewards -> Earn used view transition; reduced-motion Earn -> Balance stayed unnamed (calls=${wallet.calls}).`,
+    `Native route continuity PASS: forward + reduced-motion + back (calls=${progress.calls}).`,
   );
   socket.close();
 } finally {
