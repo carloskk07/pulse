@@ -449,6 +449,7 @@ jobs:
           fixture_paths=(
             "/visual-smoke-fixture/claim-reveal?tone=top"
             "/visual-smoke-fixture/core-state?scene=reward"
+            "/visual-smoke-fixture/view-transition"
           )
           for fixture_path in "${fixture_paths[@]}"; do
             fixture_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://pulsercuit.pro$fixture_path")"
