@@ -36,6 +36,7 @@ export type CoreProductResidue =
   | "network-active";
 
 export type CoreRankStage = "Spark" | "Flow" | "Rhythm" | "Circuit" | "Resonance";
+export type CoreResidueDimension = "none" | "value" | "signal" | "network";
 
 export const NETWORK_RESIDUE_MILESTONE = 10;
 
@@ -224,4 +225,20 @@ export function deriveNetworkResidueStrength(input: {
   const depth = Number(input.active) > 0 ? Number(input.active) : Number(input.waiting);
   if (!Number.isFinite(depth) || depth <= 0) return 0;
   return clampPercent((depth / NETWORK_RESIDUE_MILESTONE) * 100);
+}
+
+
+export function deriveResidueDimension(residue: CoreProductResidue): CoreResidueDimension {
+  if (
+    residue === "reward-history"
+    || residue === "balance-funded"
+    || residue === "payout-ready"
+    || residue === "payout-processing"
+    || residue === "payout-paid"
+  ) {
+    return "value";
+  }
+  if (residue.startsWith("rank-")) return "signal";
+  if (residue === "network-waiting" || residue === "network-active") return "network";
+  return "none";
 }
