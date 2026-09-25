@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { RoutePageTransition } from "@/components/route-page-transition";
 import { ContinuousPulsePanel } from "@/components/continuous-pulse-panel";
 import { ArrowUpRight, Bolt, Shield, Spark, Users } from "@/components/icons";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
@@ -88,7 +89,8 @@ export default async function DashboardPage({ searchParams }: Props) {
   const payoutTargetLabel = payout.ready && payout.display ? payout.display : "Target preparing";
 
   return (
-    <AppShell active="home" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
+    <RoutePageTransition route="home">
+      <AppShell active="home" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="pc-v9-dashboard">
         <div className="app-page-head pulse-page-head pc-luxe-dashboard-head pc-v9-head">
           <div className="pc-v9-head-copy">
@@ -255,6 +257,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           </article>
         </section>
       </div>
-    </AppShell>
+      </AppShell>
+    </RoutePageTransition>
   );
 }

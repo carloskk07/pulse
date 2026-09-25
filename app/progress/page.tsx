@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { RoutePageTransition } from "@/components/route-page-transition";
 import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { CircuitShareStudio } from "@/components/circuit-share-studio";
 import { NextCircuitPanel } from "@/components/next-circuit-panel";
@@ -45,7 +46,8 @@ export default async function ProgressPage() {
   const shareEntryHref = state.signedIn ? "#circuit-moments" : "/auth?next=/progress%23circuit-moments";
 
   return (
-    <AppShell active="progress" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
+    <RoutePageTransition route="progress">
+      <AppShell active="progress" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="app-page-head pc-progress-head pc-luxe-momentum-head">
         <div>
           <span className="app-eyebrow">Progress</span>
@@ -166,6 +168,7 @@ export default async function ProgressPage() {
           ))}
         </div>
       </details>
-    </AppShell>
+      </AppShell>
+    </RoutePageTransition>
   );
 }

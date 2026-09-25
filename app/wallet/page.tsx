@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { RoutePageTransition } from "@/components/route-page-transition";
 import { Check, Shield, Wallet } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { WithdrawalPassPanel } from "@/components/withdrawal-pass-panel";
@@ -148,7 +149,8 @@ export default async function WalletPage({ searchParams }: Props) {
       : "Preparing";
 
   return (
-    <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
+    <RoutePageTransition route="wallet">
+      <AppShell active="wallet" userLabel={state.signedIn ? state.userLabel : undefined} experience={experience}>
       <div className="app-page-head pc-luxe-vault-head">
         <div>
           <span className="app-eyebrow">Balance & payout</span>
@@ -289,6 +291,7 @@ export default async function WalletPage({ searchParams }: Props) {
           </div>
         </aside>
       </div>
-    </AppShell>
+      </AppShell>
+    </RoutePageTransition>
   );
 }
