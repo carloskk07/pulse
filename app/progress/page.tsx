@@ -5,6 +5,7 @@ import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { CircuitShareStudio } from "@/components/circuit-share-studio";
 import { NextCircuitPanel } from "@/components/next-circuit-panel";
 import { ProgressOrbitArtwork } from "@/components/pulse-visuals";
+import { SceneTelemetry } from "@/components/scene-telemetry";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getProgressExperience } from "@/lib/product-experience";
@@ -51,6 +52,15 @@ export default async function ProgressPage() {
           <h1>See what your activity has built.</h1>
           <p>Claims, return streaks and milestones turn verified activity into visible progress.</p>
         </div>
+        <SceneTelemetry
+          variant="progress"
+          status={state.preview ? "Preview" : signal.stage}
+          items={[
+            { label: "Signal", value: state.preview ? "—" : `${signal.signal}/100`, meta: state.preview ? "Live after sign-in" : signal.stage },
+            { label: "Streak", value: state.preview ? "—" : `${state.streakDays}d`, meta: "Return rhythm" },
+            { label: "Claims", value: state.preview ? "—" : String(state.hourlyClaimCount), meta: "Verified" },
+          ]}
+        />
         <Link className="button pc-v5-primary" href={shareEntryHref}>{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
       </div>
 
