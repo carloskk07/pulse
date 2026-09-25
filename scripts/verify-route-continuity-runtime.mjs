@@ -88,6 +88,29 @@ async function waitForPath(send, path) {
   throw new Error(`Route ${path} did not settle.`);
 }
 
+async function waitForHydratedLink(send, href) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const result = await send("Runtime.evaluate", {
+      expression: `(() => {
+        const link = document.querySelector('.app-topbar-nav a[href="${href}"]')
+          ?? document.querySelector('.bottom-nav a[href="${href}"]');
+        if (!link) return { exists: false, hydrated: false, keys: [] };
+        const keys = Object.keys(link);
+        return {
+          exists: true,
+          hydrated: keys.some((key) => key.startsWith("__reactProps$") || key.startsWith("__reactFiber$")),
+          keys: keys.filter((key) => key.startsWith("__react")).slice(0, 8),
+        };
+      })()`,
+      returnByValue: true,
+    });
+    const value = result.result?.value;
+    if (value?.exists && value?.hydrated) return value;
+    await sleep(50);
+  }
+  throw new Error(`Next/React navigation link ${href} did not hydrate.`);
+}
+
 async function installTransitionProbeBeforeHydration(send) {
   const source = [
     "(() => {",
@@ -126,6 +149,7 @@ async function readState(send) {
       const rootStyle = getComputedStyle(document.documentElement);
       return {
         path: location.pathname,
+        documentId: performance.timeOrigin,
         supports: typeof document.startViewTransition === "function",
         calls: window.__pcRouteTransitionCalls ?? 0,
         returnedTransition: window.__pcRouteTransitionReturned ?? false,
@@ -200,6 +224,7 @@ try {
   await send("Page.navigate", { url: `${baseUrl}/dashboard` });
   await waitForPath(send, "/dashboard");
 
+  await waitForHydratedLink(send, "/earn");
   const before = await readState(send);
   if (before?.probeUnsupported || !before?.probeInstalled) {
     throw new Error(`Pre-hydration route transition probe did not install: ${JSON.stringify(before)}`);
@@ -210,7 +235,11 @@ try {
 
   await clickRoute(send, "/earn");
   await waitForPath(send, "/earn");
+  await waitForHydratedLink(send, "/wallet");
   const earn = await readState(send);
+  if (earn?.documentId !== before.documentId) {
+    throw new Error(`Rewards → Earn performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${earn?.documentId}`);
+  }
   if (earn?.calls < 1 || !earn.returnedTransition || earn.motion !== "1") {
     throw new Error(`Rewards → Earn did not activate native route continuity: ${JSON.stringify(earn)}`);
   }
@@ -226,9 +255,14 @@ try {
   }
 
   const reducedCalls = reducedBefore.calls;
+  await waitForHydratedLink(send, "/wallet");
   await clickRoute(send, "/wallet");
   await waitForPath(send, "/wallet");
+  await waitForHydratedLink(send, "/progress");
   const wallet = await readState(send);
+  if (wallet?.documentId !== before.documentId) {
+    throw new Error(`Earn → Balance performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${wallet?.documentId}`);
+  }
   if (wallet?.calls <= reducedCalls || wallet.reduced !== true || wallet.motion !== "0") {
     throw new Error(`Reduced-motion Earn → Balance navigation failed: ${JSON.stringify(wallet)}`);
   }
@@ -239,9 +273,13 @@ try {
   });
   await sleep(80);
   const backCalls = (await readState(send)).calls;
+  await waitForHydratedLink(send, "/progress");
   await clickRoute(send, "/progress");
   await waitForPath(send, "/progress");
   const progress = await readState(send);
+  if (progress?.documentId !== before.documentId) {
+    throw new Error(`Balance → Progress performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${progress?.documentId}`);
+  }
   if (progress?.calls <= backCalls || progress.motion !== "1") {
     throw new Error(`Balance → Progress did not reactivate route continuity: ${JSON.stringify(progress)}`);
   }
