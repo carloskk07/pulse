@@ -115,7 +115,7 @@ async function installTransitionProbeBeforeHydration(send) {
     "  };",
     "  window.__pcRouteTransitionProbeInstalled = true;",
     "})();",
-  ].join("\\n");
+  ].join("\n");
 
   await send("Page.addScriptToEvaluateOnNewDocument", { source });
 }
