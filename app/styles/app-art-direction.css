@@ -2214,50 +2214,66 @@
   animation:pcRouteContentArrive .26s cubic-bezier(.2,.8,.2,1) both;
 }
 
-@supports (view-transition-name: pc-route-carrier){
-  .pc-route-carrier{view-transition-name:pc-route-carrier}
-  .pc-space-orbit.orbit-a{view-transition-name:pc-route-orbit}
-  .pc-space-datum.datum-a{view-transition-name:pc-route-index}
-  .app-topbar-nav.app-nav a.active{view-transition-name:pc-active-nav}
-  .bottom-nav>a.active{view-transition-name:pc-active-nav-mobile}
-
-  ::view-transition-old(root),
-  ::view-transition-new(root){
-    animation:none;
-    mix-blend-mode:normal;
-  }
-  ::view-transition-group(pc-route-carrier){
-    animation-duration:.46s;
-    animation-timing-function:cubic-bezier(.18,.78,.22,1);
-  }
-  ::view-transition-group(pc-route-orbit){
-    animation-duration:.54s;
-    animation-timing-function:cubic-bezier(.18,.72,.2,1);
-  }
-  ::view-transition-group(pc-route-index){
-    animation-duration:.34s;
-    animation-timing-function:cubic-bezier(.2,.75,.2,1);
-  }
-  ::view-transition-group(pc-active-nav),
-  ::view-transition-group(pc-active-nav-mobile){
-    animation-duration:.28s;
-    animation-timing-function:cubic-bezier(.2,.8,.2,1);
-  }
-  ::view-transition-old(pc-route-carrier),
-  ::view-transition-new(pc-route-carrier),
-  ::view-transition-old(pc-route-orbit),
-  ::view-transition-new(pc-route-orbit),
-  ::view-transition-old(pc-route-index),
-  ::view-transition-new(pc-route-index),
-  ::view-transition-old(pc-active-nav),
-  ::view-transition-new(pc-active-nav),
-  ::view-transition-old(pc-active-nav-mobile),
-  ::view-transition-new(pc-active-nav-mobile){
-    mix-blend-mode:normal;
-  }
-  ::view-transition-old(pc-route-carrier){animation:pcRouteCarrierOut .46s ease both}
-  ::view-transition-new(pc-route-carrier){animation:pcRouteCarrierIn .46s ease both}
+:root{
+  --pc-route-vt-motion:1;
+  --pc-route-vt-carrier-duration:.46s;
+  --pc-route-vt-orbit-duration:.54s;
+  --pc-route-vt-index-duration:.34s;
 }
+
+::view-transition-old(root),
+::view-transition-new(root){
+  animation:none;
+  mix-blend-mode:normal;
+}
+
+::view-transition-group(.pc-route-carrier-share),
+::view-transition-group(.pc-route-carrier-forward),
+::view-transition-group(.pc-route-carrier-back){
+  animation-duration:var(--pc-route-vt-carrier-duration);
+  animation-timing-function:cubic-bezier(.18,.78,.22,1);
+}
+::view-transition-group(.pc-route-orbit-share),
+::view-transition-group(.pc-route-orbit-forward),
+::view-transition-group(.pc-route-orbit-back){
+  animation-duration:var(--pc-route-vt-orbit-duration);
+  animation-timing-function:cubic-bezier(.18,.72,.2,1);
+}
+::view-transition-group(.pc-route-index-share),
+::view-transition-group(.pc-route-index-forward),
+::view-transition-group(.pc-route-index-back){
+  animation-duration:var(--pc-route-vt-index-duration);
+  animation-timing-function:cubic-bezier(.2,.75,.2,1);
+}
+
+::view-transition-old(.pc-route-carrier-share),
+::view-transition-new(.pc-route-carrier-share),
+::view-transition-old(.pc-route-carrier-forward),
+::view-transition-new(.pc-route-carrier-forward),
+::view-transition-old(.pc-route-carrier-back),
+::view-transition-new(.pc-route-carrier-back),
+::view-transition-old(.pc-route-orbit-share),
+::view-transition-new(.pc-route-orbit-share),
+::view-transition-old(.pc-route-orbit-forward),
+::view-transition-new(.pc-route-orbit-forward),
+::view-transition-old(.pc-route-orbit-back),
+::view-transition-new(.pc-route-orbit-back),
+::view-transition-old(.pc-route-index-share),
+::view-transition-new(.pc-route-index-share),
+::view-transition-old(.pc-route-index-forward),
+::view-transition-new(.pc-route-index-forward),
+::view-transition-old(.pc-route-index-back),
+::view-transition-new(.pc-route-index-back){
+  mix-blend-mode:normal;
+}
+
+::view-transition-old(.pc-route-carrier-share){animation:pcRouteCarrierOut var(--pc-route-vt-carrier-duration) ease both}
+::view-transition-new(.pc-route-carrier-share){animation:pcRouteCarrierIn var(--pc-route-vt-carrier-duration) ease both}
+::view-transition-old(.pc-route-carrier-forward){animation:pcRouteCarrierForwardOut var(--pc-route-vt-carrier-duration) ease both}
+::view-transition-new(.pc-route-carrier-forward){animation:pcRouteCarrierForwardIn var(--pc-route-vt-carrier-duration) ease both}
+::view-transition-old(.pc-route-carrier-back){animation:pcRouteCarrierBackOut var(--pc-route-vt-carrier-duration) ease both}
+::view-transition-new(.pc-route-carrier-back){animation:pcRouteCarrierBackIn var(--pc-route-vt-carrier-duration) ease both}
+
 @keyframes pcRouteCarrierOut{
   from{opacity:.86;filter:brightness(1)}
   to{opacity:.28;filter:brightness(1.3)}
@@ -2265,6 +2281,22 @@
 @keyframes pcRouteCarrierIn{
   from{opacity:.28;filter:brightness(1.3)}
   to{opacity:.86;filter:brightness(1)}
+}
+@keyframes pcRouteCarrierForwardOut{
+  from{opacity:.86;translate:0 0;filter:brightness(1)}
+  to{opacity:.22;translate:-10px 0;filter:brightness(1.3)}
+}
+@keyframes pcRouteCarrierForwardIn{
+  from{opacity:.22;translate:10px 0;filter:brightness(1.3)}
+  to{opacity:.86;translate:0 0;filter:brightness(1)}
+}
+@keyframes pcRouteCarrierBackOut{
+  from{opacity:.86;translate:0 0;filter:brightness(1)}
+  to{opacity:.22;translate:10px 0;filter:brightness(1.3)}
+}
+@keyframes pcRouteCarrierBackIn{
+  from{opacity:.22;translate:-10px 0;filter:brightness(1.3)}
+  to{opacity:.86;translate:0 0;filter:brightness(1)}
 }
 
 @media(max-width:820px){
@@ -2283,12 +2315,13 @@
   .pc-route-carrier>i{height:70px;top:-12px}
 }
 @media(prefers-reduced-motion:reduce){
+  :root{
+    --pc-route-vt-motion:0;
+    --pc-route-vt-carrier-duration:.001ms;
+    --pc-route-vt-orbit-duration:.001ms;
+    --pc-route-vt-index-duration:.001ms;
+  }
   .app-frame .app-content{animation:none!important}
-  .pc-route-carrier{view-transition-name:none!important}
-  .pc-space-orbit.orbit-a{view-transition-name:none!important}
-  .pc-space-datum.datum-a{view-transition-name:none!important}
-  .app-topbar-nav.app-nav a.active,
-  .bottom-nav>a.active{view-transition-name:none!important}
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*){animation-duration:.001ms!important;animation-delay:0ms!important}
