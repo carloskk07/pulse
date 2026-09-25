@@ -60,7 +60,7 @@ const experiences: Record<Scene, ProductExperience> = {
   invite: {
     surface: "network",
     phase: "live",
-    event: "referral_rewarded",
+    event: "network-live",
   },
 };
 
