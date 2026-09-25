@@ -3,11 +3,15 @@ import {
   deriveEarningEvent,
   deriveEarningPhase,
   deriveEarningResidue,
+  deriveEarningResidueStrength,
   deriveNetworkEvent,
   deriveNetworkResidue,
+  deriveNetworkResidueStrength,
   deriveProgressResidue,
+  deriveProgressResidueStrength,
   deriveWalletCore,
   deriveWalletResidue,
+  deriveWalletResidueStrength,
   isRecentAuthoritativeEvent,
   payoutProgressPercent,
 } from "../lib/product-experience-core.ts";
@@ -31,6 +35,9 @@ assert.equal(deriveEarningResidue({ preview: true, availableCredits: 100, claimC
 assert.equal(deriveEarningResidue({ preview: false, availableCredits: 100, claimCount: 4 }), "balance-funded");
 assert.equal(deriveEarningResidue({ preview: false, availableCredits: 0, claimCount: 4 }), "reward-history");
 assert.equal(deriveEarningResidue({ preview: false, availableCredits: 0, claimCount: 0 }), "none");
+assert.equal(deriveEarningResidueStrength({ preview: true, availableCredits: 830, payoutCredits: 1000 }), 0);
+assert.equal(deriveEarningResidueStrength({ preview: false, availableCredits: 830, payoutCredits: 1000 }), 83);
+assert.equal(deriveEarningResidueStrength({ preview: false, availableCredits: 830, payoutCredits: null }), 0);
 
 const now = Date.parse("2026-09-24T22:00:00.000Z");
 assert.equal(isRecentAuthoritativeEvent("2026-09-24T21:59:00.000Z", now), true);
@@ -150,16 +157,30 @@ assert.equal(deriveWalletResidue({ preview: false, payoutState: "building", avai
 assert.equal(deriveWalletResidue({ preview: false, payoutState: "ready", availableCredits: 500 }), "payout-ready");
 assert.equal(deriveWalletResidue({ preview: false, payoutState: "processing", availableCredits: 500 }), "payout-processing");
 assert.equal(deriveWalletResidue({ preview: false, payoutState: "paid", availableCredits: 0 }), "payout-paid");
+assert.equal(deriveWalletResidueStrength({ preview: true, payoutState: "ready", availableCredits: 500, payoutCredits: 1000 }), 0);
+assert.equal(deriveWalletResidueStrength({ preview: false, payoutState: "building", availableCredits: 725, payoutCredits: 1000 }), 73);
+assert.equal(deriveWalletResidueStrength({ preview: false, payoutState: "ready", availableCredits: 1000, payoutCredits: 1000 }), 100);
+assert.equal(deriveWalletResidueStrength({ preview: false, payoutState: "processing", availableCredits: 100, payoutCredits: 1000 }), 100);
+assert.equal(deriveWalletResidueStrength({ preview: false, payoutState: "paid", availableCredits: 0, payoutCredits: 1000 }), 100);
 
 assert.equal(deriveProgressResidue({ preview: true, signedIn: true, stage: "Circuit" }), "none");
 assert.equal(deriveProgressResidue({ preview: false, signedIn: false, stage: "Circuit" }), "none");
 assert.equal(deriveProgressResidue({ preview: false, signedIn: true, stage: "Spark" }), "rank-spark");
 assert.equal(deriveProgressResidue({ preview: false, signedIn: true, stage: "Circuit" }), "rank-circuit");
 assert.equal(deriveProgressResidue({ preview: false, signedIn: true, stage: "Resonance" }), "rank-resonance");
+assert.equal(deriveProgressResidueStrength({ preview: true, signedIn: true, signal: 94 }), 0);
+assert.equal(deriveProgressResidueStrength({ preview: false, signedIn: false, signal: 94 }), 0);
+assert.equal(deriveProgressResidueStrength({ preview: false, signedIn: true, signal: 94 }), 94);
+assert.equal(deriveProgressResidueStrength({ preview: false, signedIn: true, signal: 140 }), 100);
 
 assert.equal(deriveNetworkResidue({ signedIn: false, active: 2, waiting: 3 }), "none");
 assert.equal(deriveNetworkResidue({ signedIn: true, active: 0, waiting: 3 }), "network-waiting");
 assert.equal(deriveNetworkResidue({ signedIn: true, active: 2, waiting: 3 }), "network-active");
 assert.equal(deriveNetworkResidue({ signedIn: true, active: 0, waiting: 0 }), "none");
+assert.equal(deriveNetworkResidueStrength({ signedIn: false, active: 8, waiting: 2 }), 0);
+assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 0, waiting: 3 }), 30);
+assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 4, waiting: 9 }), 40);
+assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 10, waiting: 0 }), 100);
+assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 128, waiting: 37 }), 100);
 
 console.log("Product experience state matrix PASS");

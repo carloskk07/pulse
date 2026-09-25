@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ViewTransition } from "react";
+import type { CSSProperties } from "react";
 import { signOut } from "@/app/auth/actions";
 import type { ProductExperience } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
@@ -64,9 +65,20 @@ export async function AppShell({
 
   const admin = user ? (await getAdminAllowlistStatus(user.id)) === "authorized" : false;
   const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
+  const residueStrength = experience?.residueStrength ?? 0;
+  const residueStyle = { "--pc-residue-strength": `${residueStrength}%` } as CSSProperties;
 
   return (
-    <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase} data-product-event={experience?.event} data-product-residue={experience?.residue}>
+    <div
+      className="app-frame"
+      data-section={active}
+      data-product-surface={experience?.surface}
+      data-product-phase={experience?.phase}
+      data-product-event={experience?.event}
+      data-product-residue={experience?.residue}
+      data-product-residue-strength={residueStrength}
+      style={residueStyle}
+    >
       <SpatialAtmosphere active={active} />
       <ProductInteractionLayer />
       <SystemEventField cue={eventCue} />

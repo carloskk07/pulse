@@ -11,11 +11,11 @@ if (!chrome) {
 }
 
 const scenes = [
-  ["reward", "/visual-smoke-fixture/core-state?scene=reward", "balance-funded"],
-  ["earn", "/visual-smoke-fixture/core-state?scene=earn", "balance-funded"],
-  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "payout-ready"],
-  ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-circuit"],
-  ["invite", "/visual-smoke-fixture/core-state?scene=invite", "network-active"],
+  ["reward", "/visual-smoke-fixture/core-state?scene=reward", "balance-funded", 83],
+  ["earn", "/visual-smoke-fixture/core-state?scene=earn", "balance-funded", 83],
+  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "payout-ready", 100],
+  ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-circuit", 94],
+  ["invite", "/visual-smoke-fixture/core-state?scene=invite", "network-active", 100],
 ];
 
 const viewports = [
@@ -136,6 +136,8 @@ const runtimeProbe = `(() => {
   return {
     sceneName: scene?.getAttribute("data-dense-scene") ?? null,
     productResidue: frame?.getAttribute("data-product-residue") ?? null,
+    productResidueStrength: frame?.getAttribute("data-product-residue-strength") ?? null,
+    productResidueStrengthCss: frame ? getComputedStyle(frame).getPropertyValue("--pc-residue-strength").trim() : null,
     innerWidth,
     clientWidth: root.clientWidth,
     scrollWidth: Math.max(root.scrollWidth, body?.scrollWidth ?? 0),
@@ -196,7 +198,7 @@ try {
       screenHeight: height,
     });
 
-    for (const [sceneName, route, expectedResidue] of scenes) {
+    for (const [sceneName, route, expectedResidue, expectedStrength] of scenes) {
       await send("Page.navigate", { url: `${baseUrl}${route}` });
       await waitForDocument(send);
 
@@ -219,6 +221,12 @@ try {
       }
       if (state.productResidue !== expectedResidue) {
         failures.push(`${label}: expected residue ${expectedResidue}, rendered ${state.productResidue ?? "missing"}`);
+      }
+      if (Number(state.productResidueStrength) !== expectedStrength) {
+        failures.push(`${label}: expected residue strength ${expectedStrength}, rendered ${state.productResidueStrength ?? "missing"}`);
+      }
+      if (state.productResidueStrengthCss !== `${expectedStrength}%`) {
+        failures.push(`${label}: expected CSS residue strength ${expectedStrength}%, rendered ${state.productResidueStrengthCss ?? "missing"}`);
       }
       if (state.maxScrollX > tolerance) {
         failures.push(`${label}: horizontal scrolling possible maxScrollX=${state.maxScrollX}, rawOverflow=${rawOverflow}`);
@@ -280,7 +288,7 @@ try {
       }
 
       console.log(
-        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
+        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
       );
     }
   }

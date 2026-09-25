@@ -37,6 +37,8 @@ export type CoreProductResidue =
 
 export type CoreRankStage = "Spark" | "Flow" | "Rhythm" | "Circuit" | "Resonance";
 
+export const NETWORK_RESIDUE_MILESTONE = 10;
+
 export function clampPercent(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -181,4 +183,45 @@ export function deriveNetworkResidue(input: {
   if (Number(input.active) > 0) return "network-active";
   if (Number(input.waiting) > 0) return "network-waiting";
   return "none";
+}
+
+
+export function deriveEarningResidueStrength(input: {
+  preview: boolean;
+  availableCredits: number;
+  payoutCredits: number | null;
+}): number {
+  if (input.preview) return 0;
+  return payoutProgressPercent(input.availableCredits, input.payoutCredits);
+}
+
+export function deriveWalletResidueStrength(input: {
+  preview: boolean;
+  payoutState: CorePayoutFlowState;
+  availableCredits: number;
+  payoutCredits: number | null;
+}): number {
+  if (input.preview) return 0;
+  if (input.payoutState === "ready" || input.payoutState === "processing" || input.payoutState === "paid") return 100;
+  return payoutProgressPercent(input.availableCredits, input.payoutCredits);
+}
+
+export function deriveProgressResidueStrength(input: {
+  preview: boolean;
+  signedIn: boolean;
+  signal: number;
+}): number {
+  if (input.preview || !input.signedIn) return 0;
+  return clampPercent(input.signal);
+}
+
+export function deriveNetworkResidueStrength(input: {
+  signedIn: boolean;
+  active: number;
+  waiting: number;
+}): number {
+  if (!input.signedIn) return 0;
+  const depth = Number(input.active) > 0 ? Number(input.active) : Number(input.waiting);
+  if (!Number.isFinite(depth) || depth <= 0) return 0;
+  return clampPercent((depth / NETWORK_RESIDUE_MILESTONE) * 100);
 }

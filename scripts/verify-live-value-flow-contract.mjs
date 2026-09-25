@@ -35,6 +35,11 @@ requireText("lib/product-experience-core.ts", [
   "export function deriveWalletResidue",
   "export function deriveProgressResidue",
   "export function deriveNetworkResidue",
+  "export function deriveEarningResidueStrength",
+  "export function deriveWalletResidueStrength",
+  "export function deriveProgressResidueStrength",
+  "export function deriveNetworkResidueStrength",
+  "export const NETWORK_RESIDUE_MILESTONE = 10",
   "export function deriveWalletCore",
   "export function deriveNetworkEvent",
 ]);
@@ -44,6 +49,7 @@ requireText("lib/product-experience.ts", [
   "export type ProductEvent = CoreProductEvent",
   "export type ProductResidue = CoreProductResidue",
   "residue: ProductResidue;",
+  "residueStrength: number;",
   "export function getEarningExperience",
   "export function getWalletExperience",
   "export function getProgressExperience",
@@ -59,6 +65,10 @@ requireText("lib/product-experience.ts", [
   "residue: deriveWalletResidue",
   "residue: deriveProgressResidue",
   "residue: deriveNetworkResidue",
+  "residueStrength: deriveEarningResidueStrength",
+  "residueStrength: deriveWalletResidueStrength",
+  "residueStrength: deriveProgressResidueStrength",
+  "residueStrength: deriveNetworkResidueStrength",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -120,6 +130,8 @@ requireText("components/app-shell.tsx", [
   "data-product-phase={experience?.phase}",
   "data-product-event={experience?.event}",
   "data-product-residue={experience?.residue}",
+  "data-product-residue-strength={residueStrength}",
+  '"--pc-residue-strength"',
 ]);
 
 requireText("app/dashboard/page.tsx", [
@@ -138,6 +150,11 @@ requireText("app/wallet/page.tsx", [
   "recentPositiveCredit",
   '"Payment status refreshed. The authoritative payout state is shown below."',
   'const payoutFlowState = experience.journey?.payoutState ?? "paused";',
+]);
+
+requireText("app/invite/page.tsx", [
+  'NETWORK_RESIDUE_MILESTONE',
+  '[NETWORK_RESIDUE_MILESTONE, "Referral milestone"]',
 ]);
 
 requireText("app/progress/page.tsx", [

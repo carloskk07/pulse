@@ -8,7 +8,7 @@ import { ReferralNetworkArtwork } from "@/components/pulse-visuals";
 import { SceneTelemetry } from "@/components/scene-telemetry";
 import { getInviteState } from "@/lib/invite-state";
 import { getNetworkExperience } from "@/lib/product-experience";
-import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
+import { isRecentAuthoritativeEvent, NETWORK_RESIDUE_MILESTONE } from "@/lib/product-experience-core";
 import { formatUsdFromCredits, getLedgerItems } from "@/lib/reward-state";
 
 export const metadata = { title: "Referrals" };
@@ -51,7 +51,7 @@ export default async function InvitePage() {
   });
   const site = configuredSiteUrl();
   const referralLink = signedIn && referralCode && site ? `${site}/r/${referralCode}` : null;
-  const milestones = [[1, "First referral"], [3, "Growing circle"], [5, "Active network"], [10, "Referral milestone"]] as const;
+  const milestones = [[1, "First referral"], [3, "Growing circle"], [5, "Active network"], [NETWORK_RESIDUE_MILESTONE, "Referral milestone"]] as const;
   const eventCue = recentReferralReward
     ? {
       id: `ledger:${recentReferralReward.id}`,
