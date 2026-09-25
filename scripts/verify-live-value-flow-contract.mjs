@@ -152,6 +152,11 @@ requireText("app/wallet/page.tsx", [
   'const payoutFlowState = experience.journey?.payoutState ?? "paused";',
 ]);
 
+requireText("app/invite/page.tsx", [
+  'NETWORK_RESIDUE_MILESTONE',
+  '[NETWORK_RESIDUE_MILESTONE, "Referral milestone"]',
+]);
+
 requireText("app/progress/page.tsx", [
   '"--pc-signal"',
   'className="pc-live-signal-trace"',
