@@ -13,7 +13,7 @@ if (!chrome) {
 const scenes = [
   ["reward", "/visual-smoke-fixture/core-state?scene=reward", "balance-funded"],
   ["earn", "/visual-smoke-fixture/core-state?scene=earn", "balance-funded"],
-  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "balance-funded"],
+  ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "payout-ready"],
   ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-circuit"],
   ["invite", "/visual-smoke-fixture/core-state?scene=invite", "network-active"],
 ];
