@@ -341,6 +341,7 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   'data-dense-scene="progress"',
   'data-dense-scene="invite"',
   'residue: "balance-funded"',
+  'residue: "payout-ready"',
   'residue: "rank-circuit"',
   'residue: "network-active"',
   '<SceneTelemetry',
@@ -349,6 +350,7 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
 
 requireText("scripts/verify-dense-state-runtime.mjs", [
   '"balance-funded"',
+  '"payout-ready"',
   '"rank-circuit"',
   '"network-active"',
   "productResidue",
