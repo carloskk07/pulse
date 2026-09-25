@@ -15,17 +15,37 @@ function requireText(path, fragments) {
 
 const nextConfig = read("next.config.ts");
 if (nextConfig.includes("viewTransition:")) {
-  throw new Error("Next 16.3 route continuity must not restore the obsolete experimental.viewTransition flag.");
+  throw new Error("Next 16.3 route continuity must not restore the removed experimental.viewTransition flag.");
 }
 
 requireText("components/spatial-atmosphere.tsx", [
   'import { ViewTransition } from "react";',
-  '<ViewTransition name="pc-route-carrier" share="pc-route-carrier" default="none">',
-  '<ViewTransition name="pc-route-orbit" share="pc-route-orbit" default="none">',
-  '<ViewTransition name="pc-route-index" share="pc-route-index" default="none">',
+  'name="pc-route-carrier"',
+  'name="pc-route-orbit"',
+  'name="pc-route-index"',
+  'default="none"',
+  '"pc-forward": "pc-route-carrier-forward"',
+  '"pc-back": "pc-route-carrier-back"',
+  '"pc-forward": "pc-route-orbit-forward"',
+  '"pc-back": "pc-route-orbit-back"',
+  '"pc-forward": "pc-route-index-forward"',
+  '"pc-back": "pc-route-index-back"',
   'className="pc-route-carrier"',
-  "<i />",
-  "<b />",
+]);
+
+requireText("components/app-shell.tsx", [
+  "const routeOrder = new Map",
+  "function routeTransitionTypes",
+  '"pc-forward"',
+  '"pc-back"',
+  "transitionTypes={routeTransitionTypes(active, id)}",
+]);
+
+requireText("components/value-flow.tsx", [
+  'const earnTransitionTypes = stage === "earn" ? undefined : ["pc-back"];',
+  'const walletTransitionTypes = stage === "earn" ? ["pc-forward"] : undefined;',
+  "transitionTypes={earnTransitionTypes}",
+  "transitionTypes={walletTransitionTypes}",
 ]);
 
 requireText("app/styles/app-art-direction.css", [
@@ -36,29 +56,30 @@ requireText("app/styles/app-art-direction.css", [
   '.pc-spatial-atmosphere[data-scene="earn"] .pc-route-carrier',
   '.pc-spatial-atmosphere[data-scene="wallet"] .pc-route-carrier',
   '.pc-spatial-atmosphere[data-scene="invite"] .pc-route-carrier',
-  "@supports (view-transition-name: pc-route-carrier)",
-  "view-transition-name:pc-route-carrier",
-  "view-transition-name:pc-route-orbit",
-  "view-transition-name:pc-route-index",
-  "view-transition-name:pc-active-nav",
-  "view-transition-name:pc-active-nav-mobile",
-  "::view-transition-old(root)",
-  "::view-transition-group(pc-route-carrier)",
-  "::view-transition-group(pc-route-orbit)",
-  "::view-transition-group(pc-active-nav)",
+  "--pc-route-vt-motion:1",
+  "::view-transition-group(.pc-route-carrier-forward)",
+  "::view-transition-group(.pc-route-carrier-back)",
+  "::view-transition-group(.pc-route-orbit-forward)",
+  "::view-transition-group(.pc-route-index-forward)",
+  "::view-transition-old(.pc-route-carrier-forward)",
+  "::view-transition-new(.pc-route-carrier-forward)",
+  "::view-transition-old(.pc-route-carrier-back)",
+  "::view-transition-new(.pc-route-carrier-back)",
   "@media(prefers-reduced-motion:reduce)",
-  "view-transition-name:none!important",
+  "--pc-route-vt-motion:0",
+  "--pc-route-vt-carrier-duration:.001ms",
 ]);
 
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   "/dashboard",
   "/earn",
   "/wallet",
-  'typeof Document.prototype.startViewTransition !== "function"',
-  "pc-route-carrier",
-  "pc-route-orbit",
-  "pc-route-index",
-  "pc-active-nav",
+  "/progress",
+  "Document.prototype.startViewTransition",
+  "window.__pcRouteTransitionTypes",
+  'assertTypes(earn, "pc-forward"',
+  'assertTypes(wallet, "pc-forward"',
+  'assertTypes(progress, "pc-back"',
   '"prefers-reduced-motion", value: "no-preference"',
   '"prefers-reduced-motion", value: "reduce"',
   "Native route continuity PASS",
@@ -70,8 +91,15 @@ if (sceneCarriers < 5) {
   throw new Error(`Route continuity must preserve five scene carrier positions; found ${sceneCarriers}.`);
 }
 
-if (/view-transition-name:\s*pc-route-(?:carrier|orbit|index)[^\n]*\.(?:wallet|balance|reward|claim|payout)/i.test(css)) {
-  throw new Error("Route continuity must not bind named transition snapshots to financial-state selectors.");
+if (/view-transition-name\s*:/.test(css)) {
+  throw new Error("V10 must let React own view-transition-name assignment instead of hard-coding CSS names.");
+}
+
+for (const forbidden of ["availableCredits", "payoutCredits", "claimReady", "rewardCredits", "ledger"]) {
+  const atmosphere = read("components/spatial-atmosphere.tsx");
+  if (atmosphere.includes(forbidden)) {
+    throw new Error(`Shared transition geometry must not depend on financial state: ${forbidden}`);
+  }
 }
 
 console.log("Native route continuity static contract PASS");
