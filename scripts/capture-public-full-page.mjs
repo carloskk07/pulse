@@ -16,6 +16,8 @@ const routes = [
   ["faucet", "/faucet"],
   ["proof", "/proof"],
   ["auth", "/auth"],
+  ["business", "/business"],
+  ["advertise", "/advertise"],
 ];
 
 const viewports = [

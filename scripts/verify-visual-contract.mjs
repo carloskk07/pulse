@@ -187,7 +187,7 @@ requireText(".github/workflows/visual-smoke.yml", [
   "Verify native route continuity",
   "Capture full-page public evidence",
   'test "$count" -eq 92',
-  'test "$count" -eq 100',
+  'test "$count" -eq 104',
   "local-preview/claim-reveal/desktop",
   "production-fixture-isolation",
 ]);
@@ -208,6 +208,8 @@ requireText("scripts/capture-public-full-page.mjs", [
   '["faucet", "/faucet"]',
   '["proof", "/proof"]',
   '["auth", "/auth"]',
+  '["business", "/business"]',
+  '["advertise", "/advertise"]',
   '["desktop", 1440, 900]',
   '["mobile", 390, 844]',
   '"Page.getLayoutMetrics"',
@@ -346,7 +348,7 @@ requireText(".github/workflows/visual-smoke.yml", [
   "visual-smoke/local-preview/dense-state/desktop",
   "visual-smoke/local-preview/dense-state/mobile",
   "/visual-smoke-fixture/core-state?scene=reward",
-  'test "$count" -eq 100',
+  'test "$count" -eq 104',
 ]);
 
 requireText("app/earn/page.tsx", [
