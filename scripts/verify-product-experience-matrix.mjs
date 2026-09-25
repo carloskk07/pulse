@@ -4,6 +4,7 @@ import {
   deriveEarningPhase,
   deriveEarningResidue,
   deriveEarningResidueStrength,
+  deriveResidueDimension,
   deriveNetworkEvent,
   deriveNetworkResidue,
   deriveNetworkResidueStrength,
@@ -182,5 +183,17 @@ assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 0, waiting: 
 assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 4, waiting: 9 }), 40);
 assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 10, waiting: 0 }), 100);
 assert.equal(deriveNetworkResidueStrength({ signedIn: true, active: 128, waiting: 37 }), 100);
+
+assert.equal(deriveResidueDimension("none"), "none");
+assert.equal(deriveResidueDimension("reward-history"), "value");
+assert.equal(deriveResidueDimension("balance-funded"), "value");
+assert.equal(deriveResidueDimension("payout-ready"), "value");
+assert.equal(deriveResidueDimension("payout-processing"), "value");
+assert.equal(deriveResidueDimension("payout-paid"), "value");
+assert.equal(deriveResidueDimension("rank-spark"), "signal");
+assert.equal(deriveResidueDimension("rank-circuit"), "signal");
+assert.equal(deriveResidueDimension("rank-resonance"), "signal");
+assert.equal(deriveResidueDimension("network-waiting"), "network");
+assert.equal(deriveResidueDimension("network-active"), "network");
 
 console.log("Product experience state matrix PASS");
