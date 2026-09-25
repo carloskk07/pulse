@@ -53,6 +53,10 @@ requireText("components/value-flow.tsx", [
   'href="/wallet"',
   'aria-current={stage === "earn" ? "step" : undefined}',
   '"--pc-value-progress"',
+  'const compactPayoutLabel = payoutState === "building"',
+  'className="pc-value-flow-label-wide"',
+  'className="pc-value-flow-label-compact"',
+  'aria-label={payoutLabel}',
 ]);
 
 const governedPages = [
@@ -135,6 +139,11 @@ requireText("app/styles/app-art-direction.css", [
   '.app-frame[data-product-event="payout-processing"]:after',
   '.app-frame[data-product-event="payout-complete"] .pc-v3-vault-balance',
   '.app-frame[data-product-event="network-live"] .pc-luxe-invite-hero',
+  ".pc-value-flow-label-wide{display:block}",
+  ".pc-value-flow-label-compact{display:none}",
+  "@media(max-width:760px)",
+  ".pc-value-flow-label-wide{display:none}",
+  ".pc-value-flow-label-compact{display:block}",
   "@media(prefers-reduced-motion:reduce)",
 ]);
 
