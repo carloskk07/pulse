@@ -1870,3 +1870,135 @@
   .app-frame[data-section="earn"] .pc-scene-telemetry{order:2!important}
   .app-frame[data-section="earn"] .pc-earn-head-visual{order:3!important}
 }
+
+
+/* V8 — dense signed-in visual proof.
+   These selectors style localhost-only visual fixtures that stress real product
+   components with representative high-density state. They do not create public UI. */
+.pc-dense-fixture-note{
+  position:relative;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  width:max-content;
+  max-width:100%;
+  margin:-26px 0 28px;
+  padding:8px 12px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:999px;
+  background:rgba(6,9,7,.74);
+  color:#87928a;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  backdrop-filter:blur(10px);
+}
+.pc-dense-fixture-note svg{
+  width:13px;
+  height:13px;
+  color:var(--app-accent);
+}
+.pc-dense-rank-stack{
+  display:grid;
+  gap:8px;
+  margin-top:22px;
+}
+.pc-dense-rank-stack>span{
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  min-height:42px;
+  padding:7px 9px;
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:13px;
+  background:rgba(255,255,255,.014);
+}
+.pc-dense-rank-stack b{
+  color:var(--app-accent);
+  font-size:8px;
+  letter-spacing:.12em;
+}
+.pc-dense-rank-stack strong{
+  color:#f0eadc;
+  font-size:12px;
+}
+.pc-dense-rank-stack small{
+  color:#78827b;
+  font-size:8px;
+}
+.pc-dense-network-depth{
+  position:relative;
+  z-index:3;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  width:min(88%,1120px);
+  margin:-18px 0 42px auto;
+}
+.pc-dense-network-depth article{
+  min-height:112px;
+  padding:22px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:22px;
+  background:
+    radial-gradient(circle at 88% 15%,rgba(164,145,255,.06),transparent 28%),
+    linear-gradient(150deg,rgba(13,17,14,.92),rgba(5,8,6,.9));
+  box-shadow:0 28px 70px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.pc-dense-network-depth small{
+  display:block;
+  color:#7e8981;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.pc-dense-network-depth strong{
+  display:block;
+  margin-top:10px;
+  color:#f2ebdc;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:34px;
+  font-weight:400;
+  letter-spacing:-.055em;
+}
+.pc-dense-network-depth span{
+  display:block;
+  margin-top:5px;
+  color:#808a83;
+  font-size:9px;
+}
+.pc-dense-fixture .transaction-card,
+.pc-dense-fixture .trust-card{
+  min-width:0;
+}
+.pc-dense-fixture .referral-box code{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media(max-width:820px){
+  .pc-dense-fixture-note{
+    margin:0 0 20px;
+    border-radius:15px;
+    line-height:1.35;
+    text-transform:none;
+  }
+  .pc-dense-network-depth{
+    width:100%;
+    grid-template-columns:1fr;
+    margin:0 0 30px;
+  }
+}
+@media(max-width:560px){
+  .pc-dense-fixture-note{font-size:7px}
+  .pc-dense-rank-stack>span{
+    grid-template-columns:24px minmax(0,1fr) auto;
+    gap:7px;
+  }
+  .pc-dense-network-depth article{min-height:94px;padding:18px}
+  .pc-dense-network-depth strong{font-size:29px}
+}
