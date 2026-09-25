@@ -2326,3 +2326,66 @@
   ::view-transition-old(*),
   ::view-transition-new(*){animation-duration:.001ms!important;animation-delay:0ms!important}
 }
+
+
+/* V10.4 — replaced route-content boundary.
+   The stable AppShell remains anchored while only route content enters/exits.
+   Shared carrier/orbit/index boundaries can now participate in the same
+   React-managed View Transition. */
+.app-frame:is([data-section="home"],[data-section="progress"],[data-section="earn"],[data-section="wallet"],[data-section="invite"]) .app-content{
+  animation:none;
+}
+::view-transition{
+  pointer-events:none;
+}
+::view-transition-old(.pc-route-content-forward){
+  --pc-route-content-offset:-22px;
+  animation:
+    120ms ease-in both pcRouteContentFade reverse,
+    280ms cubic-bezier(.2,.75,.2,1) both pcRouteContentSlide reverse;
+}
+::view-transition-new(.pc-route-content-forward){
+  --pc-route-content-offset:22px;
+  animation:
+    170ms ease-out 90ms both pcRouteContentFade,
+    280ms cubic-bezier(.2,.75,.2,1) both pcRouteContentSlide;
+}
+::view-transition-old(.pc-route-content-back){
+  --pc-route-content-offset:22px;
+  animation:
+    120ms ease-in both pcRouteContentFade reverse,
+    280ms cubic-bezier(.2,.75,.2,1) both pcRouteContentSlide reverse;
+}
+::view-transition-new(.pc-route-content-back){
+  --pc-route-content-offset:-22px;
+  animation:
+    170ms ease-out 90ms both pcRouteContentFade,
+    280ms cubic-bezier(.2,.75,.2,1) both pcRouteContentSlide;
+}
+@keyframes pcRouteContentFade{
+  from{opacity:.86;filter:blur(1.5px)}
+  to{opacity:1;filter:blur(0)}
+}
+@keyframes pcRouteContentSlide{
+  from{translate:var(--pc-route-content-offset) 0}
+  to{translate:0 0}
+}
+@media(max-width:820px){
+  ::view-transition-old(.pc-route-content-forward),
+  ::view-transition-new(.pc-route-content-forward),
+  ::view-transition-old(.pc-route-content-back),
+  ::view-transition-new(.pc-route-content-back){
+    --pc-route-content-offset:12px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  ::view-transition-old(.pc-route-content-forward),
+  ::view-transition-new(.pc-route-content-forward),
+  ::view-transition-old(.pc-route-content-back),
+  ::view-transition-new(.pc-route-content-back){
+    animation-duration:.001ms!important;
+    animation-delay:0ms!important;
+    filter:none!important;
+    translate:0 0!important;
+  }
+}
