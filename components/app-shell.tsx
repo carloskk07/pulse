@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ViewTransition } from "react";
 import { signOut } from "@/app/auth/actions";
 import type { ProductExperience } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
@@ -24,6 +25,12 @@ function routeTransitionTypes(active: string, target: string) {
   if (currentIndex === undefined || targetIndex === undefined || currentIndex === targetIndex) return undefined;
   return [targetIndex > currentIndex ? "pc-forward" : "pc-back"];
 }
+
+const routeContentTransition = {
+  default: "none",
+  "pc-forward": "pc-route-content-forward",
+  "pc-back": "pc-route-content-back",
+} as const;
 
 const adminLinks = [
   { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
@@ -100,7 +107,14 @@ export async function AppShell({
           </details>
         </div>
       </header>
-      <main className="app-content">{children}</main>
+      <ViewTransition
+        key={`route-content-${active}`}
+        enter={routeContentTransition}
+        exit={routeContentTransition}
+        default="none"
+      >
+        <main className="app-content">{children}</main>
+      </ViewTransition>
       <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
           <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
