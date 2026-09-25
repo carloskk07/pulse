@@ -43,9 +43,6 @@ const privateNoIndexRoutes = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-  experimental: {
-    viewTransition: true,
-  },
   async headers() {
     return [
       {
