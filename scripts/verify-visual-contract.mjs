@@ -344,6 +344,9 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   'residue: "payout-ready"',
   'residue: "rank-circuit"',
   'residue: "network-active"',
+  "residueStrength: 83",
+  "residueStrength: 94",
+  "residueStrength: 100",
   '<SceneTelemetry',
   '<ValueFlow',
 ]);
@@ -354,7 +357,10 @@ requireText("scripts/verify-dense-state-runtime.mjs", [
   '"rank-circuit"',
   '"network-active"',
   "productResidue",
+  "productResidueStrength",
+  "productResidueStrengthCss",
   "expectedResidue",
+  "expectedStrength",
 ]);
 
 requireText(".github/workflows/visual-smoke.yml", [
