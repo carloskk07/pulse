@@ -2411,6 +2411,10 @@
   padding:clamp(82px,9vh,116px) 16px 0;
   pointer-events:none;
   isolation:isolate;
+  visibility:hidden;
+}
+.pc-system-event-field.is-visible{
+  visibility:visible;
 }
 .pc-system-event-field.is-payout-ready,
 .pc-system-event-field.is-payout-complete{
@@ -2434,6 +2438,8 @@
     radial-gradient(circle at 50% 18%,var(--pc-system-event-accent-soft),transparent 24%),
     linear-gradient(180deg,rgba(255,255,255,.018),transparent 32%);
   opacity:0;
+}
+.pc-system-event-field.is-visible:before{
   animation:pcSystemEventBloom 1.25s var(--pc-motion-ease,cubic-bezier(.2,.8,.2,1)) both;
 }
 .pc-system-event-wave{
@@ -2447,6 +2453,8 @@
   border-radius:50%;
   opacity:0;
   transform:translate(-50%,-50%) scale(.18);
+}
+.pc-system-event-field.is-visible .pc-system-event-wave{
   animation:pcSystemEventWave 1.45s var(--pc-motion-ease,cubic-bezier(.2,.8,.2,1)) both;
 }
 .pc-system-event-wave.wave-b{
@@ -2470,6 +2478,8 @@
     0 28px 90px rgba(0,0,0,.34),
     0 0 58px color-mix(in srgb,var(--pc-system-event-accent) 8%,transparent);
   backdrop-filter:blur(18px);
+}
+.pc-system-event-field.is-visible .pc-system-event-card{
   animation:pcSystemEventCard 680ms var(--pc-motion-ease,cubic-bezier(.2,.8,.2,1)) both;
 }
 .pc-system-event-card:before{
