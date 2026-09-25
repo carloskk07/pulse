@@ -128,10 +128,11 @@ export default async function WalletPage({ searchParams }: Props) {
   ) ?? null;
   const payoutReadyEvent = Boolean(
     !paidConfirmed
-    && payoutCredits
+    && canWithdraw
+    && requiredWithdrawalCredits
     && recentPositiveCredit
-    && state.availableCredits >= payoutCredits
-    && Math.max(0, state.availableCredits - recentPositiveCredit.credits) < payoutCredits
+    && state.availableCredits >= requiredWithdrawalCredits
+    && Math.max(0, state.availableCredits - recentPositiveCredit.credits) < requiredWithdrawalCredits
   );
   const experience = getWalletExperience({
     snapshot: state,
@@ -161,6 +162,9 @@ export default async function WalletPage({ searchParams }: Props) {
     : payout.ready && payoutCredits
       ? payout.display || formatUsdFromCredits(payoutCredits)
       : "Preparing";
+  const payoutReadyTargetLabel = requiredWithdrawalCredits
+    ? formatUsdFromCredits(requiredWithdrawalCredits)
+    : payoutPackLabel;
   const eventCue = paidRow
     ? {
       id: `ledger:${paidRow.id}`,
@@ -177,9 +181,9 @@ export default async function WalletPage({ searchParams }: Props) {
         kind: "payout-ready" as const,
         kicker: "Target reached",
         title: "Payout is ready",
-        value: payoutPackLabel,
-        detail: "A recent verified credit moved your available balance across the current payout target.",
-        markers: [`Balance ${formatUsdFromCredits(state.availableCredits)}`, `Target ${payoutPackLabel}`],
+        value: payoutReadyTargetLabel,
+        detail: "A recent verified credit moved your available balance across the current withdrawable threshold.",
+        markers: [`Balance ${formatUsdFromCredits(state.availableCredits)}`, `Threshold ${payoutReadyTargetLabel}`],
       }
       : null;
 
