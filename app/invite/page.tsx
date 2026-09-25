@@ -29,6 +29,7 @@ export default async function InvitePage() {
   const [inviteState, ledger] = await Promise.all([getInviteState(), getLedgerItems()]);
   const {
     signedIn,
+    observedAt,
     referralCode,
     pending,
     rewarded,
@@ -40,7 +41,7 @@ export default async function InvitePage() {
   const recentReferralReward = ledger.find((row) =>
     row.label === "Referral reward"
     && row.credits > 0
-    && isRecentAuthoritativeEvent(row.createdAt, Date.now(), 10 * 60_000)
+    && isRecentAuthoritativeEvent(row.createdAt, Date.parse(observedAt), 10 * 60_000)
   ) ?? null;
   const experience = getNetworkExperience({
     signedIn,
