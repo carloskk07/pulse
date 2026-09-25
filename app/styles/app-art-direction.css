@@ -1860,3 +1860,13 @@
   .pc-scene-telemetry-item.item-3{right:8px;bottom:10px}
   .pc-scene-telemetry-item:after{display:none}
 }
+
+
+/* V7.2 — screenshot-driven compact narrative order.
+   Earn had a legacy flex/grid order that placed telemetry before the page story.
+   Keep the same narrative used by every other route: context -> instrument -> flow. */
+@media(max-width:820px){
+  .app-frame[data-section="earn"] .pc-earn-head-copy{order:1!important}
+  .app-frame[data-section="earn"] .pc-scene-telemetry{order:2!important}
+  .app-frame[data-section="earn"] .pc-earn-head-visual{order:3!important}
+}
