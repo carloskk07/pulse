@@ -5,6 +5,15 @@ import type { ProductJourney } from "@/lib/product-experience";
 export function ValueFlow({ journey }: { journey: ProductJourney }) {
   const { stage, balance, payoutProgress, payoutState, payoutLabel } = journey;
   const progress = Math.max(0, Math.min(100, Math.round(payoutProgress)));
+  const compactPayoutLabel = payoutState === "building"
+    ? `${progress}%`
+    : payoutState === "ready"
+      ? "Ready"
+      : payoutState === "processing"
+        ? "Processing"
+        : payoutState === "paid"
+          ? "Paid"
+          : "Preparing";
   const style = { "--pc-value-progress": `${progress}%` } as CSSProperties;
 
   return (
@@ -37,7 +46,10 @@ export function ValueFlow({ journey }: { journey: ProductJourney }) {
         <span className="pc-value-flow-index">03</span>
         <span className="pc-value-flow-copy">
           <small>Payout</small>
-          <strong>{payoutLabel}</strong>
+          <strong aria-label={payoutLabel}>
+            <span className="pc-value-flow-label-wide" aria-hidden="true">{payoutLabel}</span>
+            <span className="pc-value-flow-label-compact" aria-hidden="true">{compactPayoutLabel}</span>
+          </strong>
         </span>
       </Link>
     </nav>
