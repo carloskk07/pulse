@@ -5,6 +5,7 @@ import { CashbackStartButton } from "@/components/cashback-start-button";
 import { DirectStartButton } from "@/components/direct-start-button";
 import { ValueFlow } from "@/components/value-flow";
 import { EarnSpectrumArtwork } from "@/components/pulse-visuals";
+import { SceneTelemetry } from "@/components/scene-telemetry";
 import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
@@ -74,7 +75,15 @@ export default async function EarnPage({ searchParams }: Props) {
           <p>Compare tasks, verified actions, cashback and partner rewards by value and time. The hourly faucet remains separate and does not require any of them.</p>
         </div>
         <div className="pc-earn-head-visual" aria-hidden="true"><EarnSpectrumArtwork /></div>
-        <div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>
+        <SceneTelemetry
+          variant="earn"
+          status={best ? "Best option" : primaryChannel ? "Available" : "Faucet first"}
+          items={[
+            { label: "Balance", value: state.preview ? "—" : formatUsdFromCredits(state.availableCredits), meta: "Available value" },
+            { label: "Options", value: state.preview ? "—" : String(ranked.length || (primaryChannel ? 1 : 0)), meta: "Ranked now" },
+            { label: "Best time", value: best?.estimatedMinutes ? `~${best.estimatedMinutes} min` : "—", meta: best ? evidenceLabel(best) : "Optional" },
+          ]}
+        />
       </div>
 
       {experience.journey ? <ValueFlow journey={experience.journey} /> : null}
