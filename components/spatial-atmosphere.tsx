@@ -1,4 +1,4 @@
-const sceneMeta: Record<string, { index: string; label: string; secondary: string }> = {
+import { ViewTransition } from "react";\n\nconst sceneMeta: Record<string, { index: string; label: string; secondary: string }> = {
   home: { index: "01", label: "REWARD FIELD", secondary: "VALUE / TIME" },
   progress: { index: "02", label: "PROGRESS FIELD", secondary: "RANK / MOMENTUM" },
   earn: { index: "03", label: "EARNING FIELD", secondary: "VALUE / ROUTES" },
@@ -18,15 +18,21 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       <div className="pc-space-plane plane-a" />
       <div className="pc-space-plane plane-b" />
       <div className="pc-space-plane plane-c" />
-      <div className="pc-space-orbit orbit-a" />
+      <ViewTransition name="pc-route-orbit" share="pc-route-orbit" default="none">
+        <div className="pc-space-orbit orbit-a" />
+      </ViewTransition>
       <div className="pc-space-orbit orbit-b" />
-      <div className="pc-route-carrier"><i /><b /></div>
+      <ViewTransition name="pc-route-carrier" share="pc-route-carrier" default="none">
+        <div className="pc-route-carrier"><i /><b /></div>
+      </ViewTransition>
       <div className="pc-space-beam beam-a" />
       <div className="pc-space-beam beam-b" />
       <span className="pc-space-node node-a" />
       <span className="pc-space-node node-b" />
       <span className="pc-space-node node-c" />
-      <span className="pc-space-datum datum-a">{meta.index}</span>
+      <ViewTransition name="pc-route-index" share="pc-route-index" default="none">
+        <span className="pc-space-datum datum-a">{meta.index}</span>
+      </ViewTransition>
       <span className="pc-space-datum datum-b">{meta.label}</span>
       <span className="pc-space-datum datum-c">{meta.secondary}</span>
     </div>
