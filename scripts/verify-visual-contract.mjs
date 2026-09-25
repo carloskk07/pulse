@@ -351,6 +351,34 @@ requireText(".github/workflows/visual-smoke.yml", [
   'test "$count" -eq 104',
 ]);
 
+requireText("app/advertise/page.tsx", [
+  'import { SiteHeader } from "@/components/site-header";',
+  'const page = (',
+  'if (user) {',
+  'return <AppShell active="ads"',
+  'className="marketing-page pc-ads-public-page"',
+  '<SiteHeader />',
+  'className="shell pc-ads-public-shell"',
+  'className="footer shell pc-ads-public-footer"',
+]);
+
+requireText("app/styles/pulse-ads.css", [
+  "/* V11.2 — public Ads surface coherence.",
+  ".pc-ads-public-page{",
+  ".pc-ads-public-shell{",
+  ".pc-ads-public-page .pc-ads-page{",
+  ".pc-ads-public-footer{",
+]);
+
+requireText("app/styles/business.css", [
+  "/* V11.2 — screenshot-driven Business mobile CTA repair.",
+  ".business-final-cta{",
+  "grid-template-columns:minmax(0,1fr)",
+  ".business-final-cta h2{",
+  "word-break:normal",
+  ".business-final-cta .button{",
+]);
+
 requireText("app/earn/page.tsx", [
   '<SceneTelemetry',
   'variant="earn"',
