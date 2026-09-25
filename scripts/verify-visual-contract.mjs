@@ -301,7 +301,9 @@ requireText("app/visual-smoke-fixture/claim-reveal/page.tsx", [
 ]);
 
 requireText("app/earn/page.tsx", [
-  '<div className="balance-chip"><small>Balance</small><strong>{state.preview ? "—" : formatUsdFromCredits(state.availableCredits)}</strong></div>',
+  '<SceneTelemetry',
+  'variant="earn"',
+  '{ label: "Balance", value: state.preview ? "—" : formatUsdFromCredits(state.availableCredits), meta: "Available value" }',
 ]);
 
 requireText("components/turnstile-field.tsx", [
