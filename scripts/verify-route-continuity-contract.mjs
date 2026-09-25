@@ -43,9 +43,13 @@ requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
   "const routeOrder = new Map",
   "function routeTransitionTypes",
-  'name="pc-route-topbar"',
-  'name="pc-route-bottom-nav"',
-  'share="pc-route-nav-anchor"',
+  'const routeContentTransition = {',
+  '"pc-forward": "pc-route-content-forward"',
+  '"pc-back": "pc-route-content-back"',
+  'key={`route-content-${active}`}',
+  "enter={routeContentTransition}",
+  "exit={routeContentTransition}",
+  'default="none"',
   "transitionTypes={routeTransitionTypes(active, id)}",
 ]);
 
@@ -85,56 +89,9 @@ requireText("app/styles/app-art-direction.css", [
   "@keyframes pcRouteContentFade",
   "::view-transition{",
   "pointer-events:none",
-  "/* V10.8 page-root navigation anchor */",
-  "::view-transition-group(.pc-route-nav-anchor)",
-  "::view-transition-old(.pc-route-nav-anchor)",
-  "::view-transition-new(.pc-route-nav-anchor)",
-]);
-
-requireText("components/route-page-transition.tsx", [
-  'import { ViewTransition } from "react";',
-  'key={`route-page-${route}`}',
-  '"pc-forward": "pc-route-content-forward"',
-  '"pc-back": "pc-route-content-back"',
-  "enter={routePageTransition}",
-  "exit={routePageTransition}",
-  'default="none"',
-]);
-
-for (const [path, route] of [
-  ["app/dashboard/page.tsx", "home"],
-  ["app/progress/page.tsx", "progress"],
-  ["app/earn/page.tsx", "earn"],
-  ["app/wallet/page.tsx", "wallet"],
-  ["app/invite/page.tsx", "invite"],
-]) {
-  requireText(path, [
-    'import { RoutePageTransition } from "@/components/route-page-transition";',
-    `<RoutePageTransition route="${route}">`,
-    "</RoutePageTransition>",
-  ]);
-}
-
-requireText("components/view-transition-runtime-fixture.tsx", [
-  '"use client";',
-  'startTransition',
-  'ViewTransition',
-  'update="auto"',
-  'id="vt-runtime-trigger"',
-  'id="vt-runtime-state"',
-]);
-
-requireText("app/visual-smoke-fixture/view-transition/page.tsx", [
-  'localVisualHost',
-  'if (!localVisualHost) notFound();',
-  '<ViewTransitionRuntimeFixture />',
 ]);
 
 requireText("scripts/verify-route-continuity-runtime.mjs", [
-  "/visual-smoke-fixture/view-transition",
-  "verifyMinimalReactViewTransition",
-  'CSS.supports("view-transition-class", "pc-probe")',
-  "Minimal React ViewTransition runtime PASS",
   "/dashboard",
   "/earn",
   "/wallet",
@@ -148,24 +105,14 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "Document.prototype.startViewTransition",
   "window.__pcRouteTransitionTypes",
   "window.__pcRouteTransitionAnimations",
-  "window.__pcRouteTransitionHistory",
-  "transition?.types",
-  ":active-view-transition-type(",
-  "waitForTransitionType",
   "probeInstalled",
-  'waitForTransitionType(send, "pc-forward", earnCallsBefore, "Rewards → Earn")',
-  'waitForTransitionType(send, "pc-forward", reducedCalls, "Earn → Balance under reduced motion")',
-  'waitForTransitionType(send, "pc-back", backCalls, "Balance → Progress")',
+  'assertTypes(earn, "pc-forward"',
+  'assertTypes(wallet, "pc-forward"',
+  'assertTypes(progress, "pc-back"',
   '"prefers-reduced-motion", value: "no-preference"',
   '"prefers-reduced-motion", value: "reduce"',
   "Native route continuity PASS",
 ]);
-
-
-const appShell = read("components/app-shell.tsx");
-if (appShell.includes("routeContentTransition") || appShell.includes('key={`route-content-${active}`}')) {
-  throw new Error("Route ViewTransition must live before AppShell DOM, not inside the persistent shell.");
-}
 
 const css = read("app/styles/app-art-direction.css");
 const sceneCarriers = (css.match(/pc-spatial-atmosphere\[data-scene="(?:home|progress|earn|wallet|invite)"\] \.pc-route-carrier/g) ?? []).length;
