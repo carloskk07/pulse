@@ -15,6 +15,7 @@ on:
       - "scripts/verify-responsive-runtime.mjs"
       - "scripts/verify-dense-state-runtime.mjs"
       - "scripts/verify-product-interaction-runtime.mjs"
+      - "scripts/verify-route-continuity-runtime.mjs"
       - "scripts/capture-public-full-page.mjs"
       - "scripts/capture-viewport.mjs"
 
@@ -241,6 +242,12 @@ jobs:
         env:
           PRODUCT_INTERACTION_BASE_URL: http://127.0.0.1:3100
         run: node scripts/verify-product-interaction-runtime.mjs
+
+      - name: Verify native route continuity
+        shell: bash
+        env:
+          ROUTE_CONTINUITY_BASE_URL: http://127.0.0.1:3100
+        run: node scripts/verify-route-continuity-runtime.mjs
 
       - name: Resolve canonical production release authority
         shell: bash
