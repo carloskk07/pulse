@@ -379,6 +379,14 @@ requireText("app/styles/business.css", [
   ".business-final-cta .button{",
 ]);
 
+requireText("app/styles/business.css", [
+  "/* V11.3 — Business compact hierarchy.",
+  ".business-value-section .split-heading{",
+  "grid-template-columns:minmax(0,1fr)",
+  ".business-value-section .split-heading>p{",
+  "max-width:36rem",
+]);
+
 requireText("app/earn/page.tsx", [
   '<SceneTelemetry',
   'variant="earn"',
