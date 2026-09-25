@@ -13,12 +13,16 @@ function requireText(path, fragments) {
   }
 }
 
-requireText("next.config.ts", [
-  "experimental: {",
-  "viewTransition: true",
-]);
+const nextConfig = read("next.config.ts");
+if (nextConfig.includes("viewTransition:")) {
+  throw new Error("Next 16.3 route continuity must not restore the obsolete experimental.viewTransition flag.");
+}
 
 requireText("components/spatial-atmosphere.tsx", [
+  'import { ViewTransition } from "react";',
+  '<ViewTransition name="pc-route-carrier" share="pc-route-carrier" default="none">',
+  '<ViewTransition name="pc-route-orbit" share="pc-route-orbit" default="none">',
+  '<ViewTransition name="pc-route-index" share="pc-route-index" default="none">',
   'className="pc-route-carrier"',
   "<i />",
   "<b />",
