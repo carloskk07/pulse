@@ -7,6 +7,7 @@ import { getCurrentUserContext } from "@/lib/current-user-context";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 import { SpatialAtmosphere } from "./spatial-atmosphere";
 import { ProductInteractionLayer } from "./product-interaction-layer";
+import { SystemEventField, type SystemEventCue } from "./system-event-field";
 import { Bolt, Home, Shield, Spark, Trend, Users, Wallet } from "./icons";
 
 const links = [
@@ -44,11 +45,13 @@ export async function AppShell({
   active,
   userLabel,
   experience,
+  eventCue,
 }: {
   children: React.ReactNode;
   active: string;
   userLabel?: string | null;
   experience?: ProductExperience;
+  eventCue?: SystemEventCue | null;
 }) {
   const { supabase, user } = await getCurrentUserContext();
   const suppliedLabel = userLabel?.trim();
@@ -66,6 +69,7 @@ export async function AppShell({
     <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase} data-product-event={experience?.event}>
       <SpatialAtmosphere active={active} />
       <ProductInteractionLayer />
+      <SystemEventField cue={eventCue} />
       <ViewTransition name="pc-route-topbar" share="pc-route-nav-anchor" default="none">
         <header className="app-topbar">
         <div className="app-topbar-inner">
