@@ -64,12 +64,6 @@ export default async function ClaimedPage() {
   const payout = getFaucetPayPackConfig();
   const payoutTargetCredits = payout.amountCredits && payout.amountCredits > 0 ? payout.amountCredits : null;
   const payoutRemaining = payoutTargetCredits ? Math.max(0, payoutTargetCredits - state.availableCredits) : null;
-  const availableBeforeClaim = Math.max(0, state.availableCredits - receipt.rewardCredits);
-  const payoutBecameReady = Boolean(
-    payoutTargetCredits
-    && availableBeforeClaim < payoutTargetCredits
-    && state.availableCredits >= payoutTargetCredits
-  );
   const previousSignal = getCircuitProgress({
     hourlyClaimCount: Math.max(0, state.hourlyClaimCount - 1),
     streakDays: state.streakDays,
@@ -109,7 +103,6 @@ export default async function ClaimedPage() {
     markers: [
       `Balance ${formatUsdFromCredits(state.availableCredits)}`,
       ...(rankAdvanced ? [`Rank ${previousSignal.stage} → ${signal.stage}`] : []),
-      ...(payoutBecameReady ? ["Payout ready"] : []),
     ],
   };
 
