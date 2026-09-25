@@ -52,6 +52,7 @@ export async function AppShell({
 
   return (
     <div className="app-frame" data-section={active} data-product-surface={experience?.surface} data-product-phase={experience?.phase} data-product-event={experience?.event}>
+      <SpatialAtmosphere active={active} />
       <header className="app-topbar">
         <div className="app-topbar-inner">
           <PulsercuitBrand />
