@@ -14,6 +14,7 @@ on:
       - "proxy.ts"
       - "scripts/verify-responsive-runtime.mjs"
       - "scripts/verify-dense-state-runtime.mjs"
+      - "scripts/verify-product-interaction-runtime.mjs"
       - "scripts/capture-public-full-page.mjs"
       - "scripts/capture-viewport.mjs"
 
@@ -234,6 +235,12 @@ jobs:
         env:
           DENSE_STATE_BASE_URL: http://127.0.0.1:3100
         run: node scripts/verify-dense-state-runtime.mjs
+
+      - name: Verify reactive spatial interaction
+        shell: bash
+        env:
+          PRODUCT_INTERACTION_BASE_URL: http://127.0.0.1:3100
+        run: node scripts/verify-product-interaction-runtime.mjs
 
       - name: Resolve canonical production release authority
         shell: bash
