@@ -44,7 +44,8 @@ requireText("lib/product-experience.ts", [
   "deriveWalletCore({",
   "payoutReadyEvent = false",
   "const event: CoreProductEvent = paid",
-  'payoutReadyEvent ? "payout-ready"',
+  "payoutReadyEvent",
+  '? "payout-ready"',
   "referralConfirmed = false",
   'active: referralConfirmed ? 1 : 0',
 ]);
