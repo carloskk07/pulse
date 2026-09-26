@@ -219,6 +219,17 @@ requireText(".github/workflows/visual-smoke.yml", [
   }
 }
 
+requireText("components/semantic-route-link.tsx", [
+  "sourceStrength: number;",
+  "applyTransferProfile(sourceStrength)",
+  '"--pc-transfer-source-strength"',
+  '"--pc-transfer-opacity"',
+  '"--pc-transfer-blur"',
+  '"--pc-bridge-blur"',
+  '"--pc-bridge-value-signal-x"',
+  '"--pc-bridge-value-signal-y"',
+]);
+
 requireText("app/styles/app-art-direction.css", [
   "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-spatial-field)",
   "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field)",
@@ -252,6 +263,10 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "secondaryAnimation",
   "secondaryPseudo",
   "animationEvidence",
+  "transferProfiles",
+  "measureStrengthAwareBridge(20)",
+  "measureStrengthAwareBridge(90)",
+  "Authoritative strength did not increase semantic Out + Bridge deformation",
   '"::view-transition-old(pc-spatial-field)"',
   '"::view-transition-group(pc-spatial-field)"',
   "assertNoSemanticTransfer",
@@ -268,6 +283,13 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
 ]);
 
 requireText("app/styles/app-art-direction.css", [
+  "/* V11.14 — Authoritative Semantic Bridge Strength. */",
+  "--pc-transfer-opacity:.1",
+  "--pc-transfer-blur:6px",
+  "--pc-bridge-blur:2px",
+  "var(--pc-transfer-opacity)",
+  "var(--pc-transfer-blur)",
+  "var(--pc-bridge-blur)",
   "--pc-route-transfer-duration:.34s",
   "--pc-route-transfer-duration:.28s",
   "filter:none!important",
@@ -430,6 +452,9 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   "residueStrength: 83",
   "residueStrength: 94",
   "residueStrength: 100",
+  'strength?: string',
+  "strengthOverride",
+  "residueStrength: strengthOverride",
   '<SceneTelemetry',
   '<ValueFlow',
 ]);
