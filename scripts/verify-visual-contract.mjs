@@ -195,8 +195,8 @@ requireText(".github/workflows/visual-smoke.yml", [
 ]);
 
 requireText("app/styles/app-art-direction.css", [
-  "active-view-transition-type(pc-transfer-signal-value)::view-transition-new(root)",
-  "active-view-transition-type(pc-transfer-network-signal)::view-transition-new(root)",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(root)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(root)",
 ]);
 
 requireText("scripts/verify-route-continuity-runtime.mjs", [
@@ -206,8 +206,8 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-network-value"',
   '"pc-transfer-signal-network"',
   '"pc-transfer-network-signal"',
-  '"pcTransferSignalValueIn"',
-  '"pcTransferNetworkSignalIn"',
+  '"pcTransferSignalValueOut"',
+  '"pcTransferNetworkSignalOut"',
   "assertNoSemanticTransfer",
   "transferDuration",
 ]);
