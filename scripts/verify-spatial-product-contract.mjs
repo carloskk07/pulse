@@ -64,8 +64,20 @@ requireText("components/app-shell.tsx", [
   'data-product-residue-dimension={experience?.residueDimension}',
   'data-product-residue-strength={residueStrength}',
   '"--pc-residue-strength"',
+  'import { SemanticRouteLink } from "./semantic-route-link";',
+  "sourceStrength={residueStrength}",
 ]);
 
+
+requireText("components/semantic-route-link.tsx", [
+  "sourceStrength: number;",
+  "applyTransferProfile(sourceStrength)",
+  '"--pc-transfer-source-strength"',
+  '"--pc-transfer-opacity"',
+  '"--pc-transfer-blur"',
+  '"--pc-transfer-scale-hard-x"',
+  '"--pc-transfer-scale-hard-y"',
+]);
 
 requireText("components/system-event-field.tsx", [
   '"use client";',
@@ -134,6 +146,9 @@ requireText("app/invite/page.tsx", [
 
 requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   'event?: string',
+  'strength?: string',
+  "strengthOverride",
+  "residueStrength: strengthOverride",
   'params.event === "reward-settled"',
   'kind: "reward-settled" as const',
   "eventCue={eventCue}",
@@ -209,6 +224,10 @@ requireText("app/styles/app-art-direction.css", [
   "/* V11.8 — Dimensional Channel Isolation.",
   "/* V11.11 — Selective Semantic Field Transfer.",
   "view-transition-name:pc-spatial-field",
+  "var(--pc-transfer-opacity)",
+  "var(--pc-transfer-blur)",
+  "var(--pc-transfer-scale-hard-x)",
+  "var(--pc-transfer-scale-hard-y)",
   "pc-transfer-value-signal",
   "pc-transfer-signal-value",
   "pc-transfer-value-network",
