@@ -5,6 +5,7 @@ import { signOut } from "@/app/auth/actions";
 import type { ProductExperience } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
+import { getRouteSemanticDimension, getRouteSemanticTransfer } from "@/lib/route-semantics";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 import { SpatialAtmosphere } from "./spatial-atmosphere";
 import { ProductInteractionLayer } from "./product-interaction-layer";
@@ -21,25 +22,14 @@ const links = [
 
 const routeOrder = new Map(links.map((link, index) => [link.id, index]));
 
-const routeDimension = new Map<string, "value" | "signal" | "network">([
-  ["home", "value"],
-  ["earn", "value"],
-  ["wallet", "value"],
-  ["progress", "signal"],
-  ["invite", "network"],
-]);
-
 function routeTransitionTypes(active: string, target: string) {
   const currentIndex = routeOrder.get(active);
   const targetIndex = routeOrder.get(target);
   if (currentIndex === undefined || targetIndex === undefined || currentIndex === targetIndex) return undefined;
 
   const direction = targetIndex > currentIndex ? "pc-forward" : "pc-back";
-  const currentDimension = routeDimension.get(active);
-  const targetDimension = routeDimension.get(target);
-  if (!currentDimension || !targetDimension || currentDimension === targetDimension) return [direction];
-
-  return [direction, `pc-transfer-${currentDimension}-${targetDimension}`];
+  const semanticTransfer = getRouteSemanticTransfer(active, target);
+  return semanticTransfer ? [direction, semanticTransfer] : [direction];
 }
 
 const adminLinks = [
@@ -80,6 +70,7 @@ export async function AppShell({
   const admin = user ? (await getAdminAllowlistStatus(user.id)) === "authorized" : false;
   const utilityMobileActive = ["account", "support", "proof", "ads"].includes(active) || (admin && adminLinks.some((link) => link.id === active));
   const residueStrength = experience?.residueStrength ?? 0;
+  const routeSemanticDimension = getRouteSemanticDimension(active);
   const residueStyle = { "--pc-residue-strength": `${residueStrength}%` } as CSSProperties;
 
   return (
@@ -92,6 +83,7 @@ export async function AppShell({
       data-product-residue={experience?.residue}
       data-product-residue-dimension={experience?.residueDimension}
       data-product-residue-strength={residueStrength}
+      data-route-dimension={routeSemanticDimension ?? undefined}
       style={residueStyle}
     >
       <SpatialAtmosphere active={active} />
