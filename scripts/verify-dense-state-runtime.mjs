@@ -226,6 +226,16 @@ const runtimeProbe = `(() => {
   };
 })()`;
 
+function formatUsdFromCreditsAuthority(credits) {
+  const value = Math.abs(Number(credits) || 0) / 1000;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
+  }).format(value);
+}
+
 const failures = [];
 
 try {
@@ -438,8 +448,8 @@ try {
           const availableCredits = Number(truth.availableCredits);
           const payoutCredits = Number(truth.payoutCredits);
           const payoutProgress = Number(truth.payoutProgress);
-          const availableLabel = "$" + (availableCredits / 1000).toFixed(3);
-          const payoutLabel = "$" + (payoutCredits / 1000).toFixed(3);
+          const availableLabel = formatUsdFromCreditsAuthority(availableCredits);
+          const payoutLabel = formatUsdFromCreditsAuthority(payoutCredits);
 
           if (truth.payoutState !== "ready") {
             failures.push(`${label}: dense wallet must model payoutState=ready, rendered ${truth.payoutState}`);
