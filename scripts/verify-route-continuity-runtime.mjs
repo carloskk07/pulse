@@ -234,7 +234,12 @@ async function installTransitionProbeBeforeHydration(send) {
     "    window.__pcRouteTransitionReturned = !!transition;",
     "    const collect = (phase) => {",
     "      const runtimeTypes = transition?.types ? Array.from(transition.types) : [];",
-    "      const selectorTypes = ['pc-forward', 'pc-back'].filter((type) => {",
+    "      const selectorTypes = [",
+    "        'pc-forward', 'pc-back',",
+    "        'pc-transfer-value-signal', 'pc-transfer-signal-value',",
+    "        'pc-transfer-value-network', 'pc-transfer-network-value',",
+    "        'pc-transfer-signal-network', 'pc-transfer-network-signal',",
+    "      ].filter((type) => {",
     "        try { return document.documentElement.matches(':active-view-transition-type(' + type + ')'); } catch { return false; }",
     "      });",
     "      entry.types = [...new Set([...(entry.types || []), ...initialTypes, ...runtimeTypes, ...selectorTypes])];",
@@ -244,6 +249,7 @@ async function installTransitionProbeBeforeHydration(send) {
     "        pseudo: animation.effect && typeof animation.effect.pseudoElement === 'string' ? animation.effect.pseudoElement : '',",
     "        playState: animation.playState,",
     "      }));",
+    "      entry.animationNames = [...new Set([...(entry.animationNames || []), ...entry.animations.map((animation) => animation.name).filter(Boolean)])];",
     "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];",
     "      window.__pcRouteTransitionAnimations = [...entry.animations];",
     "    };",
@@ -313,9 +319,9 @@ async function clickRoute(send, href) {
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
 }
 
-async function waitForTransitionType(send, expected, afterCall, label) {
+async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null) {
   let lastState = null;
-  for (let attempt = 0; attempt < 160; attempt += 1) {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
     const state = await readState(send);
     lastState = state;
     const entries = Array.isArray(state?.history)
@@ -324,9 +330,13 @@ async function waitForTransitionType(send, expected, afterCall, label) {
     if (
       entries.some(
         (entry) =>
-          entry?.returned === true &&
-          Array.isArray(entry?.types) &&
-          entry.types.includes(expected),
+          entry?.returned === true
+          && Array.isArray(entry?.types)
+          && expectedTypes.every((type) => entry.types.includes(type))
+          && (
+            !expectedAnimation
+            || (Array.isArray(entry?.animationNames) && entry.animationNames.includes(expectedAnimation))
+          ),
       )
     ) {
       return state;
@@ -334,8 +344,19 @@ async function waitForTransitionType(send, expected, afterCall, label) {
     await sleep(25);
   }
   throw new Error(
-    `${label} expected transition type ${expected} after call ${afterCall}: ${JSON.stringify(lastState)}`,
+    `${label} expected transition types ${expectedTypes.join(", ")}${expectedAnimation ? ` with animation ${expectedAnimation}` : ""} after call ${afterCall}: ${JSON.stringify(lastState)}`,
   );
+}
+
+function assertNoSemanticTransfer(state, afterCall, label) {
+  const entries = Array.isArray(state?.history)
+    ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+    : [];
+  const leaked = entries.flatMap((entry) => Array.isArray(entry?.types) ? entry.types : [])
+    .find((type) => String(type).startsWith("pc-transfer-"));
+  if (leaked) {
+    throw new Error(`${label} must stay within one semantic dimension; received ${leaked}: ${JSON.stringify(entries)}`);
+  }
 }
 
 function assertReducedMotionState(state, label) {
@@ -346,6 +367,7 @@ function assertReducedMotionState(state, label) {
     || !nearZero.has(state?.carrierDuration)
     || !nearZero.has(state?.orbitDuration)
     || !nearZero.has(state?.indexDuration)
+    || !nearZero.has(state?.transferDuration)
   ) {
     throw new Error(`${label} reduced-motion authority is incomplete: ${JSON.stringify(state)}`);
   }
@@ -401,8 +423,9 @@ try {
   const earnCallsBefore = before.calls;
   await clickRoute(send, "/earn");
   await waitForPath(send, "/earn");
-  await waitForHydratedLink(send, "/wallet");
-  const earn = await waitForTransitionType(send, "pc-forward", earnCallsBefore, "Rewards → Earn");
+  await waitForHydratedLink(send, "/progress");
+  const earn = await waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn");
+  assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn");
   if (earn?.documentId !== before.documentId) {
     throw new Error(`Rewards → Earn performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${earn?.documentId}`);
   }
@@ -420,41 +443,49 @@ try {
   }
 
   const reducedCalls = reducedBefore.calls;
+  await clickRoute(send, "/progress");
+  await waitForPath(send, "/progress");
   await waitForHydratedLink(send, "/wallet");
-  await clickRoute(send, "/wallet");
-  await waitForPath(send, "/wallet");
-  await waitForHydratedLink(send, "/progress");
-  await sleep(120);
-  const wallet = await readState(send);
-  if (wallet?.documentId !== before.documentId) {
-    throw new Error(`Earn → Balance performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${wallet?.documentId}`);
+  const reducedProgress = await waitForTransitionTypes(
+    send,
+    ["pc-back", "pc-transfer-value-signal"],
+    reducedCalls,
+    "Earn → Progress (reduced)",
+  );
+  if (reducedProgress?.documentId !== before.documentId) {
+    throw new Error(`Reduced-motion Earn → Progress performed a full document navigation: before=${before.documentId} after=${reducedProgress?.documentId}`);
   }
-  assertReducedMotionState(wallet, "Earn → Balance");
-  if (wallet?.path !== "/wallet") {
-    throw new Error(`Reduced-motion Earn → Balance did not reach /wallet: ${JSON.stringify(wallet)}`);
-  }
-  if (wallet?.calls < reducedCalls) {
-    throw new Error(`Reduced-motion transition call counter regressed: before=${reducedCalls} after=${wallet?.calls}`);
+  assertReducedMotionState(reducedProgress, "Earn → Progress");
+  if (reducedProgress?.path !== "/progress" || reducedProgress?.calls <= reducedCalls) {
+    throw new Error(`Reduced-motion semantic transfer did not stay in SPA navigation: ${JSON.stringify(reducedProgress)}`);
   }
 
   await send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
   });
   await sleep(80);
-  const backCalls = (await readState(send)).calls;
-  await waitForHydratedLink(send, "/progress");
-  await clickRoute(send, "/progress");
-  await waitForPath(send, "/progress");
-  const progress = await waitForTransitionType(send, "pc-back", backCalls, "Balance → Progress");
-  if (progress?.documentId !== before.documentId) {
-    throw new Error(`Balance → Progress performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${progress?.documentId}`);
-  }
-  if (progress?.calls <= backCalls || progress.motion !== "1") {
-    throw new Error(`Balance → Progress did not reactivate route continuity: ${JSON.stringify(progress)}`);
+
+  async function crossRoute(href, direction, semantic, animation, label) {
+    const callsBefore = (await readState(send)).calls;
+    await waitForHydratedLink(send, href);
+    await clickRoute(send, href);
+    await waitForPath(send, href);
+    const state = await waitForTransitionTypes(send, [direction, semantic], callsBefore, label, animation);
+    if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
+      throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
+    }
+    return state;
   }
 
+  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueIn", "Progress → Balance");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkIn", "Balance → Referrals");
+  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueIn", "Referrals → Balance");
+  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalIn", "Balance → Progress");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkIn", "Progress → Referrals");
+  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalIn", "Referrals → Progress");
+
   console.log(
-    `Native route continuity PASS: pc-forward + reduced-motion SPA + pc-back (calls=${progress.calls}).`,
+    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six directional dimension transfers (calls=${finalProgress.calls}).`,
   );
   socket.close();
 } finally {
