@@ -263,7 +263,7 @@ async function installTransitionProbeBeforeHydration(send) {
     "        bridgeValueSignalX: rootStyle.getPropertyValue('--pc-bridge-value-signal-x').trim(),",
     "        bridgeValueSignalY: rootStyle.getPropertyValue('--pc-bridge-value-signal-y').trim(),",
     "      }].slice(-40);",
-    "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];"
+    "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];",
     "      window.__pcRouteTransitionAnimations = [...entry.animations];",
     "    };",
     "    collect('sync');",
