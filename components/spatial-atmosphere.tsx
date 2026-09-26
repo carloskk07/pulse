@@ -13,14 +13,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
   if (!meta) return null;
 
   return (
-    <ViewTransition
-      key={`field-${active}`}
-      name="pc-route-field"
-      default="none"
-      update="pc-route-field-transfer"
-      share="pc-route-field-transfer"
-    >
-      <div className="pc-spatial-atmosphere" data-scene={active} aria-hidden="true">
+    <div className="pc-spatial-atmosphere" data-scene={active} aria-hidden="true">
       <div className="pc-space-grid" />
       <div className="pc-space-haze haze-a" />
       <div className="pc-space-haze haze-b" />
@@ -62,7 +55,6 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       </ViewTransition>
       <span className="pc-space-datum datum-b">{meta.label}</span>
       <span className="pc-space-datum datum-c">{meta.secondary}</span>
-      </div>
-    </ViewTransition>
+    </div>
   );
 }
