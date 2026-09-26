@@ -234,7 +234,20 @@ requireText("scripts/verify-responsive-runtime.mjs", [
   "Responsive geometry did not stabilize",
 ]);
 
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  "authority?: string",
+  'params.authority === "none"',
+  'params.authority === "mismatch"',
+  'residueDimension: "none"',
+  "experience={experience}",
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
+  "navigateToAuthorityFixture",
+  "assertDirectionOnlyFromFixture",
+  '"Progress none-authority → Balance"',
+  '"Progress mismatched-authority → Balance"',
+  "semanticTransferProofs !== 6",
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',
   '"pc-transfer-value-network"',
