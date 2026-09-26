@@ -2,6 +2,23 @@ name: Visual Smoke
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/visual-smoke.yml"
+      - "next.config.ts"
+      - "app/globals.css"
+      - "app/styles/**"
+      - "app/**/*.tsx"
+      - "components/**"
+      - "public/**"
+      - "proxy.ts"
+      - "scripts/verify-responsive-runtime.mjs"
+      - "scripts/verify-dense-state-runtime.mjs"
+      - "scripts/verify-product-interaction-runtime.mjs"
+      - "scripts/verify-route-continuity-runtime.mjs"
+      - "scripts/capture-public-full-page.mjs"
+      - "scripts/capture-viewport.mjs"
   push:
     branches: [main]
     paths:
@@ -25,12 +42,12 @@ permissions:
   actions: read
 
 concurrency:
-  group: pulsercuit-visual-smoke
+  group: pulsercuit-visual-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   capture:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -258,7 +275,21 @@ jobs:
           ROUTE_CONTINUITY_BASE_URL: http://127.0.0.1:3100
         run: node scripts/verify-route-continuity-runtime.mjs
 
+      - name: Finalize pull-request visual evidence
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
+          count="$(find visual-smoke -type f -name '*.png' | wc -l)"
+          echo "Captured $count pull-request visual screenshots."
+          # 40 canonical local-preview PNGs + 6 claim-reveal PNGs
+          # + 10 dense-state PNGs + 2 authoritative system-event PNGs.
+          test "$count" -eq 58
+          echo "Pull-request Visual Smoke PASS: local browser evidence is complete." | tee -a visual-smoke/manifest.txt
+
       - name: Resolve canonical production release authority
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -358,6 +389,7 @@ jobs:
           exit 1
 
       - name: Validate production route identity
+        if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
@@ -469,6 +501,7 @@ jobs:
           done
 
       - name: Capture production direct views and auth redirects
+        if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
@@ -592,6 +625,7 @@ jobs:
           test "$count" -eq 94
 
       - name: Capture full-page public evidence
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           FULL_PAGE_BASE_URL: https://pulsercuit.pro

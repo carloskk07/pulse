@@ -173,6 +173,13 @@ requireText("proxy.ts", [
 ]);
 
 requireText(".github/workflows/visual-smoke.yml", [
+  "pull_request:",
+  "branches: [main]",
+  "group: pulsercuit-visual-smoke-${{ github.ref }}",
+  "github.event_name == 'pull_request' || github.ref == 'refs/heads/main'",
+  "Finalize pull-request visual evidence",
+  'test "$count" -eq 58',
+  "Pull-request Visual Smoke PASS: local browser evidence is complete.",
   '"privacy|/privacy"',
   '"terms|/terms"',
   '"rewards-policy|/rewards-policy"',
@@ -193,6 +200,24 @@ requireText(".github/workflows/visual-smoke.yml", [
   "local-preview/system-event/mobile/reward-settled.png",
   "production-fixture-isolation",
 ]);
+
+{
+  const workflow = read(".github/workflows/visual-smoke.yml");
+  for (const stepName of [
+    "Resolve canonical production release authority",
+    "Validate production route identity",
+    "Capture production direct views and auth redirects",
+    "Capture full-page public evidence",
+  ]) {
+    const start = workflow.indexOf(`- name: ${stepName}`);
+    if (start < 0) throw new Error(`Visual Smoke production step is missing: ${stepName}`);
+    const nextStep = workflow.indexOf("\n      - name:", start + 1);
+    const block = workflow.slice(start, nextStep < 0 ? workflow.length : nextStep);
+    if (!block.includes("if: github.ref == 'refs/heads/main'")) {
+      throw new Error(`Visual Smoke production step must remain main-only: ${stepName}`);
+    }
+  }
+}
 
 requireText("app/styles/app-art-direction.css", [
   "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(root)",
