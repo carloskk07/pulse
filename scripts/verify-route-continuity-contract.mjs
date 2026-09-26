@@ -179,7 +179,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "carrierDuration",
   "orbitDuration",
   "indexDuration",
-  "transferDuration",
+  'transferDuration: rootStyle.getPropertyValue("--pc-route-transfer-duration").trim()',
   "assertReducedMotionState",
   'state?.motion !== "0"',
   '"Earn → Progress (reduced)"',
