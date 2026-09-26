@@ -2978,7 +2978,7 @@
 }
 
 
-/* V11.12 — Paired Selective Semantic Field Morph.
+/* V11.12 — Selective Semantic Field Bridge.
    Direction (pc-forward/back) stays responsible for navigation continuity.
    Cross-dimensional meaning is handed off only through the spatial atmosphere
    snapshot, leaving text and controls outside the semantic deformation. */
@@ -3006,54 +3006,84 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ol
   transform-origin:50% 44%;
 }
 
-html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(pc-spatial-field){
-  animation:pcTransferNetworkSignalIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
-}
 
 /* Value → Signal: spatial mass collapses into a tighter orbital field. */
 html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(pc-spatial-field){
   animation:pcTransferValueSignalOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
 
-html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(pc-spatial-field){
-  animation:pcTransferValueSignalIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
-}
 
 /* Signal → Value: orbital precision resolves back into depth and mass. */
 html:active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-spatial-field){
   animation:pcTransferSignalValueOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
 
-html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(pc-spatial-field){
-  animation:pcTransferSignalValueIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
-}
 
 /* Value ↔ Network: depth folds into reach, or reach condenses into mass. */
 html:active-view-transition-type(pc-transfer-value-network)::view-transition-old(pc-spatial-field){
   animation:pcTransferValueNetworkOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
 
-html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(pc-spatial-field){
-  animation:pcTransferValueNetworkIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
-}
 html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(pc-spatial-field){
   animation:pcTransferNetworkValueOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
 
-html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(pc-spatial-field){
-  animation:pcTransferNetworkValueIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
-}
 
 /* Signal ↔ Network: orbit opens into topology, topology resolves into orbit. */
 html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(pc-spatial-field){
   animation:pcTransferSignalNetworkOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
 
-html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(pc-spatial-field){
-  animation:pcTransferSignalNetworkIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
-}
 html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field){
   animation:pcTransferNetworkSignalOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
+}
+
+
+/* The destination field participates through the guaranteed transition group.
+   This composes with the outgoing image without relying on an unmaterialized
+   ::view-transition-new animation. */
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-group(pc-spatial-field){
+  animation:pcTransferValueSignalBridge var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
+}
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-group(pc-spatial-field){
+  animation:pcTransferSignalValueBridge var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
+}
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-group(pc-spatial-field){
+  animation:pcTransferValueNetworkBridge var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
+}
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-group(pc-spatial-field){
+  animation:pcTransferNetworkValueBridge var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
+}
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-group(pc-spatial-field){
+  animation:pcTransferSignalNetworkBridge var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
+}
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-spatial-field){
+  animation:pcTransferNetworkSignalBridge var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
+}
+
+@keyframes pcTransferValueSignalBridge{
+  from{transform:scale(.96,.9);filter:blur(2px) contrast(1.05)}
+  to{transform:scale(1);filter:blur(0) contrast(1)}
+}
+@keyframes pcTransferSignalValueBridge{
+  from{transform:scale(.94,.88);filter:blur(2px) brightness(1.08)}
+  to{transform:scale(1);filter:blur(0) brightness(1)}
+}
+@keyframes pcTransferValueNetworkBridge{
+  from{transform:scale(1.04,.92);filter:blur(2px) saturate(1.08)}
+  to{transform:scale(1);filter:blur(0) saturate(1)}
+}
+@keyframes pcTransferNetworkValueBridge{
+  from{transform:scale(.92,1.03);filter:blur(2px) brightness(1.06)}
+  to{transform:scale(1);filter:blur(0) brightness(1)}
+}
+@keyframes pcTransferSignalNetworkBridge{
+  from{transform:scale(1.03,.94) rotate(.4deg);filter:blur(2px)}
+  to{transform:scale(1) rotate(0);filter:blur(0)}
+}
+@keyframes pcTransferNetworkSignalBridge{
+  from{transform:scale(.96) rotate(-.4deg);filter:blur(2px)}
+  to{transform:scale(1) rotate(0);filter:blur(0)}
 }
 
 @keyframes pcTransferValueSignalOut{
@@ -3081,30 +3111,6 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ol
   to{opacity:.1;transform:scale(1.06,.82) rotate(.9deg);filter:blur(6px)}
 }
 
-@keyframes pcTransferValueSignalIn{
-  from{opacity:.12;transform:scale(.9) rotate(-1.2deg);filter:blur(5px) contrast(1.08)}
-  to{opacity:1;transform:scale(1) rotate(0);filter:blur(0) contrast(1)}
-}
-@keyframes pcTransferSignalValueIn{
-  from{opacity:.14;transform:scale(.9,.78);filter:blur(6px) brightness(1.18)}
-  to{opacity:1;transform:scale(1);filter:blur(0) brightness(1)}
-}
-@keyframes pcTransferValueNetworkIn{
-  from{opacity:.1;transform:scale(1.08,.76);filter:blur(6px) saturate(1.14)}
-  to{opacity:1;transform:scale(1);filter:blur(0) saturate(1)}
-}
-@keyframes pcTransferNetworkValueIn{
-  from{opacity:.12;transform:scale(.72,1.04);filter:blur(5px) brightness(1.12)}
-  to{opacity:1;transform:scale(1);filter:blur(0) brightness(1)}
-}
-@keyframes pcTransferSignalNetworkIn{
-  from{opacity:.1;transform:scale(1.06,.82) rotate(.9deg);filter:blur(6px)}
-  to{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
-}
-@keyframes pcTransferNetworkSignalIn{
-  from{opacity:.12;transform:scale(.86) rotate(-1.4deg);filter:blur(5px)}
-  to{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
-}
 
 @media(prefers-reduced-motion:reduce){
   :root{--pc-route-transfer-duration:.001ms}
@@ -3114,12 +3120,12 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ol
   html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(pc-spatial-field),
   html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(pc-spatial-field),
   html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field),
-  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(pc-spatial-field),
-  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(pc-spatial-field),
-  html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(pc-spatial-field),
-  html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(pc-spatial-field),
-  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(pc-spatial-field),
-  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(pc-spatial-field){
+  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-value-network)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-network-value)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-spatial-field){
     animation-duration:.001ms!important;
     animation-delay:0ms!important;
     transform:none!important;
