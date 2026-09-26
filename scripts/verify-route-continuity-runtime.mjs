@@ -571,7 +571,7 @@ try {
 
   const mobileBefore = await readState(send);
   if (mobileBefore?.transferDuration !== ".28s") {
-    throw new Error(`Mobile semantic bridge expected .28s transfer duration at 390px, received ${mobileBefore?.transferDuration ?? "missing"}: ${JSON.stringify(mobileBefore)}`);
+    throw new Error(`Mobile semantic layers expected .28s transfer duration at 390px, received ${mobileBefore?.transferDuration ?? "missing"}: ${JSON.stringify(mobileBefore)}`);
   }
 
   const mobileInvite = await crossRoute(
@@ -581,7 +581,7 @@ try {
     "Mobile Progress → Referrals",
   );
   if (mobileInvite?.transferDuration !== ".28s") {
-    throw new Error(`Mobile Progress → Referrals lost the compact semantic bridge duration: ${JSON.stringify(mobileInvite)}`);
+    throw new Error(`Mobile Progress → Referrals lost the compact semantic layer duration: ${JSON.stringify(mobileInvite)}`);
   }
 
   const mobileProgress = await crossRoute(
@@ -591,7 +591,7 @@ try {
     "Mobile Referrals → Progress",
   );
   if (mobileProgress?.transferDuration !== ".28s") {
-    throw new Error(`Mobile Referrals → Progress lost the compact semantic bridge duration: ${JSON.stringify(mobileProgress)}`);
+    throw new Error(`Mobile Referrals → Progress lost the compact semantic layer duration: ${JSON.stringify(mobileProgress)}`);
   }
 
   await send("Emulation.setEmulatedMedia", {
@@ -603,7 +603,7 @@ try {
   if (mobileReducedBefore?.reduced !== true || mobileReducedBefore?.motion !== "0") {
     throw new Error(`Mobile reduced-motion authority did not activate: ${JSON.stringify(mobileReducedBefore)}`);
   }
-  assertReducedMotionState(mobileReducedBefore, "Mobile semantic bridge");
+  assertReducedMotionState(mobileReducedBefore, "Mobile semantic layers");
 
   const mobileReducedCalls = mobileReducedBefore.calls;
   await clickRoute(send, "/wallet");
@@ -615,7 +615,7 @@ try {
   }
   assertReducedMotionState(mobileReducedWallet, "Mobile Progress → Balance");
   if (mobileReducedWallet?.calls <= mobileReducedCalls) {
-    throw new Error(`Mobile reduced-motion semantic bridge did not execute a native transition call: ${JSON.stringify(mobileReducedWallet)}`);
+    throw new Error(`Mobile reduced-motion semantic layer did not execute a native transition call: ${JSON.stringify(mobileReducedWallet)}`);
   }
 
   console.log(
