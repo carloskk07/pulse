@@ -234,6 +234,16 @@ requireText("scripts/verify-responsive-runtime.mjs", [
   "Responsive geometry did not stabilize",
 ]);
 
+requireText("components/semantic-route-link.tsx", [
+  "sourceStrength: number;",
+  "applyTransferProfile(sourceStrength)",
+  '"--pc-transfer-source-strength"',
+  '"--pc-transfer-opacity"',
+  '"--pc-transfer-blur"',
+  '"--pc-transfer-scale-hard-x"',
+  '"--pc-transfer-scale-hard-y"',
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',
@@ -244,6 +254,10 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pcTransferSignalValueOut"',
   '"pcTransferNetworkSignalOut"',
   "animationEvidence",
+  "transferProfiles",
+  "measureStrengthAwareTransfer(20)",
+  "measureStrengthAwareTransfer(90)",
+  "Authoritative strength did not increase semantic deformation",
   '"::view-transition-old(pc-spatial-field)"',
   "assertNoSemanticTransfer",
   "assertNoSemanticRootAnimation",
@@ -406,6 +420,9 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   "residueStrength: 83",
   "residueStrength: 94",
   "residueStrength: 100",
+  'strength?: string',
+  "strengthOverride",
+  "residueStrength: strengthOverride",
   '<SceneTelemetry',
   '<ValueFlow',
 ]);
