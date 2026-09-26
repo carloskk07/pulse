@@ -14,7 +14,7 @@ const scenes = [
   ["reward", "/visual-smoke-fixture/core-state?scene=reward", "balance-funded", "value", 83],
   ["earn", "/visual-smoke-fixture/core-state?scene=earn", "balance-funded", "value", 83],
   ["wallet", "/visual-smoke-fixture/core-state?scene=wallet", "payout-ready", "value", 100],
-  ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-circuit", "signal", 94],
+  ["progress", "/visual-smoke-fixture/core-state?scene=progress", "rank-resonance", "signal", 94],
   ["invite", "/visual-smoke-fixture/core-state?scene=invite", "network-active", "network", 100],
 ];
 
@@ -123,6 +123,14 @@ const runtimeProbe = `(() => {
   const walletMeterValue = document.querySelector('[data-dense-scene="wallet"] .pc-v10-vault-meter small');
   const walletStatusValue = document.querySelector('[data-dense-scene="wallet"] .pc-scene-telemetry-status strong');
   const walletWithdrawButton = document.querySelector('[data-dense-scene="wallet"] .withdrawal-panel button');
+  const rewardSignalValue = document.querySelector('[data-dense-scene="reward"] .pc-v9-progress-card.signal-card .pc-v9-progress-value strong');
+  const rewardStageValue = document.querySelector('[data-dense-scene="reward"] .pc-v9-progress-card.signal-card h3');
+  const progressSignalValue = document.querySelector('[data-dense-scene="progress"] .pc-identity-score strong');
+  const progressRankName = document.querySelector('[data-dense-scene="progress"] .pc-luxe-rank-name');
+  const progressTopRank = document.querySelector('[data-dense-scene="progress"] .pc-identity-top b');
+  const progressNextMark = document.querySelector('[data-dense-scene="progress"] .pc-identity-meta span:last-child strong');
+  const progressStoryTitle = document.querySelector('[data-dense-scene="progress"] .pc-momentum-story h2');
+  const telemetryStatus = document.querySelector(".pc-scene-telemetry-status strong");
 
   const inspect = (element) => {
     if (!element) return null;
@@ -177,6 +185,22 @@ const runtimeProbe = `(() => {
       scrollWidth: value.scrollWidth,
       clientWidth: value.clientWidth,
     })),
+    activityTruth: scene && scene.hasAttribute("data-activity-signal") ? {
+      claims: Number(scene.getAttribute("data-activity-claims")),
+      streakDays: Number(scene.getAttribute("data-activity-streak-days")),
+      trustLevel: Number(scene.getAttribute("data-activity-trust-level")),
+      signal: Number(scene.getAttribute("data-activity-signal")),
+      stage: scene.getAttribute("data-activity-stage"),
+      telemetryStatus: telemetryStatus?.textContent?.trim() ?? "",
+      telemetryValues: telemetryValues.map((value) => value.textContent?.trim() ?? ""),
+      rewardSignalText: rewardSignalValue?.textContent?.trim() ?? "",
+      rewardStageText: rewardStageValue?.textContent?.trim() ?? "",
+      progressSignalText: progressSignalValue?.textContent?.trim() ?? "",
+      progressRankName: progressRankName?.textContent?.trim() ?? "",
+      progressTopRank: progressTopRank?.textContent?.trim() ?? "",
+      progressNextMark: progressNextMark?.textContent?.trim() ?? "",
+      progressStoryTitle: progressStoryTitle?.textContent?.trim() ?? "",
+    } : null,
     walletTruth: scene?.getAttribute("data-dense-scene") === "wallet" ? {
       availableCredits: Number(scene.getAttribute("data-wallet-available-credits")),
       payoutCredits: Number(scene.getAttribute("data-wallet-payout-credits")),
@@ -201,6 +225,16 @@ const runtimeProbe = `(() => {
     }),
   };
 })()`;
+
+function formatUsdFromCreditsAuthority(credits) {
+  const value = Math.abs(Number(credits) || 0) / 1000;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
+  }).format(value);
+}
 
 const failures = [];
 
@@ -334,6 +368,78 @@ try {
       if (state.telemetryItemCount !== 3) {
         failures.push(`${label}: expected 3 telemetry readouts, found ${state.telemetryItemCount}`);
       }
+      if (sceneName === "reward" || sceneName === "progress") {
+        const truth = state.activityTruth;
+        if (!truth) {
+          failures.push(`${label}: canonical activity truth is missing`);
+        } else {
+          const claims = Math.max(0, Math.floor(Number(truth.claims) || 0));
+          const streakDays = Math.max(0, Math.floor(Number(truth.streakDays) || 0));
+          const trustLevel = Math.max(0, Math.min(5, Math.floor(Number(truth.trustLevel) || 0)));
+          const expectedSignal = Math.min(
+            100,
+            Math.min(55, claims * 3) + Math.min(30, streakDays * 4) + Math.min(15, trustLevel * 3),
+          );
+          const expectedStage = expectedSignal >= 80
+            ? "Resonance"
+            : expectedSignal >= 60
+              ? "Circuit"
+              : expectedSignal >= 40
+                ? "Rhythm"
+                : expectedSignal >= 20
+                  ? "Flow"
+                  : "Spark";
+
+          if (Number(truth.signal) !== expectedSignal) {
+            failures.push(`${label}: activity Signal drifted from canonical formula: ${truth.signal}/${expectedSignal}`);
+          }
+          if (truth.stage !== expectedStage) {
+            failures.push(`${label}: activity rank drifted from canonical thresholds: ${truth.stage}/${expectedStage}`);
+          }
+
+          if (sceneName === "reward") {
+            if (truth.rewardSignalText !== String(expectedSignal)) {
+              failures.push(`${label}: reward Signal text drifted from authority: ${truth.rewardSignalText}/${expectedSignal}`);
+            }
+            if (truth.rewardStageText !== expectedStage) {
+              failures.push(`${label}: reward rank text drifted from authority: ${truth.rewardStageText}/${expectedStage}`);
+            }
+            const rewardSignalTelemetry = truth.telemetryValues?.[2];
+            if (rewardSignalTelemetry !== `${expectedSignal}/100`) {
+              failures.push(`${label}: reward telemetry Signal drifted from authority: ${rewardSignalTelemetry}`);
+            }
+          }
+
+          if (sceneName === "progress") {
+            if (truth.progressSignalText !== String(expectedSignal)) {
+              failures.push(`${label}: progress score drifted from authority: ${truth.progressSignalText}/${expectedSignal}`);
+            }
+            if (truth.progressRankName !== expectedStage || truth.progressTopRank !== expectedStage || truth.telemetryStatus !== expectedStage) {
+              failures.push(
+                `${label}: progress rank surfaces drifted from authority: ${JSON.stringify({
+                  rankName: truth.progressRankName,
+                  topRank: truth.progressTopRank,
+                  telemetryStatus: truth.telemetryStatus,
+                  expectedStage,
+                })}`,
+              );
+            }
+            const progressSignalTelemetry = truth.telemetryValues?.[0];
+            if (progressSignalTelemetry !== `${expectedSignal}/100`) {
+              failures.push(`${label}: progress telemetry Signal drifted from authority: ${progressSignalTelemetry}`);
+            }
+            if (expectedStage === "Resonance") {
+              if (truth.progressNextMark !== "Current peak") {
+                failures.push(`${label}: Resonance must expose Current peak, rendered ${truth.progressNextMark}`);
+              }
+              if (!String(truth.progressStoryTitle).includes("Resonance is active")) {
+                failures.push(`${label}: Resonance story still implies a future rank: ${truth.progressStoryTitle}`);
+              }
+            }
+          }
+        }
+      }
+
       if (sceneName === "wallet") {
         const truth = state.walletTruth;
         if (!truth) {
@@ -342,8 +448,8 @@ try {
           const availableCredits = Number(truth.availableCredits);
           const payoutCredits = Number(truth.payoutCredits);
           const payoutProgress = Number(truth.payoutProgress);
-          const availableLabel = "$" + (availableCredits / 1000).toFixed(3);
-          const payoutLabel = "$" + (payoutCredits / 1000).toFixed(3);
+          const availableLabel = formatUsdFromCreditsAuthority(availableCredits);
+          const payoutLabel = formatUsdFromCreditsAuthority(payoutCredits);
 
           if (truth.payoutState !== "ready") {
             failures.push(`${label}: dense wallet must model payoutState=ready, rendered ${truth.payoutState}`);
@@ -411,7 +517,7 @@ try {
       }
 
       console.log(
-        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} routeDimension=${state.routeDimension ?? "missing"} routeLayers=${JSON.stringify(state.routeLayerOpacity ?? {})} walletTruth=${sceneName === "wallet" ? JSON.stringify(state.walletTruth) : "-"} channels=${valueChannelActive ? "V" : "-"}${signalChannelActive ? "S" : "-"}${networkChannelActive ? "N" : "-"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
+        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} routeDimension=${state.routeDimension ?? "missing"} routeLayers=${JSON.stringify(state.routeLayerOpacity ?? {})} activityTruth=${state.activityTruth ? JSON.stringify(state.activityTruth) : "-"} walletTruth=${sceneName === "wallet" ? JSON.stringify(state.walletTruth) : "-"} channels=${valueChannelActive ? "V" : "-"}${signalChannelActive ? "S" : "-"}${networkChannelActive ? "N" : "-"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
       );
     }
   }
