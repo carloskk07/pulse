@@ -43,15 +43,18 @@ requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
   "const routeOrder = new Map",
   "function routeTransitionTypes",
+  "currentResidueDimension?: ProductResidueDimension",
   "const routeDimension = new Map",
   '["home", "value"]',
   '["progress", "signal"]',
   '["invite", "network"]',
-  'pc-transfer-${currentDimension}-${targetDimension}',
+  'currentResidueDimension === "none"',
+  "currentResidueDimension !== expectedCurrentDimension",
+  'pc-transfer-${currentResidueDimension}-${targetDimension}',
+  "transitionTypes={routeTransitionTypes(active, id, experience?.residueDimension)}",
   'name="pc-route-topbar"',
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
-  "transitionTypes={routeTransitionTypes(active, id)}",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -159,6 +162,16 @@ requireText("app/visual-smoke-fixture/view-transition/page.tsx", [
   '<ViewTransitionRuntimeFixture />',
 ]);
 
+
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  "authority?: string",
+  'params.authority === "none"',
+  'params.authority === "mismatch"',
+  'residueDimension: "none"',
+  'scene === "progress" ? "network" : "signal"',
+  "experience={experience}",
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   "/visual-smoke-fixture/view-transition",
   "verifyMinimalReactViewTransition",
@@ -198,12 +211,19 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   'waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn")',
   'assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn")',
   'assertReducedMotionState(reducedProgress, "Earn → Progress")',
-  'crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value"',
-  'crossRoute("/invite", "pc-forward", "pc-transfer-value-network"',
-  'crossRoute("/wallet", "pc-back", "pc-transfer-network-value"',
-  'crossRoute("/progress", "pc-back", "pc-transfer-value-signal"',
-  'crossRoute("/invite", "pc-forward", "pc-transfer-signal-network"',
-  'crossRoute("/progress", "pc-back", "pc-transfer-network-signal"',
+  "navigateToAuthorityFixture",
+  '"authority", authority',
+  '"Progress none-authority → Balance"',
+  '"Progress mismatched-authority → Balance"',
+  "assertDirectionOnlyFromFixture",
+  "crossRouteFromFixture",
+  'crossRouteFromFixture("progress", "signal", "/wallet", "pc-forward", "pc-transfer-signal-value"',
+  'crossRouteFromFixture("wallet", "value", "/invite", "pc-forward", "pc-transfer-value-network"',
+  'crossRouteFromFixture("invite", "network", "/wallet", "pc-back", "pc-transfer-network-value"',
+  'crossRouteFromFixture("wallet", "value", "/progress", "pc-back", "pc-transfer-value-signal"',
+  'crossRouteFromFixture("progress", "signal", "/invite", "pc-forward", "pc-transfer-signal-network"',
+  'crossRouteFromFixture("invite", "network", "/progress", "pc-back", "pc-transfer-network-signal"',
+  "semanticTransferProofs !== 6",
   '"prefers-reduced-motion", value: "no-preference"',
   '"prefers-reduced-motion", value: "reduce"',
   "Native route continuity PASS",
