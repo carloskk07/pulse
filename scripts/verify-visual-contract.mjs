@@ -245,6 +245,15 @@ requireText("scripts/verify-responsive-runtime.mjs", [
   "Responsive geometry did not stabilize",
 ]);
 
+requireText("scripts/verify-route-continuity-contract.mjs", [
+  'import ts from "typescript";',
+  "const SEMANTIC_LINK_ROOTS = [",
+  "function auditSemanticLinks",
+  "Semantic Link coverage self-test failed",
+  "Product Link semantic coverage failed",
+  'const OUTSIDE_PRODUCT_ROUTE_MARKER = "outside-product";',
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',
