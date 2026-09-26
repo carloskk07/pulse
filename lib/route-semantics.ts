@@ -1,6 +1,9 @@
 export type RouteSemanticDimension = "value" | "signal" | "network";
 export type ProductRouteId = "home" | "progress" | "earn" | "wallet" | "invite";
 
+declare const PRODUCT_ROUTE_HREF_BRAND: unique symbol;
+export type ProductRouteHref = string & { readonly [PRODUCT_ROUTE_HREF_BRAND]: true };
+
 export type RouteSemanticTransfer =
   `pc-transfer-${RouteSemanticDimension}-${RouteSemanticDimension}`;
 
@@ -13,6 +16,10 @@ const PRODUCT_ROUTE_PATHS: Record<ProductRouteId, string> = {
   wallet: "/wallet",
   invite: "/invite",
 };
+
+export function getProductRouteHref(route: ProductRouteId): ProductRouteHref {
+  return PRODUCT_ROUTE_PATHS[route] as ProductRouteHref;
+}
 
 const ROUTE_SEMANTIC_DIMENSIONS = {
   home: "value",
@@ -68,4 +75,12 @@ export function getRouteTransitionTypesForHref(
 ): string[] | undefined {
   const targetRoute = getProductRouteIdFromHref(targetHref);
   return targetRoute ? getRouteTransitionTypes(currentRoute, targetRoute) : undefined;
+}
+
+export function getRouteLinkProps(currentRoute: string, targetHref: string) {
+  return {
+    href: targetHref,
+    transitionTypes: getRouteTransitionTypesForHref(currentRoute, targetHref),
+    "data-route-provenance": "route-semantics" as const,
+  };
 }
