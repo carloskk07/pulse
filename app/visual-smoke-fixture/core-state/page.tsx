@@ -33,6 +33,16 @@ function journey(
   return { stage, balance, payoutProgress, payoutState, payoutLabel };
 }
 
+const denseWallet = {
+  availableCredits: 50_000,
+  payoutCredits: 50_000,
+  payoutProgress: 100,
+  payoutState: "ready" as const,
+  status: "Ready",
+  balanceLabel: "$50.000",
+  targetLabel: "$50.000 · USDT",
+};
+
 const experiences: Record<Scene, ProductExperience> = {
   reward: {
     surface: "reward",
@@ -59,7 +69,13 @@ const experiences: Record<Scene, ProductExperience> = {
     residue: "payout-ready",
     residueDimension: "value",
     residueStrength: 100,
-    journey: journey("payout", "$50.000", 100, "ready", "Ready"),
+    journey: journey(
+      "payout",
+      denseWallet.balanceLabel,
+      denseWallet.payoutProgress,
+      denseWallet.payoutState,
+      denseWallet.status,
+    ),
   },
   progress: {
     surface: "progress",
@@ -229,7 +245,14 @@ function EarnScene() {
 
 function WalletScene() {
   return (
-    <div className="pc-dense-fixture" data-dense-scene="wallet">
+    <div
+      className="pc-dense-fixture"
+      data-dense-scene="wallet"
+      data-wallet-available-credits={denseWallet.availableCredits}
+      data-wallet-payout-credits={denseWallet.payoutCredits}
+      data-wallet-payout-progress={denseWallet.payoutProgress}
+      data-wallet-payout-state={denseWallet.payoutState}
+    >
       <div className="app-page-head pc-luxe-vault-head">
         <div>
           <span className="app-eyebrow">Balance & payout</span>
@@ -238,11 +261,11 @@ function WalletScene() {
         </div>
         <SceneTelemetry
           variant="wallet"
-          status="Building"
+          status={denseWallet.status}
           items={[
-            { label: "Available", value: "$50.000", meta: "Current balance" },
-            { label: "Payout", value: "100%", meta: "Toward target" },
-            { label: "Target", value: "$50.000 · USDT", meta: "Current pack" },
+            { label: "Available", value: denseWallet.balanceLabel, meta: "Current balance" },
+            { label: "Payout", value: `${denseWallet.payoutProgress}%`, meta: "Target reached" },
+            { label: "Target", value: denseWallet.targetLabel, meta: "Current pack" },
           ]}
         />
       </div>
@@ -255,20 +278,20 @@ function WalletScene() {
           <div className="wallet-big-icon"><Wallet /></div>
           <div>
             <span>Available</span>
-            <strong>$48.725</strong>
-            <small>48,725 credits</small>
+            <strong>{denseWallet.balanceLabel}</strong>
+            <small>{denseWallet.availableCredits.toLocaleString("en-US")} credits</small>
             <div className="pc-v10-vault-meter">
-              <div aria-hidden="true"><i style={{ width: "100%" }} /></div>
-              <small>100% · payout target reached</small>
+              <div aria-hidden="true"><i style={{ width: `${denseWallet.payoutProgress}%` }} /></div>
+              <small>{denseWallet.payoutProgress}% · payout target reached</small>
             </div>
           </div>
         </div>
         <div className="pc-v3-vault-visual" aria-hidden="true">
-          <VaultProgressArtwork percent={100} value="$50.000" readout={false} />
+          <VaultProgressArtwork percent={denseWallet.payoutProgress} value={denseWallet.balanceLabel} readout={false} />
         </div>
         <div className="payout-pack-label">
           <small>Payout target</small>
-          <strong>$50.000 · USDT</strong>
+          <strong>{denseWallet.targetLabel}</strong>
         </div>
       </section>
 
@@ -278,7 +301,7 @@ function WalletScene() {
           <h2>Your current payout target is reached.</h2>
           <p>Your available balance stays untouched until a payout request is actually reserved.</p>
         </div>
-        <button className="button button-light button-lg" type="button">Withdraw $50.000</button>
+        <button className="button button-light button-lg" type="button">Withdraw {denseWallet.balanceLabel}</button>
       </section>
 
       <div className="wallet-grid pc-luxe-vault-grid">

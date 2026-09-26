@@ -118,6 +118,11 @@ const runtimeProbe = `(() => {
   const telemetryItems = [...document.querySelectorAll(".pc-scene-telemetry-item")];
   const telemetryValues = [...document.querySelectorAll(".pc-scene-telemetry-item strong")];
   const valueFlowLabels = [...document.querySelectorAll(".pc-value-flow-copy strong")];
+  const walletBalanceValue = document.querySelector('[data-dense-scene="wallet"] .pc-v3-vault-copy strong');
+  const walletCreditsValue = document.querySelector('[data-dense-scene="wallet"] .pc-v3-vault-copy small');
+  const walletMeterValue = document.querySelector('[data-dense-scene="wallet"] .pc-v10-vault-meter small');
+  const walletStatusValue = document.querySelector('[data-dense-scene="wallet"] .pc-scene-telemetry-status strong');
+  const walletWithdrawButton = document.querySelector('[data-dense-scene="wallet"] .withdrawal-panel button');
 
   const inspect = (element) => {
     if (!element) return null;
@@ -172,6 +177,18 @@ const runtimeProbe = `(() => {
       scrollWidth: value.scrollWidth,
       clientWidth: value.clientWidth,
     })),
+    walletTruth: scene?.getAttribute("data-dense-scene") === "wallet" ? {
+      availableCredits: Number(scene.getAttribute("data-wallet-available-credits")),
+      payoutCredits: Number(scene.getAttribute("data-wallet-payout-credits")),
+      payoutProgress: Number(scene.getAttribute("data-wallet-payout-progress")),
+      payoutState: scene.getAttribute("data-wallet-payout-state"),
+      balanceText: walletBalanceValue?.textContent?.trim() ?? "",
+      creditsText: walletCreditsValue?.textContent?.trim() ?? "",
+      meterText: walletMeterValue?.textContent?.trim() ?? "",
+      telemetryStatus: walletStatusValue?.textContent?.trim() ?? "",
+      telemetryValues: telemetryValues.map((value) => value.textContent?.trim() ?? ""),
+      withdrawText: walletWithdrawButton?.textContent?.trim() ?? "",
+    } : null,
     valueFlowOverflow: valueFlowLabels.map((value) => {
       const visibleLabel = [...value.children].find((child) => getComputedStyle(child).display !== "none");
       const target = visibleLabel ?? value;
@@ -317,6 +334,49 @@ try {
       if (state.telemetryItemCount !== 3) {
         failures.push(`${label}: expected 3 telemetry readouts, found ${state.telemetryItemCount}`);
       }
+      if (sceneName === "wallet") {
+        const truth = state.walletTruth;
+        if (!truth) {
+          failures.push(`${label}: wallet truth authority is missing`);
+        } else {
+          const availableCredits = Number(truth.availableCredits);
+          const payoutCredits = Number(truth.payoutCredits);
+          const payoutProgress = Number(truth.payoutProgress);
+          const availableLabel = "$" + (availableCredits / 1000).toFixed(3);
+          const payoutLabel = "$" + (payoutCredits / 1000).toFixed(3);
+
+          if (truth.payoutState !== "ready") {
+            failures.push(`${label}: dense wallet must model payoutState=ready, rendered ${truth.payoutState}`);
+          }
+          if (payoutProgress !== 100) {
+            failures.push(`${label}: ready dense wallet must be 100% to target, rendered ${payoutProgress}%`);
+          }
+          if (!(availableCredits >= payoutCredits)) {
+            failures.push(`${label}: ready dense wallet has available credits below payout target: ${availableCredits}/${payoutCredits}`);
+          }
+          if (truth.balanceText !== availableLabel) {
+            failures.push(`${label}: wallet balance text drifted from authority: ${truth.balanceText} vs ${availableLabel}`);
+          }
+          if (truth.creditsText !== `${availableCredits.toLocaleString("en-US")} credits`) {
+            failures.push(`${label}: wallet credits text drifted from authority: ${truth.creditsText}`);
+          }
+          if (truth.meterText !== "100% · payout target reached") {
+            failures.push(`${label}: wallet meter contradicts ready state: ${truth.meterText}`);
+          }
+          if (truth.telemetryStatus !== "Ready") {
+            failures.push(`${label}: wallet telemetry status contradicts ready state: ${truth.telemetryStatus}`);
+          }
+          const [telemetryAvailable, telemetryProgress, telemetryTarget] = truth.telemetryValues ?? [];
+          if (telemetryAvailable !== availableLabel || telemetryProgress !== "100%" || telemetryTarget !== `${payoutLabel} · USDT`) {
+            failures.push(
+              `${label}: wallet telemetry drifted from authority: ${JSON.stringify(truth.telemetryValues)}`,
+            );
+          }
+          if (truth.withdrawText !== `Withdraw ${availableLabel}`) {
+            failures.push(`${label}: wallet CTA drifted from available authority: ${truth.withdrawText}`);
+          }
+        }
+      }
 
       for (const value of state.telemetryValueOverflow ?? []) {
         if (value.scrollWidth > value.clientWidth + tolerance) {
@@ -351,7 +411,7 @@ try {
       }
 
       console.log(
-        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} routeDimension=${state.routeDimension ?? "missing"} routeLayers=${JSON.stringify(state.routeLayerOpacity ?? {})} channels=${valueChannelActive ? "V" : "-"}${signalChannelActive ? "S" : "-"}${networkChannelActive ? "N" : "-"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
+        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} routeDimension=${state.routeDimension ?? "missing"} routeLayers=${JSON.stringify(state.routeLayerOpacity ?? {})} walletTruth=${sceneName === "wallet" ? JSON.stringify(state.walletTruth) : "-"} channels=${valueChannelActive ? "V" : "-"}${signalChannelActive ? "S" : "-"}${networkChannelActive ? "N" : "-"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
       );
     }
   }
