@@ -207,7 +207,7 @@ requireText("app/styles/app-art-direction.css", [
   "/* V11.6 — Proportional Residue Energy.",
   "/* V11.7 — Dimensional Residue Field.",
   "/* V11.8 — Dimensional Channel Isolation.",
-  "/* V11.11 — Selective Semantic Field Transfer.",
+  "/* V11.12 — Spatial Field Handoff Continuity.",
   "view-transition-name:pc-spatial-field",
   "pc-transfer-value-signal",
   "pc-transfer-signal-value",
