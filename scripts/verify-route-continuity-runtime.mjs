@@ -446,16 +446,13 @@ try {
   await clickRoute(send, "/progress");
   await waitForPath(send, "/progress");
   await waitForHydratedLink(send, "/wallet");
-  const reducedProgress = await waitForTransitionTypes(
-    send,
-    ["pc-back", "pc-transfer-value-signal"],
-    reducedCalls,
-    "Earn → Progress (reduced)",
-  );
+  await sleep(120);
+  const reducedProgress = await readState(send);
   if (reducedProgress?.documentId !== before.documentId) {
     throw new Error(`Reduced-motion Earn → Progress performed a full document navigation: before=${before.documentId} after=${reducedProgress?.documentId}`);
   }
   assertReducedMotionState(reducedProgress, "Earn → Progress");
+  assertNoSemanticTransfer(reducedProgress, reducedCalls, "Earn → Progress (reduced)");
   if (reducedProgress?.path !== "/progress" || reducedProgress?.calls <= reducedCalls) {
     throw new Error(`Reduced-motion semantic transfer did not stay in SPA navigation: ${JSON.stringify(reducedProgress)}`);
   }
