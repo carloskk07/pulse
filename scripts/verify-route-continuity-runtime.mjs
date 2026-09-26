@@ -445,7 +445,7 @@ async function verifyAuthoritativeTransferAmplitude(send) {
   await waitForPath(send, "/progress");
   const valueSignal = await waitForTransitionTypes(
     send,
-    ["pc-back", "pc-transfer-value-signal"],
+    ["pc-forward", "pc-transfer-value-signal"],
     rewardCalls,
     "Fixture Value 83 → Signal",
     "pcTransferValueSignalOut",
