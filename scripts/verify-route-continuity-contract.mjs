@@ -58,23 +58,27 @@ requireText("lib/route-semantics.ts", [
   'wallet: "value"',
   'progress: "signal"',
   'invite: "network"',
+  "export type ProductRouteHref",
+  "export function getProductRouteHref",
   "export function getRouteSemanticDimension",
   "export function getRouteSemanticTransfer",
   "export function getProductRouteIdFromHref",
   "export function getRouteTransitionTypes",
   "export function getRouteTransitionTypesForHref",
+  "export function getRouteLinkProps",
   'return `pc-transfer-${current}-${target}`;',
 ]);
 
 requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
-  'import { getRouteSemanticDimension, getRouteTransitionTypes } from "@/lib/route-semantics";',
+  'import { getProductRouteHref, getRouteLinkProps, getRouteSemanticDimension } from "@/lib/route-semantics";',
+  'href: getProductRouteHref("home")',
+  "getRouteLinkProps(active, href)",
   "const routeSemanticDimension = getRouteSemanticDimension(active);",
   'data-route-dimension={routeSemanticDimension ?? undefined}',
   'name="pc-route-topbar"',
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
-  "transitionTypes={getRouteTransitionTypes(active, id)}",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -99,7 +103,7 @@ for (const [contextPath, fragments] of [
   ]],
   ["app/earn/page.tsx", ['getRouteTransitionTypesForHref("earn", "/dashboard")']],
   ["app/progress/page.tsx", [
-    'getRouteTransitionTypesForHref("progress", shareEntryHref)',
+    'getRouteLinkProps("progress", shareEntryHref)',
     'getRouteTransitionTypesForHref("progress", state.signedIn ? "/dashboard"',
   ]],
   ["components/continuous-pulse-panel.tsx", [
@@ -107,7 +111,7 @@ for (const [contextPath, fragments] of [
     'getRouteTransitionTypesForHref("home", "/invite")',
   ]],
   ["components/continuous-earn-hub.tsx", [
-    'getRouteTransitionTypesForHref("earn", mission.href)',
+    'getRouteLinkProps("earn", mission.href)',
     'getRouteTransitionTypesForHref("earn", "/invite")',
   ]],
   ["components/next-circuit-panel.tsx", ['getRouteTransitionTypesForHref("progress", "/dashboard")']],
