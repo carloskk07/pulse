@@ -3071,3 +3071,114 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ol
     filter:none!important;
   }
 }
+
+
+/* V11.12 — Semantic Arrival Carrier.
+   The outgoing spatial field hands off meaning; the destination carrier alone
+   confirms which semantic dimension has arrived. Text, controls and cards stay
+   outside this second-stage deformation. */
+:root{
+  --pc-route-vt-arrival-duration:.34s;
+}
+
+/* Arriving into VALUE: settle into visual mass/depth. */
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(.pc-route-carrier-share),
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(.pc-route-carrier-share){
+  animation-name:pcRouteCarrierIn,pcSemanticCarrierArriveValue;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.18,.78,.22,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(.pc-route-carrier-forward),
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(.pc-route-carrier-forward){
+  animation-name:pcRouteCarrierForwardIn,pcSemanticCarrierArriveValue;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.18,.78,.22,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(.pc-route-carrier-back),
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(.pc-route-carrier-back){
+  animation-name:pcRouteCarrierBackIn,pcSemanticCarrierArriveValue;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.18,.78,.22,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+
+/* Arriving into SIGNAL: tighten and resolve into orbital precision. */
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(.pc-route-carrier-share),
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(.pc-route-carrier-share){
+  animation-name:pcRouteCarrierIn,pcSemanticCarrierArriveSignal;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.16,.82,.2,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(.pc-route-carrier-forward),
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(.pc-route-carrier-forward){
+  animation-name:pcRouteCarrierForwardIn,pcSemanticCarrierArriveSignal;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.16,.82,.2,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(.pc-route-carrier-back),
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(.pc-route-carrier-back){
+  animation-name:pcRouteCarrierBackIn,pcSemanticCarrierArriveSignal;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.16,.82,.2,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+
+/* Arriving into NETWORK: open laterally into connection/reach. */
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(.pc-route-carrier-share),
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(.pc-route-carrier-share){
+  animation-name:pcRouteCarrierIn,pcSemanticCarrierArriveNetwork;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.18,.76,.2,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(.pc-route-carrier-forward),
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(.pc-route-carrier-forward){
+  animation-name:pcRouteCarrierForwardIn,pcSemanticCarrierArriveNetwork;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.18,.76,.2,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(.pc-route-carrier-back),
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(.pc-route-carrier-back){
+  animation-name:pcRouteCarrierBackIn,pcSemanticCarrierArriveNetwork;
+  animation-duration:var(--pc-route-vt-carrier-duration),var(--pc-route-vt-arrival-duration);
+  animation-timing-function:ease,cubic-bezier(.18,.76,.2,1);
+  animation-delay:0s,.05s;
+  animation-fill-mode:both,both;
+}
+
+@keyframes pcSemanticCarrierArriveValue{
+  from{scale:.84 1.08;rotate:-1deg}
+  to{scale:1;rotate:0deg}
+}
+@keyframes pcSemanticCarrierArriveSignal{
+  from{scale:.76;rotate:-11deg}
+  to{scale:1;rotate:0deg}
+}
+@keyframes pcSemanticCarrierArriveNetwork{
+  from{scale:1.18 .82;rotate:7deg}
+  to{scale:1;rotate:0deg}
+}
+
+@media(prefers-reduced-motion:reduce){
+  :root{--pc-route-vt-arrival-duration:.001ms}
+  ::view-transition-new(.pc-route-carrier-share),
+  ::view-transition-new(.pc-route-carrier-forward),
+  ::view-transition-new(.pc-route-carrier-back){
+    scale:1!important;
+    rotate:0deg!important;
+    animation-delay:0ms!important;
+  }
+}
