@@ -199,6 +199,16 @@ requireText("app/styles/app-art-direction.css", [
   "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(root)",
 ]);
 
+requireText("scripts/verify-responsive-runtime.mjs", [
+  "function hasMeasurableGeometry",
+  "function geometryIsStable",
+  "async function waitForStableGeometry",
+  "stableSamples >= 2",
+  "Math.abs(previous.appContent.width - current.appContent.width) <= 1",
+  "Math.abs(previousNav.width - currentNav.width) <= 1",
+  "Responsive geometry did not stabilize",
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',
