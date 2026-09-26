@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import ts from "typescript";
 
 function read(path) {
   return readFileSync(path, "utf8");
@@ -379,6 +381,165 @@ for (const forbidden of ["availableCredits", "payoutCredits", "claimReady", "rew
   if (atmosphere.includes(forbidden)) {
     throw new Error(`Shared transition geometry must not depend on financial state: ${forbidden}`);
   }
+}
+
+
+const PRODUCT_ROUTE_PATHS = new Set(["/dashboard", "/progress", "/earn", "/wallet", "/invite"]);
+const SEMANTIC_LINK_ROOTS = [
+  "app/dashboard",
+  "app/earn",
+  "app/progress",
+  "app/wallet",
+  "app/invite",
+  "components",
+];
+
+function collectTsxFiles(root) {
+  const files = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const full = join(root, entry.name);
+    if (entry.isDirectory()) files.push(...collectTsxFiles(full));
+    else if (entry.isFile() && full.endsWith(".tsx")) files.push(full.replaceAll("\\\\", "/"));
+  }
+  return files;
+}
+
+function jsxAttribute(opening, name) {
+  return opening.attributes.properties.find(
+    (property) => ts.isJsxAttribute(property) && property.name.text === name,
+  );
+}
+
+function staticHrefCandidates(expression) {
+  if (!expression) return [];
+  if (ts.isStringLiteralLike(expression)) return [expression.text];
+  if (ts.isParenthesizedExpression(expression)) return staticHrefCandidates(expression.expression);
+  if (ts.isConditionalExpression(expression)) {
+    return [
+      ...staticHrefCandidates(expression.whenTrue),
+      ...staticHrefCandidates(expression.whenFalse),
+    ];
+  }
+  if (
+    ts.isBinaryExpression(expression)
+    && expression.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    return [
+      ...staticHrefCandidates(expression.left),
+      ...staticHrefCandidates(expression.right),
+    ];
+  }
+  if (ts.isTemplateExpression(expression)) return [expression.head.text];
+  return [];
+}
+
+function hrefCandidates(attribute) {
+  if (!attribute || !attribute.initializer) return [];
+  if (ts.isStringLiteral(attribute.initializer)) return [attribute.initializer.text];
+  if (ts.isJsxExpression(attribute.initializer)) {
+    return staticHrefCandidates(attribute.initializer.expression);
+  }
+  return [];
+}
+
+function literalJsxAttributeValue(attribute) {
+  if (!attribute || !attribute.initializer) return null;
+  if (ts.isStringLiteral(attribute.initializer)) return attribute.initializer.text;
+  if (
+    ts.isJsxExpression(attribute.initializer)
+    && attribute.initializer.expression
+    && ts.isStringLiteralLike(attribute.initializer.expression)
+  ) {
+    return attribute.initializer.expression.text;
+  }
+  return null;
+}
+
+function normalizedProductRoute(value) {
+  const path = value.split("#", 1)[0]?.split("?", 1)[0] ?? value;
+  return PRODUCT_ROUTE_PATHS.has(path) ? path : null;
+}
+
+function auditSemanticLinks(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+
+  function visit(node) {
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+      && node.tagName.getText(sourceFile) === "Link"
+    ) {
+      const href = jsxAttribute(node, "href");
+      const targets = hrefCandidates(href)
+        .map(normalizedProductRoute)
+        .filter(Boolean);
+
+      if (targets.length > 0) {
+        const transitionTypes = jsxAttribute(node, "transitionTypes");
+        const explicitOutsideProduct = literalJsxAttributeValue(
+          jsxAttribute(node, "data-route-semantic"),
+        ) === "outside-product";
+
+        if (!transitionTypes && !explicitOutsideProduct) {
+          const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+          violations.push({
+            path,
+            line: position.line + 1,
+            column: position.character + 1,
+            targets: [...new Set(targets)],
+          });
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    "const Fixture = ({ signedIn }) => (",
+    "  <>",
+    "    <Link href=\"/progress\">Missing</Link>",
+    "    <Link href={\"/wallet?tab=history\"} transitionTypes={[\"pc-forward\"]}>Covered</Link>",
+    "    <Link href={signedIn ? \"/invite#network\" : \"/auth\"} transitionTypes={routeTypes}>Conditional</Link>",
+    "    <Link href=\"/dashboard\" data-route-semantic=\"outside-product\">Explicit public escape</Link>",
+    "  </>",
+    ");",
+  ].join("\n");
+  const violations = auditSemanticLinks(selfTest, "semantic-link-coverage.self-test.tsx");
+  if (
+    violations.length !== 1
+    || violations[0]?.targets.length !== 1
+    || violations[0]?.targets[0] !== "/progress"
+  ) {
+    throw new Error("Semantic Link coverage self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+const semanticLinkViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditSemanticLinks(read(path), path));
+
+if (semanticLinkViolations.length > 0) {
+  throw new Error(
+    "Product Link semantic coverage failed:\n"
+    + semanticLinkViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.targets.join(", ") + " lacks transitionTypes"
+      )
+      .join("\n"),
+  );
 }
 
 console.log("Native route continuity static contract PASS");
