@@ -10,6 +10,7 @@ import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { ValueFlow } from "@/components/value-flow";
 import { getCircuitProgress } from "@/lib/circuit-progress";
+import { productRouteTransitionTypes } from "@/lib/product-route-navigation";
 import { getUserNextAction } from "@/lib/experience-presentation";
 import { getEarningExperience } from "@/lib/product-experience";
 import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
@@ -117,7 +118,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         {params.claim ? (
           <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>
             {params.claim === "success" && !claimSucceeded ? "Reward status refreshed. Your current balance is shown above." : claimCopy[params.claim] ?? "Circuit updated."}
-            {claimSucceeded ? <Link href="/progress">See progress <ArrowUpRight /></Link> : null}
+            {claimSucceeded ? <Link href="/progress" transitionTypes={productRouteTransitionTypes("home", "/progress")}>See progress <ArrowUpRight /></Link> : null}
           </div>
         ) : null}
 
@@ -132,7 +133,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               {state.preview ? (
                 <button className="button button-light pulse-claim-button" disabled>{nextAction.actionLabel}</button>
               ) : !state.signedIn ? (
-                <Link href={nextAction.href} className="button button-light pulse-claim-button">{nextAction.actionLabel} <ArrowUpRight /></Link>
+                <Link href={nextAction.href} transitionTypes={productRouteTransitionTypes("home", nextAction.href)} className="button button-light pulse-claim-button">{nextAction.actionLabel} <ArrowUpRight /></Link>
               ) : canClaim ? (
                 <form action="/api/pulse/claim" method="post" className="claim-form">
                   <TurnstileField action="hourly_pulse" />
@@ -197,7 +198,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <div className="pc-v9-progress-value"><strong>{state.preview ? "—" : signal.signal}</strong><span>/100</span></div>
               <h3>{state.preview ? "Waiting for live history" : signal.stage}</h3>
               <p>{state.preview ? "Your live progress appears after connection." : `${state.streakDays}-day return streak · ${state.hourlyClaimCount} verified claim${state.hourlyClaimCount === 1 ? "" : "s"}`}</p>
-              <Link href="/progress">See progress <ArrowUpRight /></Link>
+              <Link href="/progress" transitionTypes={productRouteTransitionTypes("home", "/progress")}>See progress <ArrowUpRight /></Link>
             </article>
 
             <article className="pc-v9-progress-card vault-card">
@@ -215,7 +216,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                 : away > 0
                   ? `${formatUsdFromCredits(away)} remains to the current payout target.`
                   : "Your current payout target is reached."}</p>
-              <Link href="/wallet">View balance <ArrowUpRight /></Link>
+              <Link href="/wallet" transitionTypes={productRouteTransitionTypes("home", "/wallet")}>View balance <ArrowUpRight /></Link>
             </article>
 
             <article className="pc-v9-progress-card unlock-card">
@@ -223,7 +224,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <div className="pc-v9-unlock-mark"><Users /></div>
               <h3>Earn through real referrals.</h3>
               <p>Referral rewards, when active, are tied to verified eligible activity and shown before you share.</p>
-              <Link href="/invite">Open Network <ArrowUpRight /></Link>
+              <Link href="/invite" transitionTypes={productRouteTransitionTypes("home", "/invite")}>Open Network <ArrowUpRight /></Link>
             </article>
           </div>
 
@@ -246,7 +247,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               <h3>Extra rewards stay optional.</h3>
               <p>{liveTurboRoute ? "Choose extra reward routes only when the value is worth your time." : "The hourly faucet does not require extra offers."}</p>
             </div>
-            <Link href="/earn" className="icon-button" aria-label="Open extra rewards"><ArrowUpRight /></Link>
+            <Link href="/earn" transitionTypes={productRouteTransitionTypes("home", "/earn")} className="icon-button" aria-label="Open extra rewards"><ArrowUpRight /></Link>
           </article>
 
           <article className="progress-card pc-luxe-vault-progress">
