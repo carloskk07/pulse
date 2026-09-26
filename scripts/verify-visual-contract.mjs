@@ -266,7 +266,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "transferProfiles",
   "measureStrengthAwareBridge(20)",
   "measureStrengthAwareBridge(90)",
-  "Authoritative strength did not increase semantic Out + Bridge deformation",
+  "Authoritative strength profile did not increase Out + Bridge deformation inputs",
   '"::view-transition-old(pc-spatial-field)"',
   '"::view-transition-group(pc-spatial-field)"',
   "assertNoSemanticTransfer",
