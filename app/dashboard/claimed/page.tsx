@@ -9,7 +9,7 @@ import { ShareRhythmButton } from "@/components/share-rhythm-button";
 import { SponsoredVisitButton } from "@/components/sponsored-visit-button";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
-import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
+import { getProductRouteHref, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { getRecentPulseReceipt } from "@/lib/pulse-receipt";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
@@ -37,7 +37,7 @@ export default async function ClaimedPage() {
     getFaucetLaunchState(),
   ]);
   if (!state.signedIn || !userContext.user) redirect("/auth?next=/dashboard");
-  if (!receipt) redirect("/dashboard");
+  if (!receipt) redirect(getProductRouteHref("home"));
 
   const countryCode = requestHeaders.get("x-vercel-ip-country");
   const userAgent = requestHeaders.get("user-agent")?.toLowerCase() ?? "";
