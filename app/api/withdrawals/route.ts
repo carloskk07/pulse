@@ -4,6 +4,7 @@ import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from 
 import { recordFaucetPayPayoutProofById } from "@/lib/faucetpay-receipt-proof";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
+import { getProductRouteHref } from "@/lib/route-semantics";
 import { hasCanonicalFaucetPayPackAuthority } from "@/lib/treasury-backing";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -17,7 +18,7 @@ export const runtime = "nodejs";
 const PAYOUT_DISPATCH_RETRY_SECONDS = 30;
 
 function walletRedirect(request: NextRequest, state: string) {
-  return NextResponse.redirect(new URL(`/wallet?withdraw=${encodeURIComponent(state)}`, request.url), 303);
+  return NextResponse.redirect(new URL(getProductRouteHref("wallet", `?withdraw=${encodeURIComponent(state)}`), request.url), 303);
 }
 
 type ReservedWithdrawal = {
