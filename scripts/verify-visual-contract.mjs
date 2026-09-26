@@ -248,6 +248,20 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "assertNoSemanticTransfer",
   "assertNoSemanticRootAnimation",
   "transferDuration",
+  "width: 390",
+  "height: 844",
+  "mobile: true",
+  'transferDuration !== ".28s"',
+  '"Mobile Progress → Referrals"',
+  '"Mobile Referrals → Progress"',
+  '"Mobile Progress → Balance"',
+]);
+
+requireText("app/styles/app-art-direction.css", [
+  "--pc-route-transfer-duration:.34s",
+  "--pc-route-transfer-duration:.28s",
+  "filter:none!important",
+  "--pc-route-transfer-duration:.001ms",
 ]);
 
 requireText("scripts/verify-product-interaction-runtime.mjs", [
