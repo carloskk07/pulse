@@ -157,8 +157,10 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
 requireText(".github/workflows/visual-smoke.yml", [
   "local-preview/system-event/desktop/reward-settled.png",
   "local-preview/system-event/mobile/reward-settled.png",
-  'test "$count" -eq 94',
-  'test "$count" -eq 106',
+  "Capture semantic route transition frames",
+  "scripts/capture-route-transition-frames.mjs",
+  'test "$count" -eq 102',
+  'test "$count" -eq 114',
 ]);
 
 requireText("components/product-interaction-layer.tsx", [
