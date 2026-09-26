@@ -51,6 +51,8 @@ requireText("components/app-shell.tsx", [
   'import { SpatialAtmosphere } from "./spatial-atmosphere";',
   'import { ProductInteractionLayer } from "./product-interaction-layer";',
   'import { SystemEventField, type SystemEventCue } from "./system-event-field";',
+  'import { SemanticRouteLink } from "./semantic-route-link";',
+  "sourceStrength={residueStrength}",
   "<SpatialAtmosphere active={active} />",
   "<ProductInteractionLayer />",
   "const routeDimension = new Map",
@@ -66,6 +68,17 @@ requireText("components/app-shell.tsx", [
   '"--pc-residue-strength"',
 ]);
 
+
+requireText("components/semantic-route-link.tsx", [
+  "sourceStrength: number;",
+  "applyTransferProfile(sourceStrength)",
+  '"--pc-transfer-source-strength"',
+  '"--pc-transfer-opacity"',
+  '"--pc-transfer-blur"',
+  '"--pc-bridge-blur"',
+  '"--pc-bridge-value-signal-x"',
+  '"--pc-bridge-value-signal-y"',
+]);
 
 requireText("components/system-event-field.tsx", [
   '"use client";',
@@ -134,6 +147,9 @@ requireText("app/invite/page.tsx", [
 
 requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   'event?: string',
+  'strength?: string',
+  "strengthOverride",
+  "residueStrength: strengthOverride",
   'params.event === "reward-settled"',
   'kind: "reward-settled" as const',
   "eventCue={eventCue}",
@@ -208,7 +224,13 @@ requireText("app/styles/app-art-direction.css", [
   "/* V11.7 — Dimensional Residue Field.",
   "/* V11.8 — Dimensional Channel Isolation.",
   "/* V11.12 — Selective Semantic Field Bridge.",
+  "/* V11.14 — Authoritative Semantic Bridge Strength. */",
   "view-transition-name:pc-spatial-field",
+  "var(--pc-transfer-opacity)",
+  "var(--pc-transfer-blur)",
+  "var(--pc-bridge-blur)",
+  "var(--pc-bridge-value-signal-x)",
+  "var(--pc-bridge-value-signal-y)",
   "pc-transfer-value-signal",
   "pc-transfer-signal-value",
   "pc-transfer-value-network",
