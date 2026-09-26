@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowUpRight } from "@/components/icons";
+import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";
 
 type DirectStartPayload = {
   status?: unknown;
@@ -12,7 +13,7 @@ type DirectStartPayload = {
 function failureUrl(status: string, sourcePulseClaimId?: string | null) {
   const params = new URLSearchParams({ direct: status || "unavailable" });
   if (sourcePulseClaimId) params.set("claim", sourcePulseClaimId);
-  return "/earn?" + params.toString();
+  return getProductRouteHref("earn", `?${params.toString()}`);
 }
 
 export function DirectStartButton({
@@ -50,24 +51,22 @@ export function DirectStartButton({
       const status = typeof payload.status === "string" ? payload.status : "unavailable";
 
       if (response.status === 401) {
-        router.push("/auth?next=/earn");
+        router.push(getRouteNavigationHref("earn", "/auth?next=/earn"));
         return;
       }
 
       if (!response.ok || typeof payload.destination !== "string") {
-        router.push(failureUrl(status, sourcePulseClaimId));
+        router.push(getRouteNavigationHref("earn", failureUrl(status, sourcePulseClaimId)));
         return;
       }
 
-      const target = new URL(payload.destination);
-      if (target.protocol !== "https:") {
-        router.push(failureUrl("destination-error", sourcePulseClaimId));
-        return;
+      try {
+        window.location.assign(getExternalNavigationHref(payload.destination));
+      } catch {
+        router.push(getRouteNavigationHref("earn", failureUrl("destination-error", sourcePulseClaimId)));
       }
-
-      window.location.assign(target.toString());
     } catch {
-      router.push(failureUrl("unavailable", sourcePulseClaimId));
+      router.push(getRouteNavigationHref("earn", failureUrl("unavailable", sourcePulseClaimId)));
     }
   }
 

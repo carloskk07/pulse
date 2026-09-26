@@ -145,7 +145,7 @@ export default async function EarnPage({ searchParams }: Props) {
           ) : best?.sourceType === "affiliate" ? (
             <CashbackStartButton opportunityId={best.id} />
           ) : primaryChannel ? (
-            <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open extra rewards <ArrowUpRight /></a>
+            <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored" data-route-semantic="outside-product">Open extra rewards <ArrowUpRight /></a>
           ) : (
             <Link className="button button-light direct-primary-action" href="/dashboard" transitionTypes={getRouteTransitionTypesForHref("earn", "/dashboard")}>Back to rewards <ArrowUpRight /></Link>
           )}

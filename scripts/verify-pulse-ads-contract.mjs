@@ -138,8 +138,14 @@ forbidAll("app/api/ads/click/route.ts", [
 requireAll("components/sponsored-visit-button.tsx", [
   'fetch("/api/ads/click"',
   'method: "POST"',
-  'target.protocol !== "https:"',
-  "window.location.assign(target.toString())",
+  'getExternalNavigationHref(payload.destination)',
+  "window.location.assign(getExternalNavigationHref(payload.destination))",
+]);
+
+requireAll("lib/route-semantics.ts", [
+  'url.protocol !== "https:"',
+  "url.username || url.password",
+  'throw new Error("External navigation authority requires credential-free HTTPS")',
 ]);
 
 requireAll("lib/pulse-ads-checkout.ts", [

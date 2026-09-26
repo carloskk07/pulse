@@ -413,6 +413,18 @@ function collectTsxFiles(root) {
   return files;
 }
 
+function collectTypeScriptFiles(root) {
+  const files = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const full = join(root, entry.name);
+    if (entry.isDirectory()) files.push(...collectTypeScriptFiles(full));
+    else if (entry.isFile() && (full.endsWith(".ts") || full.endsWith(".tsx"))) {
+      files.push(full.replaceAll("\\", "/"));
+    }
+  }
+  return files;
+}
+
 function jsxAttribute(opening, name) {
   return opening.attributes.properties.find(
     (property) => ts.isJsxAttribute(property) && property.name.text === name,
@@ -592,6 +604,187 @@ function auditSemanticLinks(source, path) {
   }
 }
 
+function auditNativeAnchors(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+
+  function visit(node) {
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+      && node.tagName.getText(sourceFile) === "a"
+    ) {
+      const href = jsxAttribute(node, "href");
+      const targets = hrefCandidates(href)
+        .map(normalizedProductRoute)
+        .filter(Boolean);
+      const explicitOutsideProduct = literalJsxAttributeValue(
+        jsxAttribute(node, "data-route-semantic"),
+      ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
+      const unresolvedDynamicHref = hasUnresolvedDynamicHref(href);
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+
+      if ((targets.length > 0 || unresolvedDynamicHref) && !explicitOutsideProduct) {
+        violations.push({
+          path,
+          line: position.line + 1,
+          column: position.character + 1,
+          targets: [...new Set(targets)],
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+function authorityCall(expression, bindings) {
+  return Boolean(
+    expression
+    && ts.isCallExpression(expression)
+    && ts.isIdentifier(expression.expression)
+    && bindings.has(expression.expression.text)
+  );
+}
+
+function firstUrlArgument(expression) {
+  if (
+    expression
+    && ts.isNewExpression(expression)
+    && ts.isIdentifier(expression.expression)
+    && expression.expression.text === "URL"
+  ) return expression.arguments?.[0] ?? null;
+  return null;
+}
+
+function auditImperativeNavigation(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const violations = [];
+  const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
+  const redirectBindings = importedBindingNames(sourceFile, "next/navigation", "redirect");
+  const navigationBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getRouteNavigationHref");
+  const productHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getProductRouteHref");
+  const externalHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getExternalNavigationHref");
+  const routerVariables = new Set();
+
+  function report(node, kind, targets = []) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      targets: [...new Set(targets)],
+    });
+  }
+
+  function visit(node) {
+    if (
+      ts.isVariableDeclaration(node)
+      && ts.isIdentifier(node.name)
+      && node.initializer
+      && ts.isCallExpression(node.initializer)
+      && ts.isIdentifier(node.initializer.expression)
+      && useRouterBindings.has(node.initializer.expression.text)
+    ) {
+      routerVariables.add(node.name.text);
+    }
+
+    if (ts.isCallExpression(node)) {
+      const expression = node.expression;
+      const firstArg = node.arguments[0];
+
+      if (
+        ts.isPropertyAccessExpression(expression)
+        && ts.isIdentifier(expression.expression)
+        && routerVariables.has(expression.expression.text)
+        && (expression.name.text === "push" || expression.name.text === "replace")
+        && !authorityCall(firstArg, navigationBindings)
+      ) {
+        report(node, "router");
+      }
+
+      if (ts.isIdentifier(expression) && redirectBindings.has(expression.text)) {
+        const targets = staticHrefCandidates(firstArg)
+          .map(normalizedProductRoute)
+          .filter(Boolean);
+        if (
+          targets.length > 0
+          && !authorityCall(firstArg, navigationBindings)
+          && !authorityCall(firstArg, productHrefBindings)
+        ) report(node, "server-redirect", targets);
+      }
+
+      if (
+        ts.isPropertyAccessExpression(expression)
+        && expression.expression.getText(sourceFile) === "NextResponse"
+        && expression.name.text === "redirect"
+      ) {
+        const urlArg = firstUrlArgument(firstArg);
+        const targets = staticHrefCandidates(urlArg)
+          .map(normalizedProductRoute)
+          .filter(Boolean);
+        if (
+          targets.length > 0
+          && !authorityCall(urlArg, navigationBindings)
+          && !authorityCall(urlArg, productHrefBindings)
+        ) report(node, "route-handler-redirect", targets);
+      }
+
+      if (
+        ts.isPropertyAccessExpression(expression)
+        && expression.getText(sourceFile) === "window.location.assign"
+        && !authorityCall(firstArg, externalHrefBindings)
+      ) {
+        report(node, "external-assign");
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { useRouter, redirect } from "next/navigation";',
+    'import { NextResponse } from "next/server";',
+    'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
+    'router.push("/earn");',
+    'router.push(getRouteNavigationHref("home", "/earn"));',
+    'redirect("/wallet?state=x");',
+    'redirect(getProductRouteHref("wallet", "?state=x"));',
+    'NextResponse.redirect(new URL("/dashboard?claim=x", request.url), 303);',
+    'NextResponse.redirect(new URL(getProductRouteHref("home", "?claim=x"), request.url), 303);',
+    'window.location.assign("https://example.com");',
+    'window.location.assign(getExternalNavigationHref("https://example.com"));',
+  ].join("\n");
+  const violations = auditImperativeNavigation(selfTest, "imperative-navigation.self-test.tsx");
+  const kinds = violations.map((violation) => violation.kind).sort();
+  if (
+    violations.length !== 4
+    || kinds.join(",") !== "external-assign,route-handler-redirect,router,server-redirect"
+  ) {
+    throw new Error("Imperative navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 const semanticLinkViolations = SEMANTIC_LINK_ROOTS
   .flatMap(collectTsxFiles)
   .flatMap((path) => auditSemanticLinks(read(path), path));
@@ -624,7 +817,60 @@ if (staticSemanticCoverageViolations.length > 0) {
   );
 }
 
+const nativeAnchorViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditNativeAnchors(read(path), path));
+if (nativeAnchorViolations.length > 0) {
+  throw new Error(
+    "Native anchor navigation provenance failed:\n"
+    + nativeAnchorViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> native anchor must be explicitly outside-product"
+      )
+      .join("\n"),
+  );
+}
+
+const imperativeNavigationViolations = ["app", "components"]
+  .flatMap(collectTypeScriptFiles)
+  .flatMap((path) => auditImperativeNavigation(read(path), path));
+if (imperativeNavigationViolations.length > 0) {
+  throw new Error(
+    "Imperative navigation provenance failed:\n"
+    + imperativeNavigationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
 for (const [contextPath, fragments] of [
+  ["lib/route-semantics.ts", [
+    "export type RouteNavigationHref",
+    "export type ProductRouteSuffix",
+    "export function getRouteNavigationHref",
+    "export function getExternalNavigationHref",
+  ]],
+  ["components/direct-start-button.tsx", [
+    'getRouteNavigationHref("earn"',
+    'getExternalNavigationHref(payload.destination)',
+  ]],
+  ["app/api/pulse/claim/route.ts", [
+    'getProductRouteHref("home",',
+  ]],
+  ["app/api/withdrawals/route.ts", [
+    'getProductRouteHref("wallet",',
+  ]],
+  ["app/auth/callback/route.ts", [
+    'getRouteNavigationHref("auth", next)',
+  ]],
+  ["app/auth/confirm/route.ts", [
+    'getRouteNavigationHref("auth", next)',
+  ]],
   ["lib/experience-presentation.ts", [
     "type ProductRouteHref",
     "href: ProductRouteHref | `/auth${string}`",

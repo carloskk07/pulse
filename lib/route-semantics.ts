@@ -2,7 +2,10 @@ export type RouteSemanticDimension = "value" | "signal" | "network";
 export type ProductRouteId = "home" | "progress" | "earn" | "wallet" | "invite";
 
 declare const PRODUCT_ROUTE_HREF_BRAND: unique symbol;
+declare const ROUTE_NAVIGATION_HREF_BRAND: unique symbol;
 export type ProductRouteHref = string & { readonly [PRODUCT_ROUTE_HREF_BRAND]: true };
+export type RouteNavigationHref = string & { readonly [ROUTE_NAVIGATION_HREF_BRAND]: true };
+export type ProductRouteSuffix = "" | `?${string}` | `#${string}`;
 
 export type RouteSemanticTransfer =
   `pc-transfer-${RouteSemanticDimension}-${RouteSemanticDimension}`;
@@ -17,8 +20,11 @@ const PRODUCT_ROUTE_PATHS: Record<ProductRouteId, string> = {
   invite: "/invite",
 };
 
-export function getProductRouteHref(route: ProductRouteId): ProductRouteHref {
-  return PRODUCT_ROUTE_PATHS[route] as ProductRouteHref;
+export function getProductRouteHref(
+  route: ProductRouteId,
+  suffix: ProductRouteSuffix = "",
+): ProductRouteHref {
+  return `${PRODUCT_ROUTE_PATHS[route]}${suffix}` as ProductRouteHref;
 }
 
 const ROUTE_SEMANTIC_DIMENSIONS = {
@@ -83,4 +89,24 @@ export function getRouteLinkProps(currentRoute: string, targetHref: string) {
     transitionTypes: getRouteTransitionTypesForHref(currentRoute, targetHref),
     "data-route-provenance": "route-semantics" as const,
   };
+}
+
+export function getRouteNavigationHref(
+  currentRoute: string,
+  targetHref: string,
+): RouteNavigationHref {
+  if (!targetHref.startsWith("/") && !targetHref.startsWith("#")) {
+    throw new Error("Route navigation authority only accepts internal hrefs");
+  }
+  const targetRoute = getProductRouteIdFromHref(targetHref);
+  if (targetRoute) getRouteTransitionTypes(currentRoute, targetRoute);
+  return targetHref as RouteNavigationHref;
+}
+
+export function getExternalNavigationHref(targetHref: string): string {
+  const url = new URL(targetHref);
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("External navigation authority requires credential-free HTTPS");
+  }
+  return url.toString();
 }

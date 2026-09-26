@@ -2,6 +2,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { PASSWORD_RECOVERY_CONTEXT_OTP, PASSWORD_RECOVERY_COOKIE, recoveryCookieOptions, safeAuthNext } from "@/lib/auth-security";
 import { beginPasswordRecoveryProofChallenge } from "@/lib/auth-recovery-proof";
+import { getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -9,14 +10,14 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get("token_hash");
   const type = request.nextUrl.searchParams.get("type") as EmailOtpType | null;
-  const defaultNext = type === "recovery" ? "/auth/update-password" : "/dashboard";
+  const defaultNext = type === "recovery" ? "/auth/update-password" : getProductRouteHref("home");
   const next = safeAuthNext(request.nextUrl.searchParams.get("next"), defaultNext);
   const supabase = await createSupabaseServerClient();
 
   if (tokenHash && type && supabase) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     if (!error) {
-      const response = NextResponse.redirect(new URL(next, request.url), 303);
+      const response = NextResponse.redirect(new URL(getRouteNavigationHref("auth", next), request.url), 303);
       response.headers.set("Cache-Control", "private, no-store");
       if (type === "recovery" && next === "/auth/update-password") {
         const { data: { user } } = await supabase.auth.getUser();

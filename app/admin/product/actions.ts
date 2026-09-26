@@ -5,6 +5,7 @@ import { probePwnedPasswordProtection } from "@/lib/pwned-passwords";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminAccess } from "@/lib/admin-authorization";
+import { getProductRouteHref } from "@/lib/route-semantics";
 import { getPublicLaunchSwitchState } from "@/lib/public-launch-switch";
 import { getTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -16,7 +17,7 @@ async function requireAdmin() {
   const access = await getAdminAccess();
   if (access.status === "unauthenticated") redirect("/auth?next=/admin/product");
   if (access.status === "unavailable") redirect("/auth?next=/admin/product");
-  if (access.status !== "authorized") redirect("/dashboard");
+  if (access.status !== "authorized") redirect(getProductRouteHref("home"));
   return access.user;
 }
 

@@ -236,6 +236,8 @@ requireText("lib/route-semantics.ts", [
   "export function getRouteTransitionTypes",
   "export function getRouteTransitionTypesForHref",
   "export function getRouteLinkProps",
+  "export function getRouteNavigationHref",
+  "export function getExternalNavigationHref",
   '"data-route-provenance": "route-semantics"',
 ]);
 
@@ -256,6 +258,9 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "Semantic Link coverage/provenance self-test failed",
   "Dynamic Link route provenance failed",
   "Product Link semantic coverage failed",
+  "Native anchor navigation provenance failed",
+  "Imperative navigation provenance self-test failed",
+  "Imperative navigation provenance failed",
   "function hasRouteLinkAuthority",
   "function hasUnresolvedDynamicHref",
   'const OUTSIDE_PRODUCT_ROUTE_MARKER = "outside-product";',

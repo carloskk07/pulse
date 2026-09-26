@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowUpRight } from "@/components/icons";
+import { getExternalNavigationHref } from "@/lib/route-semantics";
 
 type SponsoredClickPayload = {
   destination?: unknown;
@@ -29,12 +30,7 @@ export function SponsoredVisitButton({ campaignId }: { campaignId: string }) {
         throw new Error("sponsored_click_failed");
       }
 
-      const target = new URL(payload.destination);
-      if (target.protocol !== "https:") {
-        throw new Error("sponsored_destination_invalid");
-      }
-
-      window.location.assign(target.toString());
+      window.location.assign(getExternalNavigationHref(payload.destination));
     } catch {
       setState("error");
     }
