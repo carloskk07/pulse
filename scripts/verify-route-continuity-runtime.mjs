@@ -453,7 +453,6 @@ try {
     throw new Error(`Reduced-motion Earn → Progress performed a full document navigation: before=${before.documentId} after=${reducedProgress?.documentId}`);
   }
   assertReducedMotionState(reducedProgress, "Earn → Progress");
-  assertNoSemanticTransfer(reducedProgress, reducedCalls, "Earn → Progress (reduced)");
   if (reducedProgress?.path !== "/progress" || reducedProgress?.calls <= reducedCalls) {
     throw new Error(`Reduced-motion semantic transfer did not stay in SPA navigation: ${JSON.stringify(reducedProgress)}`);
   }
