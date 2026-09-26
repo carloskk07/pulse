@@ -184,7 +184,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"Earn → Balance"',
   "transition?.types",
   ":active-view-transition-type(",
-  "waitForTransitionType",
+  "waitForTransitionTypes",
   "probeInstalled",
   'waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn")',
   'assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn")',
