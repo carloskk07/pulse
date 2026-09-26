@@ -5,7 +5,7 @@ import { signOut } from "@/app/auth/actions";
 import type { ProductExperience } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
-import { getRouteSemanticDimension, getRouteTransitionTypes } from "@/lib/route-semantics";
+import { getProductRouteHref, getRouteLinkProps, getRouteSemanticDimension } from "@/lib/route-semantics";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 import { SpatialAtmosphere } from "./spatial-atmosphere";
 import { ProductInteractionLayer } from "./product-interaction-layer";
@@ -13,11 +13,11 @@ import { SystemEventField, type SystemEventCue } from "./system-event-field";
 import { Bolt, Home, Shield, Spark, Trend, Users, Wallet } from "./icons";
 
 const links = [
-  { id: "home", href: "/dashboard", label: "Rewards", Icon: Home },
-  { id: "progress", href: "/progress", label: "Progress", Icon: Trend },
-  { id: "earn", href: "/earn", label: "Earn", Icon: Bolt },
-  { id: "wallet", href: "/wallet", label: "Balance", Icon: Wallet },
-  { id: "invite", href: "/invite", label: "Referrals", Icon: Users },
+  { id: "home", href: getProductRouteHref("home"), label: "Rewards", Icon: Home },
+  { id: "progress", href: getProductRouteHref("progress"), label: "Progress", Icon: Trend },
+  { id: "earn", href: getProductRouteHref("earn"), label: "Earn", Icon: Bolt },
+  { id: "wallet", href: getProductRouteHref("wallet"), label: "Balance", Icon: Wallet },
+  { id: "invite", href: getProductRouteHref("invite"), label: "Referrals", Icon: Users },
 ];
 
 const adminLinks = [
@@ -83,7 +83,7 @@ export async function AppShell({
           <PulsercuitBrand />
           <nav className="app-nav app-topbar-nav" aria-label="Application">
             {links.map(({ id, href, label: navLabel, Icon }) => (
-              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={getRouteTransitionTypes(active, id)}>
+              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} {...getRouteLinkProps(active, href)}>
                 <Icon /><span>{navLabel}</span>
               </Link>
             ))}
@@ -104,7 +104,7 @@ export async function AppShell({
                 <div className="app-topbar-admin-links">
                   <span>Operations</span>
                   {adminLinks.map(({ id, href, label: navLabel, Icon }) => (
-                    <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon />{navLabel}</Link>
+                    <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} data-route-semantic="outside-product"><Icon />{navLabel}</Link>
                   ))}
                 </div>
               ) : null}
@@ -118,7 +118,7 @@ export async function AppShell({
       <ViewTransition name="pc-route-bottom-nav" share="pc-route-nav-anchor" default="none">
         <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
-          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={getRouteTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
+          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} {...getRouteLinkProps(active, href)}><Icon /><span>{navLabel}</span></Link>
         ))}
         <details className="bottom-nav-more">
           <summary className={utilityMobileActive ? "active" : ""} aria-label="More navigation and account actions">
@@ -135,7 +135,7 @@ export async function AppShell({
             <Link className={active === "ads" ? "active" : ""} aria-current={active === "ads" ? "page" : undefined} href="/advertise">Advertise</Link>
             <Link className={active === "support" ? "active" : ""} aria-current={active === "support" ? "page" : undefined} href="/support">Help</Link>
             {admin ? adminLinks.map(({ id, href, label: navLabel, Icon }) => (
-              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href}><Icon />{navLabel}</Link>
+              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} data-route-semantic="outside-product"><Icon />{navLabel}</Link>
             )) : null}
             {user ? <form action={signOut}><button type="submit">Sign out</button></form> : <Link href="/auth?next=/dashboard">Log in</Link>}
           </div>
