@@ -243,11 +243,18 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-network-signal"',
   '"pcTransferSignalValueOut"',
   '"pcTransferNetworkSignalOut"',
+  '"pcSemanticCarrierArriveValue"',
+  '"pcSemanticCarrierArriveSignal"',
+  '"pcSemanticCarrierArriveNetwork"',
+  "waitForSemanticCarrierArrival",
+  "assertSemanticCarrierIsolation",
+  "assertNoSemanticCarrierArrival",
   "animationEvidence",
   '"::view-transition-old(pc-spatial-field)"',
   "assertNoSemanticTransfer",
   "assertNoSemanticRootAnimation",
   "transferDuration",
+  "arrivalDuration",
 ]);
 
 requireText("scripts/verify-product-interaction-runtime.mjs", [
