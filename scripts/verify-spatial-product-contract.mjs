@@ -215,7 +215,7 @@ requireText("app/styles/app-art-direction.css", [
   "pc-transfer-signal-network",
   "pc-transfer-network-signal",
   "active-view-transition-type(pc-transfer-value-signal)::view-transition-old(root)",
-  "active-view-transition-type(pc-transfer-network-signal)::view-transition-new(root)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(root)",
   'data-product-residue-dimension="value"',
   'data-product-residue-dimension="signal"',
   'data-product-residue-dimension="network"',
