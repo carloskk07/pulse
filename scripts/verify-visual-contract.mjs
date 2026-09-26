@@ -194,6 +194,11 @@ requireText(".github/workflows/visual-smoke.yml", [
   "production-fixture-isolation",
 ]);
 
+requireText("app/styles/app-art-direction.css", [
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-new(root)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-new(root)",
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',

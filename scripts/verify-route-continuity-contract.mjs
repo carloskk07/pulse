@@ -37,10 +37,6 @@ requireText("components/spatial-atmosphere.tsx", [
   '"pc-forward": "pc-route-index-forward"',
   '"pc-back": "pc-route-index-back"',
   'className="pc-route-carrier"',
-  'key={`field-${active}`}',
-  'name="pc-route-field"',
-  'update="pc-route-field-transfer"',
-  'share="pc-route-field-transfer"',
 ]);
 
 requireText("components/app-shell.tsx", [
@@ -98,7 +94,12 @@ requireText("app/styles/app-art-direction.css", [
   "::view-transition-group(.pc-route-nav-anchor)",
   "/* V11.9 — Semantic Route Transfer.",
   "--pc-route-transfer-duration:.56s",
-  "::view-transition-group(.pc-route-field-transfer)",
+  "active-view-transition-type(pc-transfer-value-signal)::view-transition-old(root)",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-new(root)",
+  "active-view-transition-type(pc-transfer-value-network)::view-transition-new(root)",
+  "active-view-transition-type(pc-transfer-network-value)::view-transition-new(root)",
+  "active-view-transition-type(pc-transfer-signal-network)::view-transition-new(root)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-new(root)",
   "pc-transfer-value-signal",
   "pc-transfer-signal-value",
   "pc-transfer-value-network",
@@ -203,6 +204,11 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "Native route continuity PASS",
 ]);
 
+
+const atmosphereSource = read("components/spatial-atmosphere.tsx");
+if (atmosphereSource.includes("pc-route-field") || atmosphereSource.includes("pc-route-field-transfer")) {
+  throw new Error("Semantic route transfer must use the guaranteed native root snapshot, not an inactive parent ViewTransition boundary.");
+}
 
 const appShell = read("components/app-shell.tsx");
 if (appShell.includes("routeContentTransition") || appShell.includes('key={`route-content-${active}`}')) {
