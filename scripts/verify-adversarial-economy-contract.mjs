@@ -450,8 +450,8 @@ requireAll("components/direct-start-button.tsx", [
   'fetch("/api/direct/start"',
   'method: "POST"',
   'credentials: "same-origin"',
-  'target.protocol !== "https:"',
-  "window.location.assign(target.toString())",
+  'getExternalNavigationHref(payload.destination)',
+  "window.location.assign(getExternalNavigationHref(payload.destination))",
 ]);
 
 requireAll("lib/controlled-technical-readiness.ts", [
