@@ -434,9 +434,29 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   "residueStrength: 83",
   "residueStrength: 94",
   "residueStrength: 100",
+  "const denseWallet = {",
+  "availableCredits: 50_000",
+  "payoutCredits: 50_000",
+  'payoutState: "ready" as const',
+  'status: "Ready"',
+  'balanceLabel: "$50.000"',
+  'targetLabel: "$50.000 · USDT"',
+  "data-wallet-available-credits={denseWallet.availableCredits}",
+  "data-wallet-payout-credits={denseWallet.payoutCredits}",
+  "data-wallet-payout-progress={denseWallet.payoutProgress}",
+  "data-wallet-payout-state={denseWallet.payoutState}",
   '<SceneTelemetry',
   '<ValueFlow',
 ]);
+
+{
+  const denseFixture = read("app/visual-smoke-fixture/core-state/page.tsx");
+  for (const forbidden of ['status="Building"', "$48.725", "48,725 credits"]) {
+    if (denseFixture.includes(forbidden)) {
+      throw new Error(`Dense wallet fixture contains stale contradictory authority: ${forbidden}`);
+    }
+  }
+}
 
 requireText("scripts/verify-dense-state-runtime.mjs", [
   '"balance-funded"',
