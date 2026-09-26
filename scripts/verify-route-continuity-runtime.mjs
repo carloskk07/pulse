@@ -503,27 +503,27 @@ try {
   const semanticProof = {
     "pc-transfer-signal-value": {
       outgoing: ["pcTransferSignalValueOut", "::view-transition-old(pc-field-signal)"],
-      incoming: ["pcTransferSignalValueIn", "::view-transition-new(pc-field-value)"],
+      incoming: ["pcTransferSignalValueIn", "::view-transition-group(pc-field-value)"],
     },
     "pc-transfer-value-network": {
       outgoing: ["pcTransferValueNetworkOut", "::view-transition-old(pc-field-value)"],
-      incoming: ["pcTransferValueNetworkIn", "::view-transition-new(pc-field-network)"],
+      incoming: ["pcTransferValueNetworkIn", "::view-transition-group(pc-field-network)"],
     },
     "pc-transfer-network-value": {
       outgoing: ["pcTransferNetworkValueOut", "::view-transition-old(pc-field-network)"],
-      incoming: ["pcTransferNetworkValueIn", "::view-transition-new(pc-field-value)"],
+      incoming: ["pcTransferNetworkValueIn", "::view-transition-group(pc-field-value)"],
     },
     "pc-transfer-value-signal": {
       outgoing: ["pcTransferValueSignalOut", "::view-transition-old(pc-field-value)"],
-      incoming: ["pcTransferValueSignalIn", "::view-transition-new(pc-field-signal)"],
+      incoming: ["pcTransferValueSignalIn", "::view-transition-group(pc-field-signal)"],
     },
     "pc-transfer-signal-network": {
       outgoing: ["pcTransferSignalNetworkOut", "::view-transition-old(pc-field-signal)"],
-      incoming: ["pcTransferSignalNetworkIn", "::view-transition-new(pc-field-network)"],
+      incoming: ["pcTransferSignalNetworkIn", "::view-transition-group(pc-field-network)"],
     },
     "pc-transfer-network-signal": {
       outgoing: ["pcTransferNetworkSignalOut", "::view-transition-old(pc-field-network)"],
-      incoming: ["pcTransferNetworkSignalIn", "::view-transition-new(pc-field-signal)"],
+      incoming: ["pcTransferNetworkSignalIn", "::view-transition-group(pc-field-signal)"],
     },
   };
 
@@ -619,7 +619,7 @@ try {
   }
 
   console.log(
-    `Native route continuity PASS: desktop six-direction source→target layer handoff + mobile layer profile (.28s, filterless old/new) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
+    `Native route continuity PASS: desktop six-direction source→target layer-group handoff + mobile layer profile (.28s, filterless old/group) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
   );
   socket.close();
 } finally {
