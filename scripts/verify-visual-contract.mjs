@@ -172,6 +172,18 @@ requireText("proxy.ts", [
   '"Cache-Control": "no-store, max-age=0"',
 ]);
 
+{
+  const denseRuntime = read("scripts/verify-dense-state-runtime.mjs");
+  for (const forbidden of [
+    "(availableCredits / 1000).toFixed(3)",
+    "(payoutCredits / 1000).toFixed(3)",
+  ]) {
+    if (denseRuntime.includes(forbidden)) {
+      throw new Error(`Dense wallet runtime verifier must use canonical USD formatting, not fixed decimals: ${forbidden}`);
+    }
+  }
+}
+
 requireText(".github/workflows/visual-smoke.yml", [
   "pull_request:",
   "branches: [main]",
@@ -495,6 +507,13 @@ requireText("scripts/verify-dense-state-runtime.mjs", [
   "activity Signal drifted from canonical formula",
   "activity rank drifted from canonical thresholds",
   "Resonance must expose Current peak",
+  "function formatUsdFromCreditsAuthority",
+  'style: "currency"',
+  'currency: "USD"',
+  "minimumFractionDigits: 2",
+  "maximumFractionDigits: 3",
+  "formatUsdFromCreditsAuthority(availableCredits)",
+  "formatUsdFromCreditsAuthority(payoutCredits)",
   "value dimension leaked into signal orbit",
   "signal dimension leaked into value depth",
   "network dimension leaked into signal orbit",
