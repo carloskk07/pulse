@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check } from "@/components/icons";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 import { formatUsdFromCredits } from "@/lib/reward-state";
+import { productRouteTransitionTypes } from "@/lib/product-route-navigation";
 
 export async function ContinuousEarnHub() {
   const ecosystem = await getPulseEcosystemSnapshot();
@@ -24,7 +25,7 @@ export async function ContinuousEarnHub() {
 
         <div className="pc-v13-mission-grid">
           {ecosystem.missions.map((mission) => (
-            <Link href={mission.href} className={"pc-v13-mission-card " + (mission.complete ? "done" : "")} key={mission.id}>
+            <Link href={mission.href} transitionTypes={productRouteTransitionTypes("earn", mission.href)} className={"pc-v13-mission-card " + (mission.complete ? "done" : "")} key={mission.id}>
               <span className="pc-v13-mission-status">{mission.complete ? <Check /> : mission.current + "/" + mission.target}</span>
               <div>
                 <strong>{mission.title}</strong>
@@ -51,7 +52,7 @@ export async function ContinuousEarnHub() {
           <span className="app-eyebrow">Referrals</span>
           <h2>{ecosystem.networkMembers > 0 ? ecosystem.networkMembers + " people across your first three referral levels." : "Your referral network starts with one active member."}</h2>
           <p>See your referral activity and any currently active reward rule before you share.</p>
-          <Link href="/invite" className="inline-action">Open referrals <ArrowUpRight /></Link>
+          <Link href="/invite" transitionTypes={productRouteTransitionTypes("earn", "/invite")} className="inline-action">Open referrals <ArrowUpRight /></Link>
         </article>
       </section>
     </>
