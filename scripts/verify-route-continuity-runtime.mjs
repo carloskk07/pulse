@@ -260,7 +260,7 @@ async function installTransitionProbeBeforeHydration(send) {
     "        hardX: rootStyle.getPropertyValue('--pc-transfer-scale-hard-x').trim(),",
     "        hardY: rootStyle.getPropertyValue('--pc-transfer-scale-hard-y').trim(),",
     "      }].slice(-40);",
-    "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];"
+    "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];",
     "      window.__pcRouteTransitionAnimations = [...entry.animations];",
     "    };",
     "    collect('sync');",
