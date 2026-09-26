@@ -191,7 +191,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   'waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn")',
   'assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn")',
   'assertReducedMotionState(reducedProgress, "Earn → Progress")',
-  '["pc-back", "pc-transfer-value-signal"]',
+  'assertNoSemanticTransfer(reducedProgress, reducedCalls, "Earn → Progress (reduced)")',
   'crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value"',
   'crossRoute("/invite", "pc-forward", "pc-transfer-value-network"',
   'crossRoute("/wallet", "pc-back", "pc-transfer-network-value"',
