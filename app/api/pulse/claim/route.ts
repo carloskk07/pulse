@@ -6,13 +6,14 @@ import {
   RETENTION_ATTRIBUTION_COOKIE,
 } from "@/lib/retention-attribution";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
+import { getProductRouteHref } from "@/lib/route-semantics";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureFreshTreasuryBacking } from "@/lib/treasury-backing";
 import { verifyTurnstile } from "@/lib/turnstile";
 
 function dashboardRedirect(request: NextRequest, state: string) {
-  return NextResponse.redirect(new URL(`/dashboard?claim=${encodeURIComponent(state)}`, request.url), 303);
+  return NextResponse.redirect(new URL(getProductRouteHref("home", `?claim=${encodeURIComponent(state)}`), request.url), 303);
 }
 
 function revalidateRewardViews() {
