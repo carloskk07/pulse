@@ -250,6 +250,21 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "transferDuration",
 ]);
 
+requireText("scripts/verify-route-continuity-runtime.mjs", [
+  "verifyAuthoritativeTransferAmplitude",
+  "assertTransferAmplitude",
+  '"Fixture Value 83 → Signal"',
+  '"Fixture Signal 94 → Network"',
+  "strength: 83",
+  "strength: 94",
+  "transferSourceStrength",
+  "transferPair",
+  "transferOpacity",
+  "transferScaleX",
+  "transferBlur",
+  "Authoritative semantic transfer amplitude PASS",
+]);
+
 requireText("scripts/verify-product-interaction-runtime.mjs", [
   '/visual-smoke-fixture/core-state?scene=reward',
   '"prefers-reduced-motion", value: "no-preference"',
