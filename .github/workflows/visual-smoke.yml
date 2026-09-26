@@ -15,6 +15,7 @@ on:
       - "public/**"
       - "proxy.ts"
       - "scripts/verify-responsive-runtime.mjs"
+      - "scripts/verify-public-mobile-readability-runtime.mjs"
       - "scripts/verify-dense-state-runtime.mjs"
       - "scripts/verify-product-interaction-runtime.mjs"
       - "scripts/verify-route-continuity-runtime.mjs"
@@ -33,6 +34,7 @@ on:
       - "public/**"
       - "proxy.ts"
       - "scripts/verify-responsive-runtime.mjs"
+      - "scripts/verify-public-mobile-readability-runtime.mjs"
       - "scripts/verify-dense-state-runtime.mjs"
       - "scripts/verify-product-interaction-runtime.mjs"
       - "scripts/verify-route-continuity-runtime.mjs"
@@ -258,6 +260,12 @@ jobs:
         env:
           RESPONSIVE_BASE_URL: http://127.0.0.1:3100
         run: node scripts/verify-responsive-runtime.mjs
+
+      - name: Verify public mobile readability
+        shell: bash
+        env:
+          PUBLIC_READABILITY_BASE_URL: http://127.0.0.1:3100
+        run: node scripts/verify-public-mobile-readability-runtime.mjs
 
       - name: Verify dense signed-in runtime geometry
         shell: bash

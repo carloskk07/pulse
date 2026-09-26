@@ -515,3 +515,27 @@
     animation:none!important;
   }
 }
+
+
+/* V11.17 — Public mobile readability floor.
+   Keep decorative micro-labels compact, but never shrink explanatory or
+   decision-bearing copy below a practical mobile reading floor. */
+@media(max-width:600px){
+  .pc-home-trust-row{font-size:11px}
+  .pc-home-core-status>small{font-size:11px;line-height:1.45}
+  .pc-home-value-strip span{font-size:11px;line-height:1.5}
+  .pc-home-loop-grid p{font-size:12px;line-height:1.6}
+  .pc-home-return-board small{font-size:11px;line-height:1.55}
+  .pc-home-proof-points span{font-size:11px;line-height:1.55}
+  .pc-home-activity-list small{font-size:11px}
+  .pc-home-proof-card>p{font-size:12px;line-height:1.65}
+
+  .pc-faucet-trust span{font-size:11px;line-height:1.35}
+  .pc-faucet-live-foot span{font-size:11px;line-height:1.5}
+  .pc-faucet-bands-head p{font-size:12px;line-height:1.6}
+  .pc-faucet-band-grid span{font-size:10px;line-height:1.4}
+  .pc-faucet-path p{font-size:12px;line-height:1.6}
+  .pc-faucet-difference-grid p{font-size:12px;line-height:1.6}
+  .pc-faucet-launch-note p{font-size:12px;line-height:1.6}
+  .pc-faucet-final p{font-size:12px;line-height:1.55}
+}

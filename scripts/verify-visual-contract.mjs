@@ -191,6 +191,9 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"scripts/capture-public-full-page.mjs"',
   '"scripts/verify-product-interaction-runtime.mjs"',
   '"scripts/verify-route-continuity-runtime.mjs"',
+  '"scripts/verify-public-mobile-readability-runtime.mjs"',
+  "Verify public mobile readability",
+  "PUBLIC_READABILITY_BASE_URL: http://127.0.0.1:3100",
   "Verify reactive spatial interaction",
   "Verify native route continuity",
   "Capture full-page public evidence",
@@ -227,6 +230,26 @@ requireText("app/styles/app-art-direction.css", [
   "active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-field-signal)",
   "@keyframes pcTransferSignalValueIn",
   "@keyframes pcTransferNetworkSignalIn",
+]);
+
+requireText("scripts/verify-public-mobile-readability-runtime.mjs", [
+  'const viewport = { width: 390, height: 844 };',
+  '[".pc-home-trust-row span", 11, true',
+  '[".pc-home-core-status>small", 11, true',
+  '[".pc-home-value-strip span", 11, true',
+  '[".pc-home-loop-grid p", 12, true',
+  '[".pc-home-return-board small", 11, true',
+  '[".pc-home-proof-points span", 11, true',
+  '[".pc-faucet-trust span", 11, true',
+  '[".pc-faucet-live-foot span", 11, true',
+  '[".pc-faucet-band-grid span", 10, false',
+  '[".pc-faucet-path p", 12, true',
+  '[".pc-faucet-difference-grid p", 12, true',
+  '[".pc-faucet-launch-note p", 12, false',
+  '[".pc-faucet-final p", 12, true',
+  "Public mobile readability contract FAIL",
+  "Public mobile readability contract PASS",
+  "maxScrollX",
 ]);
 
 requireText("scripts/verify-responsive-runtime.mjs", [
@@ -579,6 +602,23 @@ for (const [path, variant] of [
     variant,
   ]);
 }
+
+requireText("app/styles/public-conversion.css", [
+  "/* V11.17 — Public mobile readability floor.",
+  ".pc-home-trust-row{font-size:11px}",
+  ".pc-home-core-status>small{font-size:11px;line-height:1.45}",
+  ".pc-home-value-strip span{font-size:11px;line-height:1.5}",
+  ".pc-home-loop-grid p{font-size:12px;line-height:1.6}",
+  ".pc-home-return-board small{font-size:11px;line-height:1.55}",
+  ".pc-home-proof-points span{font-size:11px;line-height:1.55}",
+  ".pc-faucet-trust span{font-size:11px;line-height:1.35}",
+  ".pc-faucet-live-foot span{font-size:11px;line-height:1.5}",
+  ".pc-faucet-band-grid span{font-size:10px;line-height:1.4}",
+  ".pc-faucet-path p{font-size:12px;line-height:1.6}",
+  ".pc-faucet-difference-grid p{font-size:12px;line-height:1.6}",
+  ".pc-faucet-launch-note p{font-size:12px;line-height:1.6}",
+  ".pc-faucet-final p{font-size:12px;line-height:1.55}",
+]);
 
 requireText("app/styles/public-conversion.css", [
   "/* V11 — public conversion signal field.",
