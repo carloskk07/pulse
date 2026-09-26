@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Dense visual fixture" };
 
 type Scene = "reward" | "earn" | "wallet" | "progress" | "invite";
-type Props = { searchParams: Promise<{ scene?: string; event?: string }> };
+type Props = { searchParams: Promise<{ scene?: string; event?: string; authority?: string }> };
 
 const sceneSet = new Set<Scene>(["reward", "earn", "wallet", "progress", "invite"]);
 
@@ -454,6 +454,24 @@ export default async function DenseStateVisualFixture({ searchParams }: Props) {
   const requested = params.scene as Scene | undefined;
   const scene: Scene = requested && sceneSet.has(requested) ? requested : "reward";
   const SceneView = renderers[scene];
+  const baseExperience = experiences[scene];
+  const experience: ProductExperience = params.authority === "none"
+    ? {
+      ...baseExperience,
+      event: "none",
+      residue: "none",
+      residueDimension: "none",
+      residueStrength: 0,
+    }
+    : params.authority === "mismatch"
+      ? {
+        ...baseExperience,
+        event: "none",
+        residue: "network-active",
+        residueDimension: scene === "progress" ? "network" : "signal",
+        residueStrength: 100,
+      }
+      : baseExperience;
   const eventCue = params.event === "reward-settled"
     ? {
       id: "visual-fixture:reward-settled",
@@ -467,7 +485,7 @@ export default async function DenseStateVisualFixture({ searchParams }: Props) {
     : null;
 
   return (
-    <AppShell active={activeByScene[scene]} userLabel="Dense member" experience={experiences[scene]} eventCue={eventCue}>
+    <AppShell active={activeByScene[scene]} userLabel="Dense member" experience={experience} eventCue={eventCue}>
       <SceneView />
     </AppShell>
   );
