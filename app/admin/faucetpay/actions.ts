@@ -9,6 +9,7 @@ import {
 import { recordReleaseEvidence, releaseEvidenceMatches } from "@/lib/release-evidence";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminAccess } from "@/lib/admin-authorization";
+import { getProductRouteHref } from "@/lib/route-semantics";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getFaucetPayReadOnlyPreflight } from "@/providers/faucetpay-readonly";
 
@@ -20,7 +21,7 @@ async function requireAdmin() {
   const access = await getAdminAccess();
   if (access.status === "unauthenticated") redirect("/auth?next=/admin/faucetpay");
   if (access.status === "unavailable") redirect(resultUrl("auth-unavailable"));
-  if (access.status !== "authorized") redirect("/dashboard");
+  if (access.status !== "authorized") redirect(getProductRouteHref("home"));
   return access.user;
 }
 
