@@ -321,7 +321,7 @@ async function clickRoute(send, href) {
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
 }
 
-async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null, expectedPseudo = null) {
+async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null, expectedPseudo = null, secondaryAnimation = null, secondaryPseudo = null) {
   let lastState = null;
   for (let attempt = 0; attempt < 180; attempt += 1) {
     const state = await readState(send);
@@ -345,6 +345,17 @@ async function waitForTransitionTypes(send, expectedTypes, afterCall, label, exp
                   )
                 : (Array.isArray(entry?.animationNames) && entry.animationNames.includes(expectedAnimation))
             )
+          )
+          && (
+            !secondaryAnimation
+            || (
+              secondaryPseudo
+                ? (
+                    Array.isArray(entry?.animationEvidence)
+                    && entry.animationEvidence.includes(`${secondaryAnimation}@${secondaryPseudo}`)
+                  )
+                : (Array.isArray(entry?.animationNames) && entry.animationNames.includes(secondaryAnimation))
+            )
           ),
       )
     ) {
@@ -353,7 +364,7 @@ async function waitForTransitionTypes(send, expectedTypes, afterCall, label, exp
     await sleep(25);
   }
   throw new Error(
-    `${label} expected transition types ${expectedTypes.join(", ")}${expectedAnimation ? ` with animation ${expectedAnimation}${expectedPseudo ? ` on ${expectedPseudo}` : ""}` : ""} after call ${afterCall}: ${JSON.stringify(lastState)}`,
+    `${label} expected transition types ${expectedTypes.join(", ")}${expectedAnimation ? ` with animation ${expectedAnimation}${expectedPseudo ? ` on ${expectedPseudo}` : ""}` : ""}${secondaryAnimation ? ` and animation ${secondaryAnimation}${secondaryPseudo ? ` on ${secondaryPseudo}` : ""}` : ""} after call ${afterCall}: ${JSON.stringify(lastState)}`,
   );
 }
 
@@ -483,13 +494,23 @@ try {
   });
   await sleep(80);
 
-  async function crossRoute(href, direction, semantic, animation, label) {
+  async function crossRoute(href, direction, semantic, outAnimation, inAnimation, label) {
     const callsBefore = (await readState(send)).calls;
     await waitForHydratedLink(send, href);
     await clickRoute(send, href);
     await waitForPath(send, href);
-    const semanticPseudo = "::view-transition-old(pc-spatial-field)";
-    const state = await waitForTransitionTypes(send, [direction, semantic], callsBefore, label, animation, semanticPseudo);
+    const outgoingPseudo = "::view-transition-old(pc-spatial-field)";
+    const incomingPseudo = "::view-transition-new(pc-spatial-field)";
+    const state = await waitForTransitionTypes(
+      send,
+      [direction, semantic],
+      callsBefore,
+      label,
+      outAnimation,
+      outgoingPseudo,
+      inAnimation,
+      incomingPseudo,
+    );
     if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
       throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
     }
@@ -497,15 +518,15 @@ try {
     return state;
   }
 
-  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Balance");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "Balance → Referrals");
-  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "Referrals → Balance");
-  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "Balance → Progress");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "Progress → Referrals");
-  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
+  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "pcTransferSignalValueIn", "Progress → Balance");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "pcTransferValueNetworkIn", "Balance → Referrals");
+  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "pcTransferNetworkValueIn", "Referrals → Balance");
+  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "pcTransferValueSignalIn", "Balance → Progress");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "pcTransferSignalNetworkIn", "Progress → Referrals");
+  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "pcTransferNetworkSignalIn", "Referrals → Progress");
 
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six paired selective spatial-field dimension morphs (calls=${finalProgress.calls}).`,
   );
   socket.close();
 } finally {
