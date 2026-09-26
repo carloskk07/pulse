@@ -366,6 +366,10 @@ requireText("scripts/verify-dense-state-runtime.mjs", [
   "expectedResidue",
   "expectedDimension",
   "expectedStrength",
+  "value dimension leaked into signal orbit",
+  "signal dimension leaked into value depth",
+  "network dimension leaked into signal orbit",
+  'channels=${valueChannelActive ? "V" : "-"}',
 ]);
 
 requireText(".github/workflows/visual-smoke.yml", [

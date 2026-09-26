@@ -236,14 +236,24 @@ try {
       if (!state.dimensionLineCss) {
         failures.push(`${label}: dimensional field did not resolve --pc-dimension-line`);
       }
-      if (expectedDimension === "value" && (!state.valueDepthBoxShadow || state.valueDepthBoxShadow === "none")) {
-        failures.push(`${label}: value dimension did not produce field depth`);
+      const valueChannelActive = Boolean(state.valueDepthBoxShadow && state.valueDepthBoxShadow !== "none");
+      const signalChannelActive = Boolean(state.signalOrbitBoxShadow && state.signalOrbitBoxShadow !== "none");
+      const networkChannelActive = Boolean(state.networkOrbitBoxShadow && state.networkOrbitBoxShadow !== "none");
+
+      if (expectedDimension === "value") {
+        if (!valueChannelActive) failures.push(`${label}: value dimension did not produce field depth`);
+        if (signalChannelActive) failures.push(`${label}: value dimension leaked into signal orbit`);
+        if (networkChannelActive) failures.push(`${label}: value dimension leaked into network topology`);
       }
-      if (expectedDimension === "signal" && (!state.signalOrbitBoxShadow || state.signalOrbitBoxShadow === "none")) {
-        failures.push(`${label}: signal dimension did not produce orbital precision`);
+      if (expectedDimension === "signal") {
+        if (!signalChannelActive) failures.push(`${label}: signal dimension did not produce orbital precision`);
+        if (valueChannelActive) failures.push(`${label}: signal dimension leaked into value depth`);
+        if (networkChannelActive) failures.push(`${label}: signal dimension leaked into network topology`);
       }
-      if (expectedDimension === "network" && (!state.networkOrbitBoxShadow || state.networkOrbitBoxShadow === "none")) {
-        failures.push(`${label}: network dimension did not produce topology linkage`);
+      if (expectedDimension === "network") {
+        if (!networkChannelActive) failures.push(`${label}: network dimension did not produce topology linkage`);
+        if (valueChannelActive) failures.push(`${label}: network dimension leaked into value depth`);
+        if (signalChannelActive) failures.push(`${label}: network dimension leaked into signal orbit`);
       }
       if (Number(state.productResidueStrength) !== expectedStrength) {
         failures.push(`${label}: expected residue strength ${expectedStrength}, rendered ${state.productResidueStrength ?? "missing"}`);
@@ -311,7 +321,7 @@ try {
       }
 
       console.log(
-        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
+        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} channels=${valueChannelActive ? "V" : "-"}${signalChannelActive ? "S" : "-"}${networkChannelActive ? "N" : "-"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
       );
     }
   }

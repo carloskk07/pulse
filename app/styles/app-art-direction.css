@@ -2875,15 +2875,15 @@
   --pc-dimension-focus-max:color-mix(in srgb,var(--pc-residue-color) 24%,transparent);
   --pc-dimension-focus:color-mix(in srgb,var(--pc-dimension-focus-max) var(--pc-residue-strength),transparent);
 }
-.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit{
+.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit.orbit-a{
   border-color:var(--pc-dimension-line);
   box-shadow:0 0 46px var(--pc-dimension-focus);
 }
-.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit:before,
-.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit:after{
+.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit.orbit-a:before,
+.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit.orbit-a:after{
   border-color:var(--pc-dimension-line);
 }
-.app-frame[data-product-residue-dimension="signal"] .pc-space-beam{
+.app-frame[data-product-residue-dimension="signal"] .pc-space-beam.beam-a{
   background:linear-gradient(90deg,transparent,var(--pc-dimension-line),var(--pc-residue-color),var(--pc-dimension-line),transparent);
   box-shadow:0 0 20px var(--pc-dimension-focus);
 }
@@ -2904,7 +2904,7 @@
   --pc-dimension-link-max:color-mix(in srgb,var(--pc-residue-color) 28%,transparent);
   --pc-dimension-link:color-mix(in srgb,var(--pc-dimension-link-max) var(--pc-residue-strength),transparent);
 }
-.app-frame[data-product-residue-dimension="network"] .pc-space-beam{
+.app-frame[data-product-residue-dimension="network"] .pc-space-beam.beam-b{
   height:1px;
   background:linear-gradient(90deg,transparent,var(--pc-dimension-line),var(--pc-residue-color),var(--pc-dimension-line),transparent);
   box-shadow:0 0 26px var(--pc-dimension-link);
@@ -2934,7 +2934,44 @@
   .app-frame[data-product-residue-dimension="signal"] .pc-space-orbit.orbit-a{
     opacity:.34;
   }
-  .app-frame[data-product-residue-dimension="network"] .pc-space-beam{
+  .app-frame[data-product-residue-dimension="network"] .pc-space-beam.beam-b{
     opacity:.34;
   }
+}
+
+
+/* V11.8 — Dimensional Channel Isolation.
+   Only the geometry owned by the active semantic dimension may receive the
+   amplified residue treatment. Sibling channels remain at the neutral field. */
+.app-frame[data-product-residue-dimension="value"] :is(
+  .pc-space-orbit.orbit-a,
+  .pc-space-orbit.orbit-b
+){
+  box-shadow:none;
+}
+.app-frame[data-product-residue-dimension="value"] :is(
+  .pc-space-beam.beam-a,
+  .pc-space-beam.beam-b
+){
+  box-shadow:0 0 16px var(--app-accent-soft);
+}
+
+.app-frame[data-product-residue-dimension="signal"] .pc-space-haze.haze-a{
+  box-shadow:none;
+}
+.app-frame[data-product-residue-dimension="signal"] .pc-space-orbit.orbit-b{
+  box-shadow:none;
+}
+.app-frame[data-product-residue-dimension="signal"] .pc-space-beam.beam-b{
+  box-shadow:0 0 16px var(--app-accent-soft);
+}
+
+.app-frame[data-product-residue-dimension="network"] .pc-space-haze.haze-a{
+  box-shadow:none;
+}
+.app-frame[data-product-residue-dimension="network"] .pc-space-orbit.orbit-a{
+  box-shadow:none;
+}
+.app-frame[data-product-residue-dimension="network"] .pc-space-beam.beam-a{
+  box-shadow:0 0 16px var(--app-accent-soft);
 }
