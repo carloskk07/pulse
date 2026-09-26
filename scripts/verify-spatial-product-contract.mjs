@@ -148,6 +148,12 @@ requireText(".github/workflows/visual-smoke.yml", [
   'test "$count" -eq 106',
 ]);
 
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  'import { RoutePageTransition } from "@/components/route-page-transition";',
+  "<RoutePageTransition route={activeByScene[scene]}>",
+  "<AppShell active={activeByScene[scene]}",
+]);
+
 requireText("components/product-interaction-layer.tsx", [
   '"use client";',
   'const REACTIVE_SELECTOR = [',
