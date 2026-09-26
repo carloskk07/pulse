@@ -194,6 +194,19 @@ requireText(".github/workflows/visual-smoke.yml", [
   "production-fixture-isolation",
 ]);
 
+requireText("scripts/verify-route-continuity-runtime.mjs", [
+  '"pc-transfer-value-signal"',
+  '"pc-transfer-signal-value"',
+  '"pc-transfer-value-network"',
+  '"pc-transfer-network-value"',
+  '"pc-transfer-signal-network"',
+  '"pc-transfer-network-signal"',
+  '"pcTransferSignalValueIn"',
+  '"pcTransferNetworkSignalIn"',
+  "assertNoSemanticTransfer",
+  "transferDuration",
+]);
+
 requireText("scripts/verify-product-interaction-runtime.mjs", [
   '/visual-smoke-fixture/core-state?scene=reward',
   '"prefers-reduced-motion", value: "no-preference"',
