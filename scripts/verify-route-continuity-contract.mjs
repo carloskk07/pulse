@@ -116,6 +116,9 @@ requireText("app/styles/app-art-direction.css", [
   "@keyframes pcTransferNetworkValueOut",
   "@keyframes pcTransferSignalNetworkOut",
   "@keyframes pcTransferNetworkSignalOut",
+  "--pc-route-transfer-duration:.34s",
+  "--pc-route-transfer-duration:.28s",
+  "filter:none!important",
   "::view-transition-old(.pc-route-nav-anchor)",
   "::view-transition-new(.pc-route-nav-anchor)",
 ]);
@@ -206,6 +209,14 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   'crossRoute("/progress", "pc-back", "pc-transfer-network-signal"',
   '"prefers-reduced-motion", value: "no-preference"',
   '"prefers-reduced-motion", value: "reduce"',
+  "width: 390",
+  "height: 844",
+  "mobile: true",
+  'transferDuration !== ".28s"',
+  '"Mobile Progress → Referrals"',
+  '"Mobile Referrals → Progress"',
+  '"Mobile semantic profile"',
+  '"Mobile Progress → Balance"',
   "Native route continuity PASS",
 ]);
 
@@ -221,6 +232,14 @@ if (appShell.includes("routeContentTransition") || appShell.includes('key={`rout
 }
 
 const css = read("app/styles/app-art-direction.css");
+const semanticBlock = css.indexOf("/* V11.11 — Selective Semantic Field Transfer.");
+const mobileDuration820 = css.indexOf("--pc-route-transfer-duration:.34s", semanticBlock);
+const mobileDuration560 = css.indexOf("--pc-route-transfer-duration:.28s", semanticBlock);
+const reducedDuration = css.indexOf("--pc-route-transfer-duration:.001ms", semanticBlock);
+if (!(semanticBlock >= 0 && mobileDuration820 > semanticBlock && mobileDuration560 > mobileDuration820 && reducedDuration > mobileDuration560)) {
+  throw new Error("Semantic mobile durations must be ordered desktop → 820px → 560px → reduced-motion.");
+}
+
 const sceneCarriers = (css.match(/pc-spatial-atmosphere\[data-scene="(?:home|progress|earn|wallet|invite)"\] \.pc-route-carrier/g) ?? []).length;
 if (sceneCarriers < 5) {
   throw new Error(`Route continuity must preserve five scene carrier positions; found ${sceneCarriers}.`);
