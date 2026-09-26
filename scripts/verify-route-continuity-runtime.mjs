@@ -297,6 +297,7 @@ async function readState(send) {
         orbitDuration: rootStyle.getPropertyValue("--pc-route-vt-orbit-duration").trim(),
         indexDuration: rootStyle.getPropertyValue("--pc-route-vt-index-duration").trim(),
         transferDuration: rootStyle.getPropertyValue("--pc-route-transfer-duration").trim(),
+        arrivalDuration: rootStyle.getPropertyValue("--pc-route-vt-arrival-duration").trim(),
         carrier: !!document.querySelector(".pc-route-carrier"),
         orbit: !!document.querySelector(".pc-space-orbit.orbit-a"),
         index: !!document.querySelector(".pc-space-datum.datum-a"),
@@ -381,6 +382,56 @@ function assertNoSemanticRootAnimation(state, afterCall, label) {
   }
 }
 
+
+function semanticArrivalEvidence(state, afterCall) {
+  const entries = Array.isArray(state?.history)
+    ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+    : [];
+  return entries.flatMap((entry) => Array.isArray(entry?.animationEvidence) ? entry.animationEvidence : [])
+    .filter((evidence) => String(evidence).startsWith("pcSemanticCarrierArrive"));
+}
+
+function assertNoSemanticCarrierArrival(state, afterCall, label) {
+  const evidence = semanticArrivalEvidence(state, afterCall);
+  if (evidence.length) {
+    throw new Error(`${label} must not confirm a semantic arrival inside one dimension: ${JSON.stringify(evidence)}`);
+  }
+}
+
+function assertSemanticCarrierIsolation(state, afterCall, label) {
+  const evidence = semanticArrivalEvidence(state, afterCall);
+  const leaked = evidence.find((item) => {
+    const value = String(item);
+    return !value.includes("::view-transition-new(") || !value.includes("pc-route-carrier");
+  });
+  if (leaked) {
+    throw new Error(`${label} leaked semantic arrival outside the destination carrier: ${leaked}`);
+  }
+}
+
+async function waitForSemanticCarrierArrival(send, afterCall, label, expectedAnimation) {
+  let lastState = null;
+  for (let attempt = 0; attempt < 180; attempt += 1) {
+    const state = await readState(send);
+    lastState = state;
+    const evidence = semanticArrivalEvidence(state, afterCall);
+    if (
+      evidence.some((item) => {
+        const value = String(item);
+        return value.startsWith(`${expectedAnimation}@`)
+          && value.includes("::view-transition-new(")
+          && value.includes("pc-route-carrier");
+      })
+    ) {
+      return state;
+    }
+    await sleep(25);
+  }
+  throw new Error(
+    `${label} expected semantic carrier arrival ${expectedAnimation}: ${JSON.stringify(lastState)}`,
+  );
+}
+
 function assertReducedMotionState(state, label) {
   const nearZero = new Set([".001ms", "0.001ms"]);
   if (
@@ -390,6 +441,7 @@ function assertReducedMotionState(state, label) {
     || !nearZero.has(state?.orbitDuration)
     || !nearZero.has(state?.indexDuration)
     || !nearZero.has(state?.transferDuration)
+    || !nearZero.has(state?.arrivalDuration)
   ) {
     throw new Error(`${label} reduced-motion authority is incomplete: ${JSON.stringify(state)}`);
   }
@@ -448,6 +500,7 @@ try {
   await waitForHydratedLink(send, "/progress");
   const earn = await waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn");
   assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn");
+  assertNoSemanticCarrierArrival(earn, earnCallsBefore, "Rewards → Earn");
   if (earn?.documentId !== before.documentId) {
     throw new Error(`Rewards → Earn performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${earn?.documentId}`);
   }
@@ -483,7 +536,7 @@ try {
   });
   await sleep(80);
 
-  async function crossRoute(href, direction, semantic, animation, label) {
+  async function crossRoute(href, direction, semantic, animation, arrivalAnimation, label) {
     const callsBefore = (await readState(send)).calls;
     await waitForHydratedLink(send, href);
     await clickRoute(send, href);
@@ -493,19 +546,21 @@ try {
     if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
       throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
     }
-    assertNoSemanticRootAnimation(state, callsBefore, label);
-    return state;
+    const arrivalState = await waitForSemanticCarrierArrival(send, callsBefore, label, arrivalAnimation);
+    assertNoSemanticRootAnimation(arrivalState, callsBefore, label);
+    assertSemanticCarrierIsolation(arrivalState, callsBefore, label);
+    return arrivalState;
   }
 
-  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Balance");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "Balance → Referrals");
-  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "Referrals → Balance");
-  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "Balance → Progress");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "Progress → Referrals");
-  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
+  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "pcSemanticCarrierArriveValue", "Progress → Balance");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "pcSemanticCarrierArriveNetwork", "Balance → Referrals");
+  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "pcSemanticCarrierArriveValue", "Referrals → Balance");
+  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "pcSemanticCarrierArriveSignal", "Balance → Progress");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "pcSemanticCarrierArriveNetwork", "Progress → Referrals");
+  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "pcSemanticCarrierArriveSignal", "Referrals → Progress");
 
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six complete spatial-field → destination-carrier semantic transfers (calls=${finalProgress.calls}).`,
   );
   socket.close();
 } finally {
