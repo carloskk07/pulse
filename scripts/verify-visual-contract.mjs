@@ -221,9 +221,9 @@ requireText(".github/workflows/visual-smoke.yml", [
 
 requireText("app/styles/app-art-direction.css", [
   "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-field-signal)",
-  "active-view-transition-type(pc-transfer-signal-value)::view-transition-new(pc-field-value)",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-group(pc-field-value)",
   "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-field-network)",
-  "active-view-transition-type(pc-transfer-network-signal)::view-transition-new(pc-field-signal)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-field-signal)",
   "@keyframes pcTransferSignalValueIn",
   "@keyframes pcTransferNetworkSignalIn",
 ]);
@@ -254,9 +254,9 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "animationEvidence",
   "semanticProof",
   '"::view-transition-old(pc-field-signal)"',
-  '"::view-transition-new(pc-field-value)"',
+  '"::view-transition-group(pc-field-value)"',
   '"::view-transition-old(pc-field-network)"',
-  '"::view-transition-new(pc-field-signal)"',
+  '"::view-transition-group(pc-field-signal)"',
   "assertNoSemanticTransfer",
   "assertSemanticLayerIsolation",
   "transferDuration",
