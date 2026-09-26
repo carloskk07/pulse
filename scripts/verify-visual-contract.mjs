@@ -222,6 +222,10 @@ requireText(".github/workflows/visual-smoke.yml", [
 requireText("app/styles/app-art-direction.css", [
   "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-spatial-field)",
   "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-group(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-spatial-field)",
+  "@keyframes pcTransferSignalValueBridge",
+  "@keyframes pcTransferNetworkSignalBridge",
 ]);
 
 requireText("scripts/verify-responsive-runtime.mjs", [
@@ -243,8 +247,13 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-network-signal"',
   '"pcTransferSignalValueOut"',
   '"pcTransferNetworkSignalOut"',
+  '"pcTransferSignalValueBridge"',
+  '"pcTransferNetworkSignalBridge"',
+  "secondaryAnimation",
+  "secondaryPseudo",
   "animationEvidence",
   '"::view-transition-old(pc-spatial-field)"',
+  '"::view-transition-group(pc-spatial-field)"',
   "assertNoSemanticTransfer",
   "assertNoSemanticRootAnimation",
   "transferDuration",
