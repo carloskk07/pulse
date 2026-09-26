@@ -220,8 +220,8 @@ requireText(".github/workflows/visual-smoke.yml", [
 }
 
 requireText("app/styles/app-art-direction.css", [
-  "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-spatial-field)",
-  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-field-signal)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-field-network)",
 ]);
 
 requireText("scripts/verify-responsive-runtime.mjs", [
@@ -242,11 +242,17 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-signal-network"',
   '"pc-transfer-network-signal"',
   '"pcTransferSignalValueOut"',
+  '"pcTransferSignalValueIn"',
   '"pcTransferNetworkSignalOut"',
+  '"pcTransferNetworkSignalIn"',
   "animationEvidence",
-  '"::view-transition-old(pc-spatial-field)"',
+  '"::view-transition-old(pc-field-signal)"',
+  '"::view-transition-new(pc-field-value)"',
+  '"::view-transition-old(pc-field-network)"',
+  '"::view-transition-new(pc-field-signal)"',
+  "semanticProof",
   "assertNoSemanticTransfer",
-  "assertNoSemanticRootAnimation",
+  "assertSemanticLayerIsolation",
   "transferDuration",
 ]);
 
