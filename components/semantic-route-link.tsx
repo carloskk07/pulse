@@ -12,6 +12,7 @@ const transferVars = [
   "--pc-transfer-opacity",
   "--pc-transfer-blur",
   "--pc-transfer-brightness",
+  "--pc-transfer-lift",
   "--pc-transfer-contrast",
   "--pc-transfer-saturate",
   "--pc-transfer-scale-soft-x",
@@ -59,6 +60,7 @@ function applyTransferProfile(strength: number) {
   root.style.setProperty("--pc-transfer-opacity", compact(1 - (0.9 * n)));
   root.style.setProperty("--pc-transfer-blur", `${compact(6 * n)}px`);
   root.style.setProperty("--pc-transfer-brightness", compact(1 + (0.22 * n)));
+  root.style.setProperty("--pc-transfer-lift", compact(1 + (0.12 * n)));
   root.style.setProperty("--pc-transfer-contrast", compact(1 + (0.12 * n)));
   root.style.setProperty("--pc-transfer-saturate", compact(1 + (0.12 * n)));
   root.style.setProperty("--pc-transfer-scale-soft-x", compact(1 - (0.12 * n)));
