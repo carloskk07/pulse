@@ -3112,6 +3112,27 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-gr
 }
 
 
+@media(max-width:820px){
+  :root{--pc-route-transfer-duration:.34s}
+  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-value-network)::view-transition-old(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-value-network)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-network-value)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-group(pc-spatial-field),
+  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-spatial-field){
+    filter:none!important;
+  }
+}
+@media(max-width:560px){
+  :root{--pc-route-transfer-duration:.28s}
+}
+
 @media(prefers-reduced-motion:reduce){
   :root{--pc-route-transfer-duration:.001ms}
   html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(pc-spatial-field),
