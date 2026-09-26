@@ -2984,59 +2984,64 @@
 :root{
   --pc-route-transfer-duration:.56s;
 }
-::view-transition-group(.pc-route-field-transfer){
-  animation-duration:var(--pc-route-transfer-duration);
-  animation-timing-function:cubic-bezier(.18,.78,.22,1);
-  z-index:0;
-}
-::view-transition-old(.pc-route-field-transfer),
-::view-transition-new(.pc-route-field-transfer){
-  animation:none;
+/* The root snapshot is guaranteed by the browser; named route/nav snapshots remain independent. */
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(root),
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(root),
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-old(root),
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(root),
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-old(root),
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(root),
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(root),
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(root),
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(root),
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(root),
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(root),
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(root){
   mix-blend-mode:normal;
   transform-origin:50% 44%;
 }
 
 /* Value → Signal: spatial mass collapses into a tighter orbital field. */
-html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(root){
   animation:pcTransferValueSignalOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
-html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(root){
   animation:pcTransferValueSignalIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
 }
 
 /* Signal → Value: orbital precision resolves back into depth and mass. */
-html:active-view-transition-type(pc-transfer-signal-value)::view-transition-old(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-old(root){
   animation:pcTransferSignalValueOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
-html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(root){
   animation:pcTransferSignalValueIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
 }
 
 /* Value ↔ Network: depth folds into reach, or reach condenses into mass. */
-html:active-view-transition-type(pc-transfer-value-network)::view-transition-old(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-old(root){
   animation:pcTransferValueNetworkOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
-html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(root){
   animation:pcTransferValueNetworkIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
 }
-html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(root){
   animation:pcTransferNetworkValueOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
-html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(root){
   animation:pcTransferNetworkValueIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
 }
 
 /* Signal ↔ Network: orbit opens into topology, topology resolves into orbit. */
-html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(root){
   animation:pcTransferSignalNetworkOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
-html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(root){
   animation:pcTransferSignalNetworkIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
 }
-html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(root){
   animation:pcTransferNetworkSignalOut var(--pc-route-transfer-duration) cubic-bezier(.32,0,.2,1) both;
 }
-html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(.pc-route-field-transfer){
+html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(root){
   animation:pcTransferNetworkSignalIn var(--pc-route-transfer-duration) cubic-bezier(.18,.78,.22,1) both;
 }
 
@@ -3091,18 +3096,18 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ne
 
 @media(prefers-reduced-motion:reduce){
   :root{--pc-route-transfer-duration:.001ms}
-  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-old(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-value-network)::view-transition-old(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(.pc-route-field-transfer),
-  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(.pc-route-field-transfer){
+  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-old(root),
+  html:active-view-transition-type(pc-transfer-value-signal)::view-transition-new(root),
+  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-old(root),
+  html:active-view-transition-type(pc-transfer-signal-value)::view-transition-new(root),
+  html:active-view-transition-type(pc-transfer-value-network)::view-transition-old(root),
+  html:active-view-transition-type(pc-transfer-value-network)::view-transition-new(root),
+  html:active-view-transition-type(pc-transfer-network-value)::view-transition-old(root),
+  html:active-view-transition-type(pc-transfer-network-value)::view-transition-new(root),
+  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-old(root),
+  html:active-view-transition-type(pc-transfer-signal-network)::view-transition-new(root),
+  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(root),
+  html:active-view-transition-type(pc-transfer-network-signal)::view-transition-new(root){
     animation-duration:.001ms!important;
     animation-delay:0ms!important;
     transform:none!important;
