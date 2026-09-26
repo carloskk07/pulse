@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getProductRouteHref } from "@/lib/route-semantics";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
   const form = await readUrlEncodedFormWithLimit(request, 1_024);
   const opportunityId = form?.get("opportunity")?.trim() ?? "";
   if (!UUID_RE.test(opportunityId)) {
-    return NextResponse.redirect(new URL("/earn?cashback=invalid", request.url), 303);
+    return NextResponse.redirect(new URL(getProductRouteHref("earn", "?cashback=invalid"), request.url), 303);
   }
 
   const { user } = await getCurrentUserContext();
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
-    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 303);
+    return NextResponse.redirect(new URL(getProductRouteHref("earn", "?cashback=unavailable"), request.url), 303);
   }
 
   const { data, error } = await admin.rpc("create_cashback_tracking_session", {
@@ -62,19 +63,19 @@ export async function POST(request: NextRequest) {
   });
 
   if (error || !data || typeof data !== "object") {
-    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 303);
+    return NextResponse.redirect(new URL(getProductRouteHref("earn", "?cashback=unavailable"), request.url), 303);
   }
 
   const result = data as TrackingResult;
   if (result.status !== "ready" || !UUID_RE.test(result.tracking_id ?? "")) {
     const reason = result.status === "cashback_disabled" ? "not-live" : "unavailable";
-    return NextResponse.redirect(new URL(`/earn?cashback=${reason}`, request.url), 303);
+    return NextResponse.redirect(new URL(getProductRouteHref("earn", `?cashback=${reason}`), request.url), 303);
   }
 
   const destination = safeDestination(result.destination_url ?? "");
   const trackingParam = result.tracking_param ?? "";
   if (!destination || !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trackingParam)) {
-    return NextResponse.redirect(new URL("/earn?cashback=unavailable", request.url), 303);
+    return NextResponse.redirect(new URL(getProductRouteHref("earn", "?cashback=unavailable"), request.url), 303);
   }
 
   destination.searchParams.set(trackingParam, result.tracking_id!);
