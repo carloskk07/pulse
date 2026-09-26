@@ -243,7 +243,16 @@ async function installTransitionProbeBeforeHydration(send) {
     "        try { return document.documentElement.matches(':active-view-transition-type(' + type + ')'); } catch { return false; }",
     "      });",
     "      entry.types = [...new Set([...(entry.types || []), ...initialTypes, ...runtimeTypes, ...selectorTypes])];",
-    "      entry.samples = [...(entry.samples || []), { phase, runtimeTypes, selectorTypes }].slice(-40);",
+    "      const readLayerName = (selector) => {",
+    "        const element = document.querySelector(selector);",
+    "        return element ? getComputedStyle(element).viewTransitionName : 'missing';",
+    "      };",
+    "      const layerNames = {",
+    "        value: readLayerName('.pc-field-value-layer'),",
+    "        signal: readLayerName('.pc-field-signal-layer'),",
+    "        network: readLayerName('.pc-field-network-layer'),",
+    "      };",
+    "      entry.samples = [...(entry.samples || []), { phase, runtimeTypes, selectorTypes, layerNames }].slice(-40);"
     "      entry.animations = document.getAnimations().map((animation) => ({",
     "        name: typeof animation.animationName === 'string' ? animation.animationName : '',",
     "        pseudo: animation.effect && typeof animation.effect.pseudoElement === 'string' ? animation.effect.pseudoElement : '',",
@@ -380,6 +389,55 @@ function assertNoSemanticTransfer(state, afterCall, label) {
 }
 
 
+function assertNoSemanticSnapshotDemand(state, afterCall, label) {
+  const entries = Array.isArray(state?.history)
+    ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+    : [];
+  const named = entries
+    .flatMap((entry) => Array.isArray(entry?.samples) ? entry.samples : [])
+    .find((sample) => {
+      const names = sample?.layerNames;
+      return names && Object.values(names).some((name) => name !== "none");
+    });
+  if (named) {
+    throw new Error(`${label} must not activate semantic layer snapshots on a same-dimension route: ${JSON.stringify(named)}`);
+  }
+}
+
+function assertSemanticSnapshotDemand(state, afterCall, semantic, label) {
+  const entries = Array.isArray(state?.history)
+    ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+    : [];
+  const [source, target] = semantic.replace("pc-transfer-", "").split("-");
+  const expected = {
+    value: source === "value" || target === "value" ? "pc-field-value" : "none",
+    signal: source === "signal" || target === "signal" ? "pc-field-signal" : "none",
+    network: source === "network" || target === "network" ? "pc-field-network" : "none",
+  };
+  const semanticSamples = entries
+    .flatMap((entry) => Array.isArray(entry?.samples) ? entry.samples : [])
+    .filter((sample) => (
+      Array.isArray(sample?.runtimeTypes) && sample.runtimeTypes.includes(semantic)
+    ) || (
+      Array.isArray(sample?.selectorTypes) && sample.selectorTypes.includes(semantic)
+    ));
+
+  if (semanticSamples.length === 0) {
+    throw new Error(`${label} did not expose an active semantic sample for snapshot demand: ${semantic}`);
+  }
+
+  const invalid = semanticSamples.find((sample) => {
+    const names = sample?.layerNames;
+    return !names
+      || names.value !== expected.value
+      || names.signal !== expected.signal
+      || names.network !== expected.network;
+  });
+  if (invalid) {
+    throw new Error(`${label} activated the wrong semantic snapshot set; expected=${JSON.stringify(expected)} sample=${JSON.stringify(invalid)}`);
+  }
+}
+
 function assertSemanticLayerIsolation(state, afterCall, allowedPseudos, label) {
   const entries = Array.isArray(state?.history)
     ? state.history.filter((entry) => Number(entry?.call) > afterCall)
@@ -465,6 +523,7 @@ try {
   await waitForHydratedLink(send, "/progress");
   const earn = await waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn");
   assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn");
+  assertNoSemanticSnapshotDemand(earn, earnCallsBefore, "Rewards → Earn");
   if (earn?.documentId !== before.documentId) {
     throw new Error(`Rewards → Earn performed a full document navigation instead of App Router navigation: before=${before.documentId} after=${earn?.documentId}`);
   }
@@ -549,6 +608,7 @@ try {
       throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
     }
     assertSemanticLayerIsolation(state, callsBefore, [proof.outgoing[1], proof.incoming[1]], label);
+    assertSemanticSnapshotDemand(state, callsBefore, semantic, label);
     return state;
   }
 
@@ -619,7 +679,7 @@ try {
   }
 
   console.log(
-    `Native route continuity PASS: desktop six-direction source→target layer-group handoff + mobile layer profile (.28s, filterless old/group) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
+    `Native route continuity PASS: demand-only source→target layer-group handoff + same-dimension zero semantic snapshots + mobile layer profile (.28s) + reduced-motion override (calls=${mobileReducedWallet.calls}).`,
   );
   socket.close();
 } finally {
