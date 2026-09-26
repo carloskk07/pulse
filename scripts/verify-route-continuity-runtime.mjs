@@ -251,7 +251,16 @@ async function installTransitionProbeBeforeHydration(send) {
     "      }));",
     "      entry.animationNames = [...new Set([...(entry.animationNames || []), ...entry.animations.map((animation) => animation.name).filter(Boolean)])];",
     "      entry.animationEvidence = [...new Set([...(entry.animationEvidence || []), ...entry.animations.filter((animation) => animation.name && animation.pseudo).map((animation) => animation.name + '@' + animation.pseudo)])];",
-    "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];",
+    "      const rootStyle = getComputedStyle(document.documentElement);",
+    "      entry.transferProfiles = [...(entry.transferProfiles || []), {",
+    "        phase,",
+    "        strength: rootStyle.getPropertyValue('--pc-transfer-source-strength').trim(),",
+    "        opacity: rootStyle.getPropertyValue('--pc-transfer-opacity').trim(),",
+    "        blur: rootStyle.getPropertyValue('--pc-transfer-blur').trim(),",
+    "        hardX: rootStyle.getPropertyValue('--pc-transfer-scale-hard-x').trim(),",
+    "        hardY: rootStyle.getPropertyValue('--pc-transfer-scale-hard-y').trim(),",
+    "      }].slice(-40);",
+    "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];"
     "      window.__pcRouteTransitionAnimations = [...entry.animations];",
     "    };",
     "    collect('sync');",
@@ -381,6 +390,33 @@ function assertNoSemanticRootAnimation(state, afterCall, label) {
   }
 }
 
+
+function latestTransferProfile(state, afterCall, expectedStrength, label) {
+  const entries = Array.isArray(state?.history)
+    ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+    : [];
+  const profiles = entries.flatMap((entry) => Array.isArray(entry?.transferProfiles) ? entry.transferProfiles : []);
+  const profile = [...profiles].reverse().find((candidate) => Number(candidate?.strength) === expectedStrength);
+  if (!profile) {
+    throw new Error(`${label} did not expose transfer profile for strength ${expectedStrength}: ${JSON.stringify(entries)}`);
+  }
+  return {
+    strength: Number(profile.strength),
+    opacity: Number(profile.opacity),
+    blur: Number(String(profile.blur).replace("px", "")),
+    hardX: Number(profile.hardX),
+    hardY: Number(profile.hardY),
+  };
+}
+
+function assertFiniteTransferProfile(profile, label) {
+  for (const [key, value] of Object.entries(profile)) {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label} transfer profile ${key} is not finite: ${JSON.stringify(profile)}`);
+    }
+  }
+}
+
 function assertReducedMotionState(state, label) {
   const nearZero = new Set([".001ms", "0.001ms"]);
   if (
@@ -504,8 +540,51 @@ try {
   await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "Progress → Referrals");
   const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
 
+  async function measureStrengthAwareTransfer(strength) {
+    await send("Page.navigate", {
+      url: `${baseUrl}/visual-smoke-fixture/core-state?scene=reward&strength=${strength}`,
+    });
+    await waitForPath(send, "/visual-smoke-fixture/core-state");
+    await waitForHydratedLink(send, "/progress");
+    const source = await readState(send);
+    const callsBefore = source.calls;
+    const sourceDocument = source.documentId;
+
+    await clickRoute(send, "/progress");
+    await waitForPath(send, "/progress");
+    const state = await waitForTransitionTypes(
+      send,
+      ["pc-forward", "pc-transfer-value-signal"],
+      callsBefore,
+      `Value → Signal strength ${strength}`,
+      "pcTransferValueSignalOut",
+      "::view-transition-old(pc-spatial-field)",
+    );
+    if (state?.documentId !== sourceDocument || state.motion !== "1" || state.calls <= callsBefore) {
+      throw new Error(`Strength-aware transfer ${strength} lost native SPA continuity: ${JSON.stringify(state)}`);
+    }
+    assertNoSemanticRootAnimation(state, callsBefore, `Value → Signal strength ${strength}`);
+    const profile = latestTransferProfile(state, callsBefore, strength, `Value → Signal strength ${strength}`);
+    assertFiniteTransferProfile(profile, `Value → Signal strength ${strength}`);
+    return profile;
+  }
+
+  const lowStrength = await measureStrengthAwareTransfer(20);
+  const highStrength = await measureStrengthAwareTransfer(90);
+
+  if (
+    !(highStrength.opacity < lowStrength.opacity)
+    || !(highStrength.blur > lowStrength.blur)
+    || !(highStrength.hardX < lowStrength.hardX)
+    || !(highStrength.hardY < lowStrength.hardY)
+  ) {
+    throw new Error(
+      `Authoritative strength did not increase semantic deformation: low=${JSON.stringify(lowStrength)} high=${JSON.stringify(highStrength)}`,
+    );
+  }
+
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}) + authoritative transfer strength 20→90.`,
   );
   socket.close();
 } finally {
