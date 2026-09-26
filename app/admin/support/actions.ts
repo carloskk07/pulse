@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminAccess } from "@/lib/admin-authorization";
+import { getProductRouteHref } from "@/lib/route-semantics";
 
 const statuses = new Set(["open", "in_review", "resolved", "closed"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -11,7 +12,7 @@ export async function updateSupportCase(formData: FormData) {
   const access = await getAdminAccess();
   if (access.status === "unauthenticated") redirect("/auth?next=/admin/support");
   if (access.status === "unavailable") redirect("/admin/support?state=unavailable");
-  if (access.status !== "authorized") redirect("/dashboard");
+  if (access.status !== "authorized") redirect(getProductRouteHref("home"));
 
   const id = String(formData.get("id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
