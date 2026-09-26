@@ -2984,6 +2984,24 @@
    snapshot, leaving text and controls outside the semantic deformation. */
 :root{
   --pc-route-transfer-duration:.56s;
+  --pc-transfer-opacity:.1;
+  --pc-transfer-blur:6px;
+  --pc-transfer-brightness:1.22;
+  --pc-transfer-lift:1.12;
+  --pc-transfer-contrast:1.12;
+  --pc-transfer-saturate:1.12;
+  --pc-transfer-scale-soft-x:.88;
+  --pc-transfer-scale-value-x:.92;
+  --pc-transfer-scale-hard-x:.72;
+  --pc-transfer-scale-hard-y:.76;
+  --pc-transfer-scale-focus-x:.86;
+  --pc-transfer-scale-orbit-y:.82;
+  --pc-transfer-scale-expand-x:1.08;
+  --pc-transfer-scale-expand-mid-x:1.06;
+  --pc-transfer-scale-expand-y:1.04;
+  --pc-transfer-rotate-pos:1deg;
+  --pc-transfer-rotate-neg:-1.4deg;
+  --pc-transfer-rotate-network:.9deg;
 }
 ::view-transition-group(pc-spatial-field){
   animation:none;
@@ -3034,27 +3052,27 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ol
 
 @keyframes pcTransferValueSignalOut{
   from{opacity:1;transform:scale(1);filter:blur(0) brightness(1)}
-  to{opacity:.12;transform:scale(.88,.76);filter:blur(6px) brightness(1.22)}
+  to{opacity:var(--pc-transfer-opacity);transform:scale(var(--pc-transfer-scale-soft-x),var(--pc-transfer-scale-hard-y));filter:blur(var(--pc-transfer-blur)) brightness(var(--pc-transfer-brightness))}
 }
 @keyframes pcTransferSignalValueOut{
   from{opacity:1;transform:scale(1) rotate(0);filter:blur(0) contrast(1)}
-  to{opacity:.14;transform:scale(.92) rotate(1deg);filter:blur(5px) contrast(1.12)}
+  to{opacity:var(--pc-transfer-opacity);transform:scale(var(--pc-transfer-scale-value-x)) rotate(var(--pc-transfer-rotate-pos));filter:blur(var(--pc-transfer-blur)) contrast(var(--pc-transfer-contrast))}
 }
 @keyframes pcTransferValueNetworkOut{
   from{opacity:1;transform:scale(1);filter:blur(0)}
-  to{opacity:.12;transform:scale(.72,1.04);filter:blur(5px) brightness(1.12)}
+  to{opacity:var(--pc-transfer-opacity);transform:scale(var(--pc-transfer-scale-hard-x),var(--pc-transfer-scale-expand-y));filter:blur(var(--pc-transfer-blur)) brightness(var(--pc-transfer-lift))}
 }
 @keyframes pcTransferNetworkValueOut{
   from{opacity:1;transform:scale(1);filter:blur(0)}
-  to{opacity:.1;transform:scale(1.08,.76);filter:blur(6px) saturate(1.12)}
+  to{opacity:var(--pc-transfer-opacity);transform:scale(var(--pc-transfer-scale-expand-x),var(--pc-transfer-scale-hard-y));filter:blur(var(--pc-transfer-blur)) saturate(var(--pc-transfer-saturate))}
 }
 @keyframes pcTransferSignalNetworkOut{
   from{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
-  to{opacity:.12;transform:scale(.86) rotate(-1.4deg);filter:blur(5px)}
+  to{opacity:var(--pc-transfer-opacity);transform:scale(var(--pc-transfer-scale-focus-x)) rotate(var(--pc-transfer-rotate-neg));filter:blur(var(--pc-transfer-blur))}
 }
 @keyframes pcTransferNetworkSignalOut{
   from{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
-  to{opacity:.1;transform:scale(1.06,.82) rotate(.9deg);filter:blur(6px)}
+  to{opacity:var(--pc-transfer-opacity);transform:scale(var(--pc-transfer-scale-expand-mid-x),var(--pc-transfer-scale-orbit-y)) rotate(var(--pc-transfer-rotate-network));filter:blur(var(--pc-transfer-blur))}
 }
 
 @media(prefers-reduced-motion:reduce){
