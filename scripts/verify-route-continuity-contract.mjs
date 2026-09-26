@@ -44,6 +44,13 @@ requireText("components/spatial-atmosphere.tsx", [
 
 requireText("lib/route-semantics.ts", [
   'export type RouteSemanticDimension = "value" | "signal" | "network";',
+  'export type ProductRouteId = "home" | "progress" | "earn" | "wallet" | "invite";',
+  'const PRODUCT_ROUTE_ORDER: ProductRouteId[] = ["home", "progress", "earn", "wallet", "invite"];',
+  'home: "/dashboard"',
+  'progress: "/progress"',
+  'earn: "/earn"',
+  'wallet: "/wallet"',
+  'invite: "/invite"',
   'home: "value"',
   'earn: "value"',
   'wallet: "value"',
@@ -51,29 +58,60 @@ requireText("lib/route-semantics.ts", [
   'invite: "network"',
   "export function getRouteSemanticDimension",
   "export function getRouteSemanticTransfer",
+  "export function getProductRouteIdFromHref",
+  "export function getRouteTransitionTypes",
+  "export function getRouteTransitionTypesForHref",
   'return `pc-transfer-${current}-${target}`;',
 ]);
 
 requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
-  'import { getRouteSemanticDimension, getRouteSemanticTransfer } from "@/lib/route-semantics";',
-  "const routeOrder = new Map",
-  "function routeTransitionTypes",
-  "getRouteSemanticTransfer(active, target)",
+  'import { getRouteSemanticDimension, getRouteTransitionTypes } from "@/lib/route-semantics";',
   "const routeSemanticDimension = getRouteSemanticDimension(active);",
   'data-route-dimension={routeSemanticDimension ?? undefined}',
   'name="pc-route-topbar"',
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
-  "transitionTypes={routeTransitionTypes(active, id)}",
+  "transitionTypes={getRouteTransitionTypes(active, id)}",
 ]);
 
 requireText("components/value-flow.tsx", [
-  'const earnTransitionTypes = stage === "earn" ? undefined : ["pc-back"];',
-  'const walletTransitionTypes = stage === "earn" ? ["pc-forward"] : undefined;',
+  'import { getRouteTransitionTypes } from "@/lib/route-semantics";',
+  'const sourceRoute = stage === "earn" ? "earn" : "wallet";',
+  'getRouteTransitionTypes(sourceRoute, "earn")',
+  'getRouteTransitionTypes(sourceRoute, "wallet")',
   "transitionTypes={earnTransitionTypes}",
   "transitionTypes={walletTransitionTypes}",
 ]);
+
+for (const [contextPath, fragments] of [
+  ["app/dashboard/page.tsx", [
+    'getRouteTransitionTypesForHref("home", "/progress")',
+    'getRouteTransitionTypesForHref("home", "/wallet")',
+    'getRouteTransitionTypesForHref("home", "/invite")',
+    'getRouteTransitionTypesForHref("home", "/earn")',
+  ]],
+  ["app/dashboard/claimed/page.tsx", [
+    'getRouteTransitionTypesForHref("home", "/earn")',
+    'getRouteTransitionTypesForHref("home", "/progress#circuit-moments")',
+  ]],
+  ["app/earn/page.tsx", ['getRouteTransitionTypesForHref("earn", "/dashboard")']],
+  ["app/progress/page.tsx", [
+    'getRouteTransitionTypesForHref("progress", shareEntryHref)',
+    'getRouteTransitionTypesForHref("progress", state.signedIn ? "/dashboard"',
+  ]],
+  ["components/continuous-pulse-panel.tsx", [
+    'getRouteTransitionTypesForHref("home", "/earn")',
+    'getRouteTransitionTypesForHref("home", "/invite")',
+  ]],
+  ["components/continuous-earn-hub.tsx", [
+    'getRouteTransitionTypesForHref("earn", mission.href)',
+    'getRouteTransitionTypesForHref("earn", "/invite")',
+  ]],
+  ["components/next-circuit-panel.tsx", ['getRouteTransitionTypesForHref("progress", "/dashboard")']],
+]) {
+  requireText(contextPath, fragments);
+}
 
 requireText("app/styles/app-art-direction.css", [
   "/* V10 — native route continuity.",
@@ -231,6 +269,8 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "secondaryPseudo",
   ":active-view-transition-type(",
   "waitForTransitionTypes",
+  "contextualRoute",
+  "clickSelector",
   "semanticProof",
   "assertSemanticLayerIsolation",
   '"::view-transition-old(pc-field-signal)"',
@@ -259,9 +299,20 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"Mobile Referrals → Progress"',
   '"Mobile semantic layers"',
   '"Mobile Progress → Balance"',
+  '"Rewards card → Progress"',
+  '"Rewards card → Referrals"',
+  '"Rewards CTA → Earn"',
+  '"Earn CTA → Referrals"',
   "Native route continuity PASS",
 ]);
 
+
+const routeAuthority = read("lib/route-semantics.ts");
+for (const forbidden of ["availableCredits", "payoutCredits", "claimReady", "rewardCredits", "ledger"]) {
+  if (routeAuthority.includes(forbidden)) {
+    throw new Error(`Route transition authority must not depend on financial state: ${forbidden}`);
+  }
+}
 
 const atmosphereSource = read("components/spatial-atmosphere.tsx");
 for (const layerClass of [
@@ -279,8 +330,10 @@ if (atmosphereSource.includes("pc-route-field") || atmosphereSource.includes("pc
 }
 
 const appShell = read("components/app-shell.tsx");
-if (appShell.includes("const routeDimension = new Map")) {
-  throw new Error("Route semantic dimension authority must remain centralized in lib/route-semantics.ts.");
+for (const forbidden of ["const routeDimension = new Map", "const routeOrder = new Map", "function routeTransitionTypes"]) {
+  if (appShell.includes(forbidden)) {
+    throw new Error(`Route transition authority must remain centralized in lib/route-semantics.ts: ${forbidden}`);
+  }
 }
 if (appShell.includes("routeContentTransition") || appShell.includes('key={`route-content-${active}`}')) {
   throw new Error("Route ViewTransition must live before AppShell DOM, not inside the persistent shell.");
