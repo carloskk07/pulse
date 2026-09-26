@@ -295,6 +295,7 @@ async function readState(send) {
         carrierDuration: rootStyle.getPropertyValue("--pc-route-vt-carrier-duration").trim(),
         orbitDuration: rootStyle.getPropertyValue("--pc-route-vt-orbit-duration").trim(),
         indexDuration: rootStyle.getPropertyValue("--pc-route-vt-index-duration").trim(),
+        transferDuration: rootStyle.getPropertyValue("--pc-route-transfer-duration").trim(),
         carrier: !!document.querySelector(".pc-route-carrier"),
         orbit: !!document.querySelector(".pc-space-orbit.orbit-a"),
         index: !!document.querySelector(".pc-space-datum.datum-a"),
