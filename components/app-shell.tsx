@@ -9,6 +9,7 @@ import { PulsercuitBrand } from "./pulsercuit-brand";
 import { SpatialAtmosphere } from "./spatial-atmosphere";
 import { ProductInteractionLayer } from "./product-interaction-layer";
 import { SystemEventField, type SystemEventCue } from "./system-event-field";
+import { SemanticRouteLink } from "./semantic-route-link";
 import { Bolt, Home, Shield, Spark, Trend, Users, Wallet } from "./icons";
 
 const links = [
@@ -103,9 +104,16 @@ export async function AppShell({
           <PulsercuitBrand />
           <nav className="app-nav app-topbar-nav" aria-label="Application">
             {links.map(({ id, href, label: navLabel, Icon }) => (
-              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}>
+              <SemanticRouteLink
+                key={href}
+                className={active === id ? "active" : ""}
+                aria-current={active === id ? "page" : undefined}
+                href={href}
+                transitionTypes={routeTransitionTypes(active, id)}
+                sourceStrength={residueStrength}
+              >
                 <Icon /><span>{navLabel}</span>
-              </Link>
+              </SemanticRouteLink>
             ))}
           </nav>
           <details className="app-topbar-more">
@@ -138,7 +146,14 @@ export async function AppShell({
       <ViewTransition name="pc-route-bottom-nav" share="pc-route-nav-anchor" default="none">
         <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
-          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
+          <SemanticRouteLink
+            key={href}
+            className={active === id ? "active" : ""}
+            aria-current={active === id ? "page" : undefined}
+            href={href}
+            transitionTypes={routeTransitionTypes(active, id)}
+            sourceStrength={residueStrength}
+          ><Icon /><span>{navLabel}</span></SemanticRouteLink>
         ))}
         <details className="bottom-nav-more">
           <summary className={utilityMobileActive ? "active" : ""} aria-label="More navigation and account actions">
