@@ -238,6 +238,12 @@ requireText("scripts/verify-responsive-runtime.mjs", [
   "Responsive geometry did not stabilize",
 ]);
 
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  "<RoutePageTransition route={activeByScene[scene]}>",
+  "residueStrength: 83",
+  "residueStrength: 94",
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',
