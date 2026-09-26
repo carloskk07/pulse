@@ -66,11 +66,11 @@ for (const [path, fragments] of publicRouteContracts) {
 }
 
 requireText("components/app-shell.tsx", [
-  '{ id: "home", href: "/dashboard"',
-  '{ id: "progress", href: "/progress"',
-  '{ id: "earn", href: "/earn"',
-  '{ id: "wallet", href: "/wallet"',
-  '{ id: "invite", href: "/invite"',
+  '{ id: "home", href: getProductRouteHref("home")',
+  '{ id: "progress", href: getProductRouteHref("progress")',
+  '{ id: "earn", href: getProductRouteHref("earn")',
+  '{ id: "wallet", href: getProductRouteHref("wallet")',
+  '{ id: "invite", href: getProductRouteHref("invite")',
   '{ id: "advanced", href: "/admin/advanced"',
   'className="app-frame"',
   'className="app-topbar"',
