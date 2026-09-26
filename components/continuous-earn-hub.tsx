@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check } from "@/components/icons";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 import { formatUsdFromCredits } from "@/lib/reward-state";
-import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
+import { getRouteLinkProps, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 
 export async function ContinuousEarnHub() {
   const ecosystem = await getPulseEcosystemSnapshot();
@@ -25,7 +25,7 @@ export async function ContinuousEarnHub() {
 
         <div className="pc-v13-mission-grid">
           {ecosystem.missions.map((mission) => (
-            <Link href={mission.href} transitionTypes={getRouteTransitionTypesForHref("earn", mission.href)} className={"pc-v13-mission-card " + (mission.complete ? "done" : "")} key={mission.id}>
+            <Link {...getRouteLinkProps("earn", mission.href)} className={"pc-v13-mission-card " + (mission.complete ? "done" : "")} key={mission.id}>
               <span className="pc-v13-mission-status">{mission.complete ? <Check /> : mission.current + "/" + mission.target}</span>
               <div>
                 <strong>{mission.title}</strong>

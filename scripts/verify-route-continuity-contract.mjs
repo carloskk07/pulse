@@ -58,23 +58,27 @@ requireText("lib/route-semantics.ts", [
   'wallet: "value"',
   'progress: "signal"',
   'invite: "network"',
+  "export type ProductRouteHref",
+  "export function getProductRouteHref",
   "export function getRouteSemanticDimension",
   "export function getRouteSemanticTransfer",
   "export function getProductRouteIdFromHref",
   "export function getRouteTransitionTypes",
   "export function getRouteTransitionTypesForHref",
+  "export function getRouteLinkProps",
   'return `pc-transfer-${current}-${target}`;',
 ]);
 
 requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
-  'import { getRouteSemanticDimension, getRouteTransitionTypes } from "@/lib/route-semantics";',
+  'import { getProductRouteHref, getRouteLinkProps, getRouteSemanticDimension } from "@/lib/route-semantics";',
+  'href: getProductRouteHref("home")',
+  "getRouteLinkProps(active, href)",
   "const routeSemanticDimension = getRouteSemanticDimension(active);",
   'data-route-dimension={routeSemanticDimension ?? undefined}',
   'name="pc-route-topbar"',
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
-  "transitionTypes={getRouteTransitionTypes(active, id)}",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -99,7 +103,7 @@ for (const [contextPath, fragments] of [
   ]],
   ["app/earn/page.tsx", ['getRouteTransitionTypesForHref("earn", "/dashboard")']],
   ["app/progress/page.tsx", [
-    'getRouteTransitionTypesForHref("progress", shareEntryHref)',
+    'getRouteLinkProps("progress", shareEntryHref)',
     'getRouteTransitionTypesForHref("progress", state.signedIn ? "/dashboard"',
   ]],
   ["components/continuous-pulse-panel.tsx", [
@@ -107,7 +111,7 @@ for (const [contextPath, fragments] of [
     'getRouteTransitionTypesForHref("home", "/invite")',
   ]],
   ["components/continuous-earn-hub.tsx", [
-    'getRouteTransitionTypesForHref("earn", mission.href)',
+    'getRouteLinkProps("earn", mission.href)',
     'getRouteTransitionTypesForHref("earn", "/invite")',
   ]],
   ["components/next-circuit-panel.tsx", ['getRouteTransitionTypesForHref("progress", "/dashboard")']],
@@ -460,6 +464,43 @@ function literalJsxAttributeValue(attribute) {
   return null;
 }
 
+function importedBindingNames(sourceFile, moduleName, importedName) {
+  const bindings = new Set();
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || statement.moduleSpecifier.text !== moduleName
+      || !statement.importClause?.namedBindings
+      || !ts.isNamedImports(statement.importClause.namedBindings)
+    ) continue;
+
+    for (const element of statement.importClause.namedBindings.elements) {
+      const sourceName = element.propertyName?.text ?? element.name.text;
+      if (sourceName === importedName) bindings.add(element.name.text);
+    }
+  }
+  return bindings;
+}
+
+function hasRouteLinkAuthority(opening, authorityBindings) {
+  return opening.attributes.properties.some((property) => (
+    ts.isJsxSpreadAttribute(property)
+    && ts.isCallExpression(property.expression)
+    && ts.isIdentifier(property.expression.expression)
+    && authorityBindings.has(property.expression.expression.text)
+  ));
+}
+
+function hasUnresolvedDynamicHref(attribute) {
+  if (
+    !attribute?.initializer
+    || !ts.isJsxExpression(attribute.initializer)
+    || !attribute.initializer.expression
+  ) return false;
+  return staticHrefCandidates(attribute.initializer.expression).length === 0;
+}
+
 function normalizedProductRoute(value) {
   const path = value.split("#", 1)[0]?.split("?", 1)[0] ?? value;
   return PRODUCT_ROUTE_PATHS.has(path) ? path : null;
@@ -474,6 +515,11 @@ function auditSemanticLinks(source, path) {
     ts.ScriptKind.TSX,
   );
   const violations = [];
+  const routeLinkAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getRouteLinkProps",
+  );
 
   function visit(node) {
     if (
@@ -484,22 +530,32 @@ function auditSemanticLinks(source, path) {
       const targets = hrefCandidates(href)
         .map(normalizedProductRoute)
         .filter(Boolean);
+      const transitionTypes = jsxAttribute(node, "transitionTypes");
+      const explicitOutsideProduct = literalJsxAttributeValue(
+        jsxAttribute(node, "data-route-semantic"),
+      ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
+      const routeLinkAuthority = hasRouteLinkAuthority(node, routeLinkAuthorityBindings);
+      const unresolvedDynamicHref = hasUnresolvedDynamicHref(href);
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
-      if (targets.length > 0) {
-        const transitionTypes = jsxAttribute(node, "transitionTypes");
-        const explicitOutsideProduct = literalJsxAttributeValue(
-          jsxAttribute(node, "data-route-semantic"),
-        ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
+      if (unresolvedDynamicHref && !routeLinkAuthority && !explicitOutsideProduct) {
+        violations.push({
+          kind: "provenance",
+          path,
+          line: position.line + 1,
+          column: position.character + 1,
+          targets: [],
+        });
+      }
 
-        if (!transitionTypes && !explicitOutsideProduct) {
-          const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-          violations.push({
-            path,
-            line: position.line + 1,
-            column: position.character + 1,
-            targets: [...new Set(targets)],
-          });
-        }
+      if (targets.length > 0 && !routeLinkAuthority && !transitionTypes && !explicitOutsideProduct) {
+        violations.push({
+          kind: "coverage",
+          path,
+          line: position.line + 1,
+          column: position.character + 1,
+          targets: [...new Set(targets)],
+        });
       }
     }
 
@@ -512,22 +568,27 @@ function auditSemanticLinks(source, path) {
 
 {
   const selfTest = [
-    "const Fixture = ({ signedIn }) => (",
+    'import { getRouteLinkProps } from "@/lib/route-semantics";',
+    "const Fixture = ({ signedIn, mission, admin }) => (",
     "  <>",
-    "    <Link href=\"/progress\">Missing</Link>",
-    "    <Link href={\"/wallet?tab=history\"} transitionTypes={[\"pc-forward\"]}>Covered</Link>",
-    "    <Link href={signedIn ? \"/invite#network\" : \"/auth\"} transitionTypes={routeTypes}>Conditional</Link>",
+    "    <Link href=\"/progress\">Missing static coverage</Link>",
+    "    <Link href={\"/wallet?tab=history\"} transitionTypes={[\"pc-forward\"]}>Covered static product route</Link>",
+    "    <Link href={signedIn ? \"/invite#network\" : \"/auth\"} transitionTypes={routeTypes}>Conditional static candidates</Link>",
+    "    <Link href={mission.href} transitionTypes={getRouteTransitionTypesForHref(\"earn\", mission.href)}>Unproven dynamic route</Link>",
+    "    <Link {...getRouteLinkProps(\"earn\", mission.href)}>Authoritative dynamic route</Link>",
+    "    <Link href={admin.href} data-route-semantic=\"outside-product\">Explicit dynamic escape</Link>",
     "    <Link href=\"/dashboard\" data-route-semantic=\"outside-product\">Explicit public escape</Link>",
     "  </>",
     ");",
   ].join("\n");
   const violations = auditSemanticLinks(selfTest, "semantic-link-coverage.self-test.tsx");
   if (
-    violations.length !== 1
-    || violations[0]?.targets.length !== 1
-    || violations[0]?.targets[0] !== "/progress"
+    violations.length !== 2
+    || violations.filter((violation) => violation.kind === "coverage").length !== 1
+    || violations.filter((violation) => violation.kind === "provenance").length !== 1
+    || violations.find((violation) => violation.kind === "coverage")?.targets[0] !== "/progress"
   ) {
-    throw new Error("Semantic Link coverage self-test failed: " + JSON.stringify(violations));
+    throw new Error("Semantic Link coverage/provenance self-test failed: " + JSON.stringify(violations));
   }
 }
 
@@ -535,16 +596,52 @@ const semanticLinkViolations = SEMANTIC_LINK_ROOTS
   .flatMap(collectTsxFiles)
   .flatMap((path) => auditSemanticLinks(read(path), path));
 
-if (semanticLinkViolations.length > 0) {
+const dynamicRouteProvenanceViolations = semanticLinkViolations
+  .filter((violation) => violation.kind === "provenance");
+if (dynamicRouteProvenanceViolations.length > 0) {
+  throw new Error(
+    "Dynamic Link route provenance failed:\n"
+    + dynamicRouteProvenanceViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> unresolved href must use getRouteLinkProps() or an explicit outside-product contract"
+      )
+      .join("\n"),
+  );
+}
+
+const staticSemanticCoverageViolations = semanticLinkViolations
+  .filter((violation) => violation.kind === "coverage");
+if (staticSemanticCoverageViolations.length > 0) {
   throw new Error(
     "Product Link semantic coverage failed:\n"
-    + semanticLinkViolations
+    + staticSemanticCoverageViolations
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.targets.join(", ") + " lacks transitionTypes"
       )
       .join("\n"),
   );
+}
+
+for (const [contextPath, fragments] of [
+  ["lib/experience-presentation.ts", [
+    "type ProductRouteHref",
+    "href: ProductRouteHref | `/auth${string}`",
+    'href: getProductRouteHref("home")',
+  ]],
+  ["lib/pulse-ecosystem.ts", [
+    "href: ProductRouteHref",
+    'href: getProductRouteHref("home")',
+    'href: getProductRouteHref("earn")',
+    'href: getProductRouteHref("invite")',
+  ]],
+  ["components/app-shell.tsx", [
+    'href: getProductRouteHref("home")',
+    'getRouteLinkProps(active, href)',
+  ]],
+]) {
+  requireText(contextPath, fragments);
 }
 
 console.log("Native route continuity static contract PASS");

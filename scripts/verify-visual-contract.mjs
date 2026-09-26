@@ -230,9 +230,13 @@ requireText("app/styles/app-art-direction.css", [
 ]);
 
 requireText("lib/route-semantics.ts", [
+  "export type ProductRouteHref",
+  "export function getProductRouteHref",
   "export function getProductRouteIdFromHref",
   "export function getRouteTransitionTypes",
   "export function getRouteTransitionTypesForHref",
+  "export function getRouteLinkProps",
+  '"data-route-provenance": "route-semantics"',
 ]);
 
 requireText("scripts/verify-responsive-runtime.mjs", [
@@ -249,8 +253,11 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   'import ts from "typescript";',
   "const SEMANTIC_LINK_ROOTS = [",
   "function auditSemanticLinks",
-  "Semantic Link coverage self-test failed",
+  "Semantic Link coverage/provenance self-test failed",
+  "Dynamic Link route provenance failed",
   "Product Link semantic coverage failed",
+  "function hasRouteLinkAuthority",
+  "function hasUnresolvedDynamicHref",
   'const OUTSIDE_PRODUCT_ROUTE_MARKER = "outside-product";',
 ]);
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getCurrentUserContext } from "@/lib/current-user-context";
+import { getProductRouteHref, type ProductRouteHref } from "@/lib/route-semantics";
 import { objectValue } from "@/lib/reward-state";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -18,7 +19,7 @@ export type EcosystemMission = {
   current: number;
   target: number;
   complete: boolean;
-  href: string;
+  href: ProductRouteHref;
 };
 
 export type PulseEcosystemSnapshot = {
@@ -177,7 +178,7 @@ export async function getPulseEcosystemSnapshot(): Promise<PulseEcosystemSnapsho
       current: Math.min(claimsToday, 1),
       target: 1,
       complete: claimsToday >= 1,
-      href: "/dashboard",
+      href: getProductRouteHref("home"),
     },
     {
       id: "rhythm",
@@ -186,7 +187,7 @@ export async function getPulseEcosystemSnapshot(): Promise<PulseEcosystemSnapsho
       current: Math.min(claimsToday, 3),
       target: 3,
       complete: claimsToday >= 3,
-      href: "/dashboard",
+      href: getProductRouteHref("home"),
     },
     {
       id: "earn",
@@ -195,7 +196,7 @@ export async function getPulseEcosystemSnapshot(): Promise<PulseEcosystemSnapsho
       current: Math.min(conversionsToday, 1),
       target: 1,
       complete: conversionsToday >= 1,
-      href: "/earn",
+      href: getProductRouteHref("earn"),
     },
     {
       id: "network",
@@ -204,7 +205,7 @@ export async function getPulseEcosystemSnapshot(): Promise<PulseEcosystemSnapsho
       current: Math.min(networkActive, 1),
       target: 1,
       complete: networkActive >= 1,
-      href: "/invite",
+      href: getProductRouteHref("invite"),
     },
   ];
 

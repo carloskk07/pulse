@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ComponentProps } from "react";
+import { getRouteLinkProps } from "@/lib/route-semantics";
 
 type Props = Omit<ComponentProps<typeof Link>, "href" | "onClick"> & {
   href: string;
@@ -42,5 +43,5 @@ export function FunnelLink({ href, eventLabel, children, ...props }: Props) {
     });
   }
 
-  return <Link href={href} onClick={recordIntent} {...props}>{children}</Link>;
+  return <Link {...getRouteLinkProps("public", href)} onClick={recordIntent} {...props}>{children}</Link>;
 }
