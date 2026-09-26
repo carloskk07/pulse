@@ -321,6 +321,19 @@ async function clickRoute(send, href) {
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
 }
 
+async function clickSelector(send, selector, label) {
+  const result = await send("Runtime.evaluate", {
+    expression: `(() => {
+      const link = document.querySelector(${JSON.stringify(selector)});
+      if (!(link instanceof HTMLAnchorElement)) return false;
+      link.click();
+      return true;
+    })()`,
+    returnByValue: true,
+  });
+  if (result.result?.value !== true) throw new Error(`${label} contextual link was not found: ${selector}`);
+}
+
 async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null, expectedPseudo = null) {
   let lastState = null;
   for (let attempt = 0; attempt < 180; attempt += 1) {
@@ -497,15 +510,70 @@ try {
     return state;
   }
 
+  async function contextualRoute(selector, href, expectedTypes, animation, label) {
+    const callsBefore = (await readState(send)).calls;
+    await waitForHydratedSelector(send, selector);
+    await clickSelector(send, selector, label);
+    await waitForPath(send, href);
+    const semantic = expectedTypes.find((type) => type.startsWith("pc-transfer-")) ?? null;
+    const semanticPseudo = semantic ? "::view-transition-old(pc-spatial-field)" : null;
+    const state = await waitForTransitionTypes(
+      send,
+      expectedTypes,
+      callsBefore,
+      label,
+      animation,
+      semanticPseudo,
+    );
+    if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
+      throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
+    }
+    if (semantic) assertNoSemanticRootAnimation(state, callsBefore, label);
+    else assertNoSemanticTransfer(state, callsBefore, label);
+    return state;
+  }
+
   await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Balance");
   await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "Balance → Referrals");
   await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "Referrals → Balance");
   await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "Balance → Progress");
   await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "Progress → Referrals");
-  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
+  await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
+
+  await crossRoute("/dashboard", "pc-back", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Rewards reset");
+  await contextualRoute(
+    '.pc-v9-progress-card a[href="/progress"]',
+    "/progress",
+    ["pc-forward", "pc-transfer-value-signal"],
+    "pcTransferValueSignalOut",
+    "Rewards card → Progress",
+  );
+  await crossRoute("/dashboard", "pc-back", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Rewards reset 2");
+  await contextualRoute(
+    '.pc-v9-progress-card a[href="/invite"]',
+    "/invite",
+    ["pc-forward", "pc-transfer-value-network"],
+    "pcTransferValueNetworkOut",
+    "Rewards card → Referrals",
+  );
+  await crossRoute("/dashboard", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "Referrals → Rewards reset");
+  await contextualRoute(
+    '.pc-v13-continuous-actions a[href="/earn"]',
+    "/earn",
+    ["pc-forward"],
+    null,
+    "Rewards CTA → Earn",
+  );
+  const finalInvite = await contextualRoute(
+    '.pc-v13-economy-card a[href="/invite"]',
+    "/invite",
+    ["pc-forward", "pc-transfer-value-network"],
+    "pcTransferValueNetworkOut",
+    "Earn CTA → Referrals",
+  );
 
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: menu + contextual CTA continuity, reduced semantic transfer, six selective spatial-field dimension transfers (calls=${finalInvite.calls}).`,
   );
   socket.close();
 } finally {
