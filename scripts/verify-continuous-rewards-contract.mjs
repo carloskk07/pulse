@@ -196,7 +196,8 @@ requireAll("components/cashback-start-button.tsx", [
 requireAll("app/api/cashback/start/route.ts", [
   "create_cashback_tracking_session",
   '"not-live"',
-  "/earn?cashback=",
+  'getProductRouteHref("earn",',
+  "?cashback=",
 ]);
 
 requireAll("app/api/cashback/callback/route.ts", [
