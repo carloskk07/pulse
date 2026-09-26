@@ -243,10 +243,12 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-network-signal"',
   '"pcTransferSignalValueOut"',
   '"pcTransferNetworkSignalOut"',
+  '"pcSpatialFieldReveal"',
   "animationEvidence",
   '"::view-transition-old(pc-spatial-field)"',
+  '"::view-transition-new(pc-spatial-field)"',
   "assertNoSemanticTransfer",
-  "assertNoSemanticRootAnimation",
+  "assertSemanticAnimationIsolation",
   "transferDuration",
 ]);
 
