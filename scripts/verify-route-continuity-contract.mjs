@@ -227,8 +227,14 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "entry.animationEvidence",
   ":active-view-transition-type(",
   "waitForTransitionTypes",
+  "contextualRoute",
+  "clickSelector",
   "assertNoSemanticRootAnimation",
   '"::view-transition-old(pc-spatial-field)"',
+  '"Rewards card → Progress"',
+  '"Rewards card → Referrals"',
+  '"Rewards CTA → Earn"',
+  '"Earn CTA → Referrals"',
   "probeInstalled",
   'waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn")',
   'assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn")',
@@ -245,9 +251,33 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
 ]);
 
 
+
+const routeAuthority = read("lib/product-route-navigation.ts");
+for (const forbidden of ["availableCredits", "payoutCredits", "claimReady", "rewardCredits", "ledger"]) {
+  if (routeAuthority.includes(forbidden)) {
+    throw new Error(`Product route transition authority must not depend on financial state: ${forbidden}`);
+  }
+}
+for (const required of [
+  'home: "/dashboard"',
+  'progress: "/progress"',
+  'earn: "/earn"',
+  'wallet: "/wallet"',
+  'invite: "/invite"',
+  'home: "value"',
+  'progress: "signal"',
+  'earn: "value"',
+  'wallet: "value"',
+  'invite: "network"',
+]) {
+  if (!routeAuthority.includes(required)) {
+    throw new Error(`Product route transition authority is missing canonical route metadata: ${required}`);
+  }
+}
+
 const atmosphereSource = read("components/spatial-atmosphere.tsx");
 if (atmosphereSource.includes("pc-route-field") || atmosphereSource.includes("pc-route-field-transfer")) {
-  throw new Error("Semantic route transfer must use the guaranteed native root snapshot, not an inactive parent ViewTransition boundary.");
+  throw new Error("Semantic route transfer must use the CSS-owned pc-spatial-field snapshot, not an inactive parent React ViewTransition boundary.");
 }
 
 const appShell = read("components/app-shell.tsx");
