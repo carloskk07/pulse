@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAdminAccess } from "@/lib/admin-authorization";
+import { getProductRouteHref } from "@/lib/route-semantics";
 import {
   activateDirectCampaign,
   createDirectCampaign,
@@ -23,7 +24,7 @@ export type DirectCreateState = {
 async function requireAdmin() {
   const access = await getAdminAccess();
   if (access.status === "unauthenticated") redirect("/auth?next=/admin/direct");
-  if (access.status !== "authorized") redirect("/dashboard");
+  if (access.status !== "authorized") redirect(getProductRouteHref("home"));
 }
 
 function textValue(formData: FormData, key: string, max: number) {
