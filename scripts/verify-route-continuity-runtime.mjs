@@ -321,6 +321,50 @@ async function clickRoute(send, href) {
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
 }
 
+async function navigateToAuthorityFixture(send, scene, expectedDimension, authority = "live") {
+  const params = new URLSearchParams({ scene });
+  if (authority !== "live") params.set("authority", authority);
+  await send("Page.navigate", {
+    url: `${baseUrl}/visual-smoke-fixture/core-state?${params.toString()}`,
+  });
+
+  let lastState = null;
+  for (let attempt = 0; attempt < 180; attempt += 1) {
+    const result = await send("Runtime.evaluate", {
+      expression: `(() => {
+        const frame = document.querySelector(".app-frame");
+        return {
+          path: location.pathname,
+          ready: document.readyState,
+          frame: Boolean(frame),
+          dimension: frame?.getAttribute("data-product-residue-dimension") ?? null,
+          strength: frame?.getAttribute("data-product-residue-strength") ?? null,
+          carrier: Boolean(document.querySelector(".pc-route-carrier")),
+        };
+      })()`,
+      returnByValue: true,
+    });
+    const state = result.result?.value;
+    lastState = state;
+    if (
+      state?.path === "/visual-smoke-fixture/core-state"
+      && state?.ready === "complete"
+      && state?.frame
+      && state?.carrier
+      && state?.dimension === expectedDimension
+    ) {
+      await sleep(100);
+      return state;
+    }
+    await sleep(50);
+  }
+
+  throw new Error(
+    `Authority fixture ${scene}/${authority} did not settle as ${expectedDimension}: ${JSON.stringify(lastState)}`,
+  );
+}
+
+
 async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null, expectedPseudo = null) {
   let lastState = null;
   for (let attempt = 0; attempt < 180; attempt += 1) {
@@ -455,10 +499,52 @@ try {
     throw new Error(`Rewards → Earn did not activate native route continuity: ${JSON.stringify(earn)}`);
   }
 
+  async function assertDirectionOnlyFromFixture({
+    scene,
+    expectedDimension,
+    authority,
+    href,
+    direction,
+    label,
+  }) {
+    await navigateToAuthorityFixture(send, scene, expectedDimension, authority);
+    await waitForHydratedLink(send, href);
+    const source = await readState(send);
+    const callsBefore = source.calls;
+    await clickRoute(send, href);
+    await waitForPath(send, href);
+    const state = await waitForTransitionTypes(send, [direction], callsBefore, label);
+    if (state?.documentId !== source.documentId || state.calls <= callsBefore) {
+      throw new Error(`${label} lost same-document direction-only navigation: ${JSON.stringify(state)}`);
+    }
+    assertNoSemanticTransfer(state, callsBefore, label);
+    return state;
+  }
+
+  await assertDirectionOnlyFromFixture({
+    scene: "progress",
+    expectedDimension: "none",
+    authority: "none",
+    href: "/wallet",
+    direction: "pc-forward",
+    label: "Progress none-authority → Balance",
+  });
+
+  await assertDirectionOnlyFromFixture({
+    scene: "progress",
+    expectedDimension: "network",
+    authority: "mismatch",
+    href: "/wallet",
+    direction: "pc-forward",
+    label: "Progress mismatched-authority → Balance",
+  });
+
   await send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "reduce" }],
   });
   await sleep(80);
+  await navigateToAuthorityFixture(send, "earn", "value");
+  await waitForHydratedLink(send, "/progress");
   const reducedBefore = await readState(send);
   if (reducedBefore?.reduced !== true || reducedBefore.motion !== "0") {
     throw new Error(`Reduced-motion CSS authority did not activate: ${JSON.stringify(reducedBefore)}`);
@@ -467,11 +553,10 @@ try {
   const reducedCalls = reducedBefore.calls;
   await clickRoute(send, "/progress");
   await waitForPath(send, "/progress");
-  await waitForHydratedLink(send, "/wallet");
   await sleep(120);
   const reducedProgress = await readState(send);
-  if (reducedProgress?.documentId !== before.documentId) {
-    throw new Error(`Reduced-motion Earn → Progress performed a full document navigation: before=${before.documentId} after=${reducedProgress?.documentId}`);
+  if (reducedProgress?.documentId !== reducedBefore.documentId) {
+    throw new Error(`Reduced-motion Earn → Progress performed a full document navigation: before=${reducedBefore.documentId} after=${reducedProgress?.documentId}`);
   }
   assertReducedMotionState(reducedProgress, "Earn → Progress");
   if (reducedProgress?.path !== "/progress" || reducedProgress?.calls <= reducedCalls) {
@@ -483,29 +568,52 @@ try {
   });
   await sleep(80);
 
-  async function crossRoute(href, direction, semantic, animation, label) {
-    const callsBefore = (await readState(send)).calls;
+  let semanticTransferProofs = 0;
+  async function crossRouteFromFixture(
+    scene,
+    sourceDimension,
+    href,
+    direction,
+    semantic,
+    animation,
+    label,
+  ) {
+    await navigateToAuthorityFixture(send, scene, sourceDimension);
     await waitForHydratedLink(send, href);
+    const source = await readState(send);
+    const callsBefore = source.calls;
     await clickRoute(send, href);
     await waitForPath(send, href);
     const semanticPseudo = "::view-transition-old(pc-spatial-field)";
-    const state = await waitForTransitionTypes(send, [direction, semantic], callsBefore, label, animation, semanticPseudo);
-    if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
+    const state = await waitForTransitionTypes(
+      send,
+      [direction, semantic],
+      callsBefore,
+      label,
+      animation,
+      semanticPseudo,
+    );
+    if (state?.documentId !== source.documentId || state.motion !== "1" || state.calls <= callsBefore) {
       throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
     }
     assertNoSemanticRootAnimation(state, callsBefore, label);
+    semanticTransferProofs += 1;
     return state;
   }
 
-  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Balance");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "Balance → Referrals");
-  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "Referrals → Balance");
-  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "Balance → Progress");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "Progress → Referrals");
-  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
+  await crossRouteFromFixture("progress", "signal", "/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Balance");
+  await crossRouteFromFixture("wallet", "value", "/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "Balance → Referrals");
+  await crossRouteFromFixture("invite", "network", "/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "Referrals → Balance");
+  await crossRouteFromFixture("wallet", "value", "/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "Balance → Progress");
+  await crossRouteFromFixture("progress", "signal", "/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "Progress → Referrals");
+  await crossRouteFromFixture("invite", "network", "/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
+
+  if (semanticTransferProofs !== 6) {
+    throw new Error(`Expected six authoritative semantic transfer proofs, got ${semanticTransferProofs}.`);
+  }
 
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: direction-only preview + fail-closed none/mismatch authority + reduced authoritative transfer + six authoritative selective spatial-field transfers.`,
   );
   socket.close();
 } finally {
