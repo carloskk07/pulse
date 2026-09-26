@@ -176,6 +176,7 @@ requireText(".github/workflows/visual-smoke.yml", [
   "pull_request:",
   "branches: [main]",
   "group: pulsercuit-visual-smoke-${{ github.ref }}",
+  '"lib/route-semantics.ts"',
   "github.event_name == 'pull_request' || github.ref == 'refs/heads/main'",
   "Finalize pull-request visual evidence",
   'test "$count" -eq 58',
