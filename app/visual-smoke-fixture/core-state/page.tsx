@@ -13,7 +13,15 @@ import {
 import { SceneTelemetry } from "@/components/scene-telemetry";
 import { ValueFlow } from "@/components/value-flow";
 import { Check, Shield, Spark, Users, Wallet } from "@/components/icons";
-import type { ProductExperience, ProductJourney } from "@/lib/product-experience";
+import {
+  getEarningExperience,
+  getNetworkExperience,
+  getProgressExperience,
+  getWalletExperience,
+  type ProductExperience,
+} from "@/lib/product-experience";
+import { getCircuitProgress } from "@/lib/circuit-progress";
+import { formatUsdFromCredits, type RewardSnapshot } from "@/lib/reward-state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dense visual fixture" };
@@ -23,76 +31,90 @@ type Props = { searchParams: Promise<{ scene?: string; event?: string }> };
 
 const sceneSet = new Set<Scene>(["reward", "earn", "wallet", "progress", "invite"]);
 
-function journey(
-  stage: ProductJourney["stage"],
-  balance: string,
-  payoutProgress: number,
-  payoutState: ProductJourney["payoutState"],
-  payoutLabel: string,
-): ProductJourney {
-  return { stage, balance, payoutProgress, payoutState, payoutLabel };
-}
-
-const denseWallet = {
-  availableCredits: 50_000,
-  payoutCredits: 50_000,
-  payoutProgress: 100,
-  payoutState: "ready" as const,
-  status: "Ready",
-  balanceLabel: "$50.000",
-  targetLabel: "$50.000 · USDT",
+const densePayoutCredits = 30_000;
+const denseWalletPayoutCredits = 50_000;
+const denseNetwork = {
+  active: 128,
+  waiting: 37,
+  rewardsCredits: 184_275,
 };
 
+const denseRewardSnapshot: RewardSnapshot = {
+  preview: false,
+  signedIn: true,
+  observedAt: "2026-09-26T00:00:00.000Z",
+  userLabel: "Dense member",
+  trustLevel: 3,
+  availableCredits: 24_875,
+  pendingCredits: 0,
+  streakDays: 23,
+  claimReady: true,
+  claimRewardCredits: 50,
+  claimRewardVariable: true,
+  claimRewardMinCredits: 1,
+  claimRewardMaxCredits: 50,
+  claimIntervalMinutes: 60,
+  nextClaimAt: null,
+  lastClaimAt: "2026-09-26T00:00:00.000Z",
+  pulseFundingReady: true,
+  hourlyClaimCount: 187,
+};
+
+const denseWalletSnapshot: RewardSnapshot = {
+  ...denseRewardSnapshot,
+  availableCredits: 50_000,
+  claimReady: false,
+};
+
+const denseProgress = getCircuitProgress({
+  hourlyClaimCount: denseRewardSnapshot.hourlyClaimCount,
+  streakDays: denseRewardSnapshot.streakDays,
+  trustLevel: denseRewardSnapshot.trustLevel,
+});
+const rankPath = ["Spark", "Flow", "Rhythm", "Circuit", "Resonance"] as const;
+const denseRankIndex = rankPath.indexOf(denseProgress.stage);
+const denseNextRank = rankPath[denseRankIndex + 1] ?? null;
+
 const experiences: Record<Scene, ProductExperience> = {
-  reward: {
+  reward: getEarningExperience({
     surface: "reward",
-    phase: "ready",
-    event: "none",
-    residue: "balance-funded",
-    residueDimension: "value",
-    residueStrength: 83,
-    journey: journey("earn", "$24.875", 83, "building", "83% to target"),
-  },
-  earn: {
+    snapshot: denseRewardSnapshot,
+    payoutCredits: densePayoutCredits,
+  }),
+  earn: getEarningExperience({
     surface: "earn",
-    phase: "live",
-    event: "none",
-    residue: "balance-funded",
-    residueDimension: "value",
-    residueStrength: 83,
-    journey: journey("earn", "$24.875", 83, "building", "83% to target"),
-  },
-  wallet: {
-    surface: "payout",
-    phase: "ready",
-    event: "none",
-    residue: "payout-ready",
-    residueDimension: "value",
-    residueStrength: 100,
-    journey: journey(
-      "payout",
-      denseWallet.balanceLabel,
-      denseWallet.payoutProgress,
-      denseWallet.payoutState,
-      denseWallet.status,
-    ),
-  },
-  progress: {
-    surface: "progress",
-    phase: "live",
-    event: "none",
-    residue: "rank-circuit",
-    residueDimension: "signal",
-    residueStrength: 94,
-  },
-  invite: {
-    surface: "network",
-    phase: "live",
-    event: "none",
-    residue: "network-active",
-    residueDimension: "network",
-    residueStrength: 100,
-  },
+    snapshot: denseRewardSnapshot,
+    payoutCredits: densePayoutCredits,
+  }),
+  wallet: getWalletExperience({
+    snapshot: denseWalletSnapshot,
+    payoutCredits: denseWalletPayoutCredits,
+    canWithdraw: true,
+    hasActiveWithdrawal: false,
+    paid: false,
+  }),
+  progress: getProgressExperience(denseRewardSnapshot),
+  invite: getNetworkExperience({
+    signedIn: true,
+    active: denseNetwork.active,
+    waiting: denseNetwork.waiting,
+  }),
+};
+
+const denseBalanceLabel = formatUsdFromCredits(denseRewardSnapshot.availableCredits);
+const densePayoutRemainingLabel = formatUsdFromCredits(
+  Math.max(0, densePayoutCredits - denseRewardSnapshot.availableCredits),
+);
+const denseNetworkRewardLabel = formatUsdFromCredits(denseNetwork.rewardsCredits);
+const denseWalletJourney = experiences.wallet.journey!;
+const denseWallet = {
+  availableCredits: denseWalletSnapshot.availableCredits,
+  payoutCredits: denseWalletPayoutCredits,
+  payoutProgress: denseWalletJourney.payoutProgress,
+  payoutState: denseWalletJourney.payoutState,
+  status: denseWalletJourney.payoutLabel,
+  balanceLabel: denseWalletJourney.balance,
+  targetLabel: `${formatUsdFromCredits(denseWalletPayoutCredits)} · USDT`,
 };
 
 function FixtureNote({ children }: { children: ReactNode }) {
