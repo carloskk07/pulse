@@ -234,6 +234,13 @@ requireText("scripts/verify-responsive-runtime.mjs", [
   "Responsive geometry did not stabilize",
 ]);
 
+requireText("lib/product-route-navigation.ts", [
+  "export function productRouteTransitionTypes",
+  '"pc-forward"',
+  '"pc-back"',
+  'pc-transfer-${sourceDimension}-${targetDimension}',
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',
@@ -247,6 +254,12 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"::view-transition-old(pc-spatial-field)"',
   "assertNoSemanticTransfer",
   "assertNoSemanticRootAnimation",
+  "clickSelector",
+  "contextualRoute",
+  '"Rewards card → Progress"',
+  '"Rewards card → Referrals"',
+  '"Rewards CTA → Earn"',
+  '"Earn CTA → Referrals"',
   "transferDuration",
 ]);
 
