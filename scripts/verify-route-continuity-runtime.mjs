@@ -525,8 +525,71 @@ try {
   await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "pcTransferSignalNetworkBridge", "Progress → Referrals");
   const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "pcTransferNetworkSignalBridge", "Referrals → Progress");
 
+  await send("Emulation.setDeviceMetricsOverride", {
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 1,
+    mobile: true,
+    screenWidth: 390,
+    screenHeight: 844,
+  });
+  await sleep(120);
+
+  const mobileBefore = await readState(send);
+  if (mobileBefore?.transferDuration !== ".28s") {
+    throw new Error(`Mobile semantic bridge expected .28s transfer duration at 390px, received ${mobileBefore?.transferDuration ?? "missing"}: ${JSON.stringify(mobileBefore)}`);
+  }
+
+  const mobileInvite = await crossRoute(
+    "/invite",
+    "pc-forward",
+    "pc-transfer-signal-network",
+    "pcTransferSignalNetworkOut",
+    "pcTransferSignalNetworkBridge",
+    "Mobile Progress → Referrals",
+  );
+  if (mobileInvite?.transferDuration !== ".28s") {
+    throw new Error(`Mobile Progress → Referrals lost the compact semantic bridge duration: ${JSON.stringify(mobileInvite)}`);
+  }
+
+  const mobileProgress = await crossRoute(
+    "/progress",
+    "pc-back",
+    "pc-transfer-network-signal",
+    "pcTransferNetworkSignalOut",
+    "pcTransferNetworkSignalBridge",
+    "Mobile Referrals → Progress",
+  );
+  if (mobileProgress?.transferDuration !== ".28s") {
+    throw new Error(`Mobile Referrals → Progress lost the compact semantic bridge duration: ${JSON.stringify(mobileProgress)}`);
+  }
+
+  await send("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+  });
+  await sleep(80);
+
+  const mobileReducedBefore = await readState(send);
+  if (mobileReducedBefore?.reduced !== true || mobileReducedBefore?.motion !== "0") {
+    throw new Error(`Mobile reduced-motion authority did not activate: ${JSON.stringify(mobileReducedBefore)}`);
+  }
+  assertReducedMotionState(mobileReducedBefore, "Mobile semantic bridge");
+
+  const mobileReducedCalls = mobileReducedBefore.calls;
+  await clickRoute(send, "/wallet");
+  await waitForPath(send, "/wallet");
+  await sleep(120);
+  const mobileReducedWallet = await readState(send);
+  if (mobileReducedWallet?.documentId !== before.documentId) {
+    throw new Error(`Mobile reduced-motion Progress → Balance performed a full document navigation: ${JSON.stringify(mobileReducedWallet)}`);
+  }
+  assertReducedMotionState(mobileReducedWallet, "Mobile Progress → Balance");
+  if (mobileReducedWallet?.calls <= mobileReducedCalls) {
+    throw new Error(`Mobile reduced-motion semantic bridge did not execute a native transition call: ${JSON.stringify(mobileReducedWallet)}`);
+  }
+
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field bridge morphs (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: desktop six-direction semantic bridge + mobile bridge profile (.28s, filterless old/group) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
   );
   socket.close();
 } finally {
