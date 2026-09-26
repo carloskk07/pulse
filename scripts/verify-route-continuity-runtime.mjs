@@ -474,12 +474,12 @@ try {
     return state;
   }
 
-  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueIn", "Progress → Balance");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkIn", "Balance → Referrals");
-  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueIn", "Referrals → Balance");
-  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalIn", "Balance → Progress");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkIn", "Progress → Referrals");
-  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalIn", "Referrals → Progress");
+  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "Progress → Balance");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "Balance → Referrals");
+  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "Referrals → Balance");
+  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "Balance → Progress");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "Progress → Referrals");
+  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
 
   console.log(
     `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six directional dimension transfers (calls=${finalProgress.calls}).`,
