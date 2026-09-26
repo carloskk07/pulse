@@ -10,7 +10,7 @@ import { SceneTelemetry } from "@/components/scene-telemetry";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getProgressExperience } from "@/lib/product-experience";
-import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
+import { getRouteLinkProps, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { getRewardSnapshot } from "@/lib/reward-state";
 import { getWeeklyPulseSummary } from "@/lib/retention-summary";
 
@@ -64,7 +64,7 @@ export default async function ProgressPage() {
             { label: "Claims", value: state.preview ? "—" : String(state.hourlyClaimCount), meta: "Verified" },
           ]}
         />
-        <Link className="button pc-v5-primary" href={shareEntryHref} transitionTypes={getRouteTransitionTypesForHref("progress", shareEntryHref)}>{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
+        <Link {...getRouteLinkProps("progress", shareEntryHref)} className="button pc-v5-primary">{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
       </div>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
