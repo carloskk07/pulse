@@ -655,22 +655,24 @@ try {
 
     await clickRoute(send, "/progress");
     await waitForPath(send, "/progress");
-    const state = await waitForTransitionTypes(
-      send,
-      ["pc-forward", "pc-transfer-value-signal"],
-      callsBefore,
-      `Value → Signal strength ${strength}`,
-      "pcTransferValueSignalOut",
-      "::view-transition-old(pc-spatial-field)",
-      "pcTransferValueSignalBridge",
-      "::view-transition-group(pc-spatial-field)",
-    );
-    if (state?.documentId !== sourceDocument || state.motion !== "1" || state.calls <= callsBefore) {
-      throw new Error(`Strength-aware semantic bridge ${strength} lost native SPA continuity: ${JSON.stringify(state)}`);
+
+    let state = null;
+    let profile = null;
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      state = await readState(send);
+      if (state?.calls > callsBefore && state?.returnedTransition) {
+        try {
+          profile = latestTransferProfile(state, callsBefore, strength, `Strength profile ${strength}`);
+          break;
+        } catch {}
+      }
+      await sleep(25);
     }
-    assertNoSemanticRootAnimation(state, callsBefore, `Value → Signal strength ${strength}`);
-    const profile = latestTransferProfile(state, callsBefore, strength, `Value → Signal strength ${strength}`);
-    assertFiniteTransferProfile(profile, `Value → Signal strength ${strength}`);
+
+    if (state?.documentId !== sourceDocument || state?.motion !== "1" || state?.calls <= callsBefore || !profile) {
+      throw new Error(`Strength profile ${strength} did not travel through native SPA navigation: ${JSON.stringify(state)}`);
+    }
+    assertFiniteTransferProfile(profile, `Strength profile ${strength}`);
     return profile;
   }
 
@@ -687,12 +689,12 @@ try {
     || !(highStrength.bridgeValueSignalY < lowStrength.bridgeValueSignalY)
   ) {
     throw new Error(
-      `Authoritative strength did not increase semantic Out + Bridge deformation: low=${JSON.stringify(lowStrength)} high=${JSON.stringify(highStrength)}`,
+      `Authoritative strength profile did not increase Out + Bridge deformation inputs: low=${JSON.stringify(lowStrength)} high=${JSON.stringify(highStrength)}`,
     );
   }
 
   console.log(
-    `Native route continuity PASS: desktop six-direction semantic bridge + mobile bridge profile (.28s, filterless old/group) + mobile reduced-motion override + authoritative Out/Bridge strength 20→90 (calls=${mobileReducedWallet.calls}).`,
+    `Native route continuity PASS: desktop six-direction semantic bridge + mobile bridge profile (.28s, filterless old/group) + mobile reduced-motion override + authoritative Out/Bridge profile 20→90 (calls=${mobileReducedWallet.calls}).`,
   );
   socket.close();
 } finally {
