@@ -251,7 +251,7 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "function auditSemanticLinks",
   "Semantic Link coverage self-test failed",
   "Product Link semantic coverage failed",
-  'data-route-semantic="outside-product"',
+  'const OUTSIDE_PRODUCT_ROUTE_MARKER = "outside-product";',
 ]);
 
 requireText("scripts/verify-route-continuity-runtime.mjs", [
