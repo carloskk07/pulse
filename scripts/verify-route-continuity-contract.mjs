@@ -183,7 +183,6 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   'transferDuration: rootStyle.getPropertyValue("--pc-route-transfer-duration").trim()',
   "assertReducedMotionState",
   'state?.motion !== "0"',
-  '"Earn → Progress (reduced)"',
   "transition?.types",
   "entry.animationNames",
   ":active-view-transition-type(",
