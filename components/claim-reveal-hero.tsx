@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, Check, Shield, Spark } from "@/components/icons";
+import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 
 export type ClaimRevealTone = "standard" | "boosted" | "top";
 
@@ -58,8 +59,8 @@ export function ClaimRevealHero({
           </div>
 
           <div className="pc-v8-hero-actions">
-            <Link href="/dashboard" className="button button-light">Track next claim <ArrowUpRight /></Link>
-            <Link href="/wallet" className="pc-v8-text-action">View balance <ArrowUpRight /></Link>
+            <Link href="/dashboard" transitionTypes={getRouteTransitionTypesForHref("home", "/dashboard")} className="button button-light">Track next claim <ArrowUpRight /></Link>
+            <Link href="/wallet" transitionTypes={getRouteTransitionTypesForHref("home", "/wallet")} className="pc-v8-text-action">View balance <ArrowUpRight /></Link>
           </div>
 
           <div className="pc-v8-proof-pills" aria-label="Claim integrity">
