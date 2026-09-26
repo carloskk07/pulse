@@ -380,15 +380,21 @@ function assertNoSemanticTransfer(state, afterCall, label) {
 }
 
 
-function assertNoSemanticRootAnimation(state, afterCall, label) {
+function assertSemanticLayerIsolation(state, afterCall, allowedPseudos, label) {
   const entries = Array.isArray(state?.history)
     ? state.history.filter((entry) => Number(entry?.call) > afterCall)
     : [];
-  const leaked = entries
+  const semanticEvidence = entries
     .flatMap((entry) => Array.isArray(entry?.animationEvidence) ? entry.animationEvidence : [])
-    .find((evidence) => String(evidence).startsWith("pcTransfer") && String(evidence).includes("(root)"));
+    .filter((evidence) => String(evidence).startsWith("pcTransfer"));
+  const leaked = semanticEvidence.find((evidence) => {
+    const value = String(evidence);
+    const split = value.indexOf("@");
+    const pseudo = split >= 0 ? value.slice(split + 1) : "";
+    return !allowedPseudos.includes(pseudo);
+  });
   if (leaked) {
-    throw new Error(`${label} leaked semantic deformation onto the root snapshot: ${leaked}`);
+    throw new Error(`${label} leaked semantic deformation outside source/target layers: ${leaked}; allowed=${allowedPseudos.join(", ")}`);
   }
 }
 
@@ -494,36 +500,64 @@ try {
   });
   await sleep(80);
 
-  async function crossRoute(href, direction, semantic, outAnimation, bridgeAnimation, label) {
+  const semanticProof = {
+    "pc-transfer-signal-value": {
+      outgoing: ["pcTransferSignalValueOut", "::view-transition-old(pc-field-signal)"],
+      incoming: ["pcTransferSignalValueIn", "::view-transition-new(pc-field-value)"],
+    },
+    "pc-transfer-value-network": {
+      outgoing: ["pcTransferValueNetworkOut", "::view-transition-old(pc-field-value)"],
+      incoming: ["pcTransferValueNetworkIn", "::view-transition-new(pc-field-network)"],
+    },
+    "pc-transfer-network-value": {
+      outgoing: ["pcTransferNetworkValueOut", "::view-transition-old(pc-field-network)"],
+      incoming: ["pcTransferNetworkValueIn", "::view-transition-new(pc-field-value)"],
+    },
+    "pc-transfer-value-signal": {
+      outgoing: ["pcTransferValueSignalOut", "::view-transition-old(pc-field-value)"],
+      incoming: ["pcTransferValueSignalIn", "::view-transition-new(pc-field-signal)"],
+    },
+    "pc-transfer-signal-network": {
+      outgoing: ["pcTransferSignalNetworkOut", "::view-transition-old(pc-field-signal)"],
+      incoming: ["pcTransferSignalNetworkIn", "::view-transition-new(pc-field-network)"],
+    },
+    "pc-transfer-network-signal": {
+      outgoing: ["pcTransferNetworkSignalOut", "::view-transition-old(pc-field-network)"],
+      incoming: ["pcTransferNetworkSignalIn", "::view-transition-new(pc-field-signal)"],
+    },
+  };
+
+  async function crossRoute(href, direction, semantic, label) {
+    const proof = semanticProof[semantic];
+    if (!proof) throw new Error(`${label} has no semantic layer proof for ${semantic}`);
+
     const callsBefore = (await readState(send)).calls;
     await waitForHydratedLink(send, href);
     await clickRoute(send, href);
     await waitForPath(send, href);
-    const outgoingPseudo = "::view-transition-old(pc-spatial-field)";
-    const bridgePseudo = "::view-transition-group(pc-spatial-field)";
     const state = await waitForTransitionTypes(
       send,
       [direction, semantic],
       callsBefore,
       label,
-      outAnimation,
-      outgoingPseudo,
-      bridgeAnimation,
-      bridgePseudo,
+      proof.outgoing[0],
+      proof.outgoing[1],
+      proof.incoming[0],
+      proof.incoming[1],
     );
     if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
       throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
     }
-    assertNoSemanticRootAnimation(state, callsBefore, label);
+    assertSemanticLayerIsolation(state, callsBefore, [proof.outgoing[1], proof.incoming[1]], label);
     return state;
   }
 
-  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "pcTransferSignalValueOut", "pcTransferSignalValueBridge", "Progress → Balance");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "pcTransferValueNetworkOut", "pcTransferValueNetworkBridge", "Balance → Referrals");
-  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "pcTransferNetworkValueBridge", "Referrals → Balance");
-  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "pcTransferValueSignalBridge", "Balance → Progress");
-  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "pcTransferSignalNetworkBridge", "Progress → Referrals");
-  await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "pcTransferNetworkSignalBridge", "Referrals → Progress");
+  await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "Progress → Balance");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "Balance → Referrals");
+  await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "Referrals → Balance");
+  await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "Balance → Progress");
+  await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "Progress → Referrals");
+  await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "Referrals → Progress");
 
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
@@ -544,8 +578,6 @@ try {
     "/invite",
     "pc-forward",
     "pc-transfer-signal-network",
-    "pcTransferSignalNetworkOut",
-    "pcTransferSignalNetworkBridge",
     "Mobile Progress → Referrals",
   );
   if (mobileInvite?.transferDuration !== ".28s") {
@@ -556,8 +588,6 @@ try {
     "/progress",
     "pc-back",
     "pc-transfer-network-signal",
-    "pcTransferNetworkSignalOut",
-    "pcTransferNetworkSignalBridge",
     "Mobile Referrals → Progress",
   );
   if (mobileProgress?.transferDuration !== ".28s") {
@@ -589,7 +619,7 @@ try {
   }
 
   console.log(
-    `Native route continuity PASS: desktop six-direction semantic bridge + mobile bridge profile (.28s, filterless old/group) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
+    `Native route continuity PASS: desktop six-direction source→target layer handoff + mobile layer profile (.28s, filterless old/new) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
   );
   socket.close();
 } finally {
