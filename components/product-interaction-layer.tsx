@@ -13,6 +13,13 @@ type TransferVector = {
   brightness: number;
   contrast: number;
   saturate: number;
+  bridgeScaleX: number;
+  bridgeScaleY: number;
+  bridgeRotate: number;
+  bridgeBlur: number;
+  bridgeBrightness: number;
+  bridgeContrast: number;
+  bridgeSaturate: number;
 };
 
 function lerp(from: number, to: number, amount: number) {
@@ -32,6 +39,13 @@ function transferVector(from: RouteDimension, to: RouteDimension, strength: numb
       brightness: lerp(1, 1.22, energy),
       contrast: 1,
       saturate: 1,
+      bridgeScaleX: lerp(1, 0.96, energy),
+      bridgeScaleY: lerp(1, 0.9, energy),
+      bridgeRotate: 0,
+      bridgeBlur: lerp(0, 2, energy),
+      bridgeBrightness: 1,
+      bridgeContrast: lerp(1, 1.05, energy),
+      bridgeSaturate: 1,
     };
   }
   if (from === "signal" && to === "value") {
@@ -44,6 +58,13 @@ function transferVector(from: RouteDimension, to: RouteDimension, strength: numb
       brightness: 1,
       contrast: lerp(1, 1.12, energy),
       saturate: 1,
+      bridgeScaleX: lerp(1, 0.94, energy),
+      bridgeScaleY: lerp(1, 0.88, energy),
+      bridgeRotate: 0,
+      bridgeBlur: lerp(0, 2, energy),
+      bridgeBrightness: lerp(1, 1.08, energy),
+      bridgeContrast: 1,
+      bridgeSaturate: 1,
     };
   }
   if (from === "value" && to === "network") {
@@ -56,6 +77,13 @@ function transferVector(from: RouteDimension, to: RouteDimension, strength: numb
       brightness: lerp(1, 1.12, energy),
       contrast: 1,
       saturate: 1,
+      bridgeScaleX: lerp(1, 1.04, energy),
+      bridgeScaleY: lerp(1, 0.92, energy),
+      bridgeRotate: 0,
+      bridgeBlur: lerp(0, 2, energy),
+      bridgeBrightness: 1,
+      bridgeContrast: 1,
+      bridgeSaturate: lerp(1, 1.08, energy),
     };
   }
   if (from === "network" && to === "value") {
@@ -68,6 +96,13 @@ function transferVector(from: RouteDimension, to: RouteDimension, strength: numb
       brightness: 1,
       contrast: 1,
       saturate: lerp(1, 1.12, energy),
+      bridgeScaleX: lerp(1, 0.92, energy),
+      bridgeScaleY: lerp(1, 1.03, energy),
+      bridgeRotate: 0,
+      bridgeBlur: lerp(0, 2, energy),
+      bridgeBrightness: lerp(1, 1.06, energy),
+      bridgeContrast: 1,
+      bridgeSaturate: 1,
     };
   }
   if (from === "signal" && to === "network") {
@@ -80,6 +115,13 @@ function transferVector(from: RouteDimension, to: RouteDimension, strength: numb
       brightness: 1,
       contrast: 1,
       saturate: 1,
+      bridgeScaleX: lerp(1, 1.03, energy),
+      bridgeScaleY: lerp(1, 0.94, energy),
+      bridgeRotate: lerp(0, 0.4, energy),
+      bridgeBlur: lerp(0, 2, energy),
+      bridgeBrightness: 1,
+      bridgeContrast: 1,
+      bridgeSaturate: 1,
     };
   }
   return {
@@ -91,6 +133,13 @@ function transferVector(from: RouteDimension, to: RouteDimension, strength: numb
     brightness: 1,
     contrast: 1,
     saturate: 1,
+    bridgeScaleX: lerp(1, 0.96, energy),
+    bridgeScaleY: lerp(1, 0.96, energy),
+    bridgeRotate: lerp(0, -0.4, energy),
+    bridgeBlur: lerp(0, 2, energy),
+    bridgeBrightness: 1,
+    bridgeContrast: 1,
+    bridgeSaturate: 1,
   };
 }
 
@@ -115,6 +164,13 @@ function syncRouteTransferAuthority(frame: HTMLElement, href: string | null) {
   root.style.setProperty("--pc-transfer-out-brightness", vector.brightness.toFixed(4));
   root.style.setProperty("--pc-transfer-out-contrast", vector.contrast.toFixed(4));
   root.style.setProperty("--pc-transfer-out-saturate", vector.saturate.toFixed(4));
+  root.style.setProperty("--pc-transfer-bridge-scale-x", vector.bridgeScaleX.toFixed(4));
+  root.style.setProperty("--pc-transfer-bridge-scale-y", vector.bridgeScaleY.toFixed(4));
+  root.style.setProperty("--pc-transfer-bridge-rotate", `${vector.bridgeRotate.toFixed(3)}deg`);
+  root.style.setProperty("--pc-transfer-bridge-blur", `${vector.bridgeBlur.toFixed(3)}px`);
+  root.style.setProperty("--pc-transfer-bridge-brightness", vector.bridgeBrightness.toFixed(4));
+  root.style.setProperty("--pc-transfer-bridge-contrast", vector.bridgeContrast.toFixed(4));
+  root.style.setProperty("--pc-transfer-bridge-saturate", vector.bridgeSaturate.toFixed(4));
 }
 
 const REACTIVE_SELECTOR = [
