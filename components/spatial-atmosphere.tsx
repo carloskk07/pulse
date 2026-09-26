@@ -15,21 +15,39 @@ export function SpatialAtmosphere({ active }: { active: string }) {
   return (
     <div className="pc-spatial-atmosphere" data-scene={active} aria-hidden="true">
       <div className="pc-space-grid" />
-      <div className="pc-space-haze haze-a" />
-      <div className="pc-space-haze haze-b" />
-      <div className="pc-space-plane plane-a" />
-      <div className="pc-space-plane plane-b" />
-      <div className="pc-space-plane plane-c" />
-      <ViewTransition
-        key={`orbit-${active}`}
-        name="pc-route-orbit"
-        default="none"
-        update={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
-        share={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
-      >
-        <div className="pc-space-orbit orbit-a" />
-      </ViewTransition>
-      <div className="pc-space-orbit orbit-b" />
+
+      <div className="pc-space-base-layer">
+        <div className="pc-space-haze haze-b" />
+        <div className="pc-space-plane plane-b" />
+        <div className="pc-space-plane plane-c" />
+      </div>
+
+      <div className="pc-space-semantic-layer pc-field-value-layer">
+        <div className="pc-space-haze haze-a" />
+        <div className="pc-space-plane plane-a" />
+      </div>
+
+      <div className="pc-space-semantic-layer pc-field-signal-layer">
+        <ViewTransition
+          key={`orbit-${active}`}
+          name="pc-route-orbit"
+          default="none"
+          update={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
+          share={{ default: "pc-route-orbit-share", "pc-forward": "pc-route-orbit-forward", "pc-back": "pc-route-orbit-back" }}
+        >
+          <div className="pc-space-orbit orbit-a" />
+        </ViewTransition>
+        <div className="pc-space-beam beam-a" />
+      </div>
+
+      <div className="pc-space-semantic-layer pc-field-network-layer">
+        <div className="pc-space-orbit orbit-b" />
+        <div className="pc-space-beam beam-b" />
+        <span className="pc-space-node node-a" />
+        <span className="pc-space-node node-b" />
+        <span className="pc-space-node node-c" />
+      </div>
+
       <ViewTransition
         key={`carrier-${active}`}
         name="pc-route-carrier"
@@ -39,11 +57,7 @@ export function SpatialAtmosphere({ active }: { active: string }) {
       >
         <div className="pc-route-carrier"><i /><b /></div>
       </ViewTransition>
-      <div className="pc-space-beam beam-a" />
-      <div className="pc-space-beam beam-b" />
-      <span className="pc-space-node node-a" />
-      <span className="pc-space-node node-b" />
-      <span className="pc-space-node node-c" />
+
       <ViewTransition
         key={`index-${active}`}
         name="pc-route-index"

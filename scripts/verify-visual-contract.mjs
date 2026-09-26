@@ -220,12 +220,12 @@ requireText(".github/workflows/visual-smoke.yml", [
 }
 
 requireText("app/styles/app-art-direction.css", [
-  "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-spatial-field)",
-  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field)",
-  "active-view-transition-type(pc-transfer-signal-value)::view-transition-group(pc-spatial-field)",
-  "active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-spatial-field)",
-  "@keyframes pcTransferSignalValueBridge",
-  "@keyframes pcTransferNetworkSignalBridge",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-field-signal)",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-group(pc-field-value)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-field-network)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-group(pc-field-signal)",
+  "@keyframes pcTransferSignalValueIn",
+  "@keyframes pcTransferNetworkSignalIn",
 ]);
 
 requireText("scripts/verify-responsive-runtime.mjs", [
@@ -246,16 +246,19 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-signal-network"',
   '"pc-transfer-network-signal"',
   '"pcTransferSignalValueOut"',
+  '"pcTransferSignalValueIn"',
   '"pcTransferNetworkSignalOut"',
-  '"pcTransferSignalValueBridge"',
-  '"pcTransferNetworkSignalBridge"',
+  '"pcTransferNetworkSignalIn"',
   "secondaryAnimation",
   "secondaryPseudo",
   "animationEvidence",
-  '"::view-transition-old(pc-spatial-field)"',
-  '"::view-transition-group(pc-spatial-field)"',
+  "semanticProof",
+  '"::view-transition-old(pc-field-signal)"',
+  '"::view-transition-group(pc-field-value)"',
+  '"::view-transition-old(pc-field-network)"',
+  '"::view-transition-group(pc-field-signal)"',
   "assertNoSemanticTransfer",
-  "assertNoSemanticRootAnimation",
+  "assertSemanticLayerIsolation",
   "transferDuration",
   "width: 390",
   "height: 844",
@@ -263,7 +266,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   'transferDuration !== ".28s"',
   '"Mobile Progress → Referrals"',
   '"Mobile Referrals → Progress"',
-  '"Mobile semantic bridge"',
+  '"Mobile semantic layers"',
   '"Mobile Progress → Balance"',
 ]);
 
