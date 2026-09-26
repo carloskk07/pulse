@@ -251,6 +251,18 @@ async function installTransitionProbeBeforeHydration(send) {
     "      }));",
     "      entry.animationNames = [...new Set([...(entry.animationNames || []), ...entry.animations.map((animation) => animation.name).filter(Boolean)])];",
     "      entry.animationEvidence = [...new Set([...(entry.animationEvidence || []), ...entry.animations.filter((animation) => animation.name && animation.pseudo).map((animation) => animation.name + '@' + animation.pseudo)])];",
+    "      const rootStyle = getComputedStyle(document.documentElement);",
+    "      entry.transferProfiles = [...(entry.transferProfiles || []), {",
+    "        phase,",
+    "        strength: rootStyle.getPropertyValue('--pc-transfer-source-strength').trim(),",
+    "        outOpacity: rootStyle.getPropertyValue('--pc-transfer-opacity').trim(),",
+    "        outBlur: rootStyle.getPropertyValue('--pc-transfer-blur').trim(),",
+    "        outHardX: rootStyle.getPropertyValue('--pc-transfer-scale-hard-x').trim(),",
+    "        outHardY: rootStyle.getPropertyValue('--pc-transfer-scale-hard-y').trim(),",
+    "        bridgeBlur: rootStyle.getPropertyValue('--pc-bridge-blur').trim(),",
+    "        bridgeValueSignalX: rootStyle.getPropertyValue('--pc-bridge-value-signal-x').trim(),",
+    "        bridgeValueSignalY: rootStyle.getPropertyValue('--pc-bridge-value-signal-y').trim(),",
+    "      }].slice(-40);",
     "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];",
     "      window.__pcRouteTransitionAnimations = [...entry.animations];",
     "    };",
@@ -389,6 +401,36 @@ function assertNoSemanticRootAnimation(state, afterCall, label) {
     .find((evidence) => String(evidence).startsWith("pcTransfer") && String(evidence).includes("(root)"));
   if (leaked) {
     throw new Error(`${label} leaked semantic deformation onto the root snapshot: ${leaked}`);
+  }
+}
+
+
+function latestTransferProfile(state, afterCall, expectedStrength, label) {
+  const entries = Array.isArray(state?.history)
+    ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+    : [];
+  const profiles = entries.flatMap((entry) => Array.isArray(entry?.transferProfiles) ? entry.transferProfiles : []);
+  const profile = [...profiles].reverse().find((candidate) => Number(candidate?.strength) === expectedStrength);
+  if (!profile) {
+    throw new Error(`${label} did not expose transfer profile for strength ${expectedStrength}: ${JSON.stringify(entries)}`);
+  }
+  return {
+    strength: Number(profile.strength),
+    outOpacity: Number(profile.outOpacity),
+    outBlur: Number(String(profile.outBlur).replace("px", "")),
+    outHardX: Number(profile.outHardX),
+    outHardY: Number(profile.outHardY),
+    bridgeBlur: Number(String(profile.bridgeBlur).replace("px", "")),
+    bridgeValueSignalX: Number(profile.bridgeValueSignalX),
+    bridgeValueSignalY: Number(profile.bridgeValueSignalY),
+  };
+}
+
+function assertFiniteTransferProfile(profile, label) {
+  for (const [key, value] of Object.entries(profile)) {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label} transfer profile ${key} is not finite: ${JSON.stringify(profile)}`);
+    }
   }
 }
 
@@ -588,8 +630,71 @@ try {
     throw new Error(`Mobile reduced-motion semantic bridge did not execute a native transition call: ${JSON.stringify(mobileReducedWallet)}`);
   }
 
+  await send("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
+  });
+  await send("Emulation.setDeviceMetricsOverride", {
+    width: 1440,
+    height: 900,
+    deviceScaleFactor: 1,
+    mobile: false,
+    screenWidth: 1440,
+    screenHeight: 900,
+  });
+  await sleep(120);
+
+  async function measureStrengthAwareBridge(strength) {
+    await send("Page.navigate", {
+      url: `${baseUrl}/visual-smoke-fixture/core-state?scene=reward&strength=${strength}`,
+    });
+    await waitForPath(send, "/visual-smoke-fixture/core-state");
+    await waitForHydratedLink(send, "/progress");
+    const source = await readState(send);
+    const callsBefore = source.calls;
+    const sourceDocument = source.documentId;
+
+    await clickRoute(send, "/progress");
+    await waitForPath(send, "/progress");
+
+    let state = null;
+    let profile = null;
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      state = await readState(send);
+      if (state?.calls > callsBefore && state?.returnedTransition) {
+        try {
+          profile = latestTransferProfile(state, callsBefore, strength, `Strength profile ${strength}`);
+          break;
+        } catch {}
+      }
+      await sleep(25);
+    }
+
+    if (state?.documentId !== sourceDocument || state?.motion !== "1" || state?.calls <= callsBefore || !profile) {
+      throw new Error(`Strength profile ${strength} did not travel through native SPA navigation: ${JSON.stringify(state)}`);
+    }
+    assertFiniteTransferProfile(profile, `Strength profile ${strength}`);
+    return profile;
+  }
+
+  const lowStrength = await measureStrengthAwareBridge(20);
+  const highStrength = await measureStrengthAwareBridge(90);
+
+  if (
+    !(highStrength.outOpacity < lowStrength.outOpacity)
+    || !(highStrength.outBlur > lowStrength.outBlur)
+    || !(highStrength.outHardX < lowStrength.outHardX)
+    || !(highStrength.outHardY < lowStrength.outHardY)
+    || !(highStrength.bridgeBlur > lowStrength.bridgeBlur)
+    || !(highStrength.bridgeValueSignalX < lowStrength.bridgeValueSignalX)
+    || !(highStrength.bridgeValueSignalY < lowStrength.bridgeValueSignalY)
+  ) {
+    throw new Error(
+      `Authoritative strength profile did not increase Out + Bridge deformation inputs: low=${JSON.stringify(lowStrength)} high=${JSON.stringify(highStrength)}`,
+    );
+  }
+
   console.log(
-    `Native route continuity PASS: desktop six-direction semantic bridge + mobile bridge profile (.28s, filterless old/group) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
+    `Native route continuity PASS: desktop six-direction semantic bridge + mobile bridge profile (.28s, filterless old/group) + mobile reduced-motion override + authoritative Out/Bridge profile 20→90 (calls=${mobileReducedWallet.calls}).`,
   );
   socket.close();
 } finally {

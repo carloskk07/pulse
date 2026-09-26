@@ -41,6 +41,8 @@ requireText("components/spatial-atmosphere.tsx", [
 
 requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
+  'import { SemanticRouteLink } from "./semantic-route-link";',
+  "sourceStrength={residueStrength}",
   "const routeOrder = new Map",
   "function routeTransitionTypes",
   "const routeDimension = new Map",
@@ -52,6 +54,22 @@ requireText("components/app-shell.tsx", [
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
   "transitionTypes={routeTransitionTypes(active, id)}",
+]);
+
+requireText("components/semantic-route-link.tsx", [
+  '"use client";',
+  "sourceStrength: number;",
+  "applyTransferProfile(sourceStrength)",
+  "--pc-transfer-source-strength",
+  "--pc-transfer-opacity",
+  "--pc-transfer-blur",
+  '"--pc-transfer-scale-hard-x"',
+  '"--pc-transfer-scale-hard-y"',
+  "--pc-bridge-blur",
+  '"--pc-bridge-value-signal-x"',
+  '"--pc-bridge-value-signal-y"',
+  "window.setTimeout",
+  "clearTransferProfile",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -93,7 +111,16 @@ requireText("app/styles/app-art-direction.css", [
   "/* V10.8 page-root navigation anchor */",
   "::view-transition-group(.pc-route-nav-anchor)",
   "/* V11.12 — Selective Semantic Field Bridge.",
+  "/* V11.14 — Authoritative Semantic Bridge Strength. */",
   "view-transition-name:pc-spatial-field",
+  "--pc-transfer-opacity",
+  "--pc-transfer-blur",
+  "--pc-bridge-blur",
+  "--pc-transfer-opacity",
+  "--pc-transfer-blur",
+  "--pc-bridge-blur",
+  "var(--pc-bridge-value-signal-x)",
+  "var(--pc-bridge-value-signal-y)",
   "--pc-route-transfer-duration:.56s",
   "::view-transition-group(pc-spatial-field)",
   "::view-transition-old(pc-spatial-field)",
@@ -205,6 +232,11 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "transition?.types",
   "entry.animationNames",
   "entry.animationEvidence",
+  "entry.transferProfiles",
+  "--pc-transfer-source-strength",
+  "--pc-transfer-opacity",
+  "--pc-transfer-blur",
+  "--pc-bridge-blur",
   "secondaryAnimation",
   "secondaryPseudo",
   ":active-view-transition-type(",
@@ -234,6 +266,11 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"Mobile Referrals → Progress"',
   '"Mobile semantic bridge"',
   '"Mobile Progress → Balance"',
+  "latestTransferProfile",
+  "assertFiniteTransferProfile",
+  "measureStrengthAwareBridge(20)",
+  "measureStrengthAwareBridge(90)",
+  "Authoritative strength profile did not increase Out + Bridge deformation inputs",
   "Native route continuity PASS",
 ]);
 
