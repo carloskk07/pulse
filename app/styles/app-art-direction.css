@@ -889,9 +889,9 @@
   pointer-events:none;
   transform-style:preserve-3d;
 }
-.pc-field-value-layer{view-transition-name:pc-field-value}
-.pc-field-signal-layer{view-transition-name:pc-field-signal}
-.pc-field-network-layer{view-transition-name:pc-field-network}
+.pc-field-value-layer{view-transition-name:var(--pc-field-value-vt-name,none)}
+.pc-field-signal-layer{view-transition-name:var(--pc-field-signal-vt-name,none)}
+.pc-field-network-layer{view-transition-name:var(--pc-field-network-vt-name,none)}
 .pc-space-grid{
   position:absolute;
   left:50%;
@@ -2993,6 +2993,37 @@
    dimension, text, controls and root stay outside the deformation. */
 :root{
   --pc-route-transfer-duration:.56s;
+  --pc-field-value-vt-name:none;
+  --pc-field-signal-vt-name:none;
+  --pc-field-network-vt-name:none;
+}
+
+/* V11.15 — Demand Semantic Snapshots.
+   Only the source + target dimensions are named while their semantic transition
+   type is active. Same-dimension routes capture no semantic layer snapshots. */
+html:active-view-transition-type(pc-transfer-value-signal){
+  --pc-field-value-vt-name:pc-field-value;
+  --pc-field-signal-vt-name:pc-field-signal;
+}
+html:active-view-transition-type(pc-transfer-signal-value){
+  --pc-field-signal-vt-name:pc-field-signal;
+  --pc-field-value-vt-name:pc-field-value;
+}
+html:active-view-transition-type(pc-transfer-value-network){
+  --pc-field-value-vt-name:pc-field-value;
+  --pc-field-network-vt-name:pc-field-network;
+}
+html:active-view-transition-type(pc-transfer-network-value){
+  --pc-field-network-vt-name:pc-field-network;
+  --pc-field-value-vt-name:pc-field-value;
+}
+html:active-view-transition-type(pc-transfer-signal-network){
+  --pc-field-signal-vt-name:pc-field-signal;
+  --pc-field-network-vt-name:pc-field-network;
+}
+html:active-view-transition-type(pc-transfer-network-signal){
+  --pc-field-network-vt-name:pc-field-network;
+  --pc-field-signal-vt-name:pc-field-signal;
 }
 
 ::view-transition-group(pc-field-value),
