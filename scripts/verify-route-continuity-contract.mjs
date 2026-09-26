@@ -270,7 +270,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "assertFiniteTransferProfile",
   "measureStrengthAwareBridge(20)",
   "measureStrengthAwareBridge(90)",
-  "Authoritative strength did not increase semantic Out + Bridge deformation",
+  "Authoritative strength profile did not increase Out + Bridge deformation inputs",
   "Native route continuity PASS",
 ]);
 
