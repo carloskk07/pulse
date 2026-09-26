@@ -9,6 +9,7 @@ import { ShareRhythmButton } from "@/components/share-rhythm-button";
 import { SponsoredVisitButton } from "@/components/sponsored-visit-button";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
+import { productRouteTransitionTypes } from "@/lib/product-route-navigation";
 import { getRecentPulseReceipt } from "@/lib/pulse-receipt";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
@@ -138,8 +139,8 @@ export default async function ClaimedPage() {
             <div className="pc-v8-return-countdown">
               {state.nextClaimAt ? <PulseCountdown target={state.nextClaimAt} /> : <strong>READY</strong>}
             </div>
-            <Link href="/dashboard" className="button button-light">View next reward <ArrowUpRight /></Link>
-            <Link href={"/earn?claim=" + encodeURIComponent(receipt.id)} className="button button-secondary">Earn while you wait <ArrowUpRight /></Link>
+            <Link href="/dashboard" transitionTypes={productRouteTransitionTypes("home", "/dashboard")} className="button button-light">View next reward <ArrowUpRight /></Link>
+            <Link href={"/earn?claim=" + encodeURIComponent(receipt.id)} transitionTypes={productRouteTransitionTypes("home", "/earn")} className="button button-secondary">Earn while you wait <ArrowUpRight /></Link>
           </div>
 
           <div className="pc-v8-return-actions">
@@ -187,7 +188,7 @@ export default async function ClaimedPage() {
             <div><Spark /><span><strong>Share progress, not private balance.</strong><small>Rank and return streak come from verified history.</small></span></div>
             <div>
               <ShareRhythmButton days={state.streakDays} signal={signal.signal} />
-              <Link href="/progress#circuit-moments">Open share studio <ArrowUpRight /></Link>
+              <Link href="/progress#circuit-moments" transitionTypes={productRouteTransitionTypes("home", "/progress#circuit-moments")}>Open share studio <ArrowUpRight /></Link>
             </div>
           </div>
         </details>
