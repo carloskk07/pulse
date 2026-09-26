@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "@/components/icons";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
+import { productRouteTransitionTypes } from "@/lib/product-route-navigation";
 
 export async function ContinuousPulsePanel() {
   const ecosystem = await getPulseEcosystemSnapshot();
@@ -19,8 +20,8 @@ export async function ContinuousPulsePanel() {
         <span><small>XP</small><strong>{ecosystem.xp}</strong></span>
       </div>
       <div className="pc-v13-continuous-actions">
-        <Link href="/earn" className="button button-secondary">Explore extra rewards <ArrowUpRight /></Link>
-        <Link href="/invite" className="inline-action">Open referrals <ArrowUpRight /></Link>
+        <Link href="/earn" transitionTypes={productRouteTransitionTypes("home", "/earn")} className="button button-secondary">Explore extra rewards <ArrowUpRight /></Link>
+        <Link href="/invite" transitionTypes={productRouteTransitionTypes("home", "/invite")} className="inline-action">Open referrals <ArrowUpRight /></Link>
       </div>
     </section>
   );
