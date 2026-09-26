@@ -5,7 +5,7 @@ import { signOut } from "@/app/auth/actions";
 import type { ProductExperience } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
-import { getRouteSemanticDimension, getRouteSemanticTransfer } from "@/lib/route-semantics";
+import { getRouteSemanticDimension, getRouteTransitionTypes } from "@/lib/route-semantics";
 import { PulsercuitBrand } from "./pulsercuit-brand";
 import { SpatialAtmosphere } from "./spatial-atmosphere";
 import { ProductInteractionLayer } from "./product-interaction-layer";
@@ -19,18 +19,6 @@ const links = [
   { id: "wallet", href: "/wallet", label: "Balance", Icon: Wallet },
   { id: "invite", href: "/invite", label: "Referrals", Icon: Users },
 ];
-
-const routeOrder = new Map(links.map((link, index) => [link.id, index]));
-
-function routeTransitionTypes(active: string, target: string) {
-  const currentIndex = routeOrder.get(active);
-  const targetIndex = routeOrder.get(target);
-  if (currentIndex === undefined || targetIndex === undefined || currentIndex === targetIndex) return undefined;
-
-  const direction = targetIndex > currentIndex ? "pc-forward" : "pc-back";
-  const semanticTransfer = getRouteSemanticTransfer(active, target);
-  return semanticTransfer ? [direction, semanticTransfer] : [direction];
-}
 
 const adminLinks = [
   { id: "admin", href: "/admin", label: "Ops", Icon: Trend },
@@ -95,7 +83,7 @@ export async function AppShell({
           <PulsercuitBrand />
           <nav className="app-nav app-topbar-nav" aria-label="Application">
             {links.map(({ id, href, label: navLabel, Icon }) => (
-              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}>
+              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={getRouteTransitionTypes(active, id)}>
                 <Icon /><span>{navLabel}</span>
               </Link>
             ))}
@@ -130,7 +118,7 @@ export async function AppShell({
       <ViewTransition name="pc-route-bottom-nav" share="pc-route-nav-anchor" default="none">
         <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
-          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
+          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={getRouteTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
         ))}
         <details className="bottom-nav-more">
           <summary className={utilityMobileActive ? "active" : ""} aria-label="More navigation and account actions">
