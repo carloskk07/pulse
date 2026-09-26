@@ -26,6 +26,7 @@ import { checkPasswordBreach } from "@/lib/pwned-passwords";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { getCanonicalSiteUrl } from "@/lib/site-url";
+import { getRouteNavigationHref } from "@/lib/route-semantics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -128,7 +129,7 @@ export async function signIn(formData: FormData) {
   if (data.user) {
     await finalizePasswordRecoveryProof(data.user.id);
   }
-  redirect(next);
+  redirect(getRouteNavigationHref("auth", next));
 }
 
 export async function signUp(formData: FormData) {
@@ -159,7 +160,7 @@ export async function signUp(formData: FormData) {
   if (data.user) await recordSuccessfulSignup(data.user.id);
   if (data.session && data.user) {
     if (ref) await bindReferralForUser(data.user.id, ref);
-    redirect(next);
+    redirect(getRouteNavigationHref("auth", next));
   }
   const params = new URLSearchParams({ message: "check-email", next });
   if (ref) params.set("ref", ref);
