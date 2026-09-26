@@ -2984,6 +2984,15 @@
    snapshot, leaving text and controls outside the semantic deformation. */
 :root{
   --pc-route-transfer-duration:.56s;
+  --pc-route-transfer-source-strength:0;
+  --pc-transfer-out-opacity:1;
+  --pc-transfer-out-scale-x:1;
+  --pc-transfer-out-scale-y:1;
+  --pc-transfer-out-rotate:0deg;
+  --pc-transfer-out-blur:0px;
+  --pc-transfer-out-brightness:1;
+  --pc-transfer-out-contrast:1;
+  --pc-transfer-out-saturate:1;
 }
 ::view-transition-group(pc-spatial-field){
   animation:none;
@@ -3033,28 +3042,28 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ol
 }
 
 @keyframes pcTransferValueSignalOut{
-  from{opacity:1;transform:scale(1);filter:blur(0) brightness(1)}
-  to{opacity:.12;transform:scale(.88,.76);filter:blur(6px) brightness(1.22)}
+  from{opacity:1;transform:scale(1,1) rotate(0deg);filter:blur(0) brightness(1) contrast(1) saturate(1)}
+  to{opacity:var(--pc-transfer-out-opacity);transform:scale(var(--pc-transfer-out-scale-x),var(--pc-transfer-out-scale-y)) rotate(var(--pc-transfer-out-rotate));filter:blur(var(--pc-transfer-out-blur)) brightness(var(--pc-transfer-out-brightness)) contrast(var(--pc-transfer-out-contrast)) saturate(var(--pc-transfer-out-saturate))}
 }
 @keyframes pcTransferSignalValueOut{
-  from{opacity:1;transform:scale(1) rotate(0);filter:blur(0) contrast(1)}
-  to{opacity:.14;transform:scale(.92) rotate(1deg);filter:blur(5px) contrast(1.12)}
+  from{opacity:1;transform:scale(1,1) rotate(0deg);filter:blur(0) brightness(1) contrast(1) saturate(1)}
+  to{opacity:var(--pc-transfer-out-opacity);transform:scale(var(--pc-transfer-out-scale-x),var(--pc-transfer-out-scale-y)) rotate(var(--pc-transfer-out-rotate));filter:blur(var(--pc-transfer-out-blur)) brightness(var(--pc-transfer-out-brightness)) contrast(var(--pc-transfer-out-contrast)) saturate(var(--pc-transfer-out-saturate))}
 }
 @keyframes pcTransferValueNetworkOut{
-  from{opacity:1;transform:scale(1);filter:blur(0)}
-  to{opacity:.12;transform:scale(.72,1.04);filter:blur(5px) brightness(1.12)}
+  from{opacity:1;transform:scale(1,1) rotate(0deg);filter:blur(0) brightness(1) contrast(1) saturate(1)}
+  to{opacity:var(--pc-transfer-out-opacity);transform:scale(var(--pc-transfer-out-scale-x),var(--pc-transfer-out-scale-y)) rotate(var(--pc-transfer-out-rotate));filter:blur(var(--pc-transfer-out-blur)) brightness(var(--pc-transfer-out-brightness)) contrast(var(--pc-transfer-out-contrast)) saturate(var(--pc-transfer-out-saturate))}
 }
 @keyframes pcTransferNetworkValueOut{
-  from{opacity:1;transform:scale(1);filter:blur(0)}
-  to{opacity:.1;transform:scale(1.08,.76);filter:blur(6px) saturate(1.12)}
+  from{opacity:1;transform:scale(1,1) rotate(0deg);filter:blur(0) brightness(1) contrast(1) saturate(1)}
+  to{opacity:var(--pc-transfer-out-opacity);transform:scale(var(--pc-transfer-out-scale-x),var(--pc-transfer-out-scale-y)) rotate(var(--pc-transfer-out-rotate));filter:blur(var(--pc-transfer-out-blur)) brightness(var(--pc-transfer-out-brightness)) contrast(var(--pc-transfer-out-contrast)) saturate(var(--pc-transfer-out-saturate))}
 }
 @keyframes pcTransferSignalNetworkOut{
-  from{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
-  to{opacity:.12;transform:scale(.86) rotate(-1.4deg);filter:blur(5px)}
+  from{opacity:1;transform:scale(1,1) rotate(0deg);filter:blur(0) brightness(1) contrast(1) saturate(1)}
+  to{opacity:var(--pc-transfer-out-opacity);transform:scale(var(--pc-transfer-out-scale-x),var(--pc-transfer-out-scale-y)) rotate(var(--pc-transfer-out-rotate));filter:blur(var(--pc-transfer-out-blur)) brightness(var(--pc-transfer-out-brightness)) contrast(var(--pc-transfer-out-contrast)) saturate(var(--pc-transfer-out-saturate))}
 }
 @keyframes pcTransferNetworkSignalOut{
-  from{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}
-  to{opacity:.1;transform:scale(1.06,.82) rotate(.9deg);filter:blur(6px)}
+  from{opacity:1;transform:scale(1,1) rotate(0deg);filter:blur(0) brightness(1) contrast(1) saturate(1)}
+  to{opacity:var(--pc-transfer-out-opacity);transform:scale(var(--pc-transfer-out-scale-x),var(--pc-transfer-out-scale-y)) rotate(var(--pc-transfer-out-rotate));filter:blur(var(--pc-transfer-out-blur)) brightness(var(--pc-transfer-out-brightness)) contrast(var(--pc-transfer-out-contrast)) saturate(var(--pc-transfer-out-saturate))}
 }
 
 @media(prefers-reduced-motion:reduce){
@@ -3067,6 +3076,7 @@ html:active-view-transition-type(pc-transfer-network-signal)::view-transition-ol
   html:active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field){
     animation-duration:.001ms!important;
     animation-delay:0ms!important;
+    opacity:1!important;
     transform:none!important;
     filter:none!important;
   }
