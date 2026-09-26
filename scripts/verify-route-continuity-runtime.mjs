@@ -369,15 +369,26 @@ function assertNoSemanticTransfer(state, afterCall, label) {
 }
 
 
-function assertNoSemanticRootAnimation(state, afterCall, label) {
+function assertSemanticAnimationIsolation(state, afterCall, label, expectedTransferAnimation) {
   const entries = Array.isArray(state?.history)
     ? state.history.filter((entry) => Number(entry?.call) > afterCall)
     : [];
-  const leaked = entries
-    .flatMap((entry) => Array.isArray(entry?.animationEvidence) ? entry.animationEvidence : [])
-    .find((evidence) => String(evidence).startsWith("pcTransfer") && String(evidence).includes("(root)"));
-  if (leaked) {
-    throw new Error(`${label} leaked semantic deformation onto the root snapshot: ${leaked}`);
+  const evidence = entries
+    .flatMap((entry) => Array.isArray(entry?.animationEvidence) ? entry.animationEvidence : []);
+  const allowedTransfer = `${expectedTransferAnimation}@::view-transition-old(pc-spatial-field)`;
+  const allowedReveal = "pcSpatialFieldReveal@::view-transition-new(pc-spatial-field)";
+
+  const wrongSemanticAnimation = evidence.find((item) => {
+    const value = String(item);
+    if (!value.startsWith("pcTransfer") && !value.startsWith("pcSpatialFieldReveal")) return false;
+    return value !== allowedTransfer && value !== allowedReveal;
+  });
+  if (wrongSemanticAnimation) {
+    throw new Error(`${label} leaked semantic field animation outside the selective handoff: ${wrongSemanticAnimation}`);
+  }
+
+  if (!evidence.includes(allowedReveal)) {
+    throw new Error(`${label} did not reveal the destination spatial field: expected ${allowedReveal}; evidence=${JSON.stringify(evidence)}`);
   }
 }
 
@@ -493,7 +504,7 @@ try {
     if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
       throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
     }
-    assertNoSemanticRootAnimation(state, callsBefore, label);
+    assertSemanticAnimationIsolation(state, callsBefore, label, animation);
     return state;
   }
 
@@ -505,7 +516,7 @@ try {
   const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
 
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six isolated spatial-field handoffs (calls=${finalProgress.calls}).`,
   );
   socket.close();
 } finally {
