@@ -43,15 +43,28 @@ requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
   "const routeOrder = new Map",
   "function routeTransitionTypes",
-  "const routeDimension = new Map",
-  '["home", "value"]',
-  '["progress", "signal"]',
-  '["invite", "network"]',
+  'import { getRouteDimension } from "@/lib/route-dimension";',
+  "getRouteDimension(active)",
+  "getRouteDimension(target)",
   'pc-transfer-${currentDimension}-${targetDimension}',
   'name="pc-route-topbar"',
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
   "transitionTypes={routeTransitionTypes(active, id)}",
+]);
+
+requireText("lib/route-dimension.ts", [
+  'export type RouteDimension = "value" | "signal" | "network"',
+  'home: "value"',
+  'earn: "value"',
+  'wallet: "value"',
+  'progress: "signal"',
+  'invite: "network"',
+  '"/dashboard": "home"',
+  '"/progress": "progress"',
+  '"/invite": "invite"',
+  "export function getRouteDimension",
+  "export function getRouteDimensionFromHref",
 ]);
 
 requireText("components/value-flow.tsx", [
@@ -93,7 +106,19 @@ requireText("app/styles/app-art-direction.css", [
   "/* V10.8 page-root navigation anchor */",
   "::view-transition-group(.pc-route-nav-anchor)",
   "/* V11.12 — Selective Semantic Field Bridge.",
+  "/* V11.14 — Authoritative Transfer Amplitude.",
   "view-transition-name:pc-spatial-field",
+  "--pc-route-transfer-source-strength:0",
+  "--pc-transfer-out-opacity:1",
+  "--pc-transfer-out-scale-x:1",
+  "--pc-transfer-out-scale-y:1",
+  "--pc-transfer-out-blur:0px",
+  "--pc-transfer-bridge-scale-x:1",
+  "--pc-transfer-bridge-scale-y:1",
+  "--pc-transfer-bridge-blur:0px",
+  "opacity:var(--pc-transfer-out-opacity)",
+  "scale(var(--pc-transfer-out-scale-x),var(--pc-transfer-out-scale-y))",
+  "scale(var(--pc-transfer-bridge-scale-x),var(--pc-transfer-bridge-scale-y))",
   "--pc-route-transfer-duration:.56s",
   "::view-transition-group(pc-spatial-field)",
   "::view-transition-old(pc-spatial-field)",
@@ -205,11 +230,29 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "transition?.types",
   "entry.animationNames",
   "entry.animationEvidence",
+  "transferSourceStrength",
+  "transferPair",
+  "transferSource",
+  "transferOpacity",
+  "transferScaleX",
+  "transferScaleY",
+  "transferRotate",
+  "transferBlur",
+  "bridgeScaleX",
+  "bridgeScaleY",
+  "bridgeRotate",
+  "bridgeBlur",
   "secondaryAnimation",
   "secondaryPseudo",
   ":active-view-transition-type(",
   "waitForTransitionTypes",
   "assertNoSemanticRootAnimation",
+  "verifyAuthoritativeTransferAmplitude",
+  "assertTransferAmplitude",
+  '"Fixture Value 83 → Signal"',
+  '"Fixture Signal 94 → Network"',
+  "strength: 83",
+  "strength: 94",
   '"::view-transition-old(pc-spatial-field)"',
   '"::view-transition-group(pc-spatial-field)"',
   '"pcTransferSignalValueBridge"',
@@ -240,7 +283,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
 
 const atmosphereSource = read("components/spatial-atmosphere.tsx");
 if (atmosphereSource.includes("pc-route-field") || atmosphereSource.includes("pc-route-field-transfer")) {
-  throw new Error("Semantic route transfer must use the guaranteed native root snapshot, not an inactive parent ViewTransition boundary.");
+  throw new Error("Semantic route transfer must use the selective CSS-owned spatial bridge, not an inactive parent React ViewTransition boundary.");
 }
 
 const appShell = read("components/app-shell.tsx");

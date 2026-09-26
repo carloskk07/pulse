@@ -238,6 +238,12 @@ requireText("scripts/verify-responsive-runtime.mjs", [
   "Responsive geometry did not stabilize",
 ]);
 
+requireText("app/visual-smoke-fixture/core-state/page.tsx", [
+  "<RoutePageTransition route={activeByScene[scene]}>",
+  "residueStrength: 83",
+  "residueStrength: 94",
+]);
+
 requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pc-transfer-value-signal"',
   '"pc-transfer-signal-value"',
@@ -249,6 +255,20 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   '"pcTransferNetworkSignalOut"',
   '"pcTransferSignalValueBridge"',
   '"pcTransferNetworkSignalBridge"',
+  "verifyAuthoritativeTransferAmplitude",
+  "assertTransferAmplitude",
+  '"Fixture Value 83 → Signal"',
+  '"Fixture Signal 94 → Network"',
+  "strength: 83",
+  "strength: 94",
+  "transferSourceStrength",
+  "transferPair",
+  "transferOpacity",
+  "transferScaleX",
+  "transferBlur",
+  "bridgeScaleX",
+  "bridgeScaleY",
+  "bridgeBlur",
   "secondaryAnimation",
   "secondaryPseudo",
   "animationEvidence",
@@ -268,6 +288,10 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
 ]);
 
 requireText("app/styles/app-art-direction.css", [
+  "/* V11.14 — Authoritative Transfer Amplitude.",
+  "--pc-route-transfer-source-strength:0",
+  "--pc-transfer-out-opacity:1",
+  "--pc-transfer-bridge-scale-x:1",
   "--pc-route-transfer-duration:.34s",
   "--pc-route-transfer-duration:.28s",
   "filter:none!important",

@@ -297,6 +297,26 @@ async function readState(send) {
         orbitDuration: rootStyle.getPropertyValue("--pc-route-vt-orbit-duration").trim(),
         indexDuration: rootStyle.getPropertyValue("--pc-route-vt-index-duration").trim(),
         transferDuration: rootStyle.getPropertyValue("--pc-route-transfer-duration").trim(),
+        frameStrength: Number(document.querySelector(".app-frame")?.getAttribute("data-product-residue-strength") ?? "NaN"),
+        frameDimension: document.querySelector(".app-frame")?.getAttribute("data-product-residue-dimension") ?? null,
+        transferSourceStrength: Number(document.documentElement.dataset.pcRouteTransferSourceStrength ?? "NaN"),
+        transferPair: document.documentElement.dataset.pcRouteTransferPair ?? null,
+        transferSource: rootStyle.getPropertyValue("--pc-route-transfer-source-strength").trim(),
+        transferOpacity: rootStyle.getPropertyValue("--pc-transfer-out-opacity").trim(),
+        transferScaleX: rootStyle.getPropertyValue("--pc-transfer-out-scale-x").trim(),
+        transferScaleY: rootStyle.getPropertyValue("--pc-transfer-out-scale-y").trim(),
+        transferRotate: rootStyle.getPropertyValue("--pc-transfer-out-rotate").trim(),
+        transferBlur: rootStyle.getPropertyValue("--pc-transfer-out-blur").trim(),
+        transferBrightness: rootStyle.getPropertyValue("--pc-transfer-out-brightness").trim(),
+        transferContrast: rootStyle.getPropertyValue("--pc-transfer-out-contrast").trim(),
+        transferSaturate: rootStyle.getPropertyValue("--pc-transfer-out-saturate").trim(),
+        bridgeScaleX: rootStyle.getPropertyValue("--pc-transfer-bridge-scale-x").trim(),
+        bridgeScaleY: rootStyle.getPropertyValue("--pc-transfer-bridge-scale-y").trim(),
+        bridgeRotate: rootStyle.getPropertyValue("--pc-transfer-bridge-rotate").trim(),
+        bridgeBlur: rootStyle.getPropertyValue("--pc-transfer-bridge-blur").trim(),
+        bridgeBrightness: rootStyle.getPropertyValue("--pc-transfer-bridge-brightness").trim(),
+        bridgeContrast: rootStyle.getPropertyValue("--pc-transfer-bridge-contrast").trim(),
+        bridgeSaturate: rootStyle.getPropertyValue("--pc-transfer-bridge-saturate").trim(),
         carrier: !!document.querySelector(".pc-route-carrier"),
         orbit: !!document.querySelector(".pc-space-orbit.orbit-a"),
         index: !!document.querySelector(".pc-space-datum.datum-a"),
@@ -406,6 +426,121 @@ function assertReducedMotionState(state, label) {
   }
 }
 
+
+function assertNear(actual, expected, tolerance, label) {
+  const value = Number.parseFloat(String(actual));
+  if (!Number.isFinite(value) || Math.abs(value - expected) > tolerance) {
+    throw new Error(`${label}: expected ${expected} ± ${tolerance}, received ${actual}`);
+  }
+}
+
+function assertTransferAmplitude(state, expected, label) {
+  if (state?.transferPair !== expected.pair || state?.transferSourceStrength !== expected.strength) {
+    throw new Error(`${label}: transfer authority mismatch: ${JSON.stringify(state)}`);
+  }
+
+  assertNear(state.transferSource, expected.strength / 100, 0.0001, `${label} source strength`);
+  assertNear(state.transferOpacity, expected.opacity, 0.0002, `${label} opacity`);
+  assertNear(state.transferScaleX, expected.scaleX, 0.0002, `${label} scaleX`);
+  assertNear(state.transferScaleY, expected.scaleY, 0.0002, `${label} scaleY`);
+  assertNear(state.transferRotate, expected.rotate, 0.002, `${label} rotate`);
+  assertNear(state.transferBlur, expected.blur, 0.002, `${label} blur`);
+  assertNear(state.transferBrightness, expected.brightness, 0.0002, `${label} brightness`);
+  assertNear(state.transferContrast, expected.contrast, 0.0002, `${label} contrast`);
+  assertNear(state.transferSaturate, expected.saturate, 0.0002, `${label} saturate`);
+  assertNear(state.bridgeScaleX, expected.bridgeScaleX, 0.0002, `${label} bridge scaleX`);
+  assertNear(state.bridgeScaleY, expected.bridgeScaleY, 0.0002, `${label} bridge scaleY`);
+  assertNear(state.bridgeRotate, expected.bridgeRotate, 0.002, `${label} bridge rotate`);
+  assertNear(state.bridgeBlur, expected.bridgeBlur, 0.002, `${label} bridge blur`);
+  assertNear(state.bridgeBrightness, expected.bridgeBrightness, 0.0002, `${label} bridge brightness`);
+  assertNear(state.bridgeContrast, expected.bridgeContrast, 0.0002, `${label} bridge contrast`);
+  assertNear(state.bridgeSaturate, expected.bridgeSaturate, 0.0002, `${label} bridge saturate`);
+}
+
+async function verifyAuthoritativeTransferAmplitude(send) {
+  await send("Page.navigate", { url: `${baseUrl}/visual-smoke-fixture/core-state?scene=reward` });
+  await waitForPath(send, "/visual-smoke-fixture/core-state");
+  await waitForHydratedLink(send, "/progress");
+  const reward = await readState(send);
+  if (reward?.frameStrength !== 83 || reward?.frameDimension !== "value") {
+    throw new Error(`Reward fixture did not expose the expected authoritative strength: ${JSON.stringify(reward)}`);
+  }
+  const rewardCalls = reward.calls;
+  await clickRoute(send, "/progress");
+  await waitForPath(send, "/progress");
+  const valueSignal = await waitForTransitionTypes(
+    send,
+    ["pc-forward", "pc-transfer-value-signal"],
+    rewardCalls,
+    "Fixture Value 83 → Signal",
+    "pcTransferValueSignalOut",
+    "::view-transition-old(pc-spatial-field)",
+    "pcTransferValueSignalBridge",
+    "::view-transition-group(pc-spatial-field)",
+  );
+  assertTransferAmplitude(valueSignal, {
+    pair: "value-signal",
+    strength: 83,
+    opacity: 0.2696,
+    scaleX: 0.9004,
+    scaleY: 0.8008,
+    rotate: 0,
+    blur: 4.98,
+    brightness: 1.1826,
+    contrast: 1,
+    saturate: 1,
+    bridgeScaleX: 0.9668,
+    bridgeScaleY: 0.917,
+    bridgeRotate: 0,
+    bridgeBlur: 1.66,
+    bridgeBrightness: 1,
+    bridgeContrast: 1.0415,
+    bridgeSaturate: 1,
+  }, "Fixture Value 83 → Signal");
+
+  await send("Page.navigate", { url: `${baseUrl}/visual-smoke-fixture/core-state?scene=progress` });
+  await waitForPath(send, "/visual-smoke-fixture/core-state");
+  await waitForHydratedLink(send, "/invite");
+  const progress = await readState(send);
+  if (progress?.frameStrength !== 94 || progress?.frameDimension !== "signal") {
+    throw new Error(`Progress fixture did not expose the expected authoritative strength: ${JSON.stringify(progress)}`);
+  }
+  const progressCalls = progress.calls;
+  await clickRoute(send, "/invite");
+  await waitForPath(send, "/invite");
+  const signalNetwork = await waitForTransitionTypes(
+    send,
+    ["pc-forward", "pc-transfer-signal-network"],
+    progressCalls,
+    "Fixture Signal 94 → Network",
+    "pcTransferSignalNetworkOut",
+    "::view-transition-old(pc-spatial-field)",
+    "pcTransferSignalNetworkBridge",
+    "::view-transition-group(pc-spatial-field)",
+  );
+  assertTransferAmplitude(signalNetwork, {
+    pair: "signal-network",
+    strength: 94,
+    opacity: 0.1728,
+    scaleX: 0.8684,
+    scaleY: 0.8684,
+    rotate: -1.316,
+    blur: 4.7,
+    brightness: 1,
+    contrast: 1,
+    saturate: 1,
+    bridgeScaleX: 1.0282,
+    bridgeScaleY: 0.9436,
+    bridgeRotate: 0.376,
+    bridgeBlur: 1.88,
+    bridgeBrightness: 1,
+    bridgeContrast: 1,
+    bridgeSaturate: 1,
+  }, "Fixture Signal 94 → Network");
+
+  console.log("Authoritative semantic transfer amplitude PASS: source strengths 83 and 94 produced exact outgoing + bridge vectors.");
+}
+
 try {
   browser = spawn(chrome, [
     "--headless=new",
@@ -440,6 +575,7 @@ try {
   });
 
   await verifyMinimalReactViewTransition(send);
+  await verifyAuthoritativeTransferAmplitude(send);
 
   await send("Page.navigate", { url: `${baseUrl}/dashboard` });
   await waitForPath(send, "/dashboard");

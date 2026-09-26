@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { RoutePageTransition } from "@/components/route-page-transition";
 import { PulseCoreVisual } from "@/components/pulse-core-visual";
 import {
   EarnSpectrumArtwork,
@@ -467,8 +468,10 @@ export default async function DenseStateVisualFixture({ searchParams }: Props) {
     : null;
 
   return (
-    <AppShell active={activeByScene[scene]} userLabel="Dense member" experience={experiences[scene]} eventCue={eventCue}>
-      <SceneView />
-    </AppShell>
+    <RoutePageTransition route={activeByScene[scene]}>
+      <AppShell active={activeByScene[scene]} userLabel="Dense member" experience={experiences[scene]} eventCue={eventCue}>
+        <SceneView />
+      </AppShell>
+    </RoutePageTransition>
   );
 }
