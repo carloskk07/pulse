@@ -239,7 +239,7 @@ async function installTransitionProbeBeforeHydration(send) {
     "        'pc-transfer-value-signal', 'pc-transfer-signal-value',",
     "        'pc-transfer-value-network', 'pc-transfer-network-value',",
     "        'pc-transfer-signal-network', 'pc-transfer-network-signal',",
-    "      ].filter((type) => {"
+    "      ].filter((type) => {",
     "        try { return document.documentElement.matches(':active-view-transition-type(' + type + ')'); } catch { return false; }",
     "      });",
     "      entry.types = [...new Set([...(entry.types || []), ...initialTypes, ...runtimeTypes, ...selectorTypes])];",
