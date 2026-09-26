@@ -424,23 +424,27 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
   'data-dense-scene="wallet"',
   'data-dense-scene="progress"',
   'data-dense-scene="invite"',
-  'residue: "balance-funded"',
-  'residue: "payout-ready"',
-  'residue: "rank-circuit"',
-  'residue: "network-active"',
-  'residueDimension: "value"',
-  'residueDimension: "signal"',
-  'residueDimension: "network"',
-  "residueStrength: 83",
-  "residueStrength: 94",
-  "residueStrength: 100",
+  "getEarningExperience",
+  "getWalletExperience",
+  "getProgressExperience",
+  "getNetworkExperience",
+  "getCircuitProgress",
+  "type RewardSnapshot",
+  "const denseRewardSnapshot: RewardSnapshot",
+  "hourlyClaimCount: 187",
+  "streakDays: 23",
+  "trustLevel: 3",
+  "const denseProgress = getCircuitProgress",
+  "progress: getProgressExperience(denseRewardSnapshot)",
+  "reward: getEarningExperience",
+  "earn: getEarningExperience",
+  "wallet: getWalletExperience",
+  "invite: getNetworkExperience",
+  "data-activity-signal={denseProgress.signal}",
+  "data-activity-stage={denseProgress.stage}",
   "const denseWallet = {",
-  "availableCredits: 50_000",
-  "payoutCredits: 50_000",
-  'payoutState: "ready" as const',
-  'status: "Ready"',
-  'balanceLabel: "$50.000"',
-  'targetLabel: "$50.000 · USDT"',
+  "availableCredits: denseWalletSnapshot.availableCredits",
+  "payoutCredits: denseWalletPayoutCredits",
   "data-wallet-available-credits={denseWallet.availableCredits}",
   "data-wallet-payout-credits={denseWallet.payoutCredits}",
   "data-wallet-payout-progress={denseWallet.payoutProgress}",
@@ -451,9 +455,20 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
 
 {
   const denseFixture = read("app/visual-smoke-fixture/core-state/page.tsx");
-  for (const forbidden of ['status="Building"', "$48.725", "48,725 credits"]) {
+  for (const forbidden of [
+    'status="Building"',
+    "$48.725",
+    "48,725 credits",
+    'residue: "rank-circuit"',
+    'status="Circuit"',
+    'meta: "Circuit"',
+    "Signal 82/100",
+    "19-day return streak",
+    "Resonance is within reach.",
+    "Your current Circuit story is ready.",
+  ]) {
     if (denseFixture.includes(forbidden)) {
-      throw new Error(`Dense wallet fixture contains stale contradictory authority: ${forbidden}`);
+      throw new Error(`Dense fixture contains stale contradictory authority: ${forbidden}`);
     }
   }
 }
@@ -461,7 +476,7 @@ requireText("app/visual-smoke-fixture/core-state/page.tsx", [
 requireText("scripts/verify-dense-state-runtime.mjs", [
   '"balance-funded"',
   '"payout-ready"',
-  '"rank-circuit"',
+  '"rank-resonance"',
   '"network-active"',
   "productResidue",
   "routeDimension",
@@ -475,6 +490,11 @@ requireText("scripts/verify-dense-state-runtime.mjs", [
   "expectedResidue",
   "expectedDimension",
   "expectedStrength",
+  "activityTruth",
+  "canonical activity truth",
+  "activity Signal drifted from canonical formula",
+  "activity rank drifted from canonical thresholds",
+  "Resonance must expose Current peak",
   "value dimension leaked into signal orbit",
   "signal dimension leaked into value depth",
   "network dimension leaked into signal orbit",
