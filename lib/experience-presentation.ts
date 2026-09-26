@@ -1,3 +1,5 @@
+import { getProductRouteHref, type ProductRouteHref } from "@/lib/route-semantics";
+
 export type UserNextActionKind =
   | "sign_in"
   | "claim"
@@ -10,7 +12,7 @@ export type UserNextAction = {
   title: string;
   detail: string;
   actionLabel: string;
-  href: string;
+  href: ProductRouteHref | `/auth${string}`;
 };
 
 export function getUserNextAction(input: {
@@ -27,7 +29,7 @@ export function getUserNextAction(input: {
       title: "Hourly rewards are temporarily unavailable.",
       detail: "Your account remains unchanged. Check back soon.",
       actionLabel: "Check back soon",
-      href: "/dashboard",
+      href: getProductRouteHref("home"),
     };
   }
 
@@ -49,7 +51,7 @@ export function getUserNextAction(input: {
       title: "Rewards are paused for now.",
       detail: "Your balance and history are unchanged. Check back later.",
       actionLabel: "Refresh rewards",
-      href: "/dashboard",
+      href: getProductRouteHref("home"),
     };
   }
 
@@ -60,7 +62,7 @@ export function getUserNextAction(input: {
       title: "Your next reward is ready.",
       detail: "Claim it now and add the value to your balance.",
       actionLabel: "Claim reward",
-      href: "/dashboard",
+      href: getProductRouteHref("home"),
     };
   }
 
@@ -72,7 +74,7 @@ export function getUserNextAction(input: {
       ? "Come back when the countdown reaches zero. Set a reminder if you want."
       : "Your next reward will appear here automatically.",
     actionLabel: "View reward",
-    href: "/dashboard",
+    href: getProductRouteHref("home"),
   };
 }
 
