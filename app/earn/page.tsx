@@ -11,6 +11,7 @@ import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { getEarningExperience } from "@/lib/product-experience";
+import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getRewardEntryChannels } from "@/providers/registry";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -146,7 +147,7 @@ export default async function EarnPage({ searchParams }: Props) {
           ) : primaryChannel ? (
             <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored">Open extra rewards <ArrowUpRight /></a>
           ) : (
-            <Link className="button button-light direct-primary-action" href="/dashboard">Back to rewards <ArrowUpRight /></Link>
+            <Link className="button button-light direct-primary-action" href="/dashboard" transitionTypes={getRouteTransitionTypesForHref("earn", "/dashboard")}>Back to rewards <ArrowUpRight /></Link>
           )}
         </article>
 
