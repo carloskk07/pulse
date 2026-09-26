@@ -389,6 +389,7 @@ for (const forbidden of ["availableCredits", "payoutCredits", "claimReady", "rew
 
 
 const PRODUCT_ROUTE_PATHS = new Set(["/dashboard", "/progress", "/earn", "/wallet", "/invite"]);
+const OUTSIDE_PRODUCT_ROUTE_MARKER = "outside-product";
 const SEMANTIC_LINK_ROOTS = [
   "app/dashboard",
   "app/earn",
@@ -488,7 +489,7 @@ function auditSemanticLinks(source, path) {
         const transitionTypes = jsxAttribute(node, "transitionTypes");
         const explicitOutsideProduct = literalJsxAttributeValue(
           jsxAttribute(node, "data-route-semantic"),
-        ) === "outside-product";
+        ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
 
         if (!transitionTypes && !explicitOutsideProduct) {
           const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
