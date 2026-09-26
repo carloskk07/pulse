@@ -107,6 +107,10 @@ const runtimeProbe = `(() => {
   const valueDepth = document.querySelector(".pc-space-haze.haze-a");
   const signalOrbit = document.querySelector(".pc-space-orbit.orbit-a");
   const networkOrbit = document.querySelector(".pc-space-orbit.orbit-b");
+  const atmosphere = document.querySelector(".pc-spatial-atmosphere");
+  const valueLayer = document.querySelector(".pc-field-value-layer");
+  const signalLayer = document.querySelector(".pc-field-signal-layer");
+  const networkLayer = document.querySelector(".pc-field-network-layer");
   const bottomNav = document.querySelector(".bottom-nav");
   const telemetry = document.querySelector(".pc-scene-telemetry");
   const scene = document.querySelector("[data-dense-scene]");
@@ -139,6 +143,8 @@ const runtimeProbe = `(() => {
   return {
     sceneName: scene?.getAttribute("data-dense-scene") ?? null,
     productResidue: frame?.getAttribute("data-product-residue") ?? null,
+    routeDimension: frame?.getAttribute("data-route-dimension") ?? null,
+    atmosphereRouteDimension: atmosphere?.getAttribute("data-route-dimension") ?? null,
     productResidueDimension: frame?.getAttribute("data-product-residue-dimension") ?? null,
     productResidueStrength: frame?.getAttribute("data-product-residue-strength") ?? null,
     productResidueStrengthCss: frame ? getComputedStyle(frame).getPropertyValue("--pc-residue-strength").trim() : null,
@@ -146,6 +152,11 @@ const runtimeProbe = `(() => {
     valueDepthBoxShadow: valueDepth ? getComputedStyle(valueDepth).boxShadow : null,
     signalOrbitBoxShadow: signalOrbit ? getComputedStyle(signalOrbit).boxShadow : null,
     networkOrbitBoxShadow: networkOrbit ? getComputedStyle(networkOrbit).boxShadow : null,
+    routeLayerOpacity: {
+      value: valueLayer ? Number.parseFloat(getComputedStyle(valueLayer).opacity) : null,
+      signal: signalLayer ? Number.parseFloat(getComputedStyle(signalLayer).opacity) : null,
+      network: networkLayer ? Number.parseFloat(getComputedStyle(networkLayer).opacity) : null,
+    },
     innerWidth,
     clientWidth: root.clientWidth,
     scrollWidth: Math.max(root.scrollWidth, body?.scrollWidth ?? 0),
@@ -230,6 +241,25 @@ try {
       if (state.productResidue !== expectedResidue) {
         failures.push(`${label}: expected residue ${expectedResidue}, rendered ${state.productResidue ?? "missing"}`);
       }
+      if (state.routeDimension !== expectedDimension) {
+        failures.push(`${label}: expected route dimension ${expectedDimension}, rendered ${state.routeDimension ?? "missing"}`);
+      }
+      if (state.atmosphereRouteDimension !== expectedDimension) {
+        failures.push(`${label}: spatial atmosphere expected route dimension ${expectedDimension}, rendered ${state.atmosphereRouteDimension ?? "missing"}`);
+      }
+      const layerOpacity = state.routeLayerOpacity ?? {};
+      const activeOpacity = Number(layerOpacity[expectedDimension]);
+      const siblingDimensions = ["value", "signal", "network"].filter((dimension) => dimension !== expectedDimension);
+      if (!(activeOpacity >= 0.99)) {
+        failures.push(`${label}: active route layer ${expectedDimension} must remain fully present, opacity=${activeOpacity}`);
+      }
+      for (const sibling of siblingDimensions) {
+        const siblingOpacity = Number(layerOpacity[sibling]);
+        if (!(siblingOpacity >= 0 && siblingOpacity < activeOpacity)) {
+          failures.push(`${label}: inactive route layer ${sibling} did not recede below ${expectedDimension}: ${siblingOpacity}/${activeOpacity}`);
+        }
+      }
+
       if (state.productResidueDimension !== expectedDimension) {
         failures.push(`${label}: expected residue dimension ${expectedDimension}, rendered ${state.productResidueDimension ?? "missing"}`);
       }
@@ -321,7 +351,7 @@ try {
       }
 
       console.log(
-        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} channels=${valueChannelActive ? "V" : "-"}${signalChannelActive ? "S" : "-"}${networkChannelActive ? "N" : "-"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
+        `DENSE_STATE_PROBE profile=${profile} scene=${sceneName} residue=${state.productResidue ?? "missing"} dimension=${state.productResidueDimension ?? "missing"} routeDimension=${state.routeDimension ?? "missing"} routeLayers=${JSON.stringify(state.routeLayerOpacity ?? {})} channels=${valueChannelActive ? "V" : "-"}${signalChannelActive ? "S" : "-"}${networkChannelActive ? "N" : "-"} strength=${state.productResidueStrength ?? "missing"} width=${width} rawScroll=${state.scrollWidth}/${state.clientWidth} maxScrollX=${state.maxScrollX} telemetry=${state.telemetry?.width ?? 0} values=${state.telemetryItemCount}`,
       );
     }
   }

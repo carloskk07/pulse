@@ -1,4 +1,5 @@
 import { ViewTransition } from "react";
+import { getRouteSemanticDimension } from "@/lib/route-semantics";
 
 const sceneMeta: Record<string, { index: string; label: string; secondary: string }> = {
   home: { index: "01", label: "REWARD FIELD", secondary: "VALUE / TIME" },
@@ -10,10 +11,16 @@ const sceneMeta: Record<string, { index: string; label: string; secondary: strin
 
 export function SpatialAtmosphere({ active }: { active: string }) {
   const meta = sceneMeta[active];
-  if (!meta) return null;
+  const routeDimension = getRouteSemanticDimension(active);
+  if (!meta || !routeDimension) return null;
 
   return (
-    <div className="pc-spatial-atmosphere" data-scene={active} aria-hidden="true">
+    <div
+      className="pc-spatial-atmosphere"
+      data-scene={active}
+      data-route-dimension={routeDimension}
+      aria-hidden="true"
+    >
       <div className="pc-space-grid" />
 
       <div className="pc-space-base-layer">

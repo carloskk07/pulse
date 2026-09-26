@@ -35,6 +35,9 @@ for (const [path, variant] of [
 }
 
 requireText("components/spatial-atmosphere.tsx", [
+  'import { getRouteSemanticDimension } from "@/lib/route-semantics";',
+  "const routeDimension = getRouteSemanticDimension(active);",
+  'data-route-dimension={routeDimension}',
   'home: { index: "01", label: "REWARD FIELD"',
   'progress: { index: "02", label: "PROGRESS FIELD"',
   'earn: { index: "03", label: "EARNING FIELD"',
@@ -53,8 +56,10 @@ requireText("components/app-shell.tsx", [
   'import { SystemEventField, type SystemEventCue } from "./system-event-field";',
   "<SpatialAtmosphere active={active} />",
   "<ProductInteractionLayer />",
-  "const routeDimension = new Map",
-  'pc-transfer-${currentDimension}-${targetDimension}',
+  'import { getRouteSemanticDimension, getRouteSemanticTransfer } from "@/lib/route-semantics";',
+  "getRouteSemanticTransfer(active, target)",
+  "const routeSemanticDimension = getRouteSemanticDimension(active);",
+  'data-route-dimension={routeSemanticDimension ?? undefined}',
   "<SystemEventField cue={eventCue} />",
   "eventCue?: SystemEventCue | null",
   'data-product-surface={experience?.surface}',
@@ -66,6 +71,16 @@ requireText("components/app-shell.tsx", [
   '"--pc-residue-strength"',
 ]);
 
+
+requireText("lib/route-semantics.ts", [
+  'home: "value"',
+  'earn: "value"',
+  'wallet: "value"',
+  'progress: "signal"',
+  'invite: "network"',
+  "getRouteSemanticDimension",
+  "getRouteSemanticTransfer",
+]);
 
 requireText("components/system-event-field.tsx", [
   '"use client";',
@@ -208,6 +223,11 @@ requireText("app/styles/app-art-direction.css", [
   "/* V11.7 — Dimensional Residue Field.",
   "/* V11.8 — Dimensional Channel Isolation.",
   "/* V11.14 — Semantic Layer Handoff.",
+  "/* V11.15 — Route Semantic Authority.",
+  '.pc-spatial-atmosphere[data-route-dimension="value"] .pc-field-value-layer',
+  '.pc-spatial-atmosphere[data-route-dimension="signal"] .pc-field-signal-layer',
+  '.pc-spatial-atmosphere[data-route-dimension="network"] .pc-field-network-layer',
+  "--pc-route-layer-rest:.46",
   "view-transition-name:pc-field-value",
   "view-transition-name:pc-field-signal",
   "view-transition-name:pc-field-network",
