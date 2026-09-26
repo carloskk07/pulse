@@ -1,7 +1,18 @@
 export type RouteSemanticDimension = "value" | "signal" | "network";
+export type ProductRouteId = "home" | "progress" | "earn" | "wallet" | "invite";
 
 export type RouteSemanticTransfer =
   `pc-transfer-${RouteSemanticDimension}-${RouteSemanticDimension}`;
+
+const PRODUCT_ROUTE_ORDER: ProductRouteId[] = ["home", "progress", "earn", "wallet", "invite"];
+
+const PRODUCT_ROUTE_PATHS: Record<ProductRouteId, string> = {
+  home: "/dashboard",
+  progress: "/progress",
+  earn: "/earn",
+  wallet: "/wallet",
+  invite: "/invite",
+};
 
 const ROUTE_SEMANTIC_DIMENSIONS = {
   home: "value",
@@ -9,7 +20,7 @@ const ROUTE_SEMANTIC_DIMENSIONS = {
   wallet: "value",
   progress: "signal",
   invite: "network",
-} as const satisfies Record<string, RouteSemanticDimension>;
+} as const satisfies Record<ProductRouteId, RouteSemanticDimension>;
 
 export function getRouteSemanticDimension(route: string): RouteSemanticDimension | null {
   return ROUTE_SEMANTIC_DIMENSIONS[route as keyof typeof ROUTE_SEMANTIC_DIMENSIONS] ?? null;
@@ -23,4 +34,38 @@ export function getRouteSemanticTransfer(
   const target = getRouteSemanticDimension(targetRoute);
   if (!current || !target || current === target) return null;
   return `pc-transfer-${current}-${target}`;
+}
+
+
+function routePathFromHref(href: string) {
+  return href.split("#", 1)[0]?.split("?", 1)[0] ?? href;
+}
+
+export function getProductRouteIdFromHref(href: string): ProductRouteId | null {
+  const path = routePathFromHref(href);
+  for (const route of PRODUCT_ROUTE_ORDER) {
+    if (PRODUCT_ROUTE_PATHS[route] === path) return route;
+  }
+  return null;
+}
+
+export function getRouteTransitionTypes(
+  currentRoute: string,
+  targetRoute: string,
+): string[] | undefined {
+  const currentIndex = PRODUCT_ROUTE_ORDER.indexOf(currentRoute as ProductRouteId);
+  const targetIndex = PRODUCT_ROUTE_ORDER.indexOf(targetRoute as ProductRouteId);
+  if (currentIndex < 0 || targetIndex < 0 || currentIndex === targetIndex) return undefined;
+
+  const direction = targetIndex > currentIndex ? "pc-forward" : "pc-back";
+  const semanticTransfer = getRouteSemanticTransfer(currentRoute, targetRoute);
+  return semanticTransfer ? [direction, semanticTransfer] : [direction];
+}
+
+export function getRouteTransitionTypesForHref(
+  currentRoute: string,
+  targetHref: string,
+): string[] | undefined {
+  const targetRoute = getProductRouteIdFromHref(targetHref);
+  return targetRoute ? getRouteTransitionTypes(currentRoute, targetRoute) : undefined;
 }
