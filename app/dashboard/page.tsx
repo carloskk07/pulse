@@ -10,7 +10,7 @@ import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { ValueFlow } from "@/components/value-flow";
 import { getCircuitProgress } from "@/lib/circuit-progress";
-import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
+import { getRouteLinkProps, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { getUserNextAction } from "@/lib/experience-presentation";
 import { getEarningExperience } from "@/lib/product-experience";
 import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
@@ -133,7 +133,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               {state.preview ? (
                 <button className="button button-light pulse-claim-button" disabled>{nextAction.actionLabel}</button>
               ) : !state.signedIn ? (
-                <Link href={nextAction.href} transitionTypes={getRouteTransitionTypesForHref("home", nextAction.href)} className="button button-light pulse-claim-button">{nextAction.actionLabel} <ArrowUpRight /></Link>
+                <Link {...getRouteLinkProps("home", nextAction.href)} className="button button-light pulse-claim-button">{nextAction.actionLabel} <ArrowUpRight /></Link>
               ) : canClaim ? (
                 <form action="/api/pulse/claim" method="post" className="claim-form">
                   <TurnstileField action="hourly_pulse" />
