@@ -10,6 +10,7 @@ import { SceneTelemetry } from "@/components/scene-telemetry";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
 import { getProgressExperience } from "@/lib/product-experience";
+import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { getRewardSnapshot } from "@/lib/reward-state";
 import { getWeeklyPulseSummary } from "@/lib/retention-summary";
 
@@ -63,7 +64,7 @@ export default async function ProgressPage() {
             { label: "Claims", value: state.preview ? "—" : String(state.hourlyClaimCount), meta: "Verified" },
           ]}
         />
-        <Link className="button pc-v5-primary" href={shareEntryHref}>{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
+        <Link className="button pc-v5-primary" href={shareEntryHref} transitionTypes={getRouteTransitionTypesForHref("progress", shareEntryHref)}>{shareReady ? "Share progress" : state.signedIn ? "View share status" : "Sign in"}</Link>
       </div>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
@@ -126,7 +127,7 @@ export default async function ProgressPage() {
             <h2 id="share-studio-placeholder-title">{state.signedIn ? "Your share card appears when your verified history is ready." : "Sign in to share your progress."}</h2>
             <p>Cards share progress, never your balance.</p>
           </div>
-          <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"}>{state.signedIn ? "View rewards" : "Sign in"} <ArrowUpRight /></Link>
+          <Link className="button button-lg pc-v5-primary" href={state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments"} transitionTypes={getRouteTransitionTypesForHref("progress", state.signedIn ? "/dashboard" : "/auth?next=/progress%23circuit-moments")}>{state.signedIn ? "View rewards" : "Sign in"} <ArrowUpRight /></Link>
         </section>
       )}
 

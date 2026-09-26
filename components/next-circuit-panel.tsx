@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { PulseCountdown } from "@/components/pulse-countdown";
 import type { CircuitAchievement } from "@/lib/circuit-achievements";
+import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 
 function remainingLabel(achievement: CircuitAchievement) {
   const remaining = Math.max(0, achievement.remaining);
@@ -78,7 +79,7 @@ export function NextCircuitPanel({
           {!pulseFundingReady ? <div className="pc-next-state-word">STANDBY</div> : claimReady ? <div className="pc-next-state-word ready">READY</div> : <div className="pc-next-countdown"><PulseCountdown target={nextClaimAt} /></div>}
           <p>{primary.detail}</p>
           <div className="pc-next-action-row">
-            <Link className="pc-next-action" href="/dashboard">{primary.action} <ArrowUpRight /></Link>
+            <Link className="pc-next-action" href="/dashboard" transitionTypes={getRouteTransitionTypesForHref("progress", "/dashboard")}>{primary.action} <ArrowUpRight /></Link>
             {canScheduleReturn ? (
               <form action="/api/return-reminder" method="post">
                 <button className="pc-next-reminder" type="submit">Set reminder <ArrowUpRight /></button>

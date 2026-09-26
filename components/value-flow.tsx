@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { ProductJourney } from "@/lib/product-experience";
+import { getRouteTransitionTypes } from "@/lib/route-semantics";
 
 export function ValueFlow({ journey }: { journey: ProductJourney }) {
   const { stage, balance, payoutProgress, payoutState, payoutLabel } = journey;
@@ -15,8 +16,9 @@ export function ValueFlow({ journey }: { journey: ProductJourney }) {
           ? "Paid"
           : "Preparing";
   const style = { "--pc-value-progress": `${progress}%` } as CSSProperties;
-  const earnTransitionTypes = stage === "earn" ? undefined : ["pc-back"];
-  const walletTransitionTypes = stage === "earn" ? ["pc-forward"] : undefined;
+  const sourceRoute = stage === "earn" ? "earn" : "wallet";
+  const earnTransitionTypes = getRouteTransitionTypes(sourceRoute, "earn");
+  const walletTransitionTypes = getRouteTransitionTypes(sourceRoute, "wallet");
 
   return (
     <nav

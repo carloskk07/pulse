@@ -321,6 +321,21 @@ async function clickRoute(send, href) {
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
 }
 
+async function clickSelector(send, selector, label) {
+  const result = await send("Runtime.evaluate", {
+    expression: `(() => {
+      const link = document.querySelector(${JSON.stringify(selector)});
+      if (!(link instanceof HTMLAnchorElement)) return false;
+      link.click();
+      return true;
+    })()`,
+    returnByValue: true,
+  });
+  if (result.result?.value !== true) {
+    throw new Error(`${label} contextual link was not found: ${selector}`);
+  }
+}
+
 async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null, expectedPseudo = null, secondaryAnimation = null, secondaryPseudo = null) {
   let lastState = null;
   for (let attempt = 0; attempt < 180; attempt += 1) {
@@ -552,12 +567,76 @@ try {
     return state;
   }
 
+  async function contextualRoute(selector, href, direction, semantic, label) {
+    const callsBefore = (await readState(send)).calls;
+    await waitForHydratedSelector(send, selector);
+    await clickSelector(send, selector, label);
+    await waitForPath(send, href);
+
+    const proof = semantic ? semanticProof[semantic] : null;
+    if (semantic && !proof) throw new Error(`${label} has no semantic layer proof for ${semantic}`);
+
+    const state = await waitForTransitionTypes(
+      send,
+      semantic ? [direction, semantic] : [direction],
+      callsBefore,
+      label,
+      proof?.outgoing?.[0] ?? null,
+      proof?.outgoing?.[1] ?? null,
+      proof?.incoming?.[0] ?? null,
+      proof?.incoming?.[1] ?? null,
+    );
+    if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
+      throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
+    }
+
+    if (proof) {
+      assertSemanticLayerIsolation(state, callsBefore, [proof.outgoing[1], proof.incoming[1]], label);
+    } else {
+      assertNoSemanticTransfer(state, callsBefore, label);
+    }
+    return state;
+  }
+
   await crossRoute("/wallet", "pc-forward", "pc-transfer-signal-value", "Progress → Balance");
   await crossRoute("/invite", "pc-forward", "pc-transfer-value-network", "Balance → Referrals");
   await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "Referrals → Balance");
   await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "Balance → Progress");
   await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "Progress → Referrals");
   await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "Referrals → Progress");
+
+  await crossRoute("/dashboard", "pc-back", "pc-transfer-signal-value", "Progress → Rewards contextual reset");
+  await contextualRoute(
+    '.pc-v9-progress-card a[href="/progress"]',
+    "/progress",
+    "pc-forward",
+    "pc-transfer-value-signal",
+    "Rewards card → Progress",
+  );
+  await crossRoute("/dashboard", "pc-back", "pc-transfer-signal-value", "Progress → Rewards contextual reset 2");
+  await contextualRoute(
+    '.pc-v9-progress-card a[href="/invite"]',
+    "/invite",
+    "pc-forward",
+    "pc-transfer-value-network",
+    "Rewards card → Referrals",
+  );
+  await crossRoute("/dashboard", "pc-back", "pc-transfer-network-value", "Referrals → Rewards contextual reset");
+  await contextualRoute(
+    '.pc-v13-continuous-actions a[href="/earn"]',
+    "/earn",
+    "pc-forward",
+    null,
+    "Rewards CTA → Earn",
+  );
+  await contextualRoute(
+    '.pc-v13-economy-card a[href="/invite"]',
+    "/invite",
+    "pc-forward",
+    "pc-transfer-value-network",
+    "Earn CTA → Referrals",
+  );
+  await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "Contextual CTA reset → Progress");
 
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
@@ -619,7 +698,7 @@ try {
   }
 
   console.log(
-    `Native route continuity PASS: desktop six-direction source→target layer-group handoff + mobile layer profile (.28s, filterless old/group) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
+    `Native route continuity PASS: desktop menu + contextual CTA source→target layer-group handoff + mobile layer profile (.28s, filterless old/group) + mobile reduced-motion override (calls=${mobileReducedWallet.calls}).`,
   );
   socket.close();
 } finally {

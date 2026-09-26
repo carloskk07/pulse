@@ -229,6 +229,12 @@ requireText("app/styles/app-art-direction.css", [
   "@keyframes pcTransferNetworkSignalIn",
 ]);
 
+requireText("lib/route-semantics.ts", [
+  "export function getProductRouteIdFromHref",
+  "export function getRouteTransitionTypes",
+  "export function getRouteTransitionTypesForHref",
+]);
+
 requireText("scripts/verify-responsive-runtime.mjs", [
   "function hasMeasurableGeometry",
   "function geometryIsStable",
@@ -254,6 +260,12 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "secondaryPseudo",
   "animationEvidence",
   "semanticProof",
+  "clickSelector",
+  "contextualRoute",
+  '"Rewards card → Progress"',
+  '"Rewards card → Referrals"',
+  '"Rewards CTA → Earn"',
+  '"Earn CTA → Referrals"',
   '"::view-transition-old(pc-field-signal)"',
   '"::view-transition-group(pc-field-value)"',
   '"::view-transition-old(pc-field-network)"',
