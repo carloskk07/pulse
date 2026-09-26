@@ -92,7 +92,7 @@ requireText("app/styles/app-art-direction.css", [
   "pointer-events:none",
   "/* V10.8 page-root navigation anchor */",
   "::view-transition-group(.pc-route-nav-anchor)",
-  "/* V11.11 — Selective Semantic Field Transfer.",
+  "/* V11.12 — Spatial Field Handoff Continuity.",
   "view-transition-name:pc-spatial-field",
   "--pc-route-transfer-duration:.56s",
   "::view-transition-group(pc-spatial-field)",
@@ -116,6 +116,8 @@ requireText("app/styles/app-art-direction.css", [
   "@keyframes pcTransferNetworkValueOut",
   "@keyframes pcTransferSignalNetworkOut",
   "@keyframes pcTransferNetworkSignalOut",
+  "@keyframes pcSpatialFieldReveal",
+  "animation:pcSpatialFieldReveal var(--pc-route-transfer-duration)",
   "::view-transition-old(.pc-route-nav-anchor)",
   "::view-transition-new(.pc-route-nav-anchor)",
 ]);
@@ -192,8 +194,9 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   "entry.animationEvidence",
   ":active-view-transition-type(",
   "waitForTransitionTypes",
-  "assertNoSemanticRootAnimation",
+  "assertSemanticAnimationIsolation",
   '"::view-transition-old(pc-spatial-field)"',
+  '"pcSpatialFieldReveal@::view-transition-new(pc-spatial-field)"',
   "probeInstalled",
   'waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn")',
   'assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn")',
@@ -212,7 +215,7 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
 
 const atmosphereSource = read("components/spatial-atmosphere.tsx");
 if (atmosphereSource.includes("pc-route-field") || atmosphereSource.includes("pc-route-field-transfer")) {
-  throw new Error("Semantic route transfer must use the guaranteed native root snapshot, not an inactive parent ViewTransition boundary.");
+  throw new Error("Semantic route transfer must use the CSS-owned pc-spatial-field snapshot, not an inactive parent React ViewTransition boundary.");
 }
 
 const appShell = read("components/app-shell.tsx");
