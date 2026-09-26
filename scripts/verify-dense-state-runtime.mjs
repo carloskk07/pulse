@@ -342,8 +342,8 @@ try {
           const availableCredits = Number(truth.availableCredits);
           const payoutCredits = Number(truth.payoutCredits);
           const payoutProgress = Number(truth.payoutProgress);
-          const availableLabel = `${(availableCredits / 1000).toFixed(3)}`;
-          const payoutLabel = `${(payoutCredits / 1000).toFixed(3)}`;
+          const availableLabel = "$" + (availableCredits / 1000).toFixed(3);
+          const payoutLabel = "$" + (payoutCredits / 1000).toFixed(3);
 
           if (truth.payoutState !== "ready") {
             failures.push(`${label}: dense wallet must model payoutState=ready, rendered ${truth.payoutState}`);
