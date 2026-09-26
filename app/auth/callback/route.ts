@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PASSWORD_RECOVERY_CONTEXT_PKCE, PASSWORD_RECOVERY_COOKIE, recoveryCookieOptions, safeAuthNext } from "@/lib/auth-security";
 import { beginPasswordRecoveryProofChallenge, hasRecentRecoverySend } from "@/lib/auth-recovery-proof";
 import { bindReferralForUser, cleanReferralCode } from "@/lib/referrals";
+import { getRouteNavigationHref } from "@/lib/route-semantics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && ref) await bindReferralForUser(user.id, ref);
 
-      const response = NextResponse.redirect(new URL(next, url.origin), 303);
+      const response = NextResponse.redirect(new URL(getRouteNavigationHref("auth", next), url.origin), 303);
       response.headers.set("Cache-Control", "private, no-store");
       if (flow === "recovery" && next === "/auth/update-password") {
         if (user) {
