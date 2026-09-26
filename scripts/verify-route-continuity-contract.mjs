@@ -20,6 +20,9 @@ if (nextConfig.includes("viewTransition:")) {
 
 requireText("components/spatial-atmosphere.tsx", [
   'import { ViewTransition } from "react";',
+  'import { getRouteSemanticDimension } from "@/lib/route-semantics";',
+  "const routeDimension = getRouteSemanticDimension(active);",
+  'data-route-dimension={routeDimension}',
   'key={`carrier-${active}`}',
   'key={`orbit-${active}`}',
   'key={`index-${active}`}',
@@ -39,15 +42,26 @@ requireText("components/spatial-atmosphere.tsx", [
   'className="pc-route-carrier"',
 ]);
 
+requireText("lib/route-semantics.ts", [
+  'export type RouteSemanticDimension = "value" | "signal" | "network";',
+  'home: "value"',
+  'earn: "value"',
+  'wallet: "value"',
+  'progress: "signal"',
+  'invite: "network"',
+  "export function getRouteSemanticDimension",
+  "export function getRouteSemanticTransfer",
+  'return `pc-transfer-${current}-${target}`;',
+]);
+
 requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
+  'import { getRouteSemanticDimension, getRouteSemanticTransfer } from "@/lib/route-semantics";',
   "const routeOrder = new Map",
   "function routeTransitionTypes",
-  "const routeDimension = new Map",
-  '["home", "value"]',
-  '["progress", "signal"]',
-  '["invite", "network"]',
-  'pc-transfer-${currentDimension}-${targetDimension}',
+  "getRouteSemanticTransfer(active, target)",
+  "const routeSemanticDimension = getRouteSemanticDimension(active);",
+  'data-route-dimension={routeSemanticDimension ?? undefined}',
   'name="pc-route-topbar"',
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
@@ -93,6 +107,12 @@ requireText("app/styles/app-art-direction.css", [
   "/* V10.8 page-root navigation anchor */",
   "::view-transition-group(.pc-route-nav-anchor)",
   "/* V11.14 — Semantic Layer Handoff.",
+  "/* V11.15 — Route Semantic Authority.",
+  '.pc-spatial-atmosphere[data-route-dimension="value"] .pc-field-value-layer',
+  '.pc-spatial-atmosphere[data-route-dimension="signal"] .pc-field-signal-layer',
+  '.pc-spatial-atmosphere[data-route-dimension="network"] .pc-field-network-layer',
+  "--pc-route-layer-rest:.46",
+
   "view-transition-name:pc-field-value",
   "view-transition-name:pc-field-signal",
   "view-transition-name:pc-field-network",
@@ -259,6 +279,9 @@ if (atmosphereSource.includes("pc-route-field") || atmosphereSource.includes("pc
 }
 
 const appShell = read("components/app-shell.tsx");
+if (appShell.includes("const routeDimension = new Map")) {
+  throw new Error("Route semantic dimension authority must remain centralized in lib/route-semantics.ts.");
+}
 if (appShell.includes("routeContentTransition") || appShell.includes('key={`route-content-${active}`}')) {
   throw new Error("Route ViewTransition must live before AppShell DOM, not inside the persistent shell.");
 }
