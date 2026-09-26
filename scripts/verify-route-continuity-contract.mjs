@@ -39,27 +39,62 @@ requireText("components/spatial-atmosphere.tsx", [
   'className="pc-route-carrier"',
 ]);
 
+requireText("lib/product-route-navigation.ts", [
+  'export type ProductRouteId = "home" | "progress" | "earn" | "wallet" | "invite";',
+  'const routeOrder: ProductRouteId[] = ["home", "progress", "earn", "wallet", "invite"];',
+  'home: "value"',
+  'progress: "signal"',
+  'invite: "network"',
+  "export function productRouteTransitionTypes",
+  'pc-transfer-${sourceDimension}-${targetDimension}',
+]);
+
 requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
-  "const routeOrder = new Map",
-  "function routeTransitionTypes",
-  "const routeDimension = new Map",
-  '["home", "value"]',
-  '["progress", "signal"]',
-  '["invite", "network"]',
-  'pc-transfer-${currentDimension}-${targetDimension}',
+  'import { productRouteTransitionTypes } from "@/lib/product-route-navigation";',
   'name="pc-route-topbar"',
   'name="pc-route-bottom-nav"',
   'share="pc-route-nav-anchor"',
-  "transitionTypes={routeTransitionTypes(active, id)}",
+  "transitionTypes={productRouteTransitionTypes(active, href)}",
 ]);
 
 requireText("components/value-flow.tsx", [
-  'const earnTransitionTypes = stage === "earn" ? undefined : ["pc-back"];',
-  'const walletTransitionTypes = stage === "earn" ? ["pc-forward"] : undefined;',
+  'import { productRouteTransitionTypes } from "@/lib/product-route-navigation";',
+  'const sourceRoute = stage === "earn" ? "earn" : "wallet";',
+  'productRouteTransitionTypes(sourceRoute, "/earn")',
+  'productRouteTransitionTypes(sourceRoute, "/wallet")',
   "transitionTypes={earnTransitionTypes}",
   "transitionTypes={walletTransitionTypes}",
 ]);
+
+for (const [path, fragments] of [
+  ["app/dashboard/page.tsx", [
+    'productRouteTransitionTypes("home", "/progress")',
+    'productRouteTransitionTypes("home", "/wallet")',
+    'productRouteTransitionTypes("home", "/invite")',
+    'productRouteTransitionTypes("home", "/earn")',
+  ]],
+  ["app/dashboard/claimed/page.tsx", [
+    'productRouteTransitionTypes("home", "/earn")',
+    'productRouteTransitionTypes("home", "/progress#circuit-moments")',
+  ]],
+  ["app/earn/page.tsx", ['productRouteTransitionTypes("earn", "/dashboard")']],
+  ["app/progress/page.tsx", [
+    'productRouteTransitionTypes("progress", shareEntryHref)',
+    'productRouteTransitionTypes("progress", state.signedIn ? "/dashboard"',
+  ]],
+  ["components/continuous-pulse-panel.tsx", [
+    'productRouteTransitionTypes("home", "/earn")',
+    'productRouteTransitionTypes("home", "/invite")',
+  ]],
+  ["components/continuous-earn-hub.tsx", [
+    'productRouteTransitionTypes("earn", mission.href)',
+    'productRouteTransitionTypes("earn", "/invite")',
+  ]],
+  ["components/next-circuit-panel.tsx", ['productRouteTransitionTypes("progress", "/dashboard")']],
+]) {
+  requireText(path, fragments);
+}
 
 requireText("app/styles/app-art-direction.css", [
   "/* V10 — native route continuity.",
