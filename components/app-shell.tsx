@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ViewTransition } from "react";
 import type { CSSProperties } from "react";
 import { signOut } from "@/app/auth/actions";
-import type { ProductExperience } from "@/lib/product-experience";
+import type { ProductExperience, ProductResidueDimension } from "@/lib/product-experience";
 import { getAdminAllowlistStatus } from "@/lib/admin-authorization";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { PulsercuitBrand } from "./pulsercuit-brand";
@@ -29,17 +29,31 @@ const routeDimension = new Map<string, "value" | "signal" | "network">([
   ["invite", "network"],
 ]);
 
-function routeTransitionTypes(active: string, target: string) {
+function routeTransitionTypes(
+  active: string,
+  target: string,
+  currentResidueDimension?: ProductResidueDimension,
+) {
   const currentIndex = routeOrder.get(active);
   const targetIndex = routeOrder.get(target);
   if (currentIndex === undefined || targetIndex === undefined || currentIndex === targetIndex) return undefined;
 
   const direction = targetIndex > currentIndex ? "pc-forward" : "pc-back";
-  const currentDimension = routeDimension.get(active);
+  const expectedCurrentDimension = routeDimension.get(active);
   const targetDimension = routeDimension.get(target);
-  if (!currentDimension || !targetDimension || currentDimension === targetDimension) return [direction];
 
-  return [direction, `pc-transfer-${currentDimension}-${targetDimension}`];
+  if (
+    !currentResidueDimension
+    || currentResidueDimension === "none"
+    || !expectedCurrentDimension
+    || currentResidueDimension !== expectedCurrentDimension
+    || !targetDimension
+    || currentResidueDimension === targetDimension
+  ) {
+    return [direction];
+  }
+
+  return [direction, `pc-transfer-${currentResidueDimension}-${targetDimension}`];
 }
 
 const adminLinks = [
@@ -103,7 +117,7 @@ export async function AppShell({
           <PulsercuitBrand />
           <nav className="app-nav app-topbar-nav" aria-label="Application">
             {links.map(({ id, href, label: navLabel, Icon }) => (
-              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}>
+              <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id, experience?.residueDimension)}>
                 <Icon /><span>{navLabel}</span>
               </Link>
             ))}
@@ -138,7 +152,7 @@ export async function AppShell({
       <ViewTransition name="pc-route-bottom-nav" share="pc-route-nav-anchor" default="none">
         <nav className="bottom-nav" aria-label="Mobile application navigation">
         {links.map(({ id, href, label: navLabel, Icon }) => (
-          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id)}><Icon /><span>{navLabel}</span></Link>
+          <Link key={href} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} href={href} transitionTypes={routeTransitionTypes(active, id, experience?.residueDimension)}><Icon /><span>{navLabel}</span></Link>
         ))}
         <details className="bottom-nav-more">
           <summary className={utilityMobileActive ? "active" : ""} aria-label="More navigation and account actions">
