@@ -56,8 +56,8 @@ requireText("components/app-shell.tsx", [
   'import { SystemEventField, type SystemEventCue } from "./system-event-field";',
   "<SpatialAtmosphere active={active} />",
   "<ProductInteractionLayer />",
-  'import { getRouteSemanticDimension, getRouteSemanticTransfer } from "@/lib/route-semantics";',
-  "getRouteSemanticTransfer(active, target)",
+  'import { getRouteSemanticDimension, getRouteTransitionTypes } from "@/lib/route-semantics";',
+  "transitionTypes={getRouteTransitionTypes(active, id)}",
   "const routeSemanticDimension = getRouteSemanticDimension(active);",
   'data-route-dimension={routeSemanticDimension ?? undefined}',
   "<SystemEventField cue={eventCue} />",
@@ -80,6 +80,9 @@ requireText("lib/route-semantics.ts", [
   'invite: "network"',
   "getRouteSemanticDimension",
   "getRouteSemanticTransfer",
+  "getProductRouteIdFromHref",
+  "getRouteTransitionTypes",
+  "getRouteTransitionTypesForHref",
 ]);
 
 requireText("components/system-event-field.tsx", [
