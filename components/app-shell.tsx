@@ -21,11 +21,25 @@ const links = [
 
 const routeOrder = new Map(links.map((link, index) => [link.id, index]));
 
+const routeDimension = new Map<string, "value" | "signal" | "network">([
+  ["home", "value"],
+  ["earn", "value"],
+  ["wallet", "value"],
+  ["progress", "signal"],
+  ["invite", "network"],
+]);
+
 function routeTransitionTypes(active: string, target: string) {
   const currentIndex = routeOrder.get(active);
   const targetIndex = routeOrder.get(target);
   if (currentIndex === undefined || targetIndex === undefined || currentIndex === targetIndex) return undefined;
-  return [targetIndex > currentIndex ? "pc-forward" : "pc-back"];
+
+  const direction = targetIndex > currentIndex ? "pc-forward" : "pc-back";
+  const currentDimension = routeDimension.get(active);
+  const targetDimension = routeDimension.get(target);
+  if (!currentDimension || !targetDimension || currentDimension === targetDimension) return [direction];
+
+  return [direction, `pc-transfer-${currentDimension}-${targetDimension}`];
 }
 
 const adminLinks = [
