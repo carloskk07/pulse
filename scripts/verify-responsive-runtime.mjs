@@ -162,6 +162,52 @@ const runtimeProbe = `(() => {
   };
 })()`;
 
+function hasMeasurableGeometry(state, width) {
+  if (!state?.appContent || state.appContent.width <= 0) return false;
+  const compactShell = width <= 1120;
+  const nav = compactShell ? state.bottomNav : state.topbar;
+  return Boolean(nav && nav.display !== "none" && nav.width > 0);
+}
+
+function geometryIsStable(previous, current, width) {
+  if (!hasMeasurableGeometry(previous, width) || !hasMeasurableGeometry(current, width)) return false;
+  const compactShell = width <= 1120;
+  const previousNav = compactShell ? previous.bottomNav : previous.topbar;
+  const currentNav = compactShell ? current.bottomNav : current.topbar;
+  return (
+    previous.clientWidth === current.clientWidth
+    && Math.abs(previous.appContent.width - current.appContent.width) <= 1
+    && Math.abs(previousNav.width - currentNav.width) <= 1
+  );
+}
+
+async function waitForStableGeometry(send, width, label) {
+  let previous = null;
+  let stableSamples = 0;
+  let lastState = null;
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const evaluated = await send("Runtime.evaluate", {
+      expression: runtimeProbe,
+      returnByValue: true,
+    });
+    const state = evaluated.result?.value;
+    lastState = state ?? lastState;
+
+    if (geometryIsStable(previous, state, width)) {
+      stableSamples += 1;
+      if (stableSamples >= 2) return state;
+    } else {
+      stableSamples = hasMeasurableGeometry(state, width) ? 1 : 0;
+    }
+
+    previous = state;
+    await sleep(50);
+  }
+
+  throw new Error(`Responsive geometry did not stabilize for ${label}: ${JSON.stringify(lastState)}`);
+}
+
 const failures = [];
 
 try {
@@ -198,11 +244,7 @@ try {
       await send("Page.navigate", { url: `${baseUrl}${route}` });
       await waitForDocument(send, route);
 
-      const evaluated = await send("Runtime.evaluate", {
-        expression: runtimeProbe,
-        returnByValue: true,
-      });
-      const state = evaluated.result?.value;
+      const state = await waitForStableGeometry(send, width, `${profile} ${routeName}`);
 
       if (!state) {
         failures.push(`${profile} ${routeName}: runtime probe returned no value`);
