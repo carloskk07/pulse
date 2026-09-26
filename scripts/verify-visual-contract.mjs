@@ -179,7 +179,7 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"lib/route-semantics.ts"',
   "github.event_name == 'pull_request' || github.ref == 'refs/heads/main'",
   "Finalize pull-request visual evidence",
-  'test "$count" -eq 58',
+  'test "$count" -eq 66',
   "Pull-request Visual Smoke PASS: local browser evidence is complete.",
   '"privacy|/privacy"',
   '"terms|/terms"',
@@ -191,11 +191,13 @@ requireText(".github/workflows/visual-smoke.yml", [
   '"scripts/capture-public-full-page.mjs"',
   '"scripts/verify-product-interaction-runtime.mjs"',
   '"scripts/verify-route-continuity-runtime.mjs"',
+  '"scripts/capture-route-transition-frames.mjs"',
   "Verify reactive spatial interaction",
   "Verify native route continuity",
+  "Capture semantic route transition frames",
   "Capture full-page public evidence",
-  'test "$count" -eq 94',
-  'test "$count" -eq 106',
+  'test "$count" -eq 102',
+  'test "$count" -eq 114',
   "local-preview/claim-reveal/desktop",
   "local-preview/system-event/desktop/reward-settled.png",
   "local-preview/system-event/mobile/reward-settled.png",
@@ -276,6 +278,24 @@ requireText("app/styles/app-art-direction.css", [
   "--pc-route-transfer-duration:.28s",
   "filter:none!important",
   "--pc-route-transfer-duration:.001ms",
+]);
+
+requireText("scripts/capture-route-transition-frames.mjs", [
+  'const phase = 0.5',
+  '"signal-to-value"',
+  '"value-to-network"',
+  '"network-to-value"',
+  '"value-to-signal"',
+  '"signal-to-network"',
+  '"network-to-signal"',
+  '"::view-transition-old(pc-field-signal)"',
+  '"::view-transition-group(pc-field-value)"',
+  '"::view-transition-old(pc-field-network)"',
+  '"::view-transition-group(pc-field-signal)"',
+  "animation.pause()",
+  "animation.currentTime",
+  '"Page.captureScreenshot"',
+  "Route transition frame evidence PASS",
 ]);
 
 requireText("scripts/verify-product-interaction-runtime.mjs", [
@@ -467,7 +487,7 @@ requireText(".github/workflows/visual-smoke.yml", [
   "visual-smoke/local-preview/dense-state/desktop",
   "visual-smoke/local-preview/dense-state/mobile",
   "/visual-smoke-fixture/core-state?scene=reward",
-  'test "$count" -eq 106',
+  'test "$count" -eq 114',
 ]);
 
 requireText("app/advertise/page.tsx", [
