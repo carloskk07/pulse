@@ -92,14 +92,18 @@ requireText("app/styles/app-art-direction.css", [
   "pointer-events:none",
   "/* V10.8 page-root navigation anchor */",
   "::view-transition-group(.pc-route-nav-anchor)",
-  "/* V11.9 — Semantic Route Transfer.",
+  "/* V11.11 — Selective Semantic Field Transfer.",
+  "view-transition-name:pc-spatial-field",
   "--pc-route-transfer-duration:.56s",
-  "active-view-transition-type(pc-transfer-value-signal)::view-transition-old(root)",
-  "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(root)",
-  "active-view-transition-type(pc-transfer-value-network)::view-transition-old(root)",
-  "active-view-transition-type(pc-transfer-network-value)::view-transition-old(root)",
-  "active-view-transition-type(pc-transfer-signal-network)::view-transition-old(root)",
-  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(root)",
+  "::view-transition-group(pc-spatial-field)",
+  "::view-transition-old(pc-spatial-field)",
+  "::view-transition-new(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-value-signal)::view-transition-old(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-signal-value)::view-transition-old(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-value-network)::view-transition-old(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-network-value)::view-transition-old(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-signal-network)::view-transition-old(pc-spatial-field)",
+  "active-view-transition-type(pc-transfer-network-signal)::view-transition-old(pc-spatial-field)",
   "pc-transfer-value-signal",
   "pc-transfer-signal-value",
   "pc-transfer-value-network",
@@ -185,8 +189,11 @@ requireText("scripts/verify-route-continuity-runtime.mjs", [
   'state?.motion !== "0"',
   "transition?.types",
   "entry.animationNames",
+  "entry.animationEvidence",
   ":active-view-transition-type(",
   "waitForTransitionTypes",
+  "assertNoSemanticRootAnimation",
+  '"::view-transition-old(pc-spatial-field)"',
   "probeInstalled",
   'waitForTransitionTypes(send, ["pc-forward"], earnCallsBefore, "Rewards → Earn")',
   'assertNoSemanticTransfer(earn, earnCallsBefore, "Rewards → Earn")',
@@ -219,8 +226,14 @@ if (sceneCarriers < 5) {
   throw new Error(`Route continuity must preserve five scene carrier positions; found ${sceneCarriers}.`);
 }
 
-if (/view-transition-name\s*:/.test(css)) {
-  throw new Error("V10 must let React own view-transition-name assignment instead of hard-coding CSS names.");
+const explicitViewTransitionNames = css.match(/view-transition-name\s*:/g) ?? [];
+if (explicitViewTransitionNames.length !== 1 || !css.includes("view-transition-name:pc-spatial-field;")) {
+  throw new Error(
+    `Route continuity permits exactly one CSS-owned View Transition name for the selective spatial field; found ${explicitViewTransitionNames.length}.`,
+  );
+}
+if (/active-view-transition-type\(pc-transfer-[^)]+\)::view-transition-old\(root\)/.test(css)) {
+  throw new Error("Semantic route deformation must not be bound to the root snapshot.");
 }
 
 for (const forbidden of ["availableCredits", "payoutCredits", "claimReady", "rewardCredits", "ledger"]) {

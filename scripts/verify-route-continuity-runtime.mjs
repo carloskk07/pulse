@@ -250,6 +250,7 @@ async function installTransitionProbeBeforeHydration(send) {
     "        playState: animation.playState,",
     "      }));",
     "      entry.animationNames = [...new Set([...(entry.animationNames || []), ...entry.animations.map((animation) => animation.name).filter(Boolean)])];",
+    "      entry.animationEvidence = [...new Set([...(entry.animationEvidence || []), ...entry.animations.filter((animation) => animation.name && animation.pseudo).map((animation) => animation.name + '@' + animation.pseudo)])];",
     "      window.__pcRouteTransitionTypes = [...new Set([...(window.__pcRouteTransitionTypes || []), ...entry.types])];",
     "      window.__pcRouteTransitionAnimations = [...entry.animations];",
     "    };",
@@ -320,7 +321,7 @@ async function clickRoute(send, href) {
   if (result.result?.value !== true) throw new Error(`Navigation link ${href} was not found.`);
 }
 
-async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null) {
+async function waitForTransitionTypes(send, expectedTypes, afterCall, label, expectedAnimation = null, expectedPseudo = null) {
   let lastState = null;
   for (let attempt = 0; attempt < 180; attempt += 1) {
     const state = await readState(send);
@@ -336,7 +337,14 @@ async function waitForTransitionTypes(send, expectedTypes, afterCall, label, exp
           && expectedTypes.every((type) => entry.types.includes(type))
           && (
             !expectedAnimation
-            || (Array.isArray(entry?.animationNames) && entry.animationNames.includes(expectedAnimation))
+            || (
+              expectedPseudo
+                ? (
+                    Array.isArray(entry?.animationEvidence)
+                    && entry.animationEvidence.includes(`${expectedAnimation}@${expectedPseudo}`)
+                  )
+                : (Array.isArray(entry?.animationNames) && entry.animationNames.includes(expectedAnimation))
+            )
           ),
       )
     ) {
@@ -345,7 +353,7 @@ async function waitForTransitionTypes(send, expectedTypes, afterCall, label, exp
     await sleep(25);
   }
   throw new Error(
-    `${label} expected transition types ${expectedTypes.join(", ")}${expectedAnimation ? ` with animation ${expectedAnimation}` : ""} after call ${afterCall}: ${JSON.stringify(lastState)}`,
+    `${label} expected transition types ${expectedTypes.join(", ")}${expectedAnimation ? ` with animation ${expectedAnimation}${expectedPseudo ? ` on ${expectedPseudo}` : ""}` : ""} after call ${afterCall}: ${JSON.stringify(lastState)}`,
   );
 }
 
@@ -357,6 +365,19 @@ function assertNoSemanticTransfer(state, afterCall, label) {
     .find((type) => String(type).startsWith("pc-transfer-"));
   if (leaked) {
     throw new Error(`${label} must stay within one semantic dimension; received ${leaked}: ${JSON.stringify(entries)}`);
+  }
+}
+
+
+function assertNoSemanticRootAnimation(state, afterCall, label) {
+  const entries = Array.isArray(state?.history)
+    ? state.history.filter((entry) => Number(entry?.call) > afterCall)
+    : [];
+  const leaked = entries
+    .flatMap((entry) => Array.isArray(entry?.animationEvidence) ? entry.animationEvidence : [])
+    .find((evidence) => String(evidence).startsWith("pcTransfer") && String(evidence).includes("(root)"));
+  if (leaked) {
+    throw new Error(`${label} leaked semantic deformation onto the root snapshot: ${leaked}`);
   }
 }
 
@@ -467,10 +488,12 @@ try {
     await waitForHydratedLink(send, href);
     await clickRoute(send, href);
     await waitForPath(send, href);
-    const state = await waitForTransitionTypes(send, [direction, semantic], callsBefore, label, animation);
+    const semanticPseudo = "::view-transition-old(pc-spatial-field)";
+    const state = await waitForTransitionTypes(send, [direction, semantic], callsBefore, label, animation, semanticPseudo);
     if (state?.documentId !== before.documentId || state.motion !== "1" || state.calls <= callsBefore) {
       throw new Error(`${label} lost native SPA continuity: ${JSON.stringify(state)}`);
     }
+    assertNoSemanticRootAnimation(state, callsBefore, label);
     return state;
   }
 
@@ -482,7 +505,7 @@ try {
   const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "Referrals → Progress");
 
   console.log(
-    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six directional dimension transfers (calls=${finalProgress.calls}).`,
+    `Native route continuity PASS: same-dimension continuity + reduced semantic transfer + six selective spatial-field dimension transfers (calls=${finalProgress.calls}).`,
   );
   socket.close();
 } finally {
