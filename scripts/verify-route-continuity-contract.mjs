@@ -111,6 +111,10 @@ for (const [contextPath, fragments] of [
     'getRouteTransitionTypesForHref("earn", "/invite")',
   ]],
   ["components/next-circuit-panel.tsx", ['getRouteTransitionTypesForHref("progress", "/dashboard")']],
+  ["components/claim-reveal-hero.tsx", [
+    'getRouteTransitionTypesForHref("home", "/dashboard")',
+    'getRouteTransitionTypesForHref("home", "/wallet")',
+  ]],
 ]) {
   requireText(contextPath, fragments);
 }
