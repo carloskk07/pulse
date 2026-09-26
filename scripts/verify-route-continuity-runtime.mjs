@@ -523,7 +523,7 @@ try {
   await crossRoute("/wallet", "pc-back", "pc-transfer-network-value", "pcTransferNetworkValueOut", "pcTransferNetworkValueBridge", "Referrals → Balance");
   await crossRoute("/progress", "pc-back", "pc-transfer-value-signal", "pcTransferValueSignalOut", "pcTransferValueSignalBridge", "Balance → Progress");
   await crossRoute("/invite", "pc-forward", "pc-transfer-signal-network", "pcTransferSignalNetworkOut", "pcTransferSignalNetworkBridge", "Progress → Referrals");
-  const finalProgress = await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "pcTransferNetworkSignalBridge", "Referrals → Progress");
+  await crossRoute("/progress", "pc-back", "pc-transfer-network-signal", "pcTransferNetworkSignalOut", "pcTransferNetworkSignalBridge", "Referrals → Progress");
 
   await send("Emulation.setDeviceMetricsOverride", {
     width: 390,
