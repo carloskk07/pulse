@@ -1,6 +1,121 @@
 "use client";
 
 import { useEffect } from "react";
+import { getRouteDimension, getRouteDimensionFromHref, type RouteDimension } from "@/lib/route-dimension";
+
+
+type TransferVector = {
+  opacity: number;
+  scaleX: number;
+  scaleY: number;
+  rotate: number;
+  blur: number;
+  brightness: number;
+  contrast: number;
+  saturate: number;
+};
+
+function lerp(from: number, to: number, amount: number) {
+  return from + (to - from) * amount;
+}
+
+function transferVector(from: RouteDimension, to: RouteDimension, strength: number): TransferVector {
+  const energy = Math.max(0, Math.min(1, strength));
+
+  if (from === "value" && to === "signal") {
+    return {
+      opacity: lerp(1, 0.12, energy),
+      scaleX: lerp(1, 0.88, energy),
+      scaleY: lerp(1, 0.76, energy),
+      rotate: 0,
+      blur: lerp(0, 6, energy),
+      brightness: lerp(1, 1.22, energy),
+      contrast: 1,
+      saturate: 1,
+    };
+  }
+  if (from === "signal" && to === "value") {
+    return {
+      opacity: lerp(1, 0.14, energy),
+      scaleX: lerp(1, 0.92, energy),
+      scaleY: lerp(1, 0.92, energy),
+      rotate: lerp(0, 1, energy),
+      blur: lerp(0, 5, energy),
+      brightness: 1,
+      contrast: lerp(1, 1.12, energy),
+      saturate: 1,
+    };
+  }
+  if (from === "value" && to === "network") {
+    return {
+      opacity: lerp(1, 0.12, energy),
+      scaleX: lerp(1, 0.72, energy),
+      scaleY: lerp(1, 1.04, energy),
+      rotate: 0,
+      blur: lerp(0, 5, energy),
+      brightness: lerp(1, 1.12, energy),
+      contrast: 1,
+      saturate: 1,
+    };
+  }
+  if (from === "network" && to === "value") {
+    return {
+      opacity: lerp(1, 0.1, energy),
+      scaleX: lerp(1, 1.08, energy),
+      scaleY: lerp(1, 0.76, energy),
+      rotate: 0,
+      blur: lerp(0, 6, energy),
+      brightness: 1,
+      contrast: 1,
+      saturate: lerp(1, 1.12, energy),
+    };
+  }
+  if (from === "signal" && to === "network") {
+    return {
+      opacity: lerp(1, 0.12, energy),
+      scaleX: lerp(1, 0.86, energy),
+      scaleY: lerp(1, 0.86, energy),
+      rotate: lerp(0, -1.4, energy),
+      blur: lerp(0, 5, energy),
+      brightness: 1,
+      contrast: 1,
+      saturate: 1,
+    };
+  }
+  return {
+    opacity: lerp(1, 0.1, energy),
+    scaleX: lerp(1, 1.06, energy),
+    scaleY: lerp(1, 0.82, energy),
+    rotate: lerp(0, 0.9, energy),
+    blur: lerp(0, 6, energy),
+    brightness: 1,
+    contrast: 1,
+    saturate: 1,
+  };
+}
+
+function syncRouteTransferAuthority(frame: HTMLElement, href: string | null) {
+  const currentDimension = getRouteDimension(frame.dataset.section);
+  const targetDimension = getRouteDimensionFromHref(href);
+  if (!currentDimension || !targetDimension || currentDimension === targetDimension) return;
+
+  const strength = Math.max(0, Math.min(100, Number(frame.dataset.productResidueStrength ?? 0)));
+  const energy = strength / 100;
+  const vector = transferVector(currentDimension, targetDimension, energy);
+  const root = document.documentElement;
+
+  root.dataset.pcRouteTransferSourceStrength = String(strength);
+  root.dataset.pcRouteTransferPair = `${currentDimension}-${targetDimension}`;
+  root.style.setProperty("--pc-route-transfer-source-strength", energy.toFixed(4));
+  root.style.setProperty("--pc-transfer-out-opacity", vector.opacity.toFixed(4));
+  root.style.setProperty("--pc-transfer-out-scale-x", vector.scaleX.toFixed(4));
+  root.style.setProperty("--pc-transfer-out-scale-y", vector.scaleY.toFixed(4));
+  root.style.setProperty("--pc-transfer-out-rotate", `${vector.rotate.toFixed(3)}deg`);
+  root.style.setProperty("--pc-transfer-out-blur", `${vector.blur.toFixed(3)}px`);
+  root.style.setProperty("--pc-transfer-out-brightness", vector.brightness.toFixed(4));
+  root.style.setProperty("--pc-transfer-out-contrast", vector.contrast.toFixed(4));
+  root.style.setProperty("--pc-transfer-out-saturate", vector.saturate.toFixed(4));
+}
 
 const REACTIVE_SELECTOR = [
   ".pc-v9-chamber",
@@ -113,6 +228,14 @@ export function ProductInteractionLayer() {
       return surface && frame.contains(surface) ? surface : null;
     };
 
+
+    const onRouteClick = (event: MouseEvent) => {
+      if (!(event.target instanceof Element)) return;
+      const link = event.target.closest<HTMLAnchorElement>("a[href]");
+      if (!link || !frame.contains(link)) return;
+      syncRouteTransferAuthority(frame, link.getAttribute("href"));
+    };
+
     const onPointerMove = (event: PointerEvent) => {
       if (reducedMotion.matches || !finePointer.matches || event.pointerType === "touch") return;
       queued = {
@@ -164,6 +287,7 @@ export function ProductInteractionLayer() {
     markMode();
     resetField(frame);
 
+    frame.addEventListener("click", onRouteClick, true);
     frame.addEventListener("pointermove", onPointerMove, { passive: true });
     frame.addEventListener("pointerdown", onPointerDown, { passive: true });
     frame.addEventListener("pointerleave", onPointerLeave, { passive: true });
@@ -177,6 +301,7 @@ export function ProductInteractionLayer() {
       clearSurface(activeSurface);
       resetField(frame);
       delete frame.dataset.productInteraction;
+      frame.removeEventListener("click", onRouteClick, true);
       frame.removeEventListener("pointermove", onPointerMove);
       frame.removeEventListener("pointerdown", onPointerDown);
       frame.removeEventListener("pointerleave", onPointerLeave);
