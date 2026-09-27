@@ -2393,6 +2393,231 @@ function auditImperativeNavigation(source, path) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
+      const indirectInvocation = indirectInvocationInfo(node, env);
+      if (indirectInvocation) {
+        const indirectTarget = indirectInvocation.target;
+        const indirectArgs = indirectInvocation.args;
+        const indirectFirstArg = indirectArgs[0];
+        const indirectThisKind = domNavigationElementKind(indirectInvocation.thisArg, env);
+        const nativeSetter = nativeDomSetterInfo(indirectTarget, env);
+        const setAttributeCapability = (
+          isDomSetAttributeReference(indirectTarget, env)
+          || isNativeDomSetAttributeReference(indirectTarget, env)
+        );
+
+        const indirectRecognized = Boolean(
+          nativeSetter
+          || setAttributeCapability
+          || isDocumentHtmlWriteReference(indirectTarget, env)
+          || isInsertAdjacentHtmlReference(indirectTarget, env)
+          || isRouterTraversalReference(indirectTarget, env)
+          || isRouterMethodReference(indirectTarget, env)
+          || isServerRedirectReference(indirectTarget, env)
+          || isResponseRedirectReference(indirectTarget, env)
+          || isLocationHeaderMutationReference(indirectTarget, env)
+          || isBrowserLocationReloadReference(indirectTarget, env)
+          || isBrowserLocationMethodReference(indirectTarget, env)
+          || isBrowserHistoryTraversalReference(indirectTarget, env)
+          || isBrowserHistoryMethodReference(indirectTarget, env)
+          || isBrowserWindowOpenReference(indirectTarget, env)
+          || isBrowserNavigationTraversalReference(indirectTarget, env)
+          || isBrowserNavigationApiMethodReference(indirectTarget, env)
+        );
+
+        if (indirectInvocation.dynamic && indirectRecognized) {
+          report(node, "native-invoke-dynamic-arguments");
+        } else if (!indirectInvocation.dynamic) {
+          if (nativeSetter) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else if (indirectThisKind === nativeSetter.kind) {
+              if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
+                report(node, "native-invoke-dom-base-href");
+              } else if (
+                !indirectFirstArg
+                || !domNavigationAuthority(indirectFirstArg, env, callStack)
+              ) {
+                const targets = indirectFirstArg
+                  ? staticHrefCandidatesResolved(indirectFirstArg, env, callStack)
+                  : [];
+                report(node, "native-invoke-dom-setter", targets);
+              }
+            }
+          }
+
+          if (setAttributeCapability) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else {
+              const attributeName = resolveDataExpression(indirectFirstArg, env);
+              const target = indirectArgs[1];
+              if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else {
+                const navProperty = domNavigationPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
+                if (indirectThisKind === "base" && navProperty === "href") {
+                  report(node, "native-invoke-dom-base-href");
+                } else if (
+                  navProperty
+                  && (!target || !domNavigationAuthority(target, env, callStack))
+                ) {
+                  const targets = target
+                    ? staticHrefCandidatesResolved(target, env, callStack)
+                    : [];
+                  report(node, "native-invoke-dom-attribute", targets);
+                }
+              }
+            }
+          }
+
+          if (
+            isDocumentHtmlWriteReference(indirectTarget, env)
+            || isInsertAdjacentHtmlReference(indirectTarget, env)
+          ) {
+            report(node, "native-invoke-dom-html");
+          }
+
+          if (isRouterTraversalReference(indirectTarget, env)) {
+            report(node, "native-invoke-router-traversal");
+          }
+
+          if (
+            isRouterMethodReference(indirectTarget, env)
+            && !authorityExpressionResolved(
+              indirectFirstArg,
+              navigationBindings,
+              env,
+              callStack,
+            )
+          ) {
+            report(node, "native-invoke-router");
+          }
+
+          if (isServerRedirectReference(indirectTarget, env)) {
+            const targets = staticHrefCandidatesResolved(
+              indirectFirstArg,
+              env,
+              callStack,
+            ).map(normalizedProductRoute).filter(Boolean);
+            const authoritative = (
+              authorityExpressionResolved(indirectFirstArg, navigationBindings, env, callStack)
+              || authorityExpressionResolved(indirectFirstArg, productHrefBindings, env, callStack)
+            );
+            if (targets.length > 0 && !authoritative) {
+              report(node, "native-invoke-server-redirect", targets);
+            } else if (
+              !authoritative
+              && containsUnprovenProjectImportCall(indirectFirstArg, env, callStack)
+            ) {
+              report(node, "native-invoke-cross-module-destination");
+            }
+          }
+
+          if (isResponseRedirectReference(indirectTarget, env)) {
+            const targetExpressions = routeRedirectTargetExpressions(
+              indirectFirstArg,
+              env,
+              callStack,
+            );
+            const targets = targetExpressions
+              .flatMap((target) => staticHrefCandidatesResolved(target, env, callStack))
+              .map(normalizedProductRoute)
+              .filter(Boolean);
+            const authoritative = targetExpressions.length > 0
+              && targetExpressions.every((target) => (
+                authorityExpressionResolved(target, navigationBindings, env, callStack)
+                || authorityExpressionResolved(target, productHrefBindings, env, callStack)
+              ));
+            if (targets.length > 0 && !authoritative) {
+              report(node, "native-invoke-route-handler-redirect", targets);
+            } else if (
+              !authoritative
+              && containsUnprovenProjectImportCall(indirectFirstArg, env, callStack)
+            ) {
+              report(node, "native-invoke-cross-module-destination");
+            }
+          }
+
+          if (isLocationHeaderMutationReference(indirectTarget, env)) {
+            const headerName = resolveDataExpression(indirectFirstArg, env);
+            const locationTarget = indirectArgs[1];
+            if (
+              headerName
+              && ts.isStringLiteralLike(headerName)
+              && headerName.text.toLowerCase() === "location"
+              && locationTarget
+            ) {
+              const authoritative = (
+                authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+                || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+                || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+              );
+              if (!authoritative) {
+                const targets = staticHrefCandidatesResolved(
+                  locationTarget,
+                  env,
+                  callStack,
+                ).map(normalizedProductRoute).filter(Boolean);
+                report(node, "native-invoke-location-header", targets);
+              }
+            }
+          }
+
+          if (isBrowserLocationReloadReference(indirectTarget, env)) {
+            report(node, "native-invoke-browser-reload");
+          }
+
+          if (
+            isBrowserLocationMethodReference(indirectTarget, env)
+            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+          ) {
+            report(node, "native-invoke-browser-location");
+          }
+
+          if (isBrowserHistoryTraversalReference(indirectTarget, env)) {
+            report(node, "native-invoke-history-traversal");
+          }
+
+          if (isBrowserHistoryMethodReference(indirectTarget, env)) {
+            const historyTarget = indirectArgs[2];
+            if (
+              historyTarget
+              && !authorityExpressionResolved(
+                historyTarget,
+                navigationBindings,
+                env,
+                callStack,
+              )
+            ) {
+              report(node, "native-invoke-browser-history");
+            }
+          }
+
+          if (
+            isBrowserWindowOpenReference(indirectTarget, env)
+            && indirectFirstArg
+            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+          ) {
+            report(node, "native-invoke-browser-window-open");
+          }
+
+          if (isBrowserNavigationTraversalReference(indirectTarget, env)) {
+            report(node, "native-invoke-navigation-api-traversal");
+          }
+
+          if (
+            isBrowserNavigationApiMethodReference(indirectTarget, env)
+            && indirectFirstArg
+            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+          ) {
+            report(node, "native-invoke-browser-navigation-api");
+          }
+        }
+      }
+
       const reflectiveCall = reflectiveCalleeName(expression, env);
       const reflectiveTargetKind = reflectiveCall
         ? domNavigationElementKind(firstArg, env)
