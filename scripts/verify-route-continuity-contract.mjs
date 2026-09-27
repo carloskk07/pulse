@@ -3818,6 +3818,57 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { execute } from "@/lib/dynamic-wrapper";',
+    'eval("location.href = \'/earn\'");',
+    'const evaluator = eval;',
+    'evaluator(runtimeCode);',
+    '(0, eval)("location.href = \'/wallet\'");',
+    'eval.call(null, "location.href = \'/progress\'");',
+    'Reflect.apply(eval, null, ["location.href = \'/invite\'"]);',
+    'Function("return location.href")();',
+    'new Function("return location.href");',
+    'const F = Function;',
+    'new F("return location.href");',
+    '(() => {}).constructor("return location.href")();',
+    'Reflect.construct(Function, ["return location.href"]);',
+    'setTimeout("location.href = \'/dashboard\'", 0);',
+    'const repeat = setInterval;',
+    'repeat("location.href = \'/earn\'", 1000);',
+    'const boundEval = eval.bind(null);',
+    'const boundFunction = Function.bind(null, "return location.href");',
+    'const boundTimer = setTimeout.bind(window, "location.href = \'/wallet\'", 0);',
+    'boundEval("location.href = \'/progress\'");',
+    'new boundFunction();',
+    'boundTimer();',
+    'new Proxy(eval, {});',
+    'Proxy.revocable(Function, {});',
+    'execute(eval);',
+    'setTimeout(() => console.log("safe"), 0);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "dynamic-code-execution.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 21
+    || counts["dynamic-code-eval"] !== 3
+    || counts["dynamic-code-indirect-eval"] !== 3
+    || counts["dynamic-code-function-constructor"] !== 6
+    || counts["dynamic-code-string-timer"] !== 3
+    || counts["dynamic-code-bound-capability"] !== 3
+    || counts["dynamic-code-proxy-capability"] !== 2
+    || counts["dynamic-code-capability-export"] !== 1
+  ) {
+    throw new Error("Dynamic code execution boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRef } from "react";',
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'const selected = document.querySelector("a.promo");',
@@ -4351,6 +4402,20 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
 
+const dynamicCodeExecutionViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("dynamic-code-"));
+if (dynamicCodeExecutionViolations.length > 0) {
+  throw new Error(
+    "Dynamic code execution boundary failed:\n"
+    + dynamicCodeExecutionViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+      )
+      .join("\n"),
+  );
+}
+
 const proxyNavigationViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("proxy-navigation-"));
 if (proxyNavigationViolations.length > 0) {
@@ -4400,6 +4465,7 @@ const imperativeNavigationViolations = allImperativeNavigationViolations
     !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
     && !violation.kind.startsWith("proxy-navigation-")
+    && !violation.kind.startsWith("dynamic-code-")
   );
 if (imperativeNavigationViolations.length > 0) {
   throw new Error(
