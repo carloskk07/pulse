@@ -716,6 +716,8 @@ function auditImperativeNavigation(source, path) {
   const browserNavigationApiVariables = new Set();
   const browserNavigationApiMethodBindings = new Set();
   const browserWindowOpenBindings = new Set();
+  const headerVariables = new Set();
+  const headerMutationMethodBindings = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -886,6 +888,27 @@ function auditImperativeNavigation(source, path) {
     return text === "Response" || text === "globalThis.Response";
   }
 
+  function isHeadersObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && headerVariables.has(resolved.text)) return true;
+
+    if (
+      ts.isNewExpression(resolved)
+      && (
+        (ts.isIdentifier(resolved.expression) && resolved.expression.text === "Headers")
+        || resolved.expression.getText(sourceFile) === "globalThis.Headers"
+      )
+    ) return true;
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "headers"
+    ) return true;
+
+    return false;
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -931,6 +954,9 @@ function auditImperativeNavigation(source, path) {
       if (initializer && ts.isIdentifier(initializer) && browserNavigationApiVariables.has(initializer.text)) {
         changed = addBinding(browserNavigationApiVariables, local) || changed;
       }
+      if (isHeadersObject(initializer)) {
+        changed = addBinding(headerVariables, local) || changed;
+      }
 
       if (initializer && (ts.isPropertyAccessExpression(initializer) || ts.isElementAccessExpression(initializer))) {
         const owner = propertyOwner(initializer);
@@ -961,6 +987,9 @@ function auditImperativeNavigation(source, path) {
         if (isBrowserWindowObject(owner) && method === "open") {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
         }
+        if (isHeadersObject(owner) && (method === "set" || method === "append")) {
+          changed = addBinding(headerMutationMethodBindings, local) || changed;
+        }
       }
 
       if (initializer && ts.isIdentifier(initializer)) {
@@ -985,6 +1014,12 @@ function auditImperativeNavigation(source, path) {
         if (browserWindowOpenBindings.has(initializer.text)) {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
         }
+        if (headerVariables.has(initializer.text)) {
+          changed = addBinding(headerVariables, local) || changed;
+        }
+        if (headerMutationMethodBindings.has(initializer.text)) {
+          changed = addBinding(headerMutationMethodBindings, local) || changed;
+        }
       }
     }
 
@@ -996,6 +1031,7 @@ function auditImperativeNavigation(source, path) {
       const fromHistory = isBrowserHistoryObject(initializer);
       const fromNavigationApi = isBrowserNavigationApiObject(initializer);
       const fromWindow = isBrowserWindowObject(initializer);
+      const fromHeaders = isHeadersObject(initializer);
 
       for (const element of node.name.elements) {
         const sourceName = bindingSourceName(element);
@@ -1021,6 +1057,9 @@ function auditImperativeNavigation(source, path) {
         }
         if (fromWindow && sourceName === "open") {
           changed = addBinding(browserWindowOpenBindings, localName) || changed;
+        }
+        if (fromHeaders && (sourceName === "set" || sourceName === "append")) {
+          changed = addBinding(headerMutationMethodBindings, localName) || changed;
         }
       }
     }
@@ -1266,6 +1305,17 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isLocationHeaderMutationReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && headerMutationMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isHeadersObject(propertyOwner(resolved), env)
+      && (propertyName(resolved) === "set" || propertyName(resolved) === "append")
+    );
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
@@ -1390,6 +1440,38 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function headersConstructorLocationTargets(node, env = new Map()) {
+    if (!ts.isNewExpression(node)) return [];
+    const constructorText = resolveDataExpression(node.expression, env)?.getText(sourceFile);
+    if (constructorText !== "Headers" && constructorText !== "globalThis.Headers") return [];
+
+    const init = resolveDataExpression(node.arguments?.[0], env);
+    if (!init) return [];
+
+    if (ts.isObjectLiteralExpression(init)) {
+      const target = propertyAssignmentByName(init, "location");
+      return target ? [target] : [];
+    }
+
+    if (ts.isArrayLiteralExpression(init)) {
+      const targets = [];
+      for (const element of init.elements) {
+        if (!ts.isArrayLiteralExpression(element) || element.elements.length < 2) continue;
+        const headerName = resolveDataExpression(element.elements[0], env);
+        if (
+          headerName
+          && ts.isStringLiteralLike(headerName)
+          && headerName.text.toLowerCase() === "location"
+        ) {
+          targets.push(element.elements[1]);
+        }
+      }
+      return targets;
+    }
+
+    return [];
+  }
+
   function responseConstructorLocationTarget(node, env = new Map()) {
     if (!ts.isNewExpression(node)) return null;
     const constructor = resolveDataExpression(node.expression, env);
@@ -1483,6 +1565,34 @@ function auditImperativeNavigation(source, path) {
         }
       }
 
+      if (isLocationHeaderMutationReference(expression, env)) {
+        const headerName = resolveDataExpression(firstArg, env);
+        const locationTarget = node.arguments[1];
+        if (
+          headerName
+          && ts.isStringLiteralLike(headerName)
+          && headerName.text.toLowerCase() === "location"
+          && locationTarget
+        ) {
+          const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
+            .map(normalizedProductRoute)
+            .filter(Boolean);
+          const authoritative = (
+            authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+            || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+            || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+          );
+          if (targets.length > 0 && !authoritative) {
+            report(node, "location-header", targets);
+          } else if (
+            !authoritative
+            && containsUnprovenProjectImportCall(locationTarget, env, callStack)
+          ) {
+            report(node, "cross-module-destination");
+          }
+        }
+      }
+
       if (
         isBrowserLocationMethodReference(expression, env)
         && !browserNavigationAuthority(firstArg, env, callStack)
@@ -1528,6 +1638,8 @@ function auditImperativeNavigation(source, path) {
           || isBrowserNavigationApiObject(argument, env)
           || isBrowserNavigationApiMethodReference(argument, env)
           || isBrowserWindowOpenReference(argument, env)
+          || isHeadersObject(argument, env)
+          || isLocationHeaderMutationReference(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
         ))
@@ -1545,6 +1657,26 @@ function auditImperativeNavigation(source, path) {
     }
 
     if (ts.isNewExpression(node)) {
+      const headerTargets = headersConstructorLocationTargets(node, env);
+      for (const locationTarget of headerTargets) {
+        const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
+          .map(normalizedProductRoute)
+          .filter(Boolean);
+        const authoritative = (
+          authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+        );
+        if (targets.length > 0 && !authoritative) {
+          report(node, "location-header", targets);
+        } else if (
+          !authoritative
+          && containsUnprovenProjectImportCall(locationTarget, env, callStack)
+        ) {
+          report(node, "cross-module-destination");
+        }
+      }
+
       const locationTarget = responseConstructorLocationTarget(node, env);
       if (locationTarget) {
         const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
@@ -1739,6 +1871,39 @@ function auditImperativeNavigation(source, path) {
     || counts["cross-module-wrapper"] !== 2
   ) {
     throw new Error("Cross-module navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const headers = new Headers();',
+    'headers.set("Location", "/dashboard");',
+    'headers.append("location", "/earn");',
+    'const alias = headers;',
+    'alias.set("Location", getRouteNavigationHref("headers", "/dashboard"));',
+    'const setter = headers.set;',
+    'setter("Location", "/wallet");',
+    'const { append: addLocation } = headers;',
+    'addLocation("Location", "/progress");',
+    'response.headers.set("Location", "/invite");',
+    'new Headers({ Location: "/dashboard" });',
+    'new Headers([["Location", "/wallet"]]);',
+    'new Headers({ Location: getRouteNavigationHref("headers", "/dashboard") });',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "location-header-mutation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["location-header"] !== 7
+  ) {
+    throw new Error("Location header mutation authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
