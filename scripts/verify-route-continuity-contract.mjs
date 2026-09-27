@@ -1183,6 +1183,171 @@ function auditDeclarativeNavigation(source, path) {
   }
 }
 
+function auditVerifiedReplayForms(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const internalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getRouteNavigationHref",
+  );
+  const productAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getProductRouteHref",
+  );
+  const externalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getExternalNavigationHref",
+  );
+  const turnstileBindings = importedBindingNames(
+    sourceFile,
+    "@/components/turnstile-field",
+    "TurnstileField",
+  );
+  const markerValue = "verified-replay";
+
+  function report(node, kind) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      targets: [],
+    });
+  }
+
+  function jsxTagName(node) {
+    if (!(ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))) return null;
+    return node.tagName.getText(sourceFile);
+  }
+
+  function replayMarker(openingElement) {
+    return literalJsxAttributeValue(
+      jsxAttribute(openingElement, "data-route-submit-authority"),
+    );
+  }
+
+  function isGovernedFormAction(openingElement) {
+    const actionAttribute = jsxAttribute(openingElement, "action");
+    if (!actionAttribute?.initializer) return false;
+    if (!ts.isJsxExpression(actionAttribute.initializer)) return false;
+    const expression = actionAttribute.initializer.expression;
+    if (!expression) return false;
+
+    if (isServerActionReferenceExpression(expression)) return true;
+    return (
+      expressionContainsAuthorityCall(expression, internalAuthorityBindings)
+      || expressionContainsAuthorityCall(expression, productAuthorityBindings)
+      || expressionContainsAuthorityCall(expression, externalAuthorityBindings)
+    );
+  }
+
+  function containsTurnstile(element) {
+    let found = false;
+    function scan(node) {
+      if (found) return;
+      if (
+        (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+        && turnstileBindings.has(jsxTagName(node))
+      ) {
+        found = true;
+        return;
+      }
+      ts.forEachChild(node, scan);
+    }
+    for (const child of element.children) scan(child);
+    return found;
+  }
+
+  function nearestForm(node) {
+    let current = node.parent;
+    while (current) {
+      if (
+        ts.isJsxElement(current)
+        && current.openingElement.tagName.getText(sourceFile).toLowerCase() === "form"
+      ) {
+        return current;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  function visit(node) {
+    if (ts.isJsxElement(node)) {
+      const opening = node.openingElement;
+      if (opening.tagName.getText(sourceFile).toLowerCase() === "form") {
+        const marker = replayMarker(opening);
+        if (marker !== null) {
+          if (marker !== markerValue) {
+            report(opening, "verified-replay-marker");
+          } else {
+            if (!containsTurnstile(node)) report(opening, "verified-replay-orphan");
+            if (!isGovernedFormAction(opening)) {
+              report(opening, "verified-replay-action");
+            }
+          }
+        }
+      }
+    }
+
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+      && turnstileBindings.has(jsxTagName(node))
+    ) {
+      const form = nearestForm(node);
+      if (!form || replayMarker(form.openingElement) !== markerValue) {
+        report(node, "verified-replay-unmarked");
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { TurnstileField } from "@/components/turnstile-field";',
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const signIn = async (formData) => { "use server"; };',
+    'const Fixture = () => (<>',
+    '  <form action={signIn} data-route-submit-authority="verified-replay"><TurnstileField action="signin" /></form>',
+    '  <form action={getRouteNavigationHref("replay", "/api/ads/interest")} data-route-submit-authority="verified-replay"><TurnstileField action="ads" /></form>',
+    '  <form action="/api/raw" data-route-submit-authority="verified-replay"><TurnstileField action="raw" /></form>',
+    '  <form action={signIn} data-route-submit-authority="verified-replay"><button>Missing Turnstile</button></form>',
+    '  <form action={signIn}><TurnstileField action="unmarked" /></form>',
+    '</>);',
+  ].join("\n");
+  const violations = auditVerifiedReplayForms(
+    selfTest,
+    "verified-replay-form.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 3
+    || counts["verified-replay-action"] !== 1
+    || counts["verified-replay-orphan"] !== 1
+    || counts["verified-replay-unmarked"] !== 1
+  ) {
+    throw new Error("Verified replay form authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function authorityCall(expression, bindings) {
   return Boolean(
     expression
@@ -5007,6 +5172,21 @@ if (staticSemanticCoverageViolations.length > 0) {
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.targets.join(", ") + " lacks transitionTypes"
+      )
+      .join("\n"),
+  );
+}
+
+const verifiedReplayFormViolations = ["app", "components"]
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditVerifiedReplayForms(read(path), path));
+if (verifiedReplayFormViolations.length > 0) {
+  throw new Error(
+    "Verified replay form authority failed:\n"
+    + verifiedReplayFormViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
       )
       .join("\n"),
   );
