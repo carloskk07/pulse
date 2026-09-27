@@ -4968,6 +4968,38 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'window[0].location.assign("/dashboard");',
+    'parent[1].location.href = "/wallet";',
+    'const indexedChild = window[0];',
+    'indexedChild.location.replace("/earn");',
+    'window[0][1].history.pushState({}, "", "/progress");',
+    'top[0].navigation.navigate("/invite");',
+    'opener[0].open("https://example.com/raw", "_blank");',
+    'window[0].location.assign(getRouteNavigationHref("indexed-context", "/dashboard"));',
+    'opener[0].open(getExternalNavigationHref("https://example.com/safe"), "_blank");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "indexed-child-context.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 6
+    || counts["browser-location"] !== 3
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+    || counts["browser-window-open"] !== 1
+  ) {
+    throw new Error("Indexed child context authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'iframe.contentDocument.location.assign("/dashboard");',
     'iframe.contentDocument.defaultView.location.href = "/wallet";',
@@ -5412,7 +5444,9 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenEmbeddedDocument(target) { iframe.contentDocument.location.assign(target); }',
     'export function hiddenTop(target) { top.location.assign(target); }',
     'export function hiddenFrame(target) { frames[0].location.replace(target); }',
+    'export function hiddenIndexedContext(target) { window[0].location.assign(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenIndexedContextHistory(target) { parent[1].history.pushState({}, "", target); }',
     'export function hiddenEmbeddedViewHistory(target) { iframe.contentDocument.defaultView.history.pushState({}, "", target); }',
     'export function hiddenParentHistory(target) { parent.history.pushState({}, "", target); }',
     'export function hiddenHistoryBack() { history.back(); }',
@@ -5433,11 +5467,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     return acc;
   }, {});
   if (
-    violations.length !== 20
-    || counts["browser-navigation"] !== 5
+    violations.length !== 22
+    || counts["browser-navigation"] !== 6
     || counts["browser-reload"] !== 1
     || counts["browser-window-navigation"] !== 2
-    || counts["history-navigation"] !== 3
+    || counts["history-navigation"] !== 4
     || counts["history-traversal"] !== 1
     || counts["navigation-api"] !== 2
     || counts["navigation-api-traversal"] !== 1
