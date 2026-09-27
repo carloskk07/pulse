@@ -513,6 +513,144 @@ function hasUnresolvedDynamicHref(attribute) {
   return staticHrefCandidates(attribute.initializer.expression).length === 0;
 }
 
+function staticNavigationTransport(value) {
+  const href = String(value ?? "").trim();
+  if (!href) return "empty";
+  if (href.startsWith("#")) return "fragment";
+  if (href.startsWith("/") && !href.startsWith("//")) return "internal";
+  if (href.startsWith("//")) return "protocol-relative";
+
+  const scheme = href.match(/^([A-Za-z][A-Za-z0-9+.-]*):/)?.[1]?.toLowerCase() ?? null;
+  if (scheme === "https") return "https";
+  if (scheme === "mailto") return "mailto";
+  if (scheme === "tel") return "tel";
+  if (scheme) return "other-scheme";
+  return "relative";
+}
+
+function staticNavigationTransportAllowed(value, surface) {
+  const transport = staticNavigationTransport(value);
+  if (surface === "anchor") {
+    return ["internal", "fragment", "https", "mailto", "tel"].includes(transport);
+  }
+  return ["internal", "fragment", "https"].includes(transport);
+}
+
+function auditStaticNavigationTransport(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const attributeByTag = new Map([
+    ["Link", { attribute: "href", surface: "route" }],
+    ["a", { attribute: "href", surface: "anchor" }],
+    ["area", { attribute: "href", surface: "anchor" }],
+    ["form", { attribute: "action", surface: "route" }],
+    ["button", { attribute: "formAction", surface: "route" }],
+    ["input", { attribute: "formAction", surface: "route" }],
+  ]);
+
+  function report(node, value, surface) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      targets: [value],
+      transport: staticNavigationTransport(value),
+      surface,
+    });
+  }
+
+  function metaRefreshTarget(contentValue) {
+    if (!contentValue) return null;
+    const match = contentValue.match(/(?:^|;)\s*url\s*=\s*([^;]+)\s*$/i);
+    return match?.[1]?.trim().replace(/^['"]|['"]$/g, "") ?? null;
+  }
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile);
+      const config = attributeByTag.get(tag);
+      if (config) {
+        const values = hrefCandidates(jsxAttribute(node, config.attribute));
+        for (const value of values) {
+          if (!staticNavigationTransportAllowed(value, config.surface)) {
+            report(node, value, config.surface);
+          }
+        }
+      }
+
+      if (tag.toLowerCase() === "meta") {
+        const httpEquiv = literalJsxAttributeValue(jsxAttribute(node, "httpEquiv"))
+          ?? literalJsxAttributeValue(jsxAttribute(node, "http-equiv"));
+        if (httpEquiv?.toLowerCase() === "refresh") {
+          const target = metaRefreshTarget(
+            literalJsxAttributeValue(jsxAttribute(node, "content")),
+          );
+          if (target && !staticNavigationTransportAllowed(target, "route")) {
+            report(node, target, "meta-refresh");
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'const Fixture = () => (<>',
+    '  <Link href="http://example.com">http link</Link>',
+    '  <Link href="//example.com/path">protocol relative</Link>',
+    '  <Link href="../relative">relative link</Link>',
+    '  <Link href="/dashboard">safe internal</Link>',
+    '  <a href="http://example.com">http anchor</a>',
+    '  <a href="//example.com/path">protocol-relative anchor</a>',
+    '  <a href="blob:https://example.com/id">blob anchor</a>',
+    '  <a href="../relative">relative anchor</a>',
+    '  <a href="mailto:hello@example.com">safe mail</a>',
+    '  <a href="tel:+555555555">safe phone</a>',
+    '  <a href="https://example.com">safe https</a>',
+    '  <area href="http://example.com/map" />',
+    '  <form action="http://example.com/submit" />',
+    '  <meta httpEquiv="refresh" content="0; url=//example.com/path" />',
+    '</>);',
+  ].join("\n");
+
+  const violations = auditStaticNavigationTransport(
+    selfTest,
+    "navigation-transport.self-test.tsx",
+  );
+  const transports = violations.reduce((acc, violation) => {
+    acc[violation.transport] = (acc[violation.transport] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  if (
+    violations.length !== 10
+    || transports["other-scheme"] !== 1
+    || transports["protocol-relative"] !== 3
+    || transports["relative"] !== 2
+    || transports["other-scheme"] !== 1
+    || violations.filter((violation) => violation.transport === "other-scheme").length !== 1
+    || violations.filter((violation) => violation.transport === "protocol-relative").length !== 3
+    || violations.filter((violation) => violation.transport === "relative").length !== 2
+    || violations.filter((violation) => violation.transport === "other-scheme").length !== 1
+    || violations.filter((violation) => violation.targets[0]?.startsWith("http://")).length !== 4
+  ) {
+    throw new Error("Navigation transport policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function executableUrlScheme(value) {
   if (typeof value !== "string") return null;
   const normalized = value
@@ -4431,7 +4569,23 @@ function auditNavigationSideEffectBoundary(source, path) {
   }
 }
 
-const executableUrlSchemeViolations = SEMANTIC_LINK_ROOTS
+const navigationTransportViolations = ["app", "components"]
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditStaticNavigationTransport(read(path), path));
+if (navigationTransportViolations.length > 0) {
+  throw new Error(
+    "Navigation transport policy failed:\n"
+    + navigationTransportViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.transport
+        + " [" + violation.targets.join(", ") + "]"
+      )
+      .join("\n"),
+  );
+}
+
+const executableUrlSchemeViolations = ["app", "components"]
   .flatMap(collectTsxFiles)
   .flatMap((path) => auditExecutableUrlSchemes(read(path), path));
 if (executableUrlSchemeViolations.length > 0) {
