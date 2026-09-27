@@ -654,16 +654,6 @@ function authorityCall(expression, bindings) {
   );
 }
 
-function firstUrlArgument(expression) {
-  if (
-    expression
-    && ts.isNewExpression(expression)
-    && ts.isIdentifier(expression.expression)
-    && expression.expression.text === "URL"
-  ) return expression.arguments?.[0] ?? null;
-  return null;
-}
-
 function auditImperativeNavigation(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -673,6 +663,7 @@ function auditImperativeNavigation(source, path) {
     path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
   const violations = [];
+  const reportedViolations = new Set();
   const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
   const redirectBindings = importedBindingNames(sourceFile, "next/navigation", "redirect");
   const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
@@ -687,6 +678,7 @@ function auditImperativeNavigation(source, path) {
   const browserLocationMethodBindings = new Set();
   const declarations = [];
   const constInitializers = new Map();
+  const localFunctions = new Map();
 
   function bindingSourceName(element) {
     if (!ts.isBindingElement(element) || !ts.isIdentifier(element.name)) return null;
@@ -719,36 +711,104 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
-  function isUseRouterCall(expression) {
-    return Boolean(
-      expression
-      && ts.isCallExpression(expression)
-      && ts.isIdentifier(expression.expression)
-      && useRouterBindings.has(expression.expression.text)
-    );
-  }
-
-  function isRouterObject(expression) {
-    return Boolean(
-      expression
-      && (
-        (ts.isIdentifier(expression) && routerVariables.has(expression.text))
-        || isUseRouterCall(expression)
-      )
-    );
-  }
-
-  function isBrowserLocationObject(expression) {
-    if (!expression) return false;
-    if (ts.isIdentifier(expression) && browserLocationVariables.has(expression.text)) return true;
-    const text = expression.getText(sourceFile);
-    return text === "window.location" || text === "location";
-  }
-
   function addBinding(set, value) {
     if (!value || set.has(value)) return false;
     set.add(value);
     return true;
+  }
+
+  function registerLocalFunction(name, node) {
+    if (!name) return;
+    const definition = {
+      key: name + "@" + node.pos,
+      name,
+      node,
+      parameters: node.parameters ?? [],
+      body: node.body,
+    };
+    if (!localFunctions.has(name)) localFunctions.set(name, definition);
+    else localFunctions.set(name, null);
+  }
+
+  function collectDeclarations(node) {
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      registerLocalFunction(node.name.text, node);
+    }
+
+    if (ts.isVariableDeclaration(node)) {
+      declarations.push(node);
+      if (
+        ts.isIdentifier(node.name)
+        && node.initializer
+        && ts.isVariableDeclarationList(node.parent)
+        && (node.parent.flags & ts.NodeFlags.Const) !== 0
+      ) {
+        constInitializers.set(node.name.text, node.initializer);
+      }
+      if (
+        ts.isIdentifier(node.name)
+        && node.initializer
+        && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
+      ) {
+        registerLocalFunction(node.name.text, node.initializer);
+      }
+    }
+    ts.forEachChild(node, collectDeclarations);
+  }
+
+  collectDeclarations(sourceFile);
+
+  function resolveDataExpression(expression, env = new Map(), seen = new Set()) {
+    if (!expression) return expression;
+    if (ts.isParenthesizedExpression(expression)) {
+      return resolveDataExpression(expression.expression, env, seen);
+    }
+    if (ts.isIdentifier(expression)) {
+      const envKey = "env:" + expression.text;
+      if (env.has(expression.text) && !seen.has(envKey)) {
+        const nextSeen = new Set(seen);
+        nextSeen.add(envKey);
+        return resolveDataExpression(env.get(expression.text), env, nextSeen);
+      }
+      const constKey = "const:" + expression.text;
+      if (constInitializers.has(expression.text) && !seen.has(constKey)) {
+        const initializer = constInitializers.get(expression.text);
+        if (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) return expression;
+        const nextSeen = new Set(seen);
+        nextSeen.add(constKey);
+        return resolveDataExpression(initializer, env, nextSeen);
+      }
+    }
+    return expression;
+  }
+
+  function isUseRouterCall(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return Boolean(
+      resolved
+      && ts.isCallExpression(resolved)
+      && ts.isIdentifier(resolved.expression)
+      && useRouterBindings.has(resolved.expression.text)
+    );
+  }
+
+  function isRouterObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return Boolean(
+      resolved
+      && (
+        (ts.isIdentifier(resolved) && routerVariables.has(resolved.text))
+        || isUseRouterCall(resolved, env)
+      )
+    );
+  }
+
+  function isBrowserLocationObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && browserLocationVariables.has(resolved.text)) return true;
+    const text = resolved.getText(sourceFile);
+    return text === "window.location" || text === "location";
   }
 
   function discoverDeclaration(node) {
@@ -828,22 +888,6 @@ function auditImperativeNavigation(source, path) {
     return changed;
   }
 
-  function collectDeclarations(node) {
-    if (ts.isVariableDeclaration(node)) {
-      declarations.push(node);
-      if (
-        ts.isIdentifier(node.name)
-        && node.initializer
-        && ts.isVariableDeclarationList(node.parent)
-        && (node.parent.flags & ts.NodeFlags.Const) !== 0
-      ) {
-        constInitializers.set(node.name.text, node.initializer);
-      }
-    }
-    ts.forEachChild(node, collectDeclarations);
-  }
-
-  collectDeclarations(sourceFile);
   for (let pass = 0; pass < declarations.length + 1; pass += 1) {
     let changed = false;
     for (const declaration of declarations) {
@@ -852,165 +896,295 @@ function auditImperativeNavigation(source, path) {
     if (!changed) break;
   }
 
-  function resolveLocalExpression(expression, seen = new Set()) {
-    if (!expression) return expression;
-    if (ts.isParenthesizedExpression(expression)) {
-      return resolveLocalExpression(expression.expression, seen);
+  function localFunctionFromCallee(callee, env = new Map(), seen = new Set()) {
+    if (!callee) return null;
+    if (ts.isParenthesizedExpression(callee)) {
+      return localFunctionFromCallee(callee.expression, env, seen);
     }
-    if (ts.isIdentifier(expression) && constInitializers.has(expression.text)) {
-      if (seen.has(expression.text)) return expression;
-      const nextSeen = new Set(seen);
-      nextSeen.add(expression.text);
-      return resolveLocalExpression(constInitializers.get(expression.text), nextSeen);
+    if (ts.isIdentifier(callee)) {
+      const envKey = "envfn:" + callee.text;
+      if (env.has(callee.text) && !seen.has(envKey)) {
+        const nextSeen = new Set(seen);
+        nextSeen.add(envKey);
+        return localFunctionFromCallee(env.get(callee.text), env, nextSeen);
+      }
+      if (localFunctions.has(callee.text)) return localFunctions.get(callee.text);
+      const constKey = "constfn:" + callee.text;
+      if (constInitializers.has(callee.text) && !seen.has(constKey)) {
+        const nextSeen = new Set(seen);
+        nextSeen.add(constKey);
+        return localFunctionFromCallee(constInitializers.get(callee.text), env, nextSeen);
+      }
     }
-    return expression;
+    if (ts.isArrowFunction(callee) || ts.isFunctionExpression(callee)) {
+      for (const definition of localFunctions.values()) {
+        if (definition?.node === callee) return definition;
+      }
+    }
+    return null;
   }
 
-  function staticHrefCandidatesResolved(expression, seen = new Set()) {
+  function functionReturnExpressions(definition) {
+    if (!definition?.body) return [];
+    if (!ts.isBlock(definition.body)) return [definition.body];
+    const returns = [];
+    function collect(node) {
+      if (node !== definition.body && ts.isFunctionLike(node)) return;
+      if (ts.isReturnStatement(node) && node.expression) {
+        returns.push(node.expression);
+        return;
+      }
+      ts.forEachChild(node, collect);
+    }
+    collect(definition.body);
+    return returns;
+  }
+
+  function functionEnvironment(definition, callExpression, parentEnv) {
+    const env = new Map();
+    for (let index = 0; index < definition.parameters.length; index += 1) {
+      const parameter = definition.parameters[index];
+      if (!ts.isIdentifier(parameter.name)) continue;
+      const argument = callExpression.arguments[index];
+      if (!argument) continue;
+      env.set(parameter.name.text, resolveDataExpression(argument, parentEnv));
+    }
+    return env;
+  }
+
+  function staticHrefCandidatesResolved(expression, env = new Map(), callStack = new Set(), seen = new Set()) {
     if (!expression) return [];
-    if (ts.isParenthesizedExpression(expression)) {
-      return staticHrefCandidatesResolved(expression.expression, seen);
-    }
-    if (ts.isIdentifier(expression) && constInitializers.has(expression.text)) {
-      if (seen.has(expression.text)) return [];
-      const nextSeen = new Set(seen);
-      nextSeen.add(expression.text);
-      return staticHrefCandidatesResolved(constInitializers.get(expression.text), nextSeen);
-    }
-    if (ts.isStringLiteralLike(expression)) return [expression.text];
-    if (ts.isConditionalExpression(expression)) {
+    const resolved = resolveDataExpression(expression, env, seen);
+    if (!resolved) return [];
+    if (ts.isStringLiteralLike(resolved)) return [resolved.text];
+    if (ts.isConditionalExpression(resolved)) {
       return [
-        ...staticHrefCandidatesResolved(expression.whenTrue, seen),
-        ...staticHrefCandidatesResolved(expression.whenFalse, seen),
+        ...staticHrefCandidatesResolved(resolved.whenTrue, env, callStack, seen),
+        ...staticHrefCandidatesResolved(resolved.whenFalse, env, callStack, seen),
       ];
     }
     if (
-      ts.isBinaryExpression(expression)
-      && expression.operatorToken.kind === ts.SyntaxKind.PlusToken
+      ts.isBinaryExpression(resolved)
+      && resolved.operatorToken.kind === ts.SyntaxKind.PlusToken
     ) {
       return [
-        ...staticHrefCandidatesResolved(expression.left, seen),
-        ...staticHrefCandidatesResolved(expression.right, seen),
+        ...staticHrefCandidatesResolved(resolved.left, env, callStack, seen),
+        ...staticHrefCandidatesResolved(resolved.right, env, callStack, seen),
       ];
     }
-    if (ts.isTemplateExpression(expression)) return [expression.head.text];
+    if (ts.isTemplateExpression(resolved)) return [resolved.head.text];
+    if (ts.isCallExpression(resolved)) {
+      const definition = localFunctionFromCallee(resolved.expression, env);
+      if (definition && !callStack.has(definition.key)) {
+        const nextStack = new Set(callStack);
+        nextStack.add(definition.key);
+        const childEnv = functionEnvironment(definition, resolved, env);
+        return functionReturnExpressions(definition)
+          .flatMap((candidate) => staticHrefCandidatesResolved(candidate, childEnv, nextStack, seen));
+      }
+    }
     return [];
   }
 
-  function authorityCallResolved(expression, bindings) {
-    return authorityCall(resolveLocalExpression(expression), bindings);
+  function authorityExpressionResolved(expression, bindings, env = new Map(), callStack = new Set()) {
+    if (!expression) return false;
+    const resolved = resolveDataExpression(expression, env);
+    if (authorityCall(resolved, bindings)) return true;
+    if (ts.isConditionalExpression(resolved)) {
+      return authorityExpressionResolved(resolved.whenTrue, bindings, env, callStack)
+        && authorityExpressionResolved(resolved.whenFalse, bindings, env, callStack);
+    }
+    if (ts.isCallExpression(resolved)) {
+      const definition = localFunctionFromCallee(resolved.expression, env);
+      if (definition && !callStack.has(definition.key)) {
+        const nextStack = new Set(callStack);
+        nextStack.add(definition.key);
+        const childEnv = functionEnvironment(definition, resolved, env);
+        const returns = functionReturnExpressions(definition);
+        return returns.length > 0
+          && returns.every((candidate) => authorityExpressionResolved(candidate, bindings, childEnv, nextStack));
+      }
+    }
+    return false;
   }
 
-  function firstUrlArgumentResolved(expression) {
-    const resolved = resolveLocalExpression(expression);
-    const urlArg = firstUrlArgument(resolved);
-    return urlArg ? resolveLocalExpression(urlArg) : null;
+  function routeRedirectTargetExpressions(expression, env = new Map(), callStack = new Set()) {
+    if (!expression) return [];
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return [];
+    if (
+      ts.isNewExpression(resolved)
+      && ts.isIdentifier(resolved.expression)
+      && resolved.expression.text === "URL"
+    ) {
+      return resolved.arguments?.[0] ? [resolved.arguments[0]] : [];
+    }
+    if (ts.isConditionalExpression(resolved)) {
+      return [
+        ...routeRedirectTargetExpressions(resolved.whenTrue, env, callStack),
+        ...routeRedirectTargetExpressions(resolved.whenFalse, env, callStack),
+      ];
+    }
+    if (ts.isCallExpression(resolved)) {
+      const definition = localFunctionFromCallee(resolved.expression, env);
+      if (definition && !callStack.has(definition.key)) {
+        const nextStack = new Set(callStack);
+        nextStack.add(definition.key);
+        const childEnv = functionEnvironment(definition, resolved, env);
+        return functionReturnExpressions(definition)
+          .flatMap((candidate) => routeRedirectTargetExpressions(candidate, childEnv, nextStack));
+      }
+    }
+    return [resolved];
+  }
+
+  function isRouterMethodReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && routerMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isRouterObject(propertyOwner(resolved), env)
+      && (propertyName(resolved) === "push" || propertyName(resolved) === "replace")
+    );
+  }
+
+  function isServerRedirectReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return Boolean(
+      resolved
+      && ts.isIdentifier(resolved)
+      && redirectBindings.has(resolved.text)
+    );
+  }
+
+  function isResponseRedirectReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && responseRedirectBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "redirect"
+      && propertyOwner(resolved)
+      && ts.isIdentifier(propertyOwner(resolved))
+      && nextResponseBindings.has(propertyOwner(resolved).text)
+    );
+  }
+
+  function isBrowserLocationMethodReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && browserLocationMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isBrowserLocationObject(propertyOwner(resolved), env)
+      && (propertyName(resolved) === "assign" || propertyName(resolved) === "replace")
+    );
+  }
+
+  function browserNavigationAuthority(expression, env = new Map(), callStack = new Set()) {
+    return authorityExpressionResolved(expression, navigationBindings, env, callStack)
+      || authorityExpressionResolved(expression, externalHrefBindings, env, callStack);
+  }
+
+  function isBrowserHrefAssignmentTarget(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isPropertyAccessExpression(resolved)) {
+      if (resolved.getText(sourceFile) === "window.location") return true;
+      return resolved.name.text === "href" && isBrowserLocationObject(resolved.expression, env);
+    }
+    if (
+      ts.isElementAccessExpression(resolved)
+      && resolved.argumentExpression
+      && ts.isStringLiteralLike(resolved.argumentExpression)
+      && resolved.argumentExpression.text === "href"
+    ) {
+      return isBrowserLocationObject(resolved.expression, env);
+    }
+    return false;
   }
 
   function report(node, kind, targets = []) {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    const uniqueTargets = [...new Set(targets)];
+    const key = [kind, position.line + 1, position.character + 1, uniqueTargets.join(",")].join(":");
+    if (reportedViolations.has(key)) return;
+    reportedViolations.add(key);
     violations.push({
       kind,
       path,
       line: position.line + 1,
       column: position.character + 1,
-      targets: [...new Set(targets)],
+      targets: uniqueTargets,
     });
   }
 
-  function browserNavigationAuthority(expression) {
-    return authorityCall(expression, navigationBindings)
-      || authorityCall(expression, externalHrefBindings);
-  }
-
-  function isBrowserHrefAssignmentTarget(expression) {
-    if (ts.isPropertyAccessExpression(expression)) {
-      if (expression.getText(sourceFile) === "window.location") return true;
-      return expression.name.text === "href" && isBrowserLocationObject(expression.expression);
-    }
-    if (
-      ts.isElementAccessExpression(expression)
-      && expression.argumentExpression
-      && ts.isStringLiteralLike(expression.argumentExpression)
-      && expression.argumentExpression.text === "href"
-    ) {
-      return isBrowserLocationObject(expression.expression);
-    }
-    return false;
-  }
-
-  function visit(node) {
+  function visit(node, env = new Map(), callStack = new Set()) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
-      const directRouterMethod = (
-        (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
-        && isRouterObject(propertyOwner(expression))
-        && (propertyName(expression) === "push" || propertyName(expression) === "replace")
-      );
-      const aliasedRouterMethod = ts.isIdentifier(expression) && routerMethodBindings.has(expression.text);
-      if ((directRouterMethod || aliasedRouterMethod) && !authorityCallResolved(firstArg, navigationBindings)) {
+      if (
+        isRouterMethodReference(expression, env)
+        && !authorityExpressionResolved(firstArg, navigationBindings, env, callStack)
+      ) {
         report(node, "router");
       }
 
-      if (ts.isIdentifier(expression) && redirectBindings.has(expression.text)) {
-        const targets = staticHrefCandidatesResolved(firstArg)
+      if (isServerRedirectReference(expression, env)) {
+        const targets = staticHrefCandidatesResolved(firstArg, env, callStack)
           .map(normalizedProductRoute)
           .filter(Boolean);
         if (
           targets.length > 0
-          && !authorityCallResolved(firstArg, navigationBindings)
-          && !authorityCallResolved(firstArg, productHrefBindings)
+          && !authorityExpressionResolved(firstArg, navigationBindings, env, callStack)
+          && !authorityExpressionResolved(firstArg, productHrefBindings, env, callStack)
         ) report(node, "server-redirect", targets);
       }
 
-      const directResponseRedirect = (
-        (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
-        && propertyName(expression) === "redirect"
-        && propertyOwner(expression)
-        && ts.isIdentifier(propertyOwner(expression))
-        && nextResponseBindings.has(propertyOwner(expression).text)
-      );
-      const aliasedResponseRedirect = ts.isIdentifier(expression)
-        && responseRedirectBindings.has(expression.text);
-      if (directResponseRedirect || aliasedResponseRedirect) {
-        const urlArg = firstUrlArgumentResolved(firstArg);
-        const targets = staticHrefCandidatesResolved(urlArg)
+      if (isResponseRedirectReference(expression, env)) {
+        const targetExpressions = routeRedirectTargetExpressions(firstArg, env, callStack);
+        const targets = targetExpressions
+          .flatMap((target) => staticHrefCandidatesResolved(target, env, callStack))
           .map(normalizedProductRoute)
           .filter(Boolean);
-        if (
-          targets.length > 0
-          && !authorityCallResolved(urlArg, navigationBindings)
-          && !authorityCallResolved(urlArg, productHrefBindings)
-        ) report(node, "route-handler-redirect", targets);
+        const authoritative = targetExpressions.length > 0
+          && targetExpressions.every((target) => (
+            authorityExpressionResolved(target, navigationBindings, env, callStack)
+            || authorityExpressionResolved(target, productHrefBindings, env, callStack)
+          ));
+        if (targets.length > 0 && !authoritative) {
+          report(node, "route-handler-redirect", targets);
+        }
       }
 
-      const directBrowserLocationMethod = (
-        (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
-        && isBrowserLocationObject(propertyOwner(expression))
-        && (propertyName(expression) === "assign" || propertyName(expression) === "replace")
-      );
-      const aliasedBrowserLocationMethod = ts.isIdentifier(expression)
-        && browserLocationMethodBindings.has(expression.text);
       if (
-        (directBrowserLocationMethod || aliasedBrowserLocationMethod)
-        && !browserNavigationAuthority(firstArg)
+        isBrowserLocationMethodReference(expression, env)
+        && !browserNavigationAuthority(firstArg, env, callStack)
       ) {
         report(node, "browser-location");
+      }
+
+      const definition = localFunctionFromCallee(expression, env);
+      if (definition && !callStack.has(definition.key)) {
+        const nextStack = new Set(callStack);
+        nextStack.add(definition.key);
+        const childEnv = functionEnvironment(definition, node, env);
+        visit(definition.body, childEnv, nextStack);
       }
     }
 
     if (
       ts.isBinaryExpression(node)
       && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
-      && isBrowserHrefAssignmentTarget(node.left)
-      && !browserNavigationAuthority(node.right)
+      && isBrowserHrefAssignmentTarget(node.left, env)
+      && !browserNavigationAuthority(node.right, env, callStack)
     ) {
       report(node, "browser-location");
     }
 
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, (child) => visit(child, env, callStack));
   }
 
   visit(sourceFile);
@@ -1096,6 +1270,51 @@ function auditImperativeNavigation(source, path) {
     || counts["route-handler-redirect"] !== 2
   ) {
     throw new Error("Navigation destination dataflow self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { useRouter, redirect } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
+    'function buildTarget(active) { return active ? "/dashboard" : "/auth"; }',
+    'function buildNestedTarget() { return buildTarget(true); }',
+    'const buildUrl = () => new URL("/wallet", request.url);',
+    'const buildSafeTarget = () => getProductRouteHref("wallet", "?safe=1");',
+    'const buildSafeUrl = () => new URL(getProductRouteHref("home"), request.url);',
+    'redirect(buildTarget(true));',
+    'redirect(buildNestedTarget());',
+    'redirect(buildSafeTarget());',
+    'NR.redirect(buildUrl(), 303);',
+    'NR.redirect(buildSafeUrl(), 303);',
+    'function go(r, target) { r.push(target); }',
+    'go(router, "/earn");',
+    'go(router, getRouteNavigationHref("home", "/earn"));',
+    'function serverGo(target) { redirect(target); }',
+    'serverGo("/invite");',
+    'serverGo(getProductRouteHref("invite"));',
+    'function handlerGo(target) { NR.redirect(new URL(target, request.url), 303); }',
+    'handlerGo("/progress");',
+    'handlerGo(getProductRouteHref("progress"));',
+    'function browserGo(target) { window.location.assign(target); }',
+    'browserGo("https://example.com");',
+    'browserGo(getExternalNavigationHref("https://example.com/safe"));',
+  ].join("\n");
+  const violations = auditImperativeNavigation(selfTest, "interprocedural-navigation.self-test.tsx");
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts.router !== 1
+    || counts["server-redirect"] !== 3
+    || counts["route-handler-redirect"] !== 2
+    || counts["browser-location"] !== 1
+  ) {
+    throw new Error("Interprocedural navigation provenance self-test failed: " + JSON.stringify(violations));
   }
 }
 
