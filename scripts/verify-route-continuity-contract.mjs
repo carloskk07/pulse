@@ -936,6 +936,10 @@ function auditImperativeNavigation(source, path) {
   const headerVariables = new Set();
   const headerMutationMethodBindings = new Set();
   const domNavigationElementKinds = new Map();
+  const domTypedIdentifierKinds = new Map();
+  const domEventCurrentTargetKinds = new Map();
+  const domRefKinds = new Map();
+  const domCollectionKinds = new Map();
   const domSetAttributeBindings = new Map();
   const declarations = [];
   const constInitializers = new Map();
@@ -997,13 +1001,78 @@ function auditImperativeNavigation(source, path) {
     else localFunctions.set(name, null);
   }
 
+  function domKindFromTypeNameText(text) {
+    const normalized = text?.split(".").pop();
+    if (normalized === "HTMLAnchorElement") return "a";
+    if (normalized === "HTMLAreaElement") return "area";
+    if (normalized === "HTMLBaseElement") return "base";
+    if (normalized === "HTMLFormElement") return "form";
+    if (normalized === "HTMLButtonElement") return "button";
+    if (normalized === "HTMLInputElement") return "input";
+    return null;
+  }
+
+  function domKindFromTypeNode(typeNode) {
+    if (!typeNode) return null;
+    if (ts.isParenthesizedTypeNode(typeNode)) return domKindFromTypeNode(typeNode.type);
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      const kinds = [...new Set(typeNode.types.map(domKindFromTypeNode).filter(Boolean))];
+      return kinds.length === 1 ? kinds[0] : null;
+    }
+    if (ts.isTypeReferenceNode(typeNode)) {
+      return domKindFromTypeNameText(typeNode.typeName.getText(sourceFile));
+    }
+    return null;
+  }
+
+  function domEventCurrentTargetKindFromTypeNode(typeNode) {
+    if (!typeNode) return null;
+    if (ts.isParenthesizedTypeNode(typeNode)) {
+      return domEventCurrentTargetKindFromTypeNode(typeNode.type);
+    }
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      const kinds = [...new Set(
+        typeNode.types.map(domEventCurrentTargetKindFromTypeNode).filter(Boolean),
+      )];
+      return kinds.length === 1 ? kinds[0] : null;
+    }
+    if (!ts.isTypeReferenceNode(typeNode)) return null;
+    const direct = domKindFromTypeNameText(typeNode.typeName.getText(sourceFile));
+    if (direct) return null;
+    const kinds = [...new Set(
+      (typeNode.typeArguments ?? []).map(domKindFromTypeNode).filter(Boolean),
+    )];
+    return kinds.length === 1 ? kinds[0] : null;
+  }
+
+  function setStableKind(map, name, kind) {
+    if (!name || !kind) return;
+    if (!map.has(name)) {
+      map.set(name, kind);
+      return;
+    }
+    if (map.get(name) !== kind) map.set(name, null);
+  }
+
   function collectDeclarations(node) {
     if (ts.isFunctionDeclaration(node) && node.name) {
       registerLocalFunction(node.name.text, node);
     }
 
+    if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.type) {
+      setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
+      setStableKind(
+        domEventCurrentTargetKinds,
+        node.name.text,
+        domEventCurrentTargetKindFromTypeNode(node.type),
+      );
+    }
+
     if (ts.isVariableDeclaration(node)) {
       declarations.push(node);
+      if (ts.isIdentifier(node.name) && node.type) {
+        setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
+      }
       if (
         ts.isIdentifier(node.name)
         && node.initializer
@@ -1134,11 +1203,44 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
-  function domNavigationElementKind(expression, env = new Map()) {
+  function domKindFromSelectorText(value) {
+    if (typeof value !== "string") return null;
+    const match = value.match(/^\s*(a|area|base|form|button|input)(?=$|[.#:\[\s>+~])/i);
+    return match ? match[1].toLowerCase() : null;
+  }
+
+  function domKindFromCallTypeArguments(callExpression) {
+    if (!callExpression?.typeArguments?.length) return null;
+    const kinds = [...new Set(
+      callExpression.typeArguments.map(domKindFromTypeNode).filter(Boolean),
+    )];
+    return kinds.length === 1 ? kinds[0] : null;
+  }
+
+  function domCollectionElementKind(expression, env = new Map()) {
+    if (!expression) return null;
+    if (ts.isIdentifier(expression) && domCollectionKinds.has(expression.text)) {
+      return domCollectionKinds.get(expression.text);
+    }
+
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return null;
-    if (ts.isIdentifier(resolved) && domNavigationElementKinds.has(resolved.text)) {
-      return domNavigationElementKinds.get(resolved.text);
+    if (ts.isIdentifier(resolved) && domCollectionKinds.has(resolved.text)) {
+      return domCollectionKinds.get(resolved.text);
+    }
+
+    if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
+      const text = resolved.getText(sourceFile);
+      if (
+        text === "document.forms"
+        || text === "window.document.forms"
+        || text === "globalThis.document.forms"
+      ) return "form";
+      if (
+        text === "document.links"
+        || text === "window.document.links"
+        || text === "globalThis.document.links"
+      ) return "a";
     }
 
     if (!ts.isCallExpression(resolved)) return null;
@@ -1146,7 +1248,138 @@ function auditImperativeNavigation(source, path) {
     if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
       return null;
     }
-    if (propertyName(callee) !== "createElement") return null;
+    const method = propertyName(callee);
+    if (method === "querySelectorAll") {
+      const typed = domKindFromCallTypeArguments(resolved);
+      if (typed) return typed;
+      const selector = resolveDataExpression(resolved.arguments[0], env);
+      return selector && ts.isStringLiteralLike(selector)
+        ? domKindFromSelectorText(selector.text)
+        : null;
+    }
+    if (method === "getElementsByTagName") {
+      const tag = resolveDataExpression(resolved.arguments[0], env);
+      if (!tag || !ts.isStringLiteralLike(tag)) return null;
+      const kind = tag.text.toLowerCase();
+      return ["a", "area", "base", "form", "button", "input"].includes(kind)
+        ? kind
+        : null;
+    }
+    return null;
+  }
+
+  function domRefKindFromInitializer(initializer, env = new Map()) {
+    const resolved = resolveDataExpression(initializer, env);
+    if (!resolved || !ts.isCallExpression(resolved)) return null;
+    const calleeText = resolved.expression.getText(sourceFile);
+    if (
+      calleeText !== "useRef"
+      && calleeText !== "React.useRef"
+      && calleeText !== "createRef"
+      && calleeText !== "React.createRef"
+    ) return null;
+    return domKindFromCallTypeArguments(resolved);
+  }
+
+  function domNavigationElementKind(expression, env = new Map()) {
+    if (!expression) return null;
+
+    if (ts.isIdentifier(expression)) {
+      if (domNavigationElementKinds.has(expression.text)) {
+        return domNavigationElementKinds.get(expression.text);
+      }
+      if (domTypedIdentifierKinds.has(expression.text)) {
+        return domTypedIdentifierKinds.get(expression.text);
+      }
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      && propertyName(expression) === "current"
+      && ts.isIdentifier(propertyOwner(expression))
+      && domRefKinds.has(propertyOwner(expression).text)
+    ) {
+      return domRefKinds.get(propertyOwner(expression).text);
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      && propertyName(expression) === "currentTarget"
+      && ts.isIdentifier(propertyOwner(expression))
+      && domEventCurrentTargetKinds.has(propertyOwner(expression).text)
+    ) {
+      return domEventCurrentTargetKinds.get(propertyOwner(expression).text);
+    }
+
+    if (ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression)) {
+      return domKindFromTypeNode(expression.type)
+        || domNavigationElementKind(expression.expression, env);
+    }
+    if (ts.isNonNullExpression(expression)) {
+      return domNavigationElementKind(expression.expression, env);
+    }
+
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (resolved !== expression) {
+      const resolvedKind = domNavigationElementKind(resolved, env);
+      if (resolvedKind) return resolvedKind;
+    }
+
+    if (ts.isIdentifier(resolved)) {
+      if (domNavigationElementKinds.has(resolved.text)) {
+        return domNavigationElementKinds.get(resolved.text);
+      }
+      if (domTypedIdentifierKinds.has(resolved.text)) {
+        return domTypedIdentifierKinds.get(resolved.text);
+      }
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "current"
+      && ts.isIdentifier(propertyOwner(resolved))
+      && domRefKinds.has(propertyOwner(resolved).text)
+    ) {
+      return domRefKinds.get(propertyOwner(resolved).text);
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "currentTarget"
+      && ts.isIdentifier(propertyOwner(resolved))
+      && domEventCurrentTargetKinds.has(propertyOwner(resolved).text)
+    ) {
+      return domEventCurrentTargetKinds.get(propertyOwner(resolved).text);
+    }
+
+    if (ts.isElementAccessExpression(resolved)) {
+      const collectionKind = domCollectionElementKind(resolved.expression, env);
+      if (collectionKind) return collectionKind;
+    }
+
+    if (!ts.isCallExpression(resolved)) return null;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return null;
+    }
+    const method = propertyName(callee);
+
+    if (method === "item") {
+      const collectionKind = domCollectionElementKind(propertyOwner(callee), env);
+      if (collectionKind) return collectionKind;
+    }
+
+    if (method === "querySelector" || method === "closest") {
+      const typed = domKindFromCallTypeArguments(resolved);
+      if (typed) return typed;
+      const selector = resolveDataExpression(resolved.arguments[0], env);
+      return selector && ts.isStringLiteralLike(selector)
+        ? domKindFromSelectorText(selector.text)
+        : null;
+    }
+
+    if (method !== "createElement") return null;
     const ownerText = propertyOwner(callee)?.getText(sourceFile);
     if (
       ownerText !== "document"
@@ -1238,9 +1471,32 @@ function auditImperativeNavigation(source, path) {
       if (initializer && ts.isIdentifier(initializer) && browserNavigationApiVariables.has(initializer.text)) {
         changed = addBinding(browserNavigationApiVariables, local) || changed;
       }
+      if (initializer && ts.isIdentifier(initializer) && domRefKinds.has(initializer.text)) {
+        changed = addKindBinding(domRefKinds, local, domRefKinds.get(initializer.text)) || changed;
+      }
+      if (initializer && ts.isIdentifier(initializer) && domCollectionKinds.has(initializer.text)) {
+        changed = addKindBinding(
+          domCollectionKinds,
+          local,
+          domCollectionKinds.get(initializer.text),
+        ) || changed;
+      }
       if (isHeadersObject(initializer)) {
         changed = addBinding(headerVariables, local) || changed;
       }
+
+      const refKind = domRefKindFromInitializer(initializer);
+      if (refKind && domRefKinds.get(local) !== refKind) {
+        domRefKinds.set(local, refKind);
+        changed = true;
+      }
+
+      const collectionKind = domCollectionElementKind(initializer);
+      if (collectionKind && domCollectionKinds.get(local) !== collectionKind) {
+        domCollectionKinds.set(local, collectionKind);
+        changed = true;
+      }
+
       const domKind = domNavigationElementKind(initializer);
       if (domKind && domNavigationElementKinds.get(local) !== domKind) {
         domNavigationElementKinds.set(local, domKind);
@@ -2636,6 +2892,50 @@ function auditImperativeNavigation(source, path) {
     || counts["dom-base-href"] !== 4
   ) {
     throw new Error("Reflective DOM mutation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { useRef } from "react";',
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const selected = document.querySelector("a.promo");',
+    'selected.href = "/earn";',
+    'selected.href = getRouteNavigationHref("rehydrated-dom", "/earn");',
+    'const typedForm = document.querySelector<HTMLFormElement>("#payout");',
+    'typedForm.action = "/api/withdrawals";',
+    'const casted = document.getElementById("invite") as HTMLAnchorElement;',
+    'casted.href = "/invite";',
+    'const linkRef = useRef<HTMLAnchorElement | null>(null);',
+    'linkRef.current!.href = "/progress";',
+    'function onClick(event: React.MouseEvent<HTMLAnchorElement>) { event.currentTarget.href = "/wallet"; }',
+    'const existingForm: HTMLFormElement = someNode;',
+    'existingForm.action = "/api/pulse/claim";',
+    'const selectedButton = document.querySelectorAll("button.submit")[0];',
+    'selectedButton.formAction = "/api/pulse/claim";',
+    'const byTag = document.getElementsByTagName("a").item(0);',
+    'byTag.href = "/dashboard";',
+    'const forms = document.forms;',
+    'forms[0].action = "/api/return-reminder";',
+    'const links = document.links;',
+    'links[0].href = "/invite";',
+    'const existingBase = document.querySelector("base");',
+    'existingBase.href = getRouteNavigationHref("rehydrated-dom", "/dashboard/");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "rehydrated-dom-handle.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["dom-property"] !== 10
+    || counts["dom-base-href"] !== 1
+  ) {
+    throw new Error("Rehydrated DOM handle authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
