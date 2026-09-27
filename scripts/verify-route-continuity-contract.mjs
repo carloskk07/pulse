@@ -1854,6 +1854,48 @@ function auditNavigationSideEffectBoundary(source, path) {
     return null;
   }
 
+  function sideEffectObjectProperty(objectLiteral, name) {
+    if (!objectLiteral || !ts.isObjectLiteralExpression(objectLiteral)) return null;
+    for (const property of objectLiteral.properties) {
+      if (!ts.isPropertyAssignment(property)) continue;
+      const key = ts.isIdentifier(property.name)
+        ? property.name.text
+        : ts.isStringLiteralLike(property.name)
+          ? property.name.text
+          : null;
+      if (key?.toLowerCase() === name.toLowerCase()) return property.initializer;
+    }
+    return null;
+  }
+
+  function sideEffectRedirectConstructor(node) {
+    if (!ts.isNewExpression(node)) return false;
+    const constructorText = node.expression.getText(sourceFile);
+    const isResponseConstructor = (
+      constructorText === "Response"
+      || constructorText === "globalThis.Response"
+      || (
+        ts.isIdentifier(node.expression)
+        && nextResponseBindings.has(node.expression.text)
+      )
+    );
+    if (!isResponseConstructor) return false;
+
+    const init = node.arguments?.[1];
+    if (!init || !ts.isObjectLiteralExpression(init)) return false;
+    const statusExpression = sideEffectObjectProperty(init, "status");
+    if (!statusExpression || !ts.isNumericLiteral(statusExpression)) return false;
+    const status = Number(statusExpression.text);
+    if (status < 300 || status > 399) return false;
+
+    const headers = sideEffectObjectProperty(init, "headers");
+    return Boolean(
+      headers
+      && ts.isObjectLiteralExpression(headers)
+      && sideEffectObjectProperty(headers, "location")
+    );
+  }
+
   function report(node, kind) {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
     violations.push({
@@ -1898,6 +1940,13 @@ function auditNavigationSideEffectBoundary(source, path) {
         }
 
         if (
+          (ownerText === "Response" || ownerText === "globalThis.Response")
+          && method === "redirect"
+        ) {
+          report(node, "web-response-navigation");
+        }
+
+        if (
           (
             ownerText === "window.location"
             || ownerText === "document.location"
@@ -1937,6 +1986,10 @@ function auditNavigationSideEffectBoundary(source, path) {
       }
     }
 
+    if (sideEffectRedirectConstructor(node)) {
+      report(node, "response-location-navigation");
+    }
+
     if (
       ts.isBinaryExpression(node)
       && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
@@ -1970,6 +2023,8 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenRedirect(target) { redirect(target); }',
     'export function hiddenRouter() { return useRouter(); }',
     'export function hiddenResponse(target) { return NextResponse.redirect(target); }',
+    'export function hiddenWebResponse(target) { return Response.redirect(target); }',
+    'export function hiddenResponseInit(target) { return new Response(null, { status: 302, headers: { Location: target } }); }',
     'export function hiddenBrowser(target) { window.location.assign(target); }',
     'export function hiddenDocument(target) { document.location.replace(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
@@ -1983,8 +2038,8 @@ function auditNavigationSideEffectBoundary(source, path) {
   );
   const kinds = violations.map((violation) => violation.kind).sort();
   if (
-    violations.length !== 8
-    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-window-navigation,history-navigation,navigation-api,route-handler-navigation,router-capability,server-navigation"
+    violations.length !== 10
+    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-window-navigation,history-navigation,navigation-api,response-location-navigation,route-handler-navigation,router-capability,server-navigation,web-response-navigation"
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
