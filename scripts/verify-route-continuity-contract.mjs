@@ -935,6 +935,8 @@ function auditImperativeNavigation(source, path) {
   const browserWindowOpenBindings = new Set();
   const headerVariables = new Set();
   const headerMutationMethodBindings = new Set();
+  const domNavigationElementKinds = new Map();
+  const domSetAttributeBindings = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -1126,6 +1128,57 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
+  function domNavigationElementKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && domNavigationElementKinds.has(resolved.text)) {
+      return domNavigationElementKinds.get(resolved.text);
+    }
+
+    if (!ts.isCallExpression(resolved)) return null;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return null;
+    }
+    if (propertyName(callee) !== "createElement") return null;
+    const ownerText = propertyOwner(callee)?.getText(sourceFile);
+    if (
+      ownerText !== "document"
+      && ownerText !== "window.document"
+      && ownerText !== "globalThis.document"
+    ) return null;
+
+    const tag = resolveDataExpression(resolved.arguments[0], env);
+    if (!tag || !ts.isStringLiteralLike(tag)) return null;
+    const kind = tag.text.toLowerCase();
+    return ["a", "area", "base", "form", "button", "input"].includes(kind)
+      ? kind
+      : null;
+  }
+
+  function isDomSetAttributeReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && domSetAttributeBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "setAttribute"
+      && domNavigationElementKind(propertyOwner(resolved), env)
+    );
+  }
+
+  function domNavigationPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if ((kind === "a" || kind === "area" || kind === "base") && normalized === "href") {
+      return "href";
+    }
+    if (kind === "form" && normalized === "action") return "action";
+    if ((kind === "button" || kind === "input") && normalized === "formaction") {
+      return "formaction";
+    }
+    return null;
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -1173,6 +1226,11 @@ function auditImperativeNavigation(source, path) {
       }
       if (isHeadersObject(initializer)) {
         changed = addBinding(headerVariables, local) || changed;
+      }
+      const domKind = domNavigationElementKind(initializer);
+      if (domKind && domNavigationElementKinds.get(local) !== domKind) {
+        domNavigationElementKinds.set(local, domKind);
+        changed = true;
       }
 
       if (initializer && (ts.isPropertyAccessExpression(initializer) || ts.isElementAccessExpression(initializer))) {
@@ -1222,6 +1280,9 @@ function auditImperativeNavigation(source, path) {
         if (isHeadersObject(owner) && (method === "set" || method === "append")) {
           changed = addBinding(headerMutationMethodBindings, local) || changed;
         }
+        if (domNavigationElementKind(owner) && method === "setAttribute") {
+          changed = addBinding(domSetAttributeBindings, local) || changed;
+        }
       }
 
       if (initializer && ts.isIdentifier(initializer)) {
@@ -1264,6 +1325,9 @@ function auditImperativeNavigation(source, path) {
         if (headerMutationMethodBindings.has(initializer.text)) {
           changed = addBinding(headerMutationMethodBindings, local) || changed;
         }
+        if (domSetAttributeBindings.has(initializer.text)) {
+          changed = addBinding(domSetAttributeBindings, local) || changed;
+        }
       }
     }
 
@@ -1276,6 +1340,7 @@ function auditImperativeNavigation(source, path) {
       const fromNavigationApi = isBrowserNavigationApiObject(initializer);
       const fromWindow = isBrowserWindowObject(initializer);
       const fromHeaders = isHeadersObject(initializer);
+      const fromDomNavigationElement = Boolean(domNavigationElementKind(initializer));
 
       for (const element of node.name.elements) {
         const sourceName = bindingSourceName(element);
@@ -1319,6 +1384,9 @@ function auditImperativeNavigation(source, path) {
         }
         if (fromHeaders && (sourceName === "set" || sourceName === "append")) {
           changed = addBinding(headerMutationMethodBindings, localName) || changed;
+        }
+        if (fromDomNavigationElement && sourceName === "setAttribute") {
+          changed = addBinding(domSetAttributeBindings, localName) || changed;
         }
       }
     }
