@@ -145,7 +145,7 @@ forbidAll("app/api/cashback/admitad/route.ts", [
 ]);
 
 requireAll("components/cashback-start-button.tsx", [
-  'action="/api/cashback/start"',
+  'getRouteNavigationHref("cashback", "/api/cashback/start")',
   'method="post"',
   'name="opportunity"',
 ]);
