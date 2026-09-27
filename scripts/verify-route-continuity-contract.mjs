@@ -4906,6 +4906,45 @@ function auditImperativeNavigation(source, path) {
 {
   const selfTest = [
     'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const popup = window.open();',
+    'popup.location = "/dashboard";',
+    'popup.location = getRouteNavigationHref("opened-context", "/dashboard");',
+    'const child = top.open();',
+    'child.location.assign("/earn");',
+    'const launch = window.open;',
+    'const aliasPopup = launch();',
+    'aliasPopup.location.href = "/wallet";',
+    'function spawnPopup() { return window.open(); }',
+    'const helperPopup = spawnPopup();',
+    'helperPopup.location.replace("/invite");',
+    'const historyPopup = window.open();',
+    'historyPopup.history.pushState({}, "", "/progress");',
+    'const navPopup = window.open();',
+    'navPopup.navigation.navigate("/progress");',
+    'const safePopup = window.open(getExternalNavigationHref("https://example.com/start"));',
+    'safePopup.location.replace(getExternalNavigationHref("https://example.com/next"));',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "opened-context-handle.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 6
+    || counts["browser-location"] !== 4
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+  ) {
+    throw new Error("Opened context handle provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
     'top.location.assign("/dashboard");',
     'parent.location.href = "/wallet";',
     'self.location = getRouteNavigationHref("context", "/dashboard");',
