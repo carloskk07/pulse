@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { TurnstileField } from "@/components/turnstile-field";
+import { getRouteNavigationHref } from "@/lib/route-semantics";
 import { PublicSignalField } from "@/components/public-signal-field";
 import { ArrowUpRight, Check, Shield, Trend } from "@/components/icons";
 
@@ -90,7 +91,7 @@ export default async function BusinessPage({ searchParams }: Props) {
           <div className="trust-points"><span><Check /> No campaign launches automatically</span><span><Check /> We review economics before requesting funding</span><span><Check /> No test budget is created from this form</span></div>
         </div>
 
-        <form className="business-form" action="/api/business/leads" method="post">
+        <form className="business-form" action={getRouteNavigationHref("business", "/api/business/leads")} method="post" data-route-submit-authority="verified-replay">
           {params.lead ? <div className={`claim-message ${params.lead === "received" ? "success" : "neutral"}`}>{leadCopy[params.lead] ?? "The request state could not be determined."}</div> : null}
           <div className="business-form-grid">
             <label><span>Company</span><input name="company" required minLength={2} maxLength={120} autoComplete="organization" placeholder="Company name" /></label>

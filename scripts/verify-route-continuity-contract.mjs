@@ -1183,6 +1183,171 @@ function auditDeclarativeNavigation(source, path) {
   }
 }
 
+function auditVerifiedReplayForms(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const internalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getRouteNavigationHref",
+  );
+  const productAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getProductRouteHref",
+  );
+  const externalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getExternalNavigationHref",
+  );
+  const turnstileBindings = importedBindingNames(
+    sourceFile,
+    "@/components/turnstile-field",
+    "TurnstileField",
+  );
+  const markerValue = "verified-replay";
+
+  function report(node, kind) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      targets: [],
+    });
+  }
+
+  function jsxTagName(node) {
+    if (!(ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))) return null;
+    return node.tagName.getText(sourceFile);
+  }
+
+  function replayMarker(openingElement) {
+    return literalJsxAttributeValue(
+      jsxAttribute(openingElement, "data-route-submit-authority"),
+    );
+  }
+
+  function isGovernedFormAction(openingElement) {
+    const actionAttribute = jsxAttribute(openingElement, "action");
+    if (!actionAttribute?.initializer) return false;
+    if (!ts.isJsxExpression(actionAttribute.initializer)) return false;
+    const expression = actionAttribute.initializer.expression;
+    if (!expression) return false;
+
+    if (isServerActionReferenceExpression(expression)) return true;
+    return (
+      expressionContainsAuthorityCall(expression, internalAuthorityBindings)
+      || expressionContainsAuthorityCall(expression, productAuthorityBindings)
+      || expressionContainsAuthorityCall(expression, externalAuthorityBindings)
+    );
+  }
+
+  function containsTurnstile(element) {
+    let found = false;
+    function scan(node) {
+      if (found) return;
+      if (
+        (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+        && turnstileBindings.has(jsxTagName(node))
+      ) {
+        found = true;
+        return;
+      }
+      ts.forEachChild(node, scan);
+    }
+    for (const child of element.children) scan(child);
+    return found;
+  }
+
+  function nearestForm(node) {
+    let current = node.parent;
+    while (current) {
+      if (
+        ts.isJsxElement(current)
+        && current.openingElement.tagName.getText(sourceFile).toLowerCase() === "form"
+      ) {
+        return current;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  function visit(node) {
+    if (ts.isJsxElement(node)) {
+      const opening = node.openingElement;
+      if (opening.tagName.getText(sourceFile).toLowerCase() === "form") {
+        const marker = replayMarker(opening);
+        if (marker !== null) {
+          if (marker !== markerValue) {
+            report(opening, "verified-replay-marker");
+          } else {
+            if (!containsTurnstile(node)) report(opening, "verified-replay-orphan");
+            if (!isGovernedFormAction(opening)) {
+              report(opening, "verified-replay-action");
+            }
+          }
+        }
+      }
+    }
+
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+      && turnstileBindings.has(jsxTagName(node))
+    ) {
+      const form = nearestForm(node);
+      if (!form || replayMarker(form.openingElement) !== markerValue) {
+        report(node, "verified-replay-unmarked");
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { TurnstileField } from "@/components/turnstile-field";',
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const signIn = async (formData) => { "use server"; };',
+    'const Fixture = () => (<>',
+    '  <form action={signIn} data-route-submit-authority="verified-replay"><TurnstileField action="signin" /></form>',
+    '  <form action={getRouteNavigationHref("replay", "/api/ads/interest")} data-route-submit-authority="verified-replay"><TurnstileField action="ads" /></form>',
+    '  <form action="/api/raw" data-route-submit-authority="verified-replay"><TurnstileField action="raw" /></form>',
+    '  <form action={signIn} data-route-submit-authority="verified-replay"><button>Missing Turnstile</button></form>',
+    '  <form action={signIn}><TurnstileField action="unmarked" /></form>',
+    '</>);',
+  ].join("\n");
+  const violations = auditVerifiedReplayForms(
+    selfTest,
+    "verified-replay-form.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 3
+    || counts["verified-replay-action"] !== 1
+    || counts["verified-replay-orphan"] !== 1
+    || counts["verified-replay-unmarked"] !== 1
+  ) {
+    throw new Error("Verified replay form authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function authorityCall(expression, bindings) {
   return Boolean(
     expression
@@ -1266,6 +1431,8 @@ function auditImperativeNavigation(source, path) {
   const domRefKinds = new Map();
   const domCollectionKinds = new Map();
   const domSetAttributeBindings = new Map();
+  const domActivationMethodBindings = new Map();
+  const domVerifiedReplayForms = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -1751,6 +1918,160 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  const VERIFIED_REPLAY_SELECTOR = 'form[data-route-submit-authority="verified-replay"]';
+
+  function isVerifiedReplayFormSource(expression, env = new Map(), seen = new Set()) {
+    if (!expression) return false;
+
+    if (ts.isIdentifier(expression) && domVerifiedReplayForms.has(expression.text)) {
+      return true;
+    }
+    if (
+      ts.isAsExpression(expression)
+      || ts.isTypeAssertionExpression(expression)
+      || ts.isNonNullExpression(expression)
+    ) {
+      return isVerifiedReplayFormSource(expression.expression, env, seen);
+    }
+
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (resolved !== expression) {
+      const key = resolved.pos + ":" + resolved.end;
+      if (seen.has(key)) return false;
+      const nextSeen = new Set(seen);
+      nextSeen.add(key);
+      if (isVerifiedReplayFormSource(resolved, env, nextSeen)) return true;
+    }
+
+    if (!ts.isCallExpression(resolved)) return false;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return false;
+    }
+    const method = propertyName(callee);
+    if (method !== "closest" && method !== "querySelector") return false;
+    const selector = resolveDataExpression(resolved.arguments[0], env);
+    return Boolean(
+      selector
+      && ts.isStringLiteralLike(selector)
+      && selector.text === VERIFIED_REPLAY_SELECTOR
+    );
+  }
+
+  function domActivationMethodForKind(kind, method) {
+    if (kind === "form" && (method === "submit" || method === "requestSubmit")) {
+      return method;
+    }
+    if (
+      (kind === "a" || kind === "area" || kind === "button" || kind === "input")
+      && method === "click"
+    ) {
+      return method;
+    }
+    return null;
+  }
+
+  function domActivationBinding(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+
+    if (ts.isIdentifier(resolved) && domActivationMethodBindings.has(resolved.text)) {
+      return domActivationMethodBindings.get(resolved.text);
+    }
+
+    if (
+      ts.isPropertyAccessExpression(resolved)
+      || ts.isElementAccessExpression(resolved)
+    ) {
+      const method = propertyName(resolved);
+      const owner = propertyOwner(resolved);
+      const ownerKind = domNavigationElementKind(owner, env);
+      const activationMethod = domActivationMethodForKind(ownerKind, method);
+      if (activationMethod) {
+        return {
+          kind: ownerKind,
+          method: activationMethod,
+          verifiedReplay: (
+            activationMethod === "requestSubmit"
+            && isVerifiedReplayFormSource(owner, env)
+          ),
+        };
+      }
+
+      // requestSubmit is unique to forms. Treat an untyped owner as unresolved
+      // form capability instead of allowing it to bypass typed/ref tracking.
+      if (method === "requestSubmit") {
+        return {
+          kind: ownerKind ?? null,
+          method,
+          unresolved: !ownerKind,
+          verifiedReplay: isVerifiedReplayFormSource(owner, env),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function nativeDomActivationInfo(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+    ) return null;
+
+    const method = propertyName(resolved);
+    const owner = propertyOwner(resolved);
+    if (!owner) return null;
+
+    const prototypeKind = nativeDomPrototypeKind(owner, env);
+    const activationMethod = domActivationMethodForKind(prototypeKind, method);
+    if (activationMethod) {
+      return { kind: prototypeKind, method: activationMethod, generic: false };
+    }
+
+    const ownerText = owner.getText(sourceFile);
+    if (
+      method === "click"
+      && (
+        ownerText === "HTMLElement.prototype"
+        || ownerText === "globalThis.HTMLElement.prototype"
+      )
+    ) {
+      return { kind: null, method: "click", generic: true };
+    }
+
+    return null;
+  }
+
+  function syntheticActivationEventName(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isNewExpression(resolved)) return null;
+    const constructorText = resolved.expression.getText(sourceFile);
+    if (
+      constructorText !== "Event"
+      && constructorText !== "SubmitEvent"
+      && constructorText !== "MouseEvent"
+      && constructorText !== "PointerEvent"
+    ) return null;
+
+    const eventName = resolveDataExpression(resolved.arguments?.[0], env);
+    if (!eventName || !ts.isStringLiteralLike(eventName)) return null;
+    const normalized = eventName.text.toLowerCase();
+    return normalized === "submit" || normalized === "click" ? normalized : null;
+  }
+
+  function syntheticActivationTargetKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "dispatchEvent"
+    ) return null;
+    return domNavigationElementKind(propertyOwner(resolved), env);
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -1828,6 +2149,11 @@ function auditImperativeNavigation(source, path) {
         changed = true;
       }
 
+      if (isVerifiedReplayFormSource(initializer) && !domVerifiedReplayForms.has(local)) {
+        domVerifiedReplayForms.add(local);
+        changed = true;
+      }
+
       if (initializer && (ts.isPropertyAccessExpression(initializer) || ts.isElementAccessExpression(initializer))) {
         const owner = propertyOwner(initializer);
         const method = propertyName(initializer);
@@ -1879,6 +2205,18 @@ function auditImperativeNavigation(source, path) {
         if (domOwnerKind && method === "setAttribute") {
           changed = addKindBinding(domSetAttributeBindings, local, domOwnerKind) || changed;
         }
+        const activationMethod = domActivationMethodForKind(domOwnerKind, method);
+        if (activationMethod) {
+          const existing = domActivationMethodBindings.get(local);
+          if (
+            !existing
+            || existing.kind !== domOwnerKind
+            || existing.method !== activationMethod
+          ) {
+            domActivationMethodBindings.set(local, { kind: domOwnerKind, method: activationMethod });
+            changed = true;
+          }
+        }
       }
 
       if (initializer && ts.isIdentifier(initializer)) {
@@ -1927,6 +2265,20 @@ function auditImperativeNavigation(source, path) {
             local,
             domSetAttributeBindings.get(initializer.text),
           ) || changed;
+        }
+        if (domVerifiedReplayForms.has(initializer.text)) {
+          changed = addBinding(domVerifiedReplayForms, local) || changed;
+        }
+        if (domActivationMethodBindings.has(initializer.text)) {
+          const binding = domActivationMethodBindings.get(initializer.text);
+          const existing = domActivationMethodBindings.get(local);
+          if (
+            binding
+            && (!existing || existing.kind !== binding.kind || existing.method !== binding.method)
+          ) {
+            domActivationMethodBindings.set(local, binding);
+            changed = true;
+          }
         }
       }
     }
@@ -1991,6 +2343,21 @@ function auditImperativeNavigation(source, path) {
             localName,
             domNavigationElementKind(initializer),
           ) || changed;
+        }
+        if (fromDomNavigationElement) {
+          const kind = domNavigationElementKind(initializer);
+          const activationMethod = domActivationMethodForKind(kind, sourceName);
+          if (activationMethod) {
+            const existing = domActivationMethodBindings.get(localName);
+            if (
+              !existing
+              || existing.kind !== kind
+              || existing.method !== activationMethod
+            ) {
+              domActivationMethodBindings.set(localName, { kind, method: activationMethod });
+              changed = true;
+            }
+          }
         }
       }
     }
@@ -2498,6 +2865,8 @@ function auditImperativeNavigation(source, path) {
       nativeDomSetterInfo(target, env)
       || isDomSetAttributeReference(target, env)
       || isNativeDomSetAttributeReference(target, env)
+      || domActivationBinding(target, env)
+      || nativeDomActivationInfo(target, env)
       || isDocumentHtmlWriteReference(target, env)
       || isInsertAdjacentHtmlReference(target, env)
       || isRouterTraversalReference(target, env)
@@ -2538,6 +2907,8 @@ function auditImperativeNavigation(source, path) {
       || domNavigationElementKind(resolved, env)
       || isDomSetAttributeReference(resolved, env)
       || isNativeDomSetAttributeReference(resolved, env)
+      || domActivationBinding(resolved, env)
+      || nativeDomActivationInfo(resolved, env)
       || nativeDomSetterInfo(resolved, env)
       || isDocumentHtmlWriteReference(resolved, env)
       || isInsertAdjacentHtmlReference(resolved, env)
@@ -3088,10 +3459,15 @@ function auditImperativeNavigation(source, path) {
           isDomSetAttributeReference(indirectTarget, env)
           || isNativeDomSetAttributeReference(indirectTarget, env)
         );
+        const activationCapability = (
+          domActivationBinding(indirectTarget, env)
+          || nativeDomActivationInfo(indirectTarget, env)
+        );
 
         const indirectRecognized = Boolean(
           nativeSetter
           || setAttributeCapability
+          || activationCapability
           || isDocumentHtmlWriteReference(indirectTarget, env)
           || isInsertAdjacentHtmlReference(indirectTarget, env)
           || isRouterTraversalReference(indirectTarget, env)
@@ -3111,6 +3487,31 @@ function auditImperativeNavigation(source, path) {
         if (indirectInvocation.dynamic && indirectRecognized) {
           report(node, "native-invoke-dynamic-arguments");
         } else if (!indirectInvocation.dynamic) {
+          if (activationCapability) {
+            const actualKind = indirectThisKind;
+            const expectedKind = activationCapability.kind;
+            const method = activationCapability.method;
+            const validClickKinds = ["a", "area", "button", "input"];
+
+            if (!actualKind) {
+              if (!activationCapability.generic) {
+                report(node, "native-invoke-dom-dynamic-target");
+              }
+            } else if (
+              (method === "submit" || method === "requestSubmit")
+              && actualKind === "form"
+              && (!expectedKind || expectedKind === "form")
+            ) {
+              report(node, "native-invoke-dom-activation");
+            } else if (
+              method === "click"
+              && validClickKinds.includes(actualKind)
+              && (!expectedKind || expectedKind === actualKind || activationCapability.generic)
+            ) {
+              report(node, "native-invoke-dom-activation");
+            }
+          }
+
           if (nativeSetter) {
             if (!indirectThisKind) {
               report(node, "native-invoke-dom-dynamic-target");
@@ -3300,6 +3701,35 @@ function auditImperativeNavigation(source, path) {
             report(node, "native-invoke-browser-navigation-api");
           }
         }
+      }
+
+      const directActivation = domActivationBinding(expression, env);
+      if (directActivation) {
+        if (directActivation.method === "submit" || directActivation.method === "requestSubmit") {
+          const verifiedReplay = (
+            directActivation.method === "requestSubmit"
+            && directActivation.verifiedReplay === true
+            && node.arguments.length === 0
+          );
+          if (!verifiedReplay) report(node, "dom-form-submit");
+        } else if (directActivation.method === "click") {
+          report(node, "dom-click-activation");
+        }
+      }
+
+      const syntheticTargetKind = syntheticActivationTargetKind(expression, env);
+      const syntheticEventName = syntheticActivationEventName(firstArg, env);
+      if (
+        syntheticTargetKind
+        && (
+          (syntheticEventName === "submit" && syntheticTargetKind === "form")
+          || (
+            syntheticEventName === "click"
+            && ["a", "area", "button", "input"].includes(syntheticTargetKind)
+          )
+        )
+      ) {
+        report(node, "dom-synthetic-activation");
       }
 
       const reflectiveCall = reflectiveCalleeName(expression, env);
@@ -3578,6 +4008,8 @@ function auditImperativeNavigation(source, path) {
           || isLocationHeaderMutationReference(argument, env)
           || domNavigationElementKind(argument, env)
           || isDomSetAttributeReference(argument, env)
+          || domActivationBinding(argument, env)
+          || nativeDomActivationInfo(argument, env)
           || isBoundNavigationCapability(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
@@ -3940,6 +4372,46 @@ function auditImperativeNavigation(source, path) {
     || counts["dom-base-href"] !== 4
   ) {
     throw new Error("Reflective DOM mutation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'const form = document.querySelector<HTMLFormElement>("#payout");',
+    'form.submit();',
+    'form.requestSubmit();',
+    'const { requestSubmit: requestForm } = form;',
+    'requestForm();',
+    'const replayForm = container.closest(\'form[data-route-submit-authority="verified-replay"]\') as HTMLFormElement;',
+    'replayForm.requestSubmit();',
+    'const replaySubmitter = document.createElement("button");',
+    'replayForm.requestSubmit(replaySubmitter);',
+    'const anchor = document.querySelector<HTMLAnchorElement>("#reward");',
+    'anchor.click();',
+    'const button = document.createElement("button");',
+    'button.click();',
+    'form.dispatchEvent(new SubmitEvent("submit"));',
+    'anchor.dispatchEvent(new MouseEvent("click"));',
+    'HTMLFormElement.prototype.submit.call(form);',
+    'Reflect.apply(HTMLAnchorElement.prototype.click, anchor, []);',
+    'HTMLFormElement.prototype.submit.bind(form)();',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-activation-authority.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["dom-form-submit"] !== 4
+    || counts["dom-click-activation"] !== 2
+    || counts["dom-synthetic-activation"] !== 2
+    || counts["native-invoke-dom-activation"] !== 3
+  ) {
+    throw new Error("Programmatic activation authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
@@ -4704,6 +5176,21 @@ if (staticSemanticCoverageViolations.length > 0) {
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.targets.join(", ") + " lacks transitionTypes"
+      )
+      .join("\n"),
+  );
+}
+
+const verifiedReplayFormViolations = ["app", "components"]
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditVerifiedReplayForms(read(path), path));
+if (verifiedReplayFormViolations.length > 0) {
+  throw new Error(
+    "Verified replay form authority failed:\n"
+    + verifiedReplayFormViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
       )
       .join("\n"),
   );

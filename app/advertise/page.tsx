@@ -5,6 +5,7 @@ import { ArrowUpRight, Check, Shield, Spark, Trend } from "@/components/icons";
 import { TurnstileField } from "@/components/turnstile-field";
 import { PublicSignalField } from "@/components/public-signal-field";
 import { getCurrentUserContext } from "@/lib/current-user-context";
+import { getRouteNavigationHref } from "@/lib/route-semantics";
 import { formatUsdMicros, getUserPulseAds } from "@/lib/pulse-ads";
 import { buildPulseAdsCheckoutCustom } from "@/lib/pulse-ads-checkout";
 import { getCanonicalSiteUrl } from "@/lib/site-url";
@@ -102,7 +103,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
                 </ol>
               </div>
 
-              <form className="pc-ads-form" action="/api/ads/interest" method="post">
+              <form className="pc-ads-form" action={getRouteNavigationHref("advertise", "/api/ads/interest")} method="post" data-route-submit-authority="verified-replay">
                 <div className="pc-ads-form-grid">
                   <label><span>Company / brand</span><input name="company" minLength={2} maxLength={120} required autoComplete="organization" /></label>
                   <label><span>Your name</span><input name="contact_name" minLength={2} maxLength={120} required autoComplete="name" /></label>
@@ -140,7 +141,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
                 </ol>
               </div>
 
-              <form className="pc-ads-form" action="/api/ads/campaigns" method="post">
+              <form className="pc-ads-form" action={getRouteNavigationHref("advertise", "/api/ads/campaigns")} method="post" data-route-submit-authority="verified-replay">
                 <label><span>Campaign title</span><input name="title" minLength={3} maxLength={90} required placeholder="A clear reason to visit" /></label>
                 <label><span>Sponsored message</span><textarea name="body" minLength={1} maxLength={220} rows={4} required placeholder="Tell people what they will find after the click." /></label>
                 <label><span>Destination</span><input name="destinationUrl" type="url" inputMode="url" required placeholder="https://example.com" /></label>

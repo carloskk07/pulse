@@ -62,11 +62,12 @@ forbidAll("app/api/ads/interest/route.ts", [
 ]);
 
 requireAll("app/advertise/page.tsx", [
-  'action="/api/ads/interest"',
+  'getRouteNavigationHref("advertise", "/api/ads/interest")',
+  'data-route-submit-authority="verified-replay"',
   "Tell us the result you want before creating an account.",
   "No login required.",
   "does not authorize spend or guarantee delivery",
-  'action="/api/ads/campaigns"',
+  'getRouteNavigationHref("advertise", "/api/ads/campaigns")',
   "$0.05 per qualified click",
 ]);
 
