@@ -1600,6 +1600,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticTargetContextPolicy = (
     options.programmaticTargetContextPolicy === true
   );
+  const enforceOpenerProtectionMutationBoundary = (
+    options.openerProtectionMutationBoundary === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1676,6 +1679,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domRefKinds = new Map();
   const domCollectionKinds = new Map();
   const domSetAttributeBindings = new Map();
+  const domRemoveAttributeBindings = new Map();
+  const domRelListKinds = new Map();
+  const domRelListMethodBindings = new Map();
   const domActivationMethodBindings = new Map();
   const domVerifiedReplayForms = new Set();
   const declarations = [];
