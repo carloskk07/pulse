@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getRouteNavigationHref } from "@/lib/route-semantics";
 
 type TurnstileStatus = "loading" | "waiting" | "verified" | "expired" | "error" | "blocked";
 type TurnstileTheme = "dark" | "light" | "auto";
@@ -164,7 +165,14 @@ export function TurnstileField({ action, theme = "dark" }: { action: string; the
         <span className="turnstile-status-dot" aria-hidden="true" />
         <span>{statusCopy[status]}</span>
         {status === "blocked" ? (
-          <button type="button" className="turnstile-retry" onClick={() => window.location.reload()}>
+          <button
+            type="button"
+            className="turnstile-retry"
+            onClick={() => window.location.replace(getRouteNavigationHref(
+              "turnstile",
+              window.location.pathname + window.location.search + window.location.hash,
+            ))}
+          >
             Reload verification
           </button>
         ) : null}
