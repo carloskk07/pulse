@@ -2390,6 +2390,50 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const anchor = document.createElement("a");',
+    'anchor.href = "/earn";',
+    'anchor.href = getRouteNavigationHref("dom", "/earn");',
+    'anchor.setAttribute("href", "https://example.com/raw");',
+    'anchor.setAttribute("href", getExternalNavigationHref("https://example.com/safe"));',
+    'const setAnchorAttribute = anchor.setAttribute;',
+    'setAnchorAttribute("href", "/wallet");',
+    'const form = document.createElement("form");',
+    'form.action = "/api/withdrawals";',
+    'form.action = getRouteNavigationHref("dom", "/api/withdrawals");',
+    'const button = document.createElement("button");',
+    'button.formAction = "/api/pulse/claim";',
+    'const base = document.createElement("base");',
+    'base.href = getRouteNavigationHref("dom", "/dashboard/");',
+    'const setBaseAttribute = base.setAttribute;',
+    'setBaseAttribute("href", getRouteNavigationHref("dom", "/dashboard/"));',
+    'anchor.setAttribute(dynamicAttributeName, "/invite");',
+    'document.write("<a href=\"/dashboard\">open</a>");',
+    'root.innerHTML = "<form action=\"/api/pulse/claim\"></form>";',
+    'root.insertAdjacentHTML("beforeend", "<a href=\"/progress\">progress</a>");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "dom-navigation-mutation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["dom-property"] !== 3
+    || counts["dom-attribute"] !== 2
+    || counts["dom-base-href"] !== 2
+    || counts["dom-dynamic-attribute"] !== 1
+    || counts["dom-html-injection"] !== 3
+  ) {
+    throw new Error("DOM navigation mutation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRouter } from "next/navigation";',
     'const router = useRouter();',
     'router.back();',
@@ -2875,9 +2919,27 @@ if (hiddenNavigationModuleViolations.length > 0) {
   );
 }
 
-const imperativeNavigationViolations = ["app", "components", "lib", "providers"]
+const allImperativeNavigationViolations = ["app", "components", "lib", "providers"]
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
+
+const domNavigationMutationViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("dom-"));
+if (domNavigationMutationViolations.length > 0) {
+  throw new Error(
+    "DOM navigation mutation authority failed:\n"
+    + domNavigationMutationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const imperativeNavigationViolations = allImperativeNavigationViolations
+  .filter((violation) => !violation.kind.startsWith("dom-"));
 if (imperativeNavigationViolations.length > 0) {
   throw new Error(
     "Imperative navigation provenance failed:\n"
