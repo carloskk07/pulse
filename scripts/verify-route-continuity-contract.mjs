@@ -3744,9 +3744,17 @@ function auditImperativeNavigation(source, path) {
       report(node, "dom-base-href");
       return true;
     }
+    if (isEmbeddedInlineDocumentProperty(kind, navProperty)) {
+      report(node, "embedded-runtime-srcdoc");
+      return true;
+    }
     if (!value || !domNavigationAuthority(value, env, callStack)) {
       const targets = value ? staticHrefCandidatesResolved(value, env, callStack) : [];
-      report(node, "dom-reflective-property", targets);
+      report(
+        node,
+        isEmbeddedContextKind(kind) ? "embedded-runtime-source" : "dom-reflective-property",
+        targets,
+      );
     }
     return true;
   }
@@ -3969,13 +3977,23 @@ function auditImperativeNavigation(source, path) {
               if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
                 report(node, "native-invoke-dom-base-href");
               } else if (
+                isEmbeddedInlineDocumentProperty(nativeSetter.kind, nativeSetter.property)
+              ) {
+                report(node, "embedded-runtime-srcdoc");
+              } else if (
                 !indirectFirstArg
                 || !domNavigationAuthority(indirectFirstArg, env, callStack)
               ) {
                 const targets = indirectFirstArg
                   ? staticHrefCandidatesResolved(indirectFirstArg, env, callStack)
                   : [];
-                report(node, "native-invoke-dom-setter", targets);
+                report(
+                  node,
+                  isEmbeddedContextKind(nativeSetter.kind)
+                    ? "embedded-runtime-source"
+                    : "native-invoke-dom-setter",
+                  targets,
+                );
               }
             }
           }
@@ -3996,13 +4014,23 @@ function auditImperativeNavigation(source, path) {
                 if (indirectThisKind === "base" && navProperty === "href") {
                   report(node, "native-invoke-dom-base-href");
                 } else if (
+                  isEmbeddedInlineDocumentProperty(indirectThisKind, navProperty)
+                ) {
+                  report(node, "embedded-runtime-srcdoc");
+                } else if (
                   navProperty
                   && (!target || !domNavigationAuthority(target, env, callStack))
                 ) {
                   const targets = target
                     ? staticHrefCandidatesResolved(target, env, callStack)
                     : [];
-                  report(node, "native-invoke-dom-attribute", targets);
+                  report(
+                    node,
+                    isEmbeddedContextKind(indirectThisKind)
+                      ? "embedded-runtime-source"
+                      : "native-invoke-dom-attribute",
+                    targets,
+                  );
                 }
               }
             }
@@ -4296,13 +4324,19 @@ function auditImperativeNavigation(source, path) {
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (navProperty === "href" && kind === "base") {
             report(node, "dom-base-href");
+          } else if (isEmbeddedInlineDocumentProperty(kind, navProperty)) {
+            report(node, "embedded-runtime-srcdoc");
           } else if (
             navProperty
             && target
             && !domNavigationAuthority(target, env, callStack)
           ) {
             const targets = staticHrefCandidatesResolved(target, env, callStack);
-            report(node, "dom-attribute", targets);
+            report(
+              node,
+              isEmbeddedContextKind(kind) ? "embedded-runtime-source" : "dom-attribute",
+              targets,
+            );
           }
         }
       }
@@ -4549,12 +4583,18 @@ function auditImperativeNavigation(source, path) {
 
       if (domKind === "base" && domProperty === "href") {
         report(node, "dom-base-href");
+      } else if (isEmbeddedInlineDocumentProperty(domKind, domProperty)) {
+        report(node, "embedded-runtime-srcdoc");
       } else if (
         domProperty
         && !domNavigationAuthority(node.right, env, callStack)
       ) {
         const targets = staticHrefCandidatesResolved(node.right, env, callStack);
-        report(node, "dom-property", targets);
+        report(
+          node,
+          isEmbeddedContextKind(domKind) ? "embedded-runtime-source" : "dom-property",
+          targets,
+        );
       }
 
       if (leftProperty === "innerHTML" || leftProperty === "outerHTML") {
