@@ -724,6 +724,11 @@ function auditNativeAnchors(source, path) {
     ts.ScriptKind.TSX,
   );
   const violations = [];
+  const externalHrefAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getExternalNavigationHref",
+  );
 
   function visit(node) {
     if (
@@ -738,14 +743,30 @@ function auditNativeAnchors(source, path) {
         jsxAttribute(node, "data-route-semantic"),
       ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
       const unresolvedDynamicHref = hasUnresolvedDynamicHref(href);
+      const expression = declarativeAttributeExpression(href);
+      const externalAuthority = expressionContainsAuthorityCall(
+        expression,
+        externalHrefAuthorityBindings,
+      );
       const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
       if ((targets.length > 0 || unresolvedDynamicHref) && !explicitOutsideProduct) {
         violations.push({
+          kind: "semantic-boundary",
           path,
           line: position.line + 1,
           column: position.character + 1,
           targets: [...new Set(targets)],
+        });
+      }
+
+      if (unresolvedDynamicHref && explicitOutsideProduct && !externalAuthority) {
+        violations.push({
+          kind: "external-provenance",
+          path,
+          line: position.line + 1,
+          column: position.character + 1,
+          targets: [],
         });
       }
     }
@@ -754,6 +775,29 @@ function auditNativeAnchors(source, path) {
 
   visit(sourceFile);
   return violations;
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref } from "@/lib/route-semantics";',
+    'const Fixture = ({ provider, internal }) => (<>',
+    '  <a href={provider.href} data-route-semantic="outside-product">raw dynamic external</a>',
+    '  <a href={getExternalNavigationHref(provider.href)} data-route-semantic="outside-product">governed external</a>',
+    '  <a href="https://example.com" data-route-semantic="outside-product">static external</a>',
+    '  <a href={internal.href}>unmarked dynamic</a>',
+    '</>);',
+  ].join("\n");
+  const violations = auditNativeAnchors(
+    selfTest,
+    "dynamic-external-anchor.self-test.tsx",
+  );
+  if (
+    violations.length !== 2
+    || violations.filter((violation) => violation.kind === "external-provenance").length !== 1
+    || violations.filter((violation) => violation.kind === "semantic-boundary").length !== 1
+  ) {
+    throw new Error("Dynamic external href authority self-test failed: " + JSON.stringify(violations));
+  }
 }
 
 function expressionContainsAuthorityCall(expression, bindings) {
@@ -4504,7 +4548,12 @@ if (nativeAnchorViolations.length > 0) {
     + nativeAnchorViolations
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
-        + " -> native anchor must be explicitly outside-product"
+        + " -> "
+        + (
+          violation.kind === "external-provenance"
+            ? "dynamic outside-product href must use getExternalNavigationHref()"
+            : "native anchor must be explicitly outside-product"
+        )
       )
       .join("\n"),
   );
