@@ -83,7 +83,7 @@ export default async function AuthPage({ searchParams }: Props) {
           {params.message === "password-updated" ? <div className="auth-alert success">Password updated. Sign in with your new password to finish account recovery.</div> : null}
 
           {signingUp ? (
-            <form action={signUp} className="auth-form">
+            <form action={signUp} className="auth-form" data-route-submit-authority="verified-replay">
               <input type="hidden" name="next" value={next} />
               {ref ? <input type="hidden" name="ref" value={ref} /> : null}
               <label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label>
@@ -92,7 +92,7 @@ export default async function AuthPage({ searchParams }: Props) {
               <button className="button button-lg pc-v5-primary" type="submit">Create free account</button>
             </form>
           ) : (
-            <form action={signIn} className="auth-form">
+            <form action={signIn} className="auth-form" data-route-submit-authority="verified-replay">
               <input type="hidden" name="next" value={next} />
               {ref ? <input type="hidden" name="ref" value={ref} /> : null}
               <label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label>
