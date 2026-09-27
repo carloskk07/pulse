@@ -1422,6 +1422,150 @@ function auditDeclarativeNavigation(source, path) {
   }
 }
 
+function auditFormSubmissionTransport(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const safeEncodings = new Set([
+    "application/x-www-form-urlencoded",
+    "multipart/form-data",
+  ]);
+
+  function report(node, kind, value = null) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      value,
+    });
+  }
+
+  function literalAttribute(attribute) {
+    const value = literalJsxAttributeValue(attribute);
+    return value === null ? null : value.trim().toLowerCase();
+  }
+
+  function clearlyUrlBackedAction(openingElement) {
+    const action = jsxAttribute(openingElement, "action");
+    if (!action?.initializer) return false;
+    if (ts.isStringLiteral(action.initializer)) return true;
+    if (!ts.isJsxExpression(action.initializer)) return false;
+    const expression = action.initializer.expression;
+    if (!expression) return false;
+    return !isServerActionReferenceExpression(expression);
+  }
+
+  function validateMethod(node, attribute, kind, required) {
+    if (!attribute?.initializer) {
+      if (required) report(node, kind + "-implicit");
+      return;
+    }
+    const value = literalAttribute(attribute);
+    if (value === null) {
+      report(node, kind + "-dynamic");
+      return;
+    }
+    if (value !== "post") report(node, kind, value);
+  }
+
+  function validateEncoding(node, attribute, kind) {
+    if (!attribute?.initializer) return;
+    const value = literalAttribute(attribute);
+    if (value === null) {
+      report(node, kind + "-dynamic");
+      return;
+    }
+    if (!safeEncodings.has(value)) report(node, kind, value);
+  }
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile).toLowerCase();
+
+      if (tag === "form") {
+        validateMethod(
+          node,
+          jsxAttribute(node, "method"),
+          "form-method",
+          clearlyUrlBackedAction(node),
+        );
+        validateEncoding(
+          node,
+          jsxAttribute(node, "encType") ?? jsxAttribute(node, "enctype"),
+          "form-enctype",
+        );
+      }
+
+      if (tag === "button" || tag === "input") {
+        validateMethod(
+          node,
+          jsxAttribute(node, "formMethod") ?? jsxAttribute(node, "formmethod"),
+          "submitter-method",
+          false,
+        );
+        validateEncoding(
+          node,
+          jsxAttribute(node, "formEncType") ?? jsxAttribute(node, "formenctype"),
+          "submitter-enctype",
+        );
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const saveProfile = async (formData) => { "use server"; };',
+    'const dynamicMethod = chooseMethod();',
+    'const Fixture = () => (<>',
+    '  <form action={saveProfile}>server action</form>',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/safe")} method="post" />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/implicit")} />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/get")} method="get" />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/dynamic")} method={dynamicMethod} />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/plain")} method="post" encType="text/plain" />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/upload")} method="post" encType="multipart/form-data" />',
+    '  <button formMethod="get">bad override</button>',
+    '  <input formMethod={dynamicMethod} />',
+    '  <button formEncType="text/plain">bad encoding</button>',
+    '  <input formEncType="multipart/form-data" />',
+    '</>);',
+  ].join("\n");
+  const violations = auditFormSubmissionTransport(
+    selfTest,
+    "form-submission-transport.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["form-method-implicit"] !== 1
+    || counts["form-method"] !== 1
+    || counts["form-method-dynamic"] !== 1
+    || counts["form-enctype"] !== 1
+    || counts["submitter-method"] !== 1
+    || counts["submitter-method-dynamic"] !== 1
+    || counts["submitter-enctype"] !== 1
+  ) {
+    throw new Error("Form submission transport policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditVerifiedReplayForms(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -1599,6 +1743,9 @@ function authorityCall(expression, bindings) {
 function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticTargetContextPolicy = (
     options.programmaticTargetContextPolicy === true
+  );
+  const enforceFormSubmissionTransportPolicy = (
+    options.formSubmissionTransportPolicy === true
   );
   const sourceFile = ts.createSourceFile(
     path,
@@ -6258,6 +6405,22 @@ if (declarativeNavigationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
+      )
+      .join("\n"),
+  );
+}
+
+const formSubmissionTransportViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditFormSubmissionTransport(read(path), path));
+if (formSubmissionTransportViolations.length > 0) {
+  throw new Error(
+    "Form submission transport policy failed:\n"
+    + formSubmissionTransportViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.value !== null ? " [" + violation.value + "]" : "")
       )
       .join("\n"),
   );
