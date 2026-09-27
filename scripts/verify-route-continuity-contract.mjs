@@ -2271,6 +2271,12 @@ function auditImperativeNavigation(source, path) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
     if (ts.isIdentifier(resolved) && resolved.text === "eval") return true;
+    if (
+      ts.isBinaryExpression(resolved)
+      && resolved.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isEvalReference(resolved.right, env);
+    }
     const text = resolved.getText(sourceFile);
     return text === "globalThis.eval" || text === "window.eval";
   }
@@ -2280,6 +2286,12 @@ function auditImperativeNavigation(source, path) {
     if (!resolved) return false;
 
     if (ts.isIdentifier(resolved) && resolved.text === "Function") return true;
+    if (
+      ts.isBinaryExpression(resolved)
+      && resolved.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isFunctionConstructorReference(resolved.right, env);
+    }
     const text = resolved.getText(sourceFile);
     if (text === "globalThis.Function" || text === "window.Function") return true;
 
@@ -2678,6 +2690,50 @@ function auditImperativeNavigation(source, path) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
+      if (isEvalReference(expression, env)) {
+        report(node, "dynamic-code-eval");
+      }
+
+      if (isFunctionConstructorReference(expression, env)) {
+        report(node, "dynamic-code-function-constructor");
+      }
+
+      if (
+        dynamicCodeTimerKind(expression, env)
+        && isCodeStringExpression(firstArg, env)
+      ) {
+        report(node, "dynamic-code-string-timer");
+      }
+
+      if (isReflectConstructReference(expression, env)) {
+        const constructorTarget = node.arguments[0];
+        if (
+          isFunctionConstructorReference(constructorTarget, env)
+          || boundDynamicCodeInfo(constructorTarget, env)
+        ) {
+          report(node, "dynamic-code-function-constructor");
+        }
+      }
+
+      if (boundDynamicCodeInfo(node, env)) {
+        report(node, "dynamic-code-bound-capability");
+      }
+
+      const proxyKind = proxyFactoryKind(expression, env);
+      if (
+        proxyKind === "revocable"
+        && isDynamicCodeCapabilityValue(firstArg, env)
+      ) {
+        report(node, "dynamic-code-proxy-capability");
+      }
+
+      if (
+        isProjectImportCallee(expression, env)
+        && node.arguments.some((argument) => isDynamicCodeCapabilityValue(argument, env))
+      ) {
+        report(node, "dynamic-code-capability-export");
+      }
+
       if (proxyNavigationCapabilityTarget(node, env)) {
         report(node, "proxy-navigation-capability");
       }
@@ -2687,6 +2743,20 @@ function auditImperativeNavigation(source, path) {
         const indirectTarget = indirectInvocation.target;
         const indirectArgs = indirectInvocation.args;
         const indirectFirstArg = indirectArgs[0];
+
+        if (isEvalReference(indirectTarget, env)) {
+          report(node, "dynamic-code-indirect-eval");
+        }
+        if (isFunctionConstructorReference(indirectTarget, env)) {
+          report(node, "dynamic-code-indirect-function");
+        }
+        if (
+          dynamicCodeTimerKind(indirectTarget, env)
+          && isCodeStringExpression(indirectFirstArg, env)
+        ) {
+          report(node, "dynamic-code-string-timer");
+        }
+
         const indirectThisKind = domNavigationElementKind(indirectInvocation.thisArg, env);
         const nativeSetter = nativeDomSetterInfo(indirectTarget, env);
         const setAttributeCapability = (
@@ -3201,6 +3271,20 @@ function auditImperativeNavigation(source, path) {
     }
 
     if (ts.isNewExpression(node)) {
+      if (
+        isFunctionConstructorReference(node.expression, env)
+        || boundDynamicCodeInfo(node.expression, env)
+      ) {
+        report(node, "dynamic-code-function-constructor");
+      }
+
+      if (
+        proxyFactoryKind(node.expression, env) === "constructor"
+        && isDynamicCodeCapabilityValue(node.arguments?.[0], env)
+      ) {
+        report(node, "dynamic-code-proxy-capability");
+      }
+
       if (proxyNavigationCapabilityTarget(node, env)) {
         report(node, "proxy-navigation-capability");
       }
