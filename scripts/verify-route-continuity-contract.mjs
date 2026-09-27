@@ -1413,6 +1413,7 @@ function auditImperativeNavigation(source, path) {
   const routerTraversalMethodBindings = new Set();
   const responseRedirectBindings = new Set();
   const webResponseRedirectBindings = new Set();
+  const browserContextVariables = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
   const browserLocationReloadBindings = new Set();
@@ -1631,40 +1632,110 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isFramesCollectionObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && resolved.text === "frames") return true;
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "frames"
+    ) {
+      return isBrowsingContextObject(propertyOwner(resolved), env);
+    }
+    return false;
+  }
+
+  function isBrowsingContextObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+
+    if (ts.isIdentifier(resolved)) {
+      if (browserContextVariables.has(resolved.text)) return true;
+      return (
+        resolved.text === "window"
+        || resolved.text === "globalThis"
+        || resolved.text === "self"
+        || resolved.text === "top"
+        || resolved.text === "parent"
+        || resolved.text === "opener"
+      );
+    }
+
+    if (ts.isElementAccessExpression(resolved) && isFramesCollectionObject(resolved.expression, env)) {
+      return true;
+    }
+
+    if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
+      const name = propertyName(resolved);
+      if (name === "contentWindow") return true;
+      if (
+        name === "self"
+        || name === "top"
+        || name === "parent"
+        || name === "opener"
+      ) {
+        return isBrowsingContextObject(propertyOwner(resolved), env);
+      }
+    }
+
+    return false;
+  }
+
+  function isDocumentObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && resolved.text === "document") return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "document"
+      && isBrowsingContextObject(propertyOwner(resolved), env)
+    );
+  }
+
   function isBrowserLocationObject(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
-    if (ts.isIdentifier(resolved) && browserLocationVariables.has(resolved.text)) return true;
-    const text = resolved.getText(sourceFile);
-    return (
-      text === "window.location"
-      || text === "document.location"
-      || text === "globalThis.location"
-      || text === "location"
+    if (ts.isIdentifier(resolved)) {
+      return browserLocationVariables.has(resolved.text) || resolved.text === "location";
+    }
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "location"
+      && (
+        isBrowsingContextObject(propertyOwner(resolved), env)
+        || isDocumentObject(propertyOwner(resolved), env)
+      )
     );
   }
 
   function isBrowserHistoryObject(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
-    if (ts.isIdentifier(resolved) && browserHistoryVariables.has(resolved.text)) return true;
-    const text = resolved.getText(sourceFile);
-    return text === "window.history" || text === "globalThis.history" || text === "history";
+    if (ts.isIdentifier(resolved)) {
+      return browserHistoryVariables.has(resolved.text) || resolved.text === "history";
+    }
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "history"
+      && isBrowsingContextObject(propertyOwner(resolved), env)
+    );
   }
 
   function isBrowserNavigationApiObject(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
-    if (ts.isIdentifier(resolved) && browserNavigationApiVariables.has(resolved.text)) return true;
-    const text = resolved.getText(sourceFile);
-    return text === "window.navigation" || text === "globalThis.navigation" || text === "navigation";
+    if (ts.isIdentifier(resolved)) {
+      return browserNavigationApiVariables.has(resolved.text) || resolved.text === "navigation";
+    }
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "navigation"
+      && isBrowsingContextObject(propertyOwner(resolved), env)
+    );
   }
 
   function isBrowserWindowObject(expression, env = new Map()) {
-    const resolved = resolveDataExpression(expression, env);
-    if (!resolved) return false;
-    const text = resolved.getText(sourceFile);
-    return text === "window" || text === "globalThis";
+    return isBrowsingContextObject(expression, env);
   }
 
   function isWebResponseObject(expression, env = new Map()) {
@@ -2084,29 +2155,21 @@ function auditImperativeNavigation(source, path) {
         changed = addBinding(routerVariables, local) || changed;
       }
       if (initializer) {
-        const initializerText = initializer.getText(sourceFile);
-        if (
-          initializerText === "window.location"
-          || initializerText === "document.location"
-          || initializerText === "globalThis.location"
-          || initializerText === "location"
-        ) {
+        if (isBrowsingContextObject(initializer)) {
+          changed = addBinding(browserContextVariables, local) || changed;
+        }
+        if (isBrowserLocationObject(initializer)) {
           changed = addBinding(browserLocationVariables, local) || changed;
         }
-        if (
-          initializerText === "window.history"
-          || initializerText === "globalThis.history"
-          || initializerText === "history"
-        ) {
+        if (isBrowserHistoryObject(initializer)) {
           changed = addBinding(browserHistoryVariables, local) || changed;
         }
-        if (
-          initializerText === "window.navigation"
-          || initializerText === "globalThis.navigation"
-          || initializerText === "navigation"
-        ) {
+        if (isBrowserNavigationApiObject(initializer)) {
           changed = addBinding(browserNavigationApiVariables, local) || changed;
         }
+      }
+      if (initializer && ts.isIdentifier(initializer) && browserContextVariables.has(initializer.text)) {
+        changed = addBinding(browserContextVariables, local) || changed;
       }
       if (initializer && ts.isIdentifier(initializer) && browserLocationVariables.has(initializer.text)) {
         changed = addBinding(browserLocationVariables, local) || changed;
@@ -3207,13 +3270,8 @@ function auditImperativeNavigation(source, path) {
   function isBrowserHrefAssignmentTarget(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
+    if (isBrowserLocationObject(resolved, env)) return true;
     if (ts.isPropertyAccessExpression(resolved)) {
-      const text = resolved.getText(sourceFile);
-      if (
-        text === "window.location"
-        || text === "document.location"
-        || text === "globalThis.location"
-      ) return true;
       return resolved.name.text === "href" && isBrowserLocationObject(resolved.expression, env);
     }
     if (
