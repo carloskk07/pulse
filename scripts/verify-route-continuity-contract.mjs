@@ -2384,6 +2384,92 @@ function auditImperativeNavigation(source, path, options = {}) {
     return kind === "iframe" && property === "srcdoc";
   }
 
+  function domTargetContextPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if ((kind === "a" || kind === "area" || kind === "form") && normalized === "target") {
+      return "target";
+    }
+    if ((kind === "button" || kind === "input") && normalized === "formtarget") {
+      return "formtarget";
+    }
+    return null;
+  }
+
+  function literalTargetContext(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return resolved && ts.isStringLiteralLike(resolved)
+      ? resolved.text.trim().toLowerCase()
+      : null;
+  }
+
+  function runtimeDomTargetContextSafe(expression, env = new Map()) {
+    const target = literalTargetContext(expression, env);
+    return target === "" || target === "_self";
+  }
+
+  function windowOpenFeaturesProtectOpener(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isStringLiteralLike(resolved)) return false;
+    const tokens = resolved.text
+      .toLowerCase()
+      .split(/[,\s]+/)
+      .map((token) => token.trim().split("=", 1)[0])
+      .filter(Boolean);
+    return tokens.includes("noopener") || tokens.includes("noreferrer");
+  }
+
+  function reportProgrammaticDomTarget(
+    node,
+    kind,
+    property,
+    value,
+    env = new Map(),
+  ) {
+    if (!enforceProgrammaticTargetContextPolicy) return false;
+    const targetProperty = domTargetContextPropertyForKind(kind, property);
+    if (!targetProperty) return false;
+
+    const target = literalTargetContext(value, env);
+    if (target === null) {
+      report(node, "programmatic-target-dynamic");
+    } else if (!runtimeDomTargetContextSafe(value, env)) {
+      report(node, "programmatic-target-context", [target]);
+    }
+    return true;
+  }
+
+  function reportProgrammaticWindowOpenTarget(
+    node,
+    args,
+    env = new Map(),
+  ) {
+    if (!enforceProgrammaticTargetContextPolicy) return;
+    const targetExpression = args[1];
+    const featuresExpression = args[2];
+
+    if (!targetExpression) {
+      report(node, "programmatic-target-implicit");
+      return;
+    }
+
+    const target = literalTargetContext(targetExpression, env);
+    if (target === null) {
+      report(node, "programmatic-target-dynamic");
+      return;
+    }
+
+    if (target === "_self") return;
+
+    if (target === "_blank") {
+      if (!windowOpenFeaturesProtectOpener(featuresExpression, env)) {
+        report(node, "programmatic-target-blank-opener", [target]);
+      }
+      return;
+    }
+
+    report(node, "programmatic-target-context", [target]);
+  }
+
   const VERIFIED_REPLAY_SELECTOR = 'form[data-route-submit-authority="verified-replay"]';
 
   function isVerifiedReplayFormSource(expression, env = new Map(), seen = new Set()) {
@@ -3290,8 +3376,13 @@ function auditImperativeNavigation(source, path, options = {}) {
       ? propertyExpression.text
       : null;
     const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
-    return kind && navigationProperty
-      ? { kind, property: navigationProperty }
+    const targetContextProperty = domTargetContextPropertyForKind(kind, propertyText);
+    return kind && (navigationProperty || targetContextProperty)
+      ? {
+          kind,
+          property: navigationProperty ?? targetContextProperty,
+          targetContext: Boolean(targetContextProperty),
+        }
       : null;
   }
 
