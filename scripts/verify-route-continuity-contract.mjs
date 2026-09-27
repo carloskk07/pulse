@@ -1645,7 +1645,7 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
-  function isBrowsingContextObject(expression, env = new Map()) {
+  function isBrowsingContextObject(expression, env = new Map(), seen = new Set()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
 
@@ -1661,6 +1661,38 @@ function auditImperativeNavigation(source, path) {
       );
     }
 
+    if (ts.isCallExpression(resolved)) {
+      const callee = resolveDataExpression(resolved.expression, env);
+      const directOpen = Boolean(
+        callee
+        && (
+          (
+            ts.isIdentifier(callee)
+            && browserWindowOpenBindings.has(callee.text)
+          )
+          || (
+            (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+            && propertyName(callee) === "open"
+            && isBrowsingContextObject(propertyOwner(callee), env, seen)
+          )
+        )
+      );
+      if (directOpen) return true;
+
+      const definition = localFunctionFromCallee(resolved.expression, env);
+      if (definition && !seen.has(definition.key)) {
+        const nextSeen = new Set(seen);
+        nextSeen.add(definition.key);
+        const childEnv = functionEnvironment(definition, resolved, env);
+        if (
+          functionReturnExpressions(definition)
+            .some((candidate) => isBrowsingContextObject(candidate, childEnv, nextSeen))
+        ) {
+          return true;
+        }
+      }
+    }
+
     if (ts.isElementAccessExpression(resolved) && isFramesCollectionObject(resolved.expression, env)) {
       return true;
     }
@@ -1674,7 +1706,7 @@ function auditImperativeNavigation(source, path) {
         || name === "parent"
         || name === "opener"
       ) {
-        return isBrowsingContextObject(propertyOwner(resolved), env);
+        return isBrowsingContextObject(propertyOwner(resolved), env, seen);
       }
     }
 
