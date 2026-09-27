@@ -4382,6 +4382,10 @@ function auditImperativeNavigation(source, path) {
     'form.requestSubmit();',
     'const { requestSubmit: requestForm } = form;',
     'requestForm();',
+    'const replayForm = container.closest(\'form[data-route-submit-authority="verified-replay"]\') as HTMLFormElement;',
+    'replayForm.requestSubmit();',
+    'const replaySubmitter = document.createElement("button");',
+    'replayForm.requestSubmit(replaySubmitter);',
     'const anchor = document.querySelector<HTMLAnchorElement>("#reward");',
     'anchor.click();',
     'const button = document.createElement("button");',
@@ -4401,8 +4405,8 @@ function auditImperativeNavigation(source, path) {
     return acc;
   }, {});
   if (
-    violations.length !== 10
-    || counts["dom-form-submit"] !== 3
+    violations.length !== 11
+    || counts["dom-form-submit"] !== 4
     || counts["dom-click-activation"] !== 2
     || counts["dom-synthetic-activation"] !== 2
     || counts["native-invoke-dom-activation"] !== 3
