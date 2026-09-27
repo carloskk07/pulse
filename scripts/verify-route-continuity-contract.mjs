@@ -2165,6 +2165,31 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isBoundNavigationCapability(expression, env = new Map()) {
+    const bound = boundCallableInfo(expression, env);
+    if (!bound?.target) return false;
+    const target = bound.target;
+    return Boolean(
+      nativeDomSetterInfo(target, env)
+      || isDomSetAttributeReference(target, env)
+      || isNativeDomSetAttributeReference(target, env)
+      || isDocumentHtmlWriteReference(target, env)
+      || isInsertAdjacentHtmlReference(target, env)
+      || isRouterTraversalReference(target, env)
+      || isRouterMethodReference(target, env)
+      || isServerRedirectReference(target, env)
+      || isResponseRedirectReference(target, env)
+      || isLocationHeaderMutationReference(target, env)
+      || isBrowserLocationReloadReference(target, env)
+      || isBrowserLocationMethodReference(target, env)
+      || isBrowserHistoryTraversalReference(target, env)
+      || isBrowserHistoryMethodReference(target, env)
+      || isBrowserWindowOpenReference(target, env)
+      || isBrowserNavigationTraversalReference(target, env)
+      || isBrowserNavigationApiMethodReference(target, env)
+    );
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
@@ -2961,6 +2986,7 @@ function auditImperativeNavigation(source, path) {
           || isLocationHeaderMutationReference(argument, env)
           || domNavigationElementKind(argument, env)
           || isDomSetAttributeReference(argument, env)
+          || isBoundNavigationCapability(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
         ))
