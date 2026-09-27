@@ -1201,13 +1201,24 @@ function auditImperativeNavigation(source, path) {
   function isResponseRedirectReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
-    if (ts.isIdentifier(resolved) && responseRedirectBindings.has(resolved.text)) return true;
+    if (
+      ts.isIdentifier(resolved)
+      && (
+        responseRedirectBindings.has(resolved.text)
+        || webResponseRedirectBindings.has(resolved.text)
+      )
+    ) return true;
+
+    if (!(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))) {
+      return false;
+    }
+    if (propertyName(resolved) !== "redirect") return false;
+    const owner = propertyOwner(resolved);
+    if (!owner) return false;
+    if (isWebResponseObject(owner, env)) return true;
     return Boolean(
-      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
-      && propertyName(resolved) === "redirect"
-      && propertyOwner(resolved)
-      && ts.isIdentifier(propertyOwner(resolved))
-      && nextResponseBindings.has(propertyOwner(resolved).text)
+      ts.isIdentifier(owner)
+      && nextResponseBindings.has(owner.text)
     );
   }
 
@@ -1358,6 +1369,52 @@ function auditImperativeNavigation(source, path) {
       return isBrowserLocationObject(resolved.expression, env);
     }
     return false;
+  }
+
+  function propertyAssignmentByName(objectLiteral, name) {
+    if (!objectLiteral || !ts.isObjectLiteralExpression(objectLiteral)) return null;
+    for (const property of objectLiteral.properties) {
+      if (!ts.isPropertyAssignment(property)) continue;
+      const propertyNameNode = property.name;
+      let propertyText = null;
+      if (ts.isIdentifier(propertyNameNode)) propertyText = propertyNameNode.text;
+      else if (ts.isStringLiteralLike(propertyNameNode)) propertyText = propertyNameNode.text;
+      if (propertyText?.toLowerCase() === name.toLowerCase()) return property.initializer;
+    }
+    return null;
+  }
+
+  function numericLiteralValue(expression) {
+    const resolved = resolveDataExpression(expression);
+    if (resolved && ts.isNumericLiteral(resolved)) return Number(resolved.text);
+    return null;
+  }
+
+  function responseConstructorLocationTarget(node, env = new Map()) {
+    if (!ts.isNewExpression(node)) return null;
+    const constructor = resolveDataExpression(node.expression, env);
+    if (!constructor) return null;
+
+    const constructorIsWebResponse = isWebResponseObject(constructor, env);
+    const constructorIsNextResponse = (
+      ts.isIdentifier(constructor)
+      && nextResponseBindings.has(constructor.text)
+    );
+    if (!constructorIsWebResponse && !constructorIsNextResponse) return null;
+
+    const init = node.arguments?.[1];
+    const resolvedInit = resolveDataExpression(init, env);
+    if (!resolvedInit || !ts.isObjectLiteralExpression(resolvedInit)) return null;
+
+    const status = numericLiteralValue(propertyAssignmentByName(resolvedInit, "status"));
+    if (status === null || status < 300 || status > 399) return null;
+
+    const headers = resolveDataExpression(
+      propertyAssignmentByName(resolvedInit, "headers"),
+      env,
+    );
+    if (!headers || !ts.isObjectLiteralExpression(headers)) return null;
+    return propertyAssignmentByName(headers, "location");
   }
 
   function report(node, kind, targets = []) {
