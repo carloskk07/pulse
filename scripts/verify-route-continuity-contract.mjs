@@ -1804,6 +1804,37 @@ function auditImperativeNavigation(source, path) {
       || authorityExpressionResolved(expression, externalHrefBindings, env, callStack);
   }
 
+  function domNavigationAuthority(expression, env = new Map(), callStack = new Set()) {
+    return authorityExpressionResolved(expression, navigationBindings, env, callStack)
+      || authorityExpressionResolved(expression, productHrefBindings, env, callStack)
+      || authorityExpressionResolved(expression, externalHrefBindings, env, callStack);
+  }
+
+  function isDocumentHtmlWriteReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (!(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))) {
+      return false;
+    }
+    const method = propertyName(resolved);
+    if (method !== "write" && method !== "writeln") return false;
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    return (
+      ownerText === "document"
+      || ownerText === "window.document"
+      || ownerText === "globalThis.document"
+    );
+  }
+
+  function isInsertAdjacentHtmlReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return Boolean(
+      resolved
+      && (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "insertAdjacentHTML"
+    );
+  }
+
   function isBrowserHrefAssignmentTarget(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1924,6 +1955,36 @@ function auditImperativeNavigation(source, path) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
+
+      if (isDomSetAttributeReference(expression, env)) {
+        const kind = domSetAttributeElementKind(expression, env);
+        const attributeName = resolveDataExpression(firstArg, env);
+        const target = node.arguments[1];
+
+        if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+          report(node, "dom-dynamic-attribute");
+        } else {
+          const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
+          if (navProperty === "href" && kind === "base") {
+            report(node, "dom-base-href");
+          } else if (
+            navProperty
+            && target
+            && !domNavigationAuthority(target, env, callStack)
+          ) {
+            const targets = staticHrefCandidatesResolved(target, env, callStack);
+            report(node, "dom-attribute", targets);
+          }
+        }
+      }
+
+      if (isDocumentHtmlWriteReference(expression, env)) {
+        report(node, "dom-html-injection");
+      }
+
+      if (isInsertAdjacentHtmlReference(expression, env)) {
+        report(node, "dom-html-injection");
+      }
 
       if (isRouterTraversalReference(expression, env)) {
         report(node, "router-traversal");
@@ -2066,6 +2127,8 @@ function auditImperativeNavigation(source, path) {
           || isBrowserWindowOpenReference(argument, env)
           || isHeadersObject(argument, env)
           || isLocationHeaderMutationReference(argument, env)
+          || domNavigationElementKind(argument, env)
+          || isDomSetAttributeReference(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
         ))
@@ -2121,6 +2184,31 @@ function auditImperativeNavigation(source, path) {
         ) {
           report(node, "cross-module-destination");
         }
+      }
+    }
+
+    if (
+      ts.isBinaryExpression(node)
+      && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+      && (ts.isPropertyAccessExpression(node.left) || ts.isElementAccessExpression(node.left))
+    ) {
+      const leftOwner = propertyOwner(node.left);
+      const leftProperty = propertyName(node.left);
+      const domKind = domNavigationElementKind(leftOwner, env);
+      const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
+
+      if (domKind === "base" && domProperty === "href") {
+        report(node, "dom-base-href");
+      } else if (
+        domProperty
+        && !domNavigationAuthority(node.right, env, callStack)
+      ) {
+        const targets = staticHrefCandidatesResolved(node.right, env, callStack);
+        report(node, "dom-property", targets);
+      }
+
+      if (leftProperty === "innerHTML" || leftProperty === "outerHTML") {
+        report(node, "dom-html-injection");
       }
     }
 
