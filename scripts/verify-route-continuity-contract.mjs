@@ -3832,6 +3832,16 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
+    if (
+      reportProgrammaticDomTarget(
+        node,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
     const navProperty = domNavigationPropertyForKind(kind, propertyNameText);
     if (!navProperty) return false;
     if (kind === "base" && navProperty === "href") {
@@ -4068,7 +4078,18 @@ function auditImperativeNavigation(source, path, options = {}) {
             if (!indirectThisKind) {
               report(node, "native-invoke-dom-dynamic-target");
             } else if (indirectThisKind === nativeSetter.kind) {
-              if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
+              if (
+                nativeSetter.targetContext
+                && reportProgrammaticDomTarget(
+                  node,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Target-context policy handled above.
+              } else if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
                 report(node, "native-invoke-dom-base-href");
               } else if (
                 isEmbeddedInlineDocumentProperty(nativeSetter.kind, nativeSetter.property)
@@ -4101,11 +4122,26 @@ function auditImperativeNavigation(source, path, options = {}) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
+                const targetContextProperty = domTargetContextPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const navProperty = domNavigationPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
                 );
-                if (indirectThisKind === "base" && navProperty === "href") {
+                if (
+                  targetContextProperty
+                  && reportProgrammaticDomTarget(
+                    node,
+                    indirectThisKind,
+                    targetContextProperty,
+                    target,
+                    env,
+                  )
+                ) {
+                  // Target-context policy handled above.
+                } else if (indirectThisKind === "base" && navProperty === "href") {
                   report(node, "native-invoke-dom-base-href");
                 } else if (
                   isEmbeddedInlineDocumentProperty(indirectThisKind, navProperty)
@@ -4253,12 +4289,14 @@ function auditImperativeNavigation(source, path, options = {}) {
             }
           }
 
-          if (
-            isBrowserWindowOpenReference(indirectTarget, env)
-            && indirectFirstArg
-            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
-          ) {
-            report(node, "native-invoke-browser-window-open");
+          if (isBrowserWindowOpenReference(indirectTarget, env)) {
+            reportProgrammaticWindowOpenTarget(node, indirectArgs, env);
+            if (
+              indirectFirstArg
+              && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+            ) {
+              report(node, "native-invoke-browser-window-open");
+            }
           }
 
           if (isBrowserNavigationTraversalReference(indirectTarget, env)) {
@@ -4415,8 +4453,23 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
+          const targetContextProperty = domTargetContextPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
-          if (navProperty === "href" && kind === "base") {
+          if (
+            targetContextProperty
+            && reportProgrammaticDomTarget(
+              node,
+              kind,
+              targetContextProperty,
+              target,
+              env,
+            )
+          ) {
+            // Target-context policy handled above.
+          } else if (navProperty === "href" && kind === "base") {
             report(node, "dom-base-href");
           } else if (isEmbeddedInlineDocumentProperty(kind, navProperty)) {
             report(node, "embedded-runtime-srcdoc");
@@ -4546,12 +4599,14 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
       }
 
-      if (
-        isBrowserWindowOpenReference(expression, env)
-        && firstArg
-        && !browserNavigationAuthority(firstArg, env, callStack)
-      ) {
-        report(node, "browser-window-open");
+      if (isBrowserWindowOpenReference(expression, env)) {
+        reportProgrammaticWindowOpenTarget(node, node.arguments, env);
+        if (
+          firstArg
+          && !browserNavigationAuthority(firstArg, env, callStack)
+        ) {
+          report(node, "browser-window-open");
+        }
       }
 
       if (isBrowserNavigationTraversalReference(expression, env)) {
@@ -4673,9 +4728,21 @@ function auditImperativeNavigation(source, path, options = {}) {
       const leftOwner = propertyOwner(node.left);
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
+      const targetContextProperty = domTargetContextPropertyForKind(domKind, leftProperty);
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
 
-      if (domKind === "base" && domProperty === "href") {
+      if (
+        targetContextProperty
+        && reportProgrammaticDomTarget(
+          node,
+          domKind,
+          targetContextProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Target-context policy handled above.
+      } else if (domKind === "base" && domProperty === "href") {
         report(node, "dom-base-href");
       } else if (isEmbeddedInlineDocumentProperty(domKind, domProperty)) {
         report(node, "embedded-runtime-srcdoc");
