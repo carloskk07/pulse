@@ -1305,6 +1305,17 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isLocationHeaderMutationReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && headerMutationMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isHeadersObject(propertyOwner(resolved), env)
+      && (propertyName(resolved) === "set" || propertyName(resolved) === "append")
+    );
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
@@ -1429,6 +1440,38 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function headersConstructorLocationTargets(node, env = new Map()) {
+    if (!ts.isNewExpression(node)) return [];
+    const constructorText = resolveDataExpression(node.expression, env)?.getText(sourceFile);
+    if (constructorText !== "Headers" && constructorText !== "globalThis.Headers") return [];
+
+    const init = resolveDataExpression(node.arguments?.[0], env);
+    if (!init) return [];
+
+    if (ts.isObjectLiteralExpression(init)) {
+      const target = propertyAssignmentByName(init, "location");
+      return target ? [target] : [];
+    }
+
+    if (ts.isArrayLiteralExpression(init)) {
+      const targets = [];
+      for (const element of init.elements) {
+        if (!ts.isArrayLiteralExpression(element) || element.elements.length < 2) continue;
+        const headerName = resolveDataExpression(element.elements[0], env);
+        if (
+          headerName
+          && ts.isStringLiteralLike(headerName)
+          && headerName.text.toLowerCase() === "location"
+        ) {
+          targets.push(element.elements[1]);
+        }
+      }
+      return targets;
+    }
+
+    return [];
+  }
+
   function responseConstructorLocationTarget(node, env = new Map()) {
     if (!ts.isNewExpression(node)) return null;
     const constructor = resolveDataExpression(node.expression, env);
@@ -1522,6 +1565,34 @@ function auditImperativeNavigation(source, path) {
         }
       }
 
+      if (isLocationHeaderMutationReference(expression, env)) {
+        const headerName = resolveDataExpression(firstArg, env);
+        const locationTarget = node.arguments[1];
+        if (
+          headerName
+          && ts.isStringLiteralLike(headerName)
+          && headerName.text.toLowerCase() === "location"
+          && locationTarget
+        ) {
+          const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
+            .map(normalizedProductRoute)
+            .filter(Boolean);
+          const authoritative = (
+            authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+            || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+            || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+          );
+          if (targets.length > 0 && !authoritative) {
+            report(node, "location-header", targets);
+          } else if (
+            !authoritative
+            && containsUnprovenProjectImportCall(locationTarget, env, callStack)
+          ) {
+            report(node, "cross-module-destination");
+          }
+        }
+      }
+
       if (
         isBrowserLocationMethodReference(expression, env)
         && !browserNavigationAuthority(firstArg, env, callStack)
@@ -1567,6 +1638,8 @@ function auditImperativeNavigation(source, path) {
           || isBrowserNavigationApiObject(argument, env)
           || isBrowserNavigationApiMethodReference(argument, env)
           || isBrowserWindowOpenReference(argument, env)
+          || isHeadersObject(argument, env)
+          || isLocationHeaderMutationReference(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
         ))
@@ -1584,6 +1657,26 @@ function auditImperativeNavigation(source, path) {
     }
 
     if (ts.isNewExpression(node)) {
+      const headerTargets = headersConstructorLocationTargets(node, env);
+      for (const locationTarget of headerTargets) {
+        const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
+          .map(normalizedProductRoute)
+          .filter(Boolean);
+        const authoritative = (
+          authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+        );
+        if (targets.length > 0 && !authoritative) {
+          report(node, "location-header", targets);
+        } else if (
+          !authoritative
+          && containsUnprovenProjectImportCall(locationTarget, env, callStack)
+        ) {
+          report(node, "cross-module-destination");
+        }
+      }
+
       const locationTarget = responseConstructorLocationTarget(node, env);
       if (locationTarget) {
         const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
