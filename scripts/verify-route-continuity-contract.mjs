@@ -2542,6 +2542,62 @@ function auditImperativeNavigation(source, path, options = {}) {
     return null;
   }
 
+  function domSubmissionTransportPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if (kind === "form" && normalized === "method") return "method";
+    if (kind === "form" && (normalized === "enctype" || normalized === "encoding")) {
+      return "enctype";
+    }
+    if ((kind === "button" || kind === "input") && normalized === "formmethod") {
+      return "method";
+    }
+    if ((kind === "button" || kind === "input") && normalized === "formenctype") {
+      return "enctype";
+    }
+    return null;
+  }
+
+  function literalSubmissionTransport(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return resolved && ts.isStringLiteralLike(resolved)
+      ? resolved.text.trim().toLowerCase()
+      : null;
+  }
+
+  function reportProgrammaticDomSubmissionTransport(
+    node,
+    kind,
+    property,
+    value,
+    env = new Map(),
+  ) {
+    if (!enforceFormSubmissionTransportPolicy) return false;
+    const transportProperty = domSubmissionTransportPropertyForKind(kind, property);
+    if (!transportProperty) return false;
+
+    const literal = literalSubmissionTransport(value, env);
+    if (literal === null) {
+      report(node, "programmatic-form-transport-dynamic");
+      return true;
+    }
+
+    if (transportProperty === "method" && literal !== "post") {
+      report(node, "programmatic-form-method", [literal]);
+      return true;
+    }
+
+    if (
+      transportProperty === "enctype"
+      && literal !== "application/x-www-form-urlencoded"
+      && literal !== "multipart/form-data"
+    ) {
+      report(node, "programmatic-form-enctype", [literal]);
+      return true;
+    }
+
+    return true;
+  }
+
   function literalTargetContext(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     return resolved && ts.isStringLiteralLike(resolved)
@@ -3524,11 +3580,13 @@ function auditImperativeNavigation(source, path, options = {}) {
       : null;
     const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
     const targetContextProperty = domTargetContextPropertyForKind(kind, propertyText);
-    return kind && (navigationProperty || targetContextProperty)
+    const submissionTransportProperty = domSubmissionTransportPropertyForKind(kind, propertyText);
+    return kind && (navigationProperty || targetContextProperty || submissionTransportProperty)
       ? {
           kind,
-          property: navigationProperty ?? targetContextProperty,
+          property: navigationProperty ?? targetContextProperty ?? submissionTransportProperty,
           targetContext: Boolean(targetContextProperty),
+          submissionTransport: Boolean(submissionTransportProperty),
         }
       : null;
   }
@@ -3980,6 +4038,16 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
     if (
+      reportProgrammaticDomSubmissionTransport(
+        node,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
+    if (
       reportProgrammaticDomTarget(
         node,
         kind,
@@ -4226,6 +4294,17 @@ function auditImperativeNavigation(source, path, options = {}) {
               report(node, "native-invoke-dom-dynamic-target");
             } else if (indirectThisKind === nativeSetter.kind) {
               if (
+                nativeSetter.submissionTransport
+                && reportProgrammaticDomSubmissionTransport(
+                  node,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Form submission transport policy handled above.
+              } else if (
                 nativeSetter.targetContext
                 && reportProgrammaticDomTarget(
                   node,
@@ -4269,6 +4348,10 @@ function auditImperativeNavigation(source, path, options = {}) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
+                const submissionTransportProperty = domSubmissionTransportPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const targetContextProperty = domTargetContextPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
@@ -4278,6 +4361,17 @@ function auditImperativeNavigation(source, path, options = {}) {
                   attributeName.text,
                 );
                 if (
+                  submissionTransportProperty
+                  && reportProgrammaticDomSubmissionTransport(
+                    node,
+                    indirectThisKind,
+                    submissionTransportProperty,
+                    target,
+                    env,
+                  )
+                ) {
+                  // Form submission transport policy handled above.
+                } else if (
                   targetContextProperty
                   && reportProgrammaticDomTarget(
                     node,
@@ -4600,12 +4694,27 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
+          const submissionTransportProperty = domSubmissionTransportPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const targetContextProperty = domTargetContextPropertyForKind(
             kind,
             attributeName.text,
           );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (
+            submissionTransportProperty
+            && reportProgrammaticDomSubmissionTransport(
+              node,
+              kind,
+              submissionTransportProperty,
+              target,
+              env,
+            )
+          ) {
+            // Form submission transport policy handled above.
+          } else if (
             targetContextProperty
             && reportProgrammaticDomTarget(
               node,
@@ -4875,10 +4984,25 @@ function auditImperativeNavigation(source, path, options = {}) {
       const leftOwner = propertyOwner(node.left);
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
+      const submissionTransportProperty = domSubmissionTransportPropertyForKind(
+        domKind,
+        leftProperty,
+      );
       const targetContextProperty = domTargetContextPropertyForKind(domKind, leftProperty);
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
 
       if (
+        submissionTransportProperty
+        && reportProgrammaticDomSubmissionTransport(
+          node,
+          domKind,
+          submissionTransportProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Form submission transport policy handled above.
+      } else if (
         targetContextProperty
         && reportProgrammaticDomTarget(
           node,
