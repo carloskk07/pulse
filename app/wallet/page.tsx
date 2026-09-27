@@ -10,6 +10,7 @@ import { getWalletPresentation } from "@/lib/experience-presentation";
 import { getWalletExperience } from "@/lib/product-experience";
 import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
 import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
+import { getRouteNavigationHref } from "@/lib/route-semantics";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 import { getWalletState } from "@/lib/wallet-state";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -260,7 +261,7 @@ export default async function WalletPage({ searchParams }: Props) {
               Reserved since {compactDate(activeWithdrawal.created_at)} · {maskDestination(activeWithdrawal.destination)}
             </div>
           ) : presentation.submitEnabled ? (
-            <form action="/api/withdrawals" method="post" className="withdrawal-form">
+            <form action={getRouteNavigationHref("wallet", "/api/withdrawals")} method="post" className="withdrawal-form">
               <label>
                 Payment destination
                 <input type="text" value={maskDestination(activeWithdrawal.destination)} disabled readOnly />
@@ -277,7 +278,7 @@ export default async function WalletPage({ searchParams }: Props) {
             </div>
           )
         ) : presentation.destinationEnabled && canWithdraw ? (
-          <form action="/api/withdrawals" method="post" className="withdrawal-form">
+          <form action={getRouteNavigationHref("wallet", "/api/withdrawals")} method="post" className="withdrawal-form">
             <label>
               FaucetPay destination
               <input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" />
