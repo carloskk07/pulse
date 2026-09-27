@@ -188,7 +188,7 @@ requireAll("components/continuous-earn-hub.tsx", [
 ]);
 
 requireAll("components/cashback-start-button.tsx", [
-  'action="/api/cashback/start"',
+  'getRouteNavigationHref("cashback", "/api/cashback/start")',
   'method="post"',
   'name="opportunity"',
 ]);

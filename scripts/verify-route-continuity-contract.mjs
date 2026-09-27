@@ -645,6 +645,219 @@ function auditNativeAnchors(source, path) {
   return violations;
 }
 
+function expressionContainsAuthorityCall(expression, bindings) {
+  if (!expression) return false;
+  if (
+    ts.isCallExpression(expression)
+    && ts.isIdentifier(expression.expression)
+    && bindings.has(expression.expression.text)
+  ) return true;
+
+  let found = false;
+  ts.forEachChild(expression, (child) => {
+    if (!found && expressionContainsAuthorityCall(child, bindings)) found = true;
+  });
+  return found;
+}
+
+function declarativeAttributeExpression(attribute) {
+  if (!attribute?.initializer) return null;
+  if (ts.isStringLiteral(attribute.initializer)) return attribute.initializer;
+  if (ts.isJsxExpression(attribute.initializer)) return attribute.initializer.expression ?? null;
+  return null;
+}
+
+function staticNavigationLikeValues(attribute) {
+  if (!attribute?.initializer) return [];
+  if (ts.isStringLiteral(attribute.initializer)) return [attribute.initializer.text];
+  if (
+    ts.isJsxExpression(attribute.initializer)
+    && attribute.initializer.expression
+  ) {
+    return staticHrefCandidates(attribute.initializer.expression);
+  }
+  return [];
+}
+
+function isServerActionReferenceExpression(expression) {
+  if (!expression) return false;
+  return (
+    ts.isIdentifier(expression)
+    || ts.isPropertyAccessExpression(expression)
+    || ts.isElementAccessExpression(expression)
+    || ts.isArrowFunction(expression)
+    || ts.isFunctionExpression(expression)
+  );
+}
+
+function auditDeclarativeNavigation(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const internalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getRouteNavigationHref",
+  );
+  const productAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getProductRouteHref",
+  );
+  const externalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getExternalNavigationHref",
+  );
+
+  function hasInternalAuthority(expression) {
+    return expressionContainsAuthorityCall(expression, internalAuthorityBindings)
+      || expressionContainsAuthorityCall(expression, productAuthorityBindings);
+  }
+
+  function hasExternalAuthority(expression) {
+    return expressionContainsAuthorityCall(expression, externalAuthorityBindings);
+  }
+
+  function report(node, kind, targets = []) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      targets: [...new Set(targets)],
+    });
+  }
+
+  function validateUrlAttribute(node, attribute, kind) {
+    if (!attribute?.initializer) return;
+    const expression = declarativeAttributeExpression(attribute);
+    const staticValues = staticNavigationLikeValues(attribute);
+    const internalValues = staticValues.filter((value) => value.startsWith("/") || value.startsWith("#"));
+    const externalValues = staticValues.filter((value) => /^https?:\/\//i.test(value));
+
+    if (internalValues.length > 0 && !hasInternalAuthority(expression)) {
+      report(node, kind, internalValues);
+      return;
+    }
+    if (externalValues.length > 0 && !hasExternalAuthority(expression)) {
+      report(node, kind, externalValues);
+      return;
+    }
+
+    if (
+      ts.isJsxExpression(attribute.initializer)
+      && expression
+      && staticValues.length === 0
+      && !hasInternalAuthority(expression)
+      && !hasExternalAuthority(expression)
+      && !isServerActionReferenceExpression(expression)
+    ) {
+      report(node, kind);
+    }
+  }
+
+  function metaRefreshTarget(contentValue) {
+    if (!contentValue) return null;
+    const match = contentValue.match(/(?:^|;)\s*url\s*=\s*([^;]+)\s*$/i);
+    return match?.[1]?.trim().replace(/^['"]|['"]$/g, "") ?? null;
+  }
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile).toLowerCase();
+
+      if (tag === "form") {
+        validateUrlAttribute(node, jsxAttribute(node, "action"), "form-action");
+      }
+
+      if (tag === "button" || tag === "input") {
+        validateUrlAttribute(node, jsxAttribute(node, "formAction"), "form-action");
+      }
+
+      if (tag === "base" && jsxAttribute(node, "href")) {
+        report(node, "base-href");
+      }
+
+      if (tag === "meta") {
+        const httpEquiv = literalJsxAttributeValue(jsxAttribute(node, "httpEquiv"))
+          ?? literalJsxAttributeValue(jsxAttribute(node, "http-equiv"));
+        if (httpEquiv?.toLowerCase() === "refresh") {
+          const content = jsxAttribute(node, "content");
+          const expression = declarativeAttributeExpression(content);
+          const literalContent = literalJsxAttributeValue(content);
+          const target = metaRefreshTarget(literalContent);
+
+          if (
+            target
+            && (
+              (target.startsWith("/") || target.startsWith("#"))
+                ? !hasInternalAuthority(expression)
+                : /^https?:\/\//i.test(target)
+                  ? !hasExternalAuthority(expression)
+                  : true
+            )
+          ) {
+            report(node, "meta-refresh", [target]);
+          } else if (
+            !target
+            && !hasInternalAuthority(expression)
+            && !hasExternalAuthority(expression)
+          ) {
+            report(node, "meta-refresh");
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const saveProfile = async (formData) => { "use server"; };',
+    'const Fixture = () => (<>',
+    '  <form action={saveProfile}><button>Server action</button></form>',
+    '  <form action="/dashboard"><button>Raw internal URL</button></form>',
+    '  <form action={getRouteNavigationHref("form", "/dashboard")}><button>Safe internal URL</button></form>',
+    '  <form action="https://example.com/submit"><button>Raw external URL</button></form>',
+    '  <form action={getExternalNavigationHref("https://example.com/submit")}><button>Safe external URL</button></form>',
+    '  <button formAction="/earn">Raw button action</button>',
+    '  <input formAction={getRouteNavigationHref("form", "/earn")} />',
+    '  <meta httpEquiv="refresh" content="0; url=/wallet" />',
+    '  <meta httpEquiv="refresh" content={"0; url=" + getRouteNavigationHref("meta", "/wallet")} />',
+    '  <base href="/dashboard/" />',
+    '</>);',
+  ].join("\n");
+  const violations = auditDeclarativeNavigation(
+    selfTest,
+    "declarative-navigation.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["form-action"] !== 3
+    || counts["meta-refresh"] !== 1
+    || counts["base-href"] !== 1
+  ) {
+    throw new Error("Declarative navigation surface authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function authorityCall(expression, bindings) {
   return Boolean(
     expression
@@ -2237,6 +2450,22 @@ if (staticSemanticCoverageViolations.length > 0) {
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.targets.join(", ") + " lacks transitionTypes"
+      )
+      .join("\n"),
+  );
+}
+
+const declarativeNavigationViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditDeclarativeNavigation(read(path), path));
+if (declarativeNavigationViolations.length > 0) {
+  throw new Error(
+    "Declarative navigation surface authority failed:\n"
+    + declarativeNavigationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );

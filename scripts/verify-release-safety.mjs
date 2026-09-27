@@ -1514,7 +1514,7 @@ forbidText("app/api/return-reminder/route.ts", ["export async function GET"]);
 requireText("app/api/direct/start/route.ts", ["isTrustedSameOriginMutation(request)", 'admin.rpc("start_direct_campaign_session"', 'target.protocol !== "https:"']);
 forbidText("app/api/direct/start/route.ts", ['request.headers.get("origin")']);
 requireText("app/api/direct/callback/route.ts", ["invalid_occurred_at", "readRequestTextWithLimit(request, 32_768)", 'admin.rpc("settle_direct_campaign_completion"', 'p_occurred_at: occurredAt.toISOString()']);
-requireText("components/next-circuit-panel.tsx", ['action="/api/return-reminder"', 'method="post"', 'type="submit"']);
+requireText("components/next-circuit-panel.tsx", ['getRouteNavigationHref("progress", "/api/return-reminder")', 'method="post"', 'type="submit"']);
 requireText("app/api/business/leads/route.ts", ["isTrustedSameOriginMutation(request)", "POSITIVE_INTEGER_RE", "url.username || url.password"]);
 requireText("supabase/migrations/0092_admin_user_allowlist_reproducibility.sql", [
   "create table if not exists public.admin_users",
