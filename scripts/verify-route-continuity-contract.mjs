@@ -3242,6 +3242,79 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { redirect, useRouter } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
+    'router.push.call(router, "/earn");',
+    'router.push.call(router, getRouteNavigationHref("native-invoke", "/earn"));',
+    'router.replace.apply(router, ["/wallet"]);',
+    'Reflect.apply(router.push, router, [getRouteNavigationHref("native-invoke", "/progress")]);',
+    'router.back.call(router);',
+    'history.pushState.call(history, {}, "", "/progress");',
+    'Reflect.apply(history.replaceState, history, [{}, "", getRouteNavigationHref("native-invoke", "/progress")]);',
+    'history.go.apply(history, [-1]);',
+    'location.assign.call(location, "https://example.com/raw");',
+    'Reflect.apply(location.replace, location, [getExternalNavigationHref("https://example.com/safe")]);',
+    'location.reload.call(location);',
+    'window.open.apply(window, ["https://example.com/raw"]);',
+    'navigation.navigate.call(navigation, "/invite");',
+    'navigation.back.call(navigation);',
+    'redirect.call(null, "/wallet");',
+    'redirect.call(null, getProductRouteHref("wallet"));',
+    'NR.redirect.call(NR, new URL("/dashboard", request.url), 303);',
+    'NR.redirect.call(NR, new URL(getProductRouteHref("home"), request.url), 303);',
+    'const headers = new Headers();',
+    'headers.set.call(headers, "Location", "/dashboard");',
+    'headers.set.call(headers, "Location", getRouteNavigationHref("headers", "/dashboard"));',
+    'const anchor = document.createElement("a");',
+    'anchor.setAttribute.call(anchor, "href", "/invite");',
+    'Reflect.apply(anchor.setAttribute, anchor, ["href", getRouteNavigationHref("native-invoke", "/invite")]);',
+    'Element.prototype.setAttribute.call(anchor, "href", "/dashboard");',
+    'Reflect.apply(Element.prototype.setAttribute, anchor, ["href", getRouteNavigationHref("native-invoke", "/dashboard")]);',
+    'const hrefSetter = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "href").set;',
+    'hrefSetter.call(anchor, "/earn");',
+    'hrefSetter.call(anchor, getRouteNavigationHref("native-invoke", "/earn"));',
+    'const form = document.createElement("form");',
+    'Reflect.apply(Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "action").set, form, ["/api/withdrawals"]);',
+    'Reflect.apply(Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "action").set, form, [getRouteNavigationHref("native-invoke", "/api/withdrawals")]);',
+    'const base = document.createElement("base");',
+    'Object.getOwnPropertyDescriptor(HTMLBaseElement.prototype, "href").set.call(base, getRouteNavigationHref("native-invoke", "/dashboard/"));',
+    'router.push.apply(router, dynamicArguments);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "native-invocation-boundary.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 19
+    || counts["native-invoke-router"] !== 2
+    || counts["native-invoke-router-traversal"] !== 1
+    || counts["native-invoke-browser-history"] !== 1
+    || counts["native-invoke-history-traversal"] !== 1
+    || counts["native-invoke-browser-location"] !== 1
+    || counts["native-invoke-browser-reload"] !== 1
+    || counts["native-invoke-browser-window-open"] !== 1
+    || counts["native-invoke-browser-navigation-api"] !== 1
+    || counts["native-invoke-navigation-api-traversal"] !== 1
+    || counts["native-invoke-server-redirect"] !== 1
+    || counts["native-invoke-route-handler-redirect"] !== 1
+    || counts["native-invoke-location-header"] !== 1
+    || counts["native-invoke-dom-attribute"] !== 2
+    || counts["native-invoke-dom-setter"] !== 2
+    || counts["native-invoke-dom-base-href"] !== 1
+    || counts["native-invoke-dynamic-arguments"] !== 1
+  ) {
+    throw new Error("Native invocation boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRef } from "react";',
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'const selected = document.querySelector("a.promo");',
@@ -3775,6 +3848,21 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
 
+const nativeInvocationViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("native-invoke-"));
+if (nativeInvocationViolations.length > 0) {
+  throw new Error(
+    "Native invocation boundary failed:\n"
+    + nativeInvocationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
 const domNavigationMutationViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("dom-"));
 if (domNavigationMutationViolations.length > 0) {
@@ -3791,7 +3879,10 @@ if (domNavigationMutationViolations.length > 0) {
 }
 
 const imperativeNavigationViolations = allImperativeNavigationViolations
-  .filter((violation) => !violation.kind.startsWith("dom-"));
+  .filter((violation) =>
+    !violation.kind.startsWith("dom-")
+    && !violation.kind.startsWith("native-invoke-")
+  );
 if (imperativeNavigationViolations.length > 0) {
   throw new Error(
     "Imperative navigation provenance failed:\n"
