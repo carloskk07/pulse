@@ -4142,6 +4142,42 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'const form = document.querySelector<HTMLFormElement>("#payout");',
+    'form.submit();',
+    'form.requestSubmit();',
+    'const { requestSubmit: requestForm } = form;',
+    'requestForm();',
+    'const anchor = document.querySelector<HTMLAnchorElement>("#reward");',
+    'anchor.click();',
+    'const button = document.createElement("button");',
+    'button.click();',
+    'form.dispatchEvent(new SubmitEvent("submit"));',
+    'anchor.dispatchEvent(new MouseEvent("click"));',
+    'HTMLFormElement.prototype.submit.call(form);',
+    'Reflect.apply(HTMLAnchorElement.prototype.click, anchor, []);',
+    'HTMLFormElement.prototype.submit.bind(form)();',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-activation-authority.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 10
+    || counts["dom-form-submit"] !== 3
+    || counts["dom-click-activation"] !== 2
+    || counts["dom-synthetic-activation"] !== 2
+    || counts["native-invoke-dom-activation"] !== 3
+  ) {
+    throw new Error("Programmatic activation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { redirect, useRouter } from "next/navigation";',
     'import { NextResponse as NR } from "next/server";',
     'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
