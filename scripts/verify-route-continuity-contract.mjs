@@ -1766,7 +1766,7 @@ function auditImperativeNavigation(source, path) {
       return false;
     }
     const name = propertyName(resolved);
-    if (name === "ownerDocument") return true;
+    if (name === "ownerDocument" || name === "contentDocument") return true;
     return name === "document" && isBrowsingContextObject(propertyOwner(resolved), env);
   }
 
@@ -4952,6 +4952,37 @@ function auditImperativeNavigation(source, path) {
 {
   const selfTest = [
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'iframe.contentDocument.location.assign("/dashboard");',
+    'iframe.contentDocument.defaultView.location.href = "/wallet";',
+    'const embeddedDocument = iframe.contentDocument;',
+    'embeddedDocument.location.replace("/earn");',
+    'const embeddedView = iframe.contentDocument.defaultView;',
+    'embeddedView.history.pushState({}, "", "/progress");',
+    'embeddedView.navigation.navigate("/invite");',
+    'iframe.contentDocument.location.assign(getRouteNavigationHref("embedded-document", "/dashboard"));',
+    'embeddedView.location = getRouteNavigationHref("embedded-document", "/wallet");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "embedded-document-handle.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["browser-location"] !== 3
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+  ) {
+    throw new Error("Embedded document handle authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'document.defaultView.location.assign("/dashboard");',
     'element.ownerDocument.defaultView.location.href = "/wallet";',
     'const view = document.defaultView;',
@@ -5137,8 +5168,9 @@ function auditNavigationSideEffectBoundary(source, path) {
 
   function sideEffectBrowsingContextText(text) {
     if (!text) return false;
-    if (text === "document.defaultView" || /\.ownerDocument\.defaultView$/.test(text)) {
-      return true;
+    if (text.endsWith(".defaultView")) {
+      const documentText = text.slice(0, -".defaultView".length);
+      if (sideEffectDocumentText(documentText)) return true;
     }
     if (
       text === "window"
@@ -5162,6 +5194,7 @@ function auditNavigationSideEffectBoundary(source, path) {
 
   function sideEffectDocumentText(text) {
     if (text === "document") return true;
+    if (text?.endsWith(".ownerDocument") || text?.endsWith(".contentDocument")) return true;
     if (!text?.endsWith(".document")) return false;
     return sideEffectBrowsingContextText(text.slice(0, -".document".length));
   }
@@ -5355,9 +5388,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenResponseInit(target) { return new Response(null, { status: 302, headers: { Location: target } }); }',
     'export function hiddenBrowser(target) { window.location.assign(target); }',
     'export function hiddenDocument(target) { document.location.replace(target); }',
+    'export function hiddenEmbeddedDocument(target) { iframe.contentDocument.location.assign(target); }',
     'export function hiddenTop(target) { top.location.assign(target); }',
     'export function hiddenFrame(target) { frames[0].location.replace(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenEmbeddedViewHistory(target) { iframe.contentDocument.defaultView.history.pushState({}, "", target); }',
     'export function hiddenParentHistory(target) { parent.history.pushState({}, "", target); }',
     'export function hiddenHistoryBack() { history.back(); }',
     'export function hiddenReload() { location.reload(); }',
@@ -5377,11 +5412,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     return acc;
   }, {});
   if (
-    violations.length !== 18
-    || counts["browser-navigation"] !== 4
+    violations.length !== 20
+    || counts["browser-navigation"] !== 5
     || counts["browser-reload"] !== 1
     || counts["browser-window-navigation"] !== 2
-    || counts["history-navigation"] !== 2
+    || counts["history-navigation"] !== 3
     || counts["history-traversal"] !== 1
     || counts["navigation-api"] !== 2
     || counts["navigation-api-traversal"] !== 1
