@@ -64,7 +64,7 @@ export function TurnstileField({ action, theme = "dark" }: { action: string; the
 
           if (pendingSubmitRef.current) {
             pendingSubmitRef.current = false;
-            const form = containerRef.current?.closest("form") as HTMLFormElement | null;
+            const form = containerRef.current?.closest('form[data-route-submit-authority="verified-replay"]') as HTMLFormElement | null;
             if (form) requestAnimationFrame(() => form.requestSubmit());
           }
         },
@@ -120,7 +120,7 @@ export function TurnstileField({ action, theme = "dark" }: { action: string; the
   }, [renderWidget, siteKey]);
 
   useEffect(() => {
-    const form = containerRef.current?.closest("form") as HTMLFormElement | null;
+    const form = containerRef.current?.closest('form[data-route-submit-authority="verified-replay"]') as HTMLFormElement | null;
     if (!form) return;
 
     const handleSubmit = (event: SubmitEvent) => {
