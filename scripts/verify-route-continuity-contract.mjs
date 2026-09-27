@@ -6382,6 +6382,58 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 }
 
+{
+  const selfTest = [
+    'const dynamicRel = chooseRel();',
+    'const dynamicBoolean = chooseFlag();',
+    'const anchor = document.createElement("a");',
+    'anchor.rel = "nofollow";',
+    'anchor.rel = "noopener nofollow";',
+    'anchor.rel = dynamicRel;',
+    'anchor.setAttribute("rel", "external");',
+    'anchor.setAttribute("rel", "noreferrer");',
+    'Object.assign(anchor, { rel: "nofollow" });',
+    'Reflect.set(anchor, "rel", "noopener");',
+    'Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "rel").set.call(anchor, "external");',
+    'Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "rel").set.call(anchor, "noreferrer");',
+    'anchor.removeAttribute("rel");',
+    'const removeRel = anchor.removeAttribute;',
+    'removeRel.call(anchor, "rel");',
+    'const relList = anchor.relList;',
+    'relList.value = "nofollow";',
+    'relList.value = "noopener";',
+    'relList.remove("noopener");',
+    'relList.remove("nofollow");',
+    'relList.remove(dynamicRel);',
+    'relList.toggle("noreferrer");',
+    'relList.toggle("noreferrer", true);',
+    'relList.toggle("noopener", dynamicBoolean);',
+    'relList.replace("noopener", "nofollow");',
+    'relList.replace("noopener", "noreferrer");',
+    'DOMTokenList.prototype.remove.call(anchor.relList, "noreferrer");',
+    'Object.getOwnPropertyDescriptor(DOMTokenList.prototype, "value").set.call(anchor.relList, "external");',
+    'Object.assign(anchor.relList, { value: "noopener" });',
+    'Object.assign(anchor.relList, { value: "nofollow" });',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "opener-protection-mutation.self-test.ts",
+    { openerProtectionMutationBoundary: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 16
+    || counts["opener-protection-rel-unsafe"] !== 7
+    || counts["opener-protection-rel-dynamic"] !== 3
+    || counts["opener-protection-rel-removal"] !== 6
+  ) {
+    throw new Error("Opener protection mutation boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditNavigationSideEffectBoundary(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -6884,7 +6936,10 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap((path) => auditImperativeNavigation(
     read(path),
     path,
-    { programmaticTargetContextPolicy: true },
+    {
+      programmaticTargetContextPolicy: true,
+      openerProtectionMutationBoundary: true,
+    },
   ));
 
 const dynamicCodeExecutionViolations = allImperativeNavigationViolations
@@ -6921,6 +6976,21 @@ if (nativeInvocationViolations.length > 0) {
   throw new Error(
     "Native invocation boundary failed:\n"
     + nativeInvocationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const openerProtectionMutationViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("opener-protection-"));
+if (openerProtectionMutationViolations.length > 0) {
+  throw new Error(
+    "Opener protection mutation boundary failed:\n"
+    + openerProtectionMutationViolations
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
@@ -6977,7 +7047,8 @@ if (domNavigationMutationViolations.length > 0) {
 
 const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
-    !violation.kind.startsWith("programmatic-target-")
+    !violation.kind.startsWith("opener-protection-")
+    && !violation.kind.startsWith("programmatic-target-")
     && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
