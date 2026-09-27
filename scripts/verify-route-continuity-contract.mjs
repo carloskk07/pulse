@@ -2211,6 +2211,42 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { useRouter } from "next/navigation";',
+    'const router = useRouter();',
+    'router.back();',
+    'router.forward();',
+    'const goBack = router.back;',
+    'goBack();',
+    'history.back();',
+    'window.history.forward();',
+    'history.go(-1);',
+    'location.reload();',
+    'navigation.back();',
+    'navigation.forward();',
+    'navigation.traverseTo("entry-key");',
+    'navigation.reload();',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "implicit-history-traversal.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["router-traversal"] !== 3
+    || counts["history-traversal"] !== 3
+    || counts["browser-reload"] !== 1
+    || counts["navigation-api-traversal"] !== 4
+  ) {
+    throw new Error("Implicit history traversal boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'const headers = new Headers();',
     'headers.set("Location", "/dashboard");',
@@ -2460,6 +2496,18 @@ function auditNavigationSideEffectBoundary(source, path) {
 
         if (
           (
+            ownerText === "window.location"
+            || ownerText === "document.location"
+            || ownerText === "globalThis.location"
+            || ownerText === "location"
+          )
+          && method === "reload"
+        ) {
+          report(node, "browser-reload");
+        }
+
+        if (
+          (
             ownerText === "window.history"
             || ownerText === "globalThis.history"
             || ownerText === "history"
@@ -2471,6 +2519,17 @@ function auditNavigationSideEffectBoundary(source, path) {
 
         if (
           (
+            ownerText === "window.history"
+            || ownerText === "globalThis.history"
+            || ownerText === "history"
+          )
+          && (method === "back" || method === "forward" || method === "go")
+        ) {
+          report(node, "history-traversal");
+        }
+
+        if (
+          (
             ownerText === "window.navigation"
             || ownerText === "globalThis.navigation"
             || ownerText === "navigation"
@@ -2478,6 +2537,17 @@ function auditNavigationSideEffectBoundary(source, path) {
           && method === "navigate"
         ) {
           report(node, "navigation-api");
+        }
+
+        if (
+          (
+            ownerText === "window.navigation"
+            || ownerText === "globalThis.navigation"
+            || ownerText === "navigation"
+          )
+          && (method === "back" || method === "forward" || method === "reload" || method === "traverseTo")
+        ) {
+          report(node, "navigation-api-traversal");
         }
 
         if ((ownerText === "window" || ownerText === "globalThis") && method === "open") {
@@ -2528,8 +2598,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenBrowser(target) { window.location.assign(target); }',
     'export function hiddenDocument(target) { document.location.replace(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenHistoryBack() { history.back(); }',
+    'export function hiddenReload() { location.reload(); }',
     'export function hiddenWindow(target) { window.open(target, "_blank"); }',
     'export function hiddenNavigationApi(target) { navigation.navigate(target); }',
+    'export function hiddenNavigationBack() { navigation.back(); }',
     'export function pureHref(target) { return getRouteNavigationHref("lib", target); }',
   ].join("\n");
   const violations = auditNavigationSideEffectBoundary(
@@ -2538,8 +2611,8 @@ function auditNavigationSideEffectBoundary(source, path) {
   );
   const kinds = violations.map((violation) => violation.kind).sort();
   if (
-    violations.length !== 10
-    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-window-navigation,history-navigation,navigation-api,response-location-navigation,route-handler-navigation,router-capability,server-navigation,web-response-navigation"
+    violations.length !== 13
+    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-reload,browser-window-navigation,history-navigation,history-traversal,navigation-api,navigation-api-traversal,response-location-navigation,route-handler-navigation,router-capability,server-navigation,web-response-navigation"
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
