@@ -936,6 +936,10 @@ function auditImperativeNavigation(source, path) {
   const headerVariables = new Set();
   const headerMutationMethodBindings = new Set();
   const domNavigationElementKinds = new Map();
+  const domTypedIdentifierKinds = new Map();
+  const domEventCurrentTargetKinds = new Map();
+  const domRefKinds = new Map();
+  const domCollectionKinds = new Map();
   const domSetAttributeBindings = new Map();
   const declarations = [];
   const constInitializers = new Map();
@@ -997,13 +1001,78 @@ function auditImperativeNavigation(source, path) {
     else localFunctions.set(name, null);
   }
 
+  function domKindFromTypeNameText(text) {
+    const normalized = text?.split(".").pop();
+    if (normalized === "HTMLAnchorElement") return "a";
+    if (normalized === "HTMLAreaElement") return "area";
+    if (normalized === "HTMLBaseElement") return "base";
+    if (normalized === "HTMLFormElement") return "form";
+    if (normalized === "HTMLButtonElement") return "button";
+    if (normalized === "HTMLInputElement") return "input";
+    return null;
+  }
+
+  function domKindFromTypeNode(typeNode) {
+    if (!typeNode) return null;
+    if (ts.isParenthesizedTypeNode(typeNode)) return domKindFromTypeNode(typeNode.type);
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      const kinds = [...new Set(typeNode.types.map(domKindFromTypeNode).filter(Boolean))];
+      return kinds.length === 1 ? kinds[0] : null;
+    }
+    if (ts.isTypeReferenceNode(typeNode)) {
+      return domKindFromTypeNameText(typeNode.typeName.getText(sourceFile));
+    }
+    return null;
+  }
+
+  function domEventCurrentTargetKindFromTypeNode(typeNode) {
+    if (!typeNode) return null;
+    if (ts.isParenthesizedTypeNode(typeNode)) {
+      return domEventCurrentTargetKindFromTypeNode(typeNode.type);
+    }
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      const kinds = [...new Set(
+        typeNode.types.map(domEventCurrentTargetKindFromTypeNode).filter(Boolean),
+      )];
+      return kinds.length === 1 ? kinds[0] : null;
+    }
+    if (!ts.isTypeReferenceNode(typeNode)) return null;
+    const direct = domKindFromTypeNameText(typeNode.typeName.getText(sourceFile));
+    if (direct) return null;
+    const kinds = [...new Set(
+      (typeNode.typeArguments ?? []).map(domKindFromTypeNode).filter(Boolean),
+    )];
+    return kinds.length === 1 ? kinds[0] : null;
+  }
+
+  function setStableKind(map, name, kind) {
+    if (!name || !kind) return;
+    if (!map.has(name)) {
+      map.set(name, kind);
+      return;
+    }
+    if (map.get(name) !== kind) map.set(name, null);
+  }
+
   function collectDeclarations(node) {
     if (ts.isFunctionDeclaration(node) && node.name) {
       registerLocalFunction(node.name.text, node);
     }
 
+    if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.type) {
+      setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
+      setStableKind(
+        domEventCurrentTargetKinds,
+        node.name.text,
+        domEventCurrentTargetKindFromTypeNode(node.type),
+      );
+    }
+
     if (ts.isVariableDeclaration(node)) {
       declarations.push(node);
+      if (ts.isIdentifier(node.name) && node.type) {
+        setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
+      }
       if (
         ts.isIdentifier(node.name)
         && node.initializer
