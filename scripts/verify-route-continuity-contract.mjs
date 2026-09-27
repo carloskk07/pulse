@@ -777,6 +777,21 @@ function auditSemanticLinks(source, path) {
     "@/lib/route-semantics",
     "getRouteLinkProps",
   );
+  const routeNavigationAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getRouteNavigationHref",
+  );
+  const productHrefAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getProductRouteHref",
+  );
+  const externalHrefAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getExternalNavigationHref",
+  );
 
   function visit(node) {
     if (
@@ -793,9 +808,18 @@ function auditSemanticLinks(source, path) {
       ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
       const routeLinkAuthority = hasRouteLinkAuthority(node, routeLinkAuthorityBindings);
       const unresolvedDynamicHref = hasUnresolvedDynamicHref(href);
+      const hrefExpression = href?.initializer && ts.isJsxExpression(href.initializer)
+        ? href.initializer.expression
+        : null;
+      const dynamicHrefAuthority = (
+        routeLinkAuthority
+        || expressionContainsAuthorityCall(hrefExpression, routeNavigationAuthorityBindings)
+        || expressionContainsAuthorityCall(hrefExpression, productHrefAuthorityBindings)
+        || expressionContainsAuthorityCall(hrefExpression, externalHrefAuthorityBindings)
+      );
       const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
-      if (unresolvedDynamicHref && !routeLinkAuthority && !explicitOutsideProduct) {
+      if (unresolvedDynamicHref && !dynamicHrefAuthority) {
         violations.push({
           kind: "provenance",
           path,
@@ -825,7 +849,7 @@ function auditSemanticLinks(source, path) {
 
 {
   const selfTest = [
-    'import { getRouteLinkProps } from "@/lib/route-semantics";',
+    'import { getRouteLinkProps, getRouteNavigationHref } from "@/lib/route-semantics";',
     "const Fixture = ({ signedIn, mission, admin }) => (",
     "  <>",
     "    <Link href=\"/progress\">Missing static coverage</Link>",
@@ -833,16 +857,17 @@ function auditSemanticLinks(source, path) {
     "    <Link href={signedIn ? \"/invite#network\" : \"/auth\"} transitionTypes={routeTypes}>Conditional static candidates</Link>",
     "    <Link href={mission.href} transitionTypes={getRouteTransitionTypesForHref(\"earn\", mission.href)}>Unproven dynamic route</Link>",
     "    <Link {...getRouteLinkProps(\"earn\", mission.href)}>Authoritative dynamic route</Link>",
-    "    <Link href={admin.href} data-route-semantic=\"outside-product\">Explicit dynamic escape</Link>",
-    "    <Link href=\"/dashboard\" data-route-semantic=\"outside-product\">Explicit public escape</Link>",
+    "    <Link href={admin.href} data-route-semantic=\"outside-product\">Unproven dynamic outside-product route</Link>",
+    "    <Link href={getRouteNavigationHref(\"admin\", admin.href)} data-route-semantic=\"outside-product\">Governed dynamic outside-product route</Link>",
+    "    <Link href=\"/dashboard\" data-route-semantic=\"outside-product\">Explicit static public escape</Link>",
     "  </>",
     ");",
   ].join("\n");
   const violations = auditSemanticLinks(selfTest, "semantic-link-coverage.self-test.tsx");
   if (
-    violations.length !== 2
+    violations.length !== 3
     || violations.filter((violation) => violation.kind === "coverage").length !== 1
-    || violations.filter((violation) => violation.kind === "provenance").length !== 1
+    || violations.filter((violation) => violation.kind === "provenance").length !== 2
     || violations.find((violation) => violation.kind === "coverage")?.targets[0] !== "/progress"
   ) {
     throw new Error("Semantic Link coverage/provenance self-test failed: " + JSON.stringify(violations));
@@ -858,11 +883,26 @@ function auditNativeAnchors(source, path) {
     ts.ScriptKind.TSX,
   );
   const violations = [];
+  const routeNavigationAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getRouteNavigationHref",
+  );
+  const productHrefAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getProductRouteHref",
+  );
+  const externalHrefAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getExternalNavigationHref",
+  );
 
   function visit(node) {
     if (
       (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
-      && node.tagName.getText(sourceFile) === "a"
+      && (node.tagName.getText(sourceFile) === "a" || node.tagName.getText(sourceFile) === "area")
     ) {
       const href = jsxAttribute(node, "href");
       const targets = hrefCandidates(href)
@@ -872,10 +912,27 @@ function auditNativeAnchors(source, path) {
         jsxAttribute(node, "data-route-semantic"),
       ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
       const unresolvedDynamicHref = hasUnresolvedDynamicHref(href);
+      const hrefExpression = href?.initializer && ts.isJsxExpression(href.initializer)
+        ? href.initializer.expression
+        : null;
+      const dynamicHrefAuthority = (
+        expressionContainsAuthorityCall(hrefExpression, routeNavigationAuthorityBindings)
+        || expressionContainsAuthorityCall(hrefExpression, productHrefAuthorityBindings)
+        || expressionContainsAuthorityCall(hrefExpression, externalHrefAuthorityBindings)
+      );
       const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
-      if ((targets.length > 0 || unresolvedDynamicHref) && !explicitOutsideProduct) {
+      if (unresolvedDynamicHref && (!explicitOutsideProduct || !dynamicHrefAuthority)) {
         violations.push({
+          kind: "dynamic-provenance",
+          path,
+          line: position.line + 1,
+          column: position.character + 1,
+          targets: [],
+        });
+      } else if (targets.length > 0 && !explicitOutsideProduct) {
+        violations.push({
+          kind: "semantic",
           path,
           line: position.line + 1,
           column: position.character + 1,
@@ -888,6 +945,28 @@ function auditNativeAnchors(source, path) {
 
   visit(sourceFile);
   return violations;
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const Fixture = ({ provider, admin }) => (<>',
+    '  <a href={provider.href} data-route-semantic="outside-product">raw provider</a>',
+    '  <a href={getExternalNavigationHref(provider.href)} data-route-semantic="outside-product">safe provider</a>',
+    '  <area href={admin.href} data-route-semantic="outside-product" />',
+    '  <area href={getRouteNavigationHref("map", admin.href)} data-route-semantic="outside-product" />',
+    '</>);',
+  ].join("\n");
+  const violations = auditNativeAnchors(
+    selfTest,
+    "dynamic-native-href-provenance.self-test.tsx",
+  );
+  if (
+    violations.length !== 2
+    || violations.some((violation) => violation.kind !== "dynamic-provenance")
+  ) {
+    throw new Error("Dynamic native href provenance self-test failed: " + JSON.stringify(violations));
+  }
 }
 
 function expressionContainsAuthorityCall(expression, bindings) {
@@ -4609,7 +4688,7 @@ if (dynamicRouteProvenanceViolations.length > 0) {
     + dynamicRouteProvenanceViolations
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
-        + " -> unresolved href must use getRouteLinkProps() or an explicit outside-product contract"
+        + " -> unresolved href must use getRouteLinkProps() or a route/external href authority"
       )
       .join("\n"),
   );
@@ -4654,7 +4733,11 @@ if (nativeAnchorViolations.length > 0) {
     + nativeAnchorViolations
       .map((violation) =>
         "- " + violation.path + ":" + violation.line + ":" + violation.column
-        + " -> native anchor must be explicitly outside-product"
+        + (
+          violation.kind === "dynamic-provenance"
+            ? " -> dynamic native href must be outside-product and use route/external href authority"
+            : " -> native anchor must be explicitly outside-product"
+        )
       )
       .join("\n"),
   );
