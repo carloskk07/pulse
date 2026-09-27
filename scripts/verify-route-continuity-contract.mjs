@@ -1596,7 +1596,10 @@ function authorityCall(expression, bindings) {
   );
 }
 
-function auditImperativeNavigation(source, path) {
+function auditImperativeNavigation(source, path, options = {}) {
+  const enforceProgrammaticTargetContextPolicy = (
+    options.programmaticTargetContextPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
