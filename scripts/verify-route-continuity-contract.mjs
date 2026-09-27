@@ -1705,6 +1705,21 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
+  function isMessageEventSource(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved)) {
+      return browserMessageEventVariables.has(resolved.text);
+    }
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "nativeEvent"
+    ) {
+      return isMessageEventSource(propertyOwner(resolved), env);
+    }
+    return false;
+  }
+
   function isBrowsingContextObject(expression, env = new Map(), seen = new Set()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1779,6 +1794,7 @@ function auditImperativeNavigation(source, path) {
       if (name === "contentWindow") return true;
       if (name === "defaultView" && isDocumentObject(propertyOwner(resolved), env)) return true;
       if (name === "view" && isEventViewSource(propertyOwner(resolved), env)) return true;
+      if (name === "source" && isMessageEventSource(propertyOwner(resolved), env)) return true;
       if (
         name === "self"
         || name === "top"
