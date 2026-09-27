@@ -1596,7 +1596,10 @@ function authorityCall(expression, bindings) {
   );
 }
 
-function auditImperativeNavigation(source, path) {
+function auditImperativeNavigation(source, path, options = {}) {
+  const enforceProgrammaticTargetContextPolicy = (
+    options.programmaticTargetContextPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -2379,6 +2382,92 @@ function auditImperativeNavigation(source, path) {
 
   function isEmbeddedInlineDocumentProperty(kind, property) {
     return kind === "iframe" && property === "srcdoc";
+  }
+
+  function domTargetContextPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if ((kind === "a" || kind === "area" || kind === "form") && normalized === "target") {
+      return "target";
+    }
+    if ((kind === "button" || kind === "input") && normalized === "formtarget") {
+      return "formtarget";
+    }
+    return null;
+  }
+
+  function literalTargetContext(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return resolved && ts.isStringLiteralLike(resolved)
+      ? resolved.text.trim().toLowerCase()
+      : null;
+  }
+
+  function runtimeDomTargetContextSafe(expression, env = new Map()) {
+    const target = literalTargetContext(expression, env);
+    return target === "" || target === "_self";
+  }
+
+  function windowOpenFeaturesProtectOpener(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isStringLiteralLike(resolved)) return false;
+    const tokens = resolved.text
+      .toLowerCase()
+      .split(/[,\s]+/)
+      .map((token) => token.trim().split("=", 1)[0])
+      .filter(Boolean);
+    return tokens.includes("noopener") || tokens.includes("noreferrer");
+  }
+
+  function reportProgrammaticDomTarget(
+    node,
+    kind,
+    property,
+    value,
+    env = new Map(),
+  ) {
+    if (!enforceProgrammaticTargetContextPolicy) return false;
+    const targetProperty = domTargetContextPropertyForKind(kind, property);
+    if (!targetProperty) return false;
+
+    const target = literalTargetContext(value, env);
+    if (target === null) {
+      report(node, "programmatic-target-dynamic");
+    } else if (!runtimeDomTargetContextSafe(value, env)) {
+      report(node, "programmatic-target-context", [target]);
+    }
+    return true;
+  }
+
+  function reportProgrammaticWindowOpenTarget(
+    node,
+    args,
+    env = new Map(),
+  ) {
+    if (!enforceProgrammaticTargetContextPolicy) return;
+    const targetExpression = args[1];
+    const featuresExpression = args[2];
+
+    if (!targetExpression) {
+      report(node, "programmatic-target-implicit");
+      return;
+    }
+
+    const target = literalTargetContext(targetExpression, env);
+    if (target === null) {
+      report(node, "programmatic-target-dynamic");
+      return;
+    }
+
+    if (target === "_self") return;
+
+    if (target === "_blank") {
+      if (!windowOpenFeaturesProtectOpener(featuresExpression, env)) {
+        report(node, "programmatic-target-blank-opener", [target]);
+      }
+      return;
+    }
+
+    report(node, "programmatic-target-context", [target]);
   }
 
   const VERIFIED_REPLAY_SELECTOR = 'form[data-route-submit-authority="verified-replay"]';
@@ -3287,8 +3376,13 @@ function auditImperativeNavigation(source, path) {
       ? propertyExpression.text
       : null;
     const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
-    return kind && navigationProperty
-      ? { kind, property: navigationProperty }
+    const targetContextProperty = domTargetContextPropertyForKind(kind, propertyText);
+    return kind && (navigationProperty || targetContextProperty)
+      ? {
+          kind,
+          property: navigationProperty ?? targetContextProperty,
+          targetContext: Boolean(targetContextProperty),
+        }
       : null;
   }
 
@@ -3738,6 +3832,16 @@ function auditImperativeNavigation(source, path) {
   }
 
   function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
+    if (
+      reportProgrammaticDomTarget(
+        node,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
     const navProperty = domNavigationPropertyForKind(kind, propertyNameText);
     if (!navProperty) return false;
     if (kind === "base" && navProperty === "href") {
@@ -3974,7 +4078,18 @@ function auditImperativeNavigation(source, path) {
             if (!indirectThisKind) {
               report(node, "native-invoke-dom-dynamic-target");
             } else if (indirectThisKind === nativeSetter.kind) {
-              if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
+              if (
+                nativeSetter.targetContext
+                && reportProgrammaticDomTarget(
+                  node,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Target-context policy handled above.
+              } else if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
                 report(node, "native-invoke-dom-base-href");
               } else if (
                 isEmbeddedInlineDocumentProperty(nativeSetter.kind, nativeSetter.property)
@@ -4007,11 +4122,26 @@ function auditImperativeNavigation(source, path) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
+                const targetContextProperty = domTargetContextPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const navProperty = domNavigationPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
                 );
-                if (indirectThisKind === "base" && navProperty === "href") {
+                if (
+                  targetContextProperty
+                  && reportProgrammaticDomTarget(
+                    node,
+                    indirectThisKind,
+                    targetContextProperty,
+                    target,
+                    env,
+                  )
+                ) {
+                  // Target-context policy handled above.
+                } else if (indirectThisKind === "base" && navProperty === "href") {
                   report(node, "native-invoke-dom-base-href");
                 } else if (
                   isEmbeddedInlineDocumentProperty(indirectThisKind, navProperty)
@@ -4159,12 +4289,14 @@ function auditImperativeNavigation(source, path) {
             }
           }
 
-          if (
-            isBrowserWindowOpenReference(indirectTarget, env)
-            && indirectFirstArg
-            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
-          ) {
-            report(node, "native-invoke-browser-window-open");
+          if (isBrowserWindowOpenReference(indirectTarget, env)) {
+            reportProgrammaticWindowOpenTarget(node, indirectArgs, env);
+            if (
+              indirectFirstArg
+              && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+            ) {
+              report(node, "native-invoke-browser-window-open");
+            }
           }
 
           if (isBrowserNavigationTraversalReference(indirectTarget, env)) {
@@ -4321,8 +4453,23 @@ function auditImperativeNavigation(source, path) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
+          const targetContextProperty = domTargetContextPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
-          if (navProperty === "href" && kind === "base") {
+          if (
+            targetContextProperty
+            && reportProgrammaticDomTarget(
+              node,
+              kind,
+              targetContextProperty,
+              target,
+              env,
+            )
+          ) {
+            // Target-context policy handled above.
+          } else if (navProperty === "href" && kind === "base") {
             report(node, "dom-base-href");
           } else if (isEmbeddedInlineDocumentProperty(kind, navProperty)) {
             report(node, "embedded-runtime-srcdoc");
@@ -4452,12 +4599,14 @@ function auditImperativeNavigation(source, path) {
         }
       }
 
-      if (
-        isBrowserWindowOpenReference(expression, env)
-        && firstArg
-        && !browserNavigationAuthority(firstArg, env, callStack)
-      ) {
-        report(node, "browser-window-open");
+      if (isBrowserWindowOpenReference(expression, env)) {
+        reportProgrammaticWindowOpenTarget(node, node.arguments, env);
+        if (
+          firstArg
+          && !browserNavigationAuthority(firstArg, env, callStack)
+        ) {
+          report(node, "browser-window-open");
+        }
       }
 
       if (isBrowserNavigationTraversalReference(expression, env)) {
@@ -4579,9 +4728,21 @@ function auditImperativeNavigation(source, path) {
       const leftOwner = propertyOwner(node.left);
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
+      const targetContextProperty = domTargetContextPropertyForKind(domKind, leftProperty);
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
 
-      if (domKind === "base" && domProperty === "href") {
+      if (
+        targetContextProperty
+        && reportProgrammaticDomTarget(
+          node,
+          domKind,
+          targetContextProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Target-context policy handled above.
+      } else if (domKind === "base" && domProperty === "href") {
         report(node, "dom-base-href");
       } else if (isEmbeddedInlineDocumentProperty(domKind, domProperty)) {
         report(node, "embedded-runtime-srcdoc");
@@ -5592,6 +5753,53 @@ function auditImperativeNavigation(source, path) {
   }
 }
 
+{
+  const selfTest = [
+    'import { getExternalNavigationHref } from "@/lib/route-semantics";',
+    'const safeExternal = getExternalNavigationHref("https://example.com/safe");',
+    'const dynamicTarget = chooseTarget();',
+    'window.open(safeExternal, "_blank");',
+    'window.open(safeExternal, "_blank", "noopener,noreferrer");',
+    'window.open(safeExternal, "_self");',
+    'window.open(safeExternal, "_top", "noopener");',
+    'window.open(safeExternal, dynamicTarget, "noopener");',
+    'window.open(safeExternal);',
+    'const openAlias = window.open;',
+    'openAlias(safeExternal, "named-window", "noopener");',
+    'const boundSafeOpen = window.open.bind(window, safeExternal, "_blank", "noopener");',
+    'boundSafeOpen();',
+    'const anchor = document.createElement("a");',
+    'anchor.target = "_blank";',
+    'anchor.target = "_self";',
+    'const form = document.createElement("form");',
+    'form.target = "_parent";',
+    'const button = document.createElement("button");',
+    'button.formTarget = dynamicTarget;',
+    'anchor.setAttribute("target", "named-frame");',
+    'Object.assign(form, { target: "_blank" });',
+    'Reflect.set(anchor, "target", "_self");',
+    'Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "target").set.call(anchor, "_blank");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-target-context.self-test.ts",
+    { programmaticTargetContextPolicy: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["programmatic-target-context"] !== 7
+    || counts["programmatic-target-dynamic"] !== 2
+    || counts["programmatic-target-blank-opener"] !== 1
+    || counts["programmatic-target-implicit"] !== 1
+  ) {
+    throw new Error("Programmatic target context policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditNavigationSideEffectBoundary(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -6091,7 +6299,11 @@ if (hiddenNavigationModuleViolations.length > 0) {
 
 const allImperativeNavigationViolations = ["app", "components", "lib", "providers"]
   .flatMap(collectTypeScriptFiles)
-  .flatMap((path) => auditImperativeNavigation(read(path), path));
+  .flatMap((path) => auditImperativeNavigation(
+    read(path),
+    path,
+    { programmaticTargetContextPolicy: true },
+  ));
 
 const dynamicCodeExecutionViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("dynamic-code-"));
@@ -6136,6 +6348,21 @@ if (nativeInvocationViolations.length > 0) {
   );
 }
 
+const programmaticTargetContextViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("programmatic-target-"));
+if (programmaticTargetContextViolations.length > 0) {
+  throw new Error(
+    "Programmatic target context policy failed:\n"
+    + programmaticTargetContextViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
 const embeddedContextRuntimeSourceViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("embedded-runtime-"));
 if (embeddedContextRuntimeSourceViolations.length > 0) {
@@ -6168,7 +6395,8 @@ if (domNavigationMutationViolations.length > 0) {
 
 const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
-    !violation.kind.startsWith("embedded-runtime-")
+    !violation.kind.startsWith("programmatic-target-")
+    && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
     && !violation.kind.startsWith("proxy-navigation-")
