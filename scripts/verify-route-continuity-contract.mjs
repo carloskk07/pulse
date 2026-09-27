@@ -1871,6 +1871,67 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function staticObjectPropertyName(property, env = new Map()) {
+    if (!property) return null;
+    if (ts.isIdentifier(property.name)) return property.name.text;
+    if (ts.isStringLiteralLike(property.name) || ts.isNumericLiteral(property.name)) {
+      return property.name.text;
+    }
+    if (ts.isComputedPropertyName(property.name)) {
+      const expression = resolveDataExpression(property.name.expression, env);
+      return expression && ts.isStringLiteralLike(expression) ? expression.text : null;
+    }
+    return null;
+  }
+
+  function reflectiveObjectPropertyValue(property) {
+    if (ts.isPropertyAssignment(property)) return property.initializer;
+    if (ts.isShorthandPropertyAssignment(property)) return property.name;
+    return null;
+  }
+
+  function reflectiveCalleeName(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!(resolved && (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)))) {
+      return null;
+    }
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    const method = propertyName(resolved);
+    if (ownerText === "Object" || ownerText === "globalThis.Object") {
+      if (method === "assign" || method === "defineProperty" || method === "defineProperties") {
+        return "Object." + method;
+      }
+    }
+    if ((ownerText === "Reflect" || ownerText === "globalThis.Reflect") && method === "set") {
+      return "Reflect.set";
+    }
+    return null;
+  }
+
+  function descriptorNavigationValue(descriptor, env = new Map()) {
+    const resolved = resolveDataExpression(descriptor, env);
+    if (!resolved || !ts.isObjectLiteralExpression(resolved)) return null;
+    if (
+      propertyAssignmentByName(resolved, "get")
+      || propertyAssignmentByName(resolved, "set")
+    ) return null;
+    return propertyAssignmentByName(resolved, "value");
+  }
+
+  function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
+    const navProperty = domNavigationPropertyForKind(kind, propertyNameText);
+    if (!navProperty) return false;
+    if (kind === "base" && navProperty === "href") {
+      report(node, "dom-base-href");
+      return true;
+    }
+    if (!value || !domNavigationAuthority(value, env, callStack)) {
+      const targets = value ? staticHrefCandidatesResolved(value, env, callStack) : [];
+      report(node, "dom-reflective-property", targets);
+    }
+    return true;
+  }
+
   function numericLiteralValue(expression) {
     const resolved = resolveDataExpression(expression);
     if (resolved && ts.isNumericLiteral(resolved)) return Number(resolved.text);
@@ -1955,6 +2016,109 @@ function auditImperativeNavigation(source, path) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
+
+      const reflectiveCall = reflectiveCalleeName(expression, env);
+      const reflectiveTargetKind = reflectiveCall
+        ? domNavigationElementKind(firstArg, env)
+        : null;
+
+      if (reflectiveCall && reflectiveTargetKind) {
+        if (reflectiveCall === "Object.assign") {
+          for (const source of node.arguments.slice(1)) {
+            const resolvedSource = resolveDataExpression(source, env);
+            if (!resolvedSource || !ts.isObjectLiteralExpression(resolvedSource)) {
+              report(node, "dom-reflective-dynamic");
+              continue;
+            }
+            for (const property of resolvedSource.properties) {
+              if (ts.isSpreadAssignment(property)) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              const propertyNameText = staticObjectPropertyName(property, env);
+              const value = reflectiveObjectPropertyValue(property);
+              if (!propertyNameText) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              reportReflectiveDomProperty(
+                node,
+                reflectiveTargetKind,
+                propertyNameText,
+                value,
+                env,
+                callStack,
+              );
+            }
+          }
+        }
+
+        if (reflectiveCall === "Reflect.set") {
+          const propertyExpression = resolveDataExpression(node.arguments[1], env);
+          const propertyNameText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+            ? propertyExpression.text
+            : null;
+          if (!propertyNameText) {
+            report(node, "dom-reflective-dynamic");
+          } else {
+            reportReflectiveDomProperty(
+              node,
+              reflectiveTargetKind,
+              propertyNameText,
+              node.arguments[2],
+              env,
+              callStack,
+            );
+          }
+        }
+
+        if (reflectiveCall === "Object.defineProperty") {
+          const propertyExpression = resolveDataExpression(node.arguments[1], env);
+          const propertyNameText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+            ? propertyExpression.text
+            : null;
+          if (!propertyNameText) {
+            report(node, "dom-reflective-dynamic");
+          } else {
+            reportReflectiveDomProperty(
+              node,
+              reflectiveTargetKind,
+              propertyNameText,
+              descriptorNavigationValue(node.arguments[2], env),
+              env,
+              callStack,
+            );
+          }
+        }
+
+        if (reflectiveCall === "Object.defineProperties") {
+          const descriptors = resolveDataExpression(node.arguments[1], env);
+          if (!descriptors || !ts.isObjectLiteralExpression(descriptors)) {
+            report(node, "dom-reflective-dynamic");
+          } else {
+            for (const property of descriptors.properties) {
+              if (ts.isSpreadAssignment(property)) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              const propertyNameText = staticObjectPropertyName(property, env);
+              const descriptor = reflectiveObjectPropertyValue(property);
+              if (!propertyNameText) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              reportReflectiveDomProperty(
+                node,
+                reflectiveTargetKind,
+                propertyNameText,
+                descriptorNavigationValue(descriptor, env),
+                env,
+                callStack,
+              );
+            }
+          }
+        }
+      }
 
       if (isDomSetAttributeReference(expression, env)) {
         const kind = domSetAttributeElementKind(expression, env);
@@ -2429,6 +2593,49 @@ function auditImperativeNavigation(source, path) {
     || counts["dom-html-injection"] !== 3
   ) {
     throw new Error("DOM navigation mutation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const anchor = document.createElement("a");',
+    'Object.assign(anchor, { href: "/earn" });',
+    'Object.assign(anchor, { href: getRouteNavigationHref("reflective-dom", "/earn") });',
+    'Object.assign(anchor, dynamicProps);',
+    'Reflect.set(anchor, "href", "/wallet");',
+    'Reflect.set(anchor, "href", getRouteNavigationHref("reflective-dom", "/wallet"));',
+    'Reflect.set(anchor, dynamicPropertyName, getRouteNavigationHref("reflective-dom", "/invite"));',
+    'Object.defineProperty(anchor, "href", { value: "/invite" });',
+    'Object.defineProperty(anchor, "href", { value: getRouteNavigationHref("reflective-dom", "/invite") });',
+    'Object.defineProperty(anchor, "href", { get: () => "/progress" });',
+    'const form = document.createElement("form");',
+    'Object.defineProperties(form, { action: { value: "/api/withdrawals" } });',
+    'Object.defineProperties(form, { action: { value: getRouteNavigationHref("reflective-dom", "/api/withdrawals") } });',
+    'const button = document.createElement("button");',
+    'Object.defineProperties(button, { formAction: { value: "/api/pulse/claim" } });',
+    'const base = document.createElement("base");',
+    'Object.assign(base, { href: getRouteNavigationHref("reflective-dom", "/dashboard/") });',
+    'Reflect.set(base, "href", getRouteNavigationHref("reflective-dom", "/dashboard/"));',
+    'Object.defineProperty(base, "href", { value: getRouteNavigationHref("reflective-dom", "/dashboard/") });',
+    'Object.defineProperties(base, { href: { value: getRouteNavigationHref("reflective-dom", "/dashboard/") } });',
+    'Object.assign(anchor, { href: getExternalNavigationHref("https://example.com/safe") });',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "reflective-dom-mutation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 12
+    || counts["dom-reflective-property"] !== 6
+    || counts["dom-reflective-dynamic"] !== 2
+    || counts["dom-base-href"] !== 4
+  ) {
+    throw new Error("Reflective DOM mutation authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
