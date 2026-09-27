@@ -1487,6 +1487,17 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isRouterTraversalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && routerTraversalMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isRouterObject(propertyOwner(resolved), env)
+      && (propertyName(resolved) === "back" || propertyName(resolved) === "forward")
+    );
+  }
+
   function isServerRedirectReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     return Boolean(
@@ -1531,6 +1542,17 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isBrowserLocationReloadReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && browserLocationReloadBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isBrowserLocationObject(propertyOwner(resolved), env)
+      && propertyName(resolved) === "reload"
+    );
+  }
+
   function isBrowserHistoryMethodReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1542,6 +1564,21 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isBrowserHistoryTraversalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && browserHistoryTraversalMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isBrowserHistoryObject(propertyOwner(resolved), env)
+      && (
+        propertyName(resolved) === "back"
+        || propertyName(resolved) === "forward"
+        || propertyName(resolved) === "go"
+      )
+    );
+  }
+
   function isBrowserNavigationApiMethodReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1550,6 +1587,25 @@ function auditImperativeNavigation(source, path) {
       (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
       && isBrowserNavigationApiObject(propertyOwner(resolved), env)
       && propertyName(resolved) === "navigate"
+    );
+  }
+
+  function isBrowserNavigationTraversalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (
+      ts.isIdentifier(resolved)
+      && browserNavigationTraversalMethodBindings.has(resolved.text)
+    ) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isBrowserNavigationApiObject(propertyOwner(resolved), env)
+      && (
+        propertyName(resolved) === "back"
+        || propertyName(resolved) === "forward"
+        || propertyName(resolved) === "reload"
+        || propertyName(resolved) === "traverseTo"
+      )
     );
   }
 
@@ -1778,6 +1834,10 @@ function auditImperativeNavigation(source, path) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
+      if (isRouterTraversalReference(expression, env)) {
+        report(node, "router-traversal");
+      }
+
       if (
         isRouterMethodReference(expression, env)
         && !authorityExpressionResolved(firstArg, navigationBindings, env, callStack)
@@ -1852,11 +1912,19 @@ function auditImperativeNavigation(source, path) {
         }
       }
 
+      if (isBrowserLocationReloadReference(expression, env)) {
+        report(node, "browser-reload");
+      }
+
       if (
         isBrowserLocationMethodReference(expression, env)
         && !browserNavigationAuthority(firstArg, env, callStack)
       ) {
         report(node, "browser-location");
+      }
+
+      if (isBrowserHistoryTraversalReference(expression, env)) {
+        report(node, "history-traversal");
       }
 
       if (isBrowserHistoryMethodReference(expression, env)) {
@@ -1877,6 +1945,10 @@ function auditImperativeNavigation(source, path) {
         report(node, "browser-window-open");
       }
 
+      if (isBrowserNavigationTraversalReference(expression, env)) {
+        report(node, "navigation-api-traversal");
+      }
+
       if (
         isBrowserNavigationApiMethodReference(expression, env)
         && firstArg
@@ -1890,12 +1962,16 @@ function auditImperativeNavigation(source, path) {
         && node.arguments.some((argument) => (
           isRouterObject(argument, env)
           || isRouterMethodReference(argument, env)
+          || isRouterTraversalReference(argument, env)
           || isBrowserLocationObject(argument, env)
           || isBrowserLocationMethodReference(argument, env)
+          || isBrowserLocationReloadReference(argument, env)
           || isBrowserHistoryObject(argument, env)
           || isBrowserHistoryMethodReference(argument, env)
+          || isBrowserHistoryTraversalReference(argument, env)
           || isBrowserNavigationApiObject(argument, env)
           || isBrowserNavigationApiMethodReference(argument, env)
+          || isBrowserNavigationTraversalReference(argument, env)
           || isBrowserWindowOpenReference(argument, env)
           || isHeadersObject(argument, env)
           || isLocationHeaderMutationReference(argument, env)
