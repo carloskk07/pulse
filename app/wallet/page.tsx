@@ -261,7 +261,7 @@ export default async function WalletPage({ searchParams }: Props) {
               Reserved since {compactDate(activeWithdrawal.created_at)} · {maskDestination(activeWithdrawal.destination)}
             </div>
           ) : presentation.submitEnabled ? (
-            <form action={getRouteNavigationHref("wallet", "/api/withdrawals")} method="post" className="withdrawal-form">
+            <form action={getRouteNavigationHref("wallet", "/api/withdrawals")} method="post" className="withdrawal-form" data-route-submit-authority="verified-replay">
               <label>
                 Payment destination
                 <input type="text" value={maskDestination(activeWithdrawal.destination)} disabled readOnly />
@@ -278,7 +278,7 @@ export default async function WalletPage({ searchParams }: Props) {
             </div>
           )
         ) : presentation.destinationEnabled && canWithdraw ? (
-          <form action={getRouteNavigationHref("wallet", "/api/withdrawals")} method="post" className="withdrawal-form">
+          <form action={getRouteNavigationHref("wallet", "/api/withdrawals")} method="post" className="withdrawal-form" data-route-submit-authority="verified-replay">
             <label>
               FaucetPay destination
               <input name="destination" type="text" required maxLength={200} autoComplete="off" placeholder="Email, username or linked address" />
