@@ -1283,6 +1283,51 @@ function auditImperativeNavigation(source, path) {
   }
 }
 
+{
+  const selfTest = [
+    'import { useRouter, redirect } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
+    'function buildTarget(active) { return active ? "/dashboard" : "/auth"; }',
+    'function buildNestedTarget() { return buildTarget(true); }',
+    'const buildUrl = () => new URL("/wallet", request.url);',
+    'const buildSafeTarget = () => getProductRouteHref("wallet", "?safe=1");',
+    'const buildSafeUrl = () => new URL(getProductRouteHref("home"), request.url);',
+    'redirect(buildTarget(true));',
+    'redirect(buildNestedTarget());',
+    'redirect(buildSafeTarget());',
+    'NR.redirect(buildUrl(), 303);',
+    'NR.redirect(buildSafeUrl(), 303);',
+    'function go(r, target) { r.push(target); }',
+    'go(router, "/earn");',
+    'go(router, getRouteNavigationHref("home", "/earn"));',
+    'function serverGo(target) { redirect(target); }',
+    'serverGo("/invite");',
+    'serverGo(getProductRouteHref("invite"));',
+    'function handlerGo(target) { NR.redirect(new URL(target, request.url), 303); }',
+    'handlerGo("/progress");',
+    'handlerGo(getProductRouteHref("progress"));',
+    'function browserGo(target) { window.location.assign(target); }',
+    'browserGo("https://example.com");',
+    'browserGo(getExternalNavigationHref("https://example.com/safe"));',
+  ].join("\n");
+  const violations = auditImperativeNavigation(selfTest, "interprocedural-navigation.self-test.tsx");
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts.router !== 1
+    || counts["server-redirect"] !== 3
+    || counts["route-handler-redirect"] !== 2
+    || counts["browser-location"] !== 1
+  ) {
+    throw new Error("Interprocedural navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 const semanticLinkViolations = SEMANTIC_LINK_ROOTS
   .flatMap(collectTsxFiles)
   .flatMap((path) => auditSemanticLinks(read(path), path));
