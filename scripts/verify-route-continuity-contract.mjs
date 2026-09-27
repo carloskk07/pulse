@@ -2572,7 +2572,12 @@ function auditImperativeNavigation(source, path, options = {}) {
     env = new Map(),
   ) {
     if (!enforceFormSubmissionTransportPolicy) return false;
-    const transportProperty = domSubmissionTransportPropertyForKind(kind, property);
+    const normalizedProperty = property?.toLowerCase();
+    const transportProperty = (
+      normalizedProperty === "method" || normalizedProperty === "enctype"
+    )
+      ? normalizedProperty
+      : domSubmissionTransportPropertyForKind(kind, property);
     if (!transportProperty) return false;
 
     const literal = literalSubmissionTransport(value, env);
