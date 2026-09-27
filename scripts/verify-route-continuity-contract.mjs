@@ -5230,6 +5230,33 @@ function auditNavigationSideEffectBoundary(source, path) {
   ]);
   const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
   const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
+  const sideEffectMessageEventVariables = new Set();
+
+  function sideEffectIsMessageEventTypeNode(typeNode) {
+    if (!typeNode) return false;
+    if (ts.isParenthesizedTypeNode(typeNode)) {
+      return sideEffectIsMessageEventTypeNode(typeNode.type);
+    }
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      return typeNode.types.some(sideEffectIsMessageEventTypeNode);
+    }
+    if (!ts.isTypeReferenceNode(typeNode)) return false;
+    return typeNode.typeName.getText(sourceFile).split(".").pop() === "MessageEvent";
+  }
+
+  function collectSideEffectMessageEvents(node) {
+    if (
+      (ts.isParameter(node) || ts.isVariableDeclaration(node))
+      && ts.isIdentifier(node.name)
+      && node.type
+      && sideEffectIsMessageEventTypeNode(node.type)
+    ) {
+      sideEffectMessageEventVariables.add(node.name.text);
+    }
+    ts.forEachChild(node, collectSideEffectMessageEvents);
+  }
+
+  collectSideEffectMessageEvents(sourceFile);
 
   function sideEffectPropertyName(expression) {
     if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
@@ -5250,6 +5277,10 @@ function auditNavigationSideEffectBoundary(source, path) {
 
   function sideEffectBrowsingContextText(text) {
     if (!text) return false;
+    if (text.endsWith(".source")) {
+      const eventText = text.slice(0, -".source".length);
+      if (sideEffectMessageEventVariables.has(eventText)) return true;
+    }
     if (text.endsWith(".defaultView")) {
       const documentText = text.slice(0, -".defaultView".length);
       if (sideEffectDocumentText(documentText)) return true;
