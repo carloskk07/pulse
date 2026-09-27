@@ -1203,11 +1203,44 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
-  function domNavigationElementKind(expression, env = new Map()) {
+  function domKindFromSelectorText(value) {
+    if (typeof value !== "string") return null;
+    const match = value.match(/^\s*(a|area|base|form|button|input)(?=$|[.#:\[\s>+~])/i);
+    return match ? match[1].toLowerCase() : null;
+  }
+
+  function domKindFromCallTypeArguments(callExpression) {
+    if (!callExpression?.typeArguments?.length) return null;
+    const kinds = [...new Set(
+      callExpression.typeArguments.map(domKindFromTypeNode).filter(Boolean),
+    )];
+    return kinds.length === 1 ? kinds[0] : null;
+  }
+
+  function domCollectionElementKind(expression, env = new Map()) {
+    if (!expression) return null;
+    if (ts.isIdentifier(expression) && domCollectionKinds.has(expression.text)) {
+      return domCollectionKinds.get(expression.text);
+    }
+
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return null;
-    if (ts.isIdentifier(resolved) && domNavigationElementKinds.has(resolved.text)) {
-      return domNavigationElementKinds.get(resolved.text);
+    if (ts.isIdentifier(resolved) && domCollectionKinds.has(resolved.text)) {
+      return domCollectionKinds.get(resolved.text);
+    }
+
+    if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
+      const text = resolved.getText(sourceFile);
+      if (
+        text === "document.forms"
+        || text === "window.document.forms"
+        || text === "globalThis.document.forms"
+      ) return "form";
+      if (
+        text === "document.links"
+        || text === "window.document.links"
+        || text === "globalThis.document.links"
+      ) return "a";
     }
 
     if (!ts.isCallExpression(resolved)) return null;
@@ -1215,7 +1248,138 @@ function auditImperativeNavigation(source, path) {
     if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
       return null;
     }
-    if (propertyName(callee) !== "createElement") return null;
+    const method = propertyName(callee);
+    if (method === "querySelectorAll") {
+      const typed = domKindFromCallTypeArguments(resolved);
+      if (typed) return typed;
+      const selector = resolveDataExpression(resolved.arguments[0], env);
+      return selector && ts.isStringLiteralLike(selector)
+        ? domKindFromSelectorText(selector.text)
+        : null;
+    }
+    if (method === "getElementsByTagName") {
+      const tag = resolveDataExpression(resolved.arguments[0], env);
+      if (!tag || !ts.isStringLiteralLike(tag)) return null;
+      const kind = tag.text.toLowerCase();
+      return ["a", "area", "base", "form", "button", "input"].includes(kind)
+        ? kind
+        : null;
+    }
+    return null;
+  }
+
+  function domRefKindFromInitializer(initializer, env = new Map()) {
+    const resolved = resolveDataExpression(initializer, env);
+    if (!resolved || !ts.isCallExpression(resolved)) return null;
+    const calleeText = resolved.expression.getText(sourceFile);
+    if (
+      calleeText !== "useRef"
+      && calleeText !== "React.useRef"
+      && calleeText !== "createRef"
+      && calleeText !== "React.createRef"
+    ) return null;
+    return domKindFromCallTypeArguments(resolved);
+  }
+
+  function domNavigationElementKind(expression, env = new Map()) {
+    if (!expression) return null;
+
+    if (ts.isIdentifier(expression)) {
+      if (domNavigationElementKinds.has(expression.text)) {
+        return domNavigationElementKinds.get(expression.text);
+      }
+      if (domTypedIdentifierKinds.has(expression.text)) {
+        return domTypedIdentifierKinds.get(expression.text);
+      }
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      && propertyName(expression) === "current"
+      && ts.isIdentifier(propertyOwner(expression))
+      && domRefKinds.has(propertyOwner(expression).text)
+    ) {
+      return domRefKinds.get(propertyOwner(expression).text);
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      && propertyName(expression) === "currentTarget"
+      && ts.isIdentifier(propertyOwner(expression))
+      && domEventCurrentTargetKinds.has(propertyOwner(expression).text)
+    ) {
+      return domEventCurrentTargetKinds.get(propertyOwner(expression).text);
+    }
+
+    if (ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression)) {
+      return domKindFromTypeNode(expression.type)
+        || domNavigationElementKind(expression.expression, env);
+    }
+    if (ts.isNonNullExpression(expression)) {
+      return domNavigationElementKind(expression.expression, env);
+    }
+
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (resolved !== expression) {
+      const resolvedKind = domNavigationElementKind(resolved, env);
+      if (resolvedKind) return resolvedKind;
+    }
+
+    if (ts.isIdentifier(resolved)) {
+      if (domNavigationElementKinds.has(resolved.text)) {
+        return domNavigationElementKinds.get(resolved.text);
+      }
+      if (domTypedIdentifierKinds.has(resolved.text)) {
+        return domTypedIdentifierKinds.get(resolved.text);
+      }
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "current"
+      && ts.isIdentifier(propertyOwner(resolved))
+      && domRefKinds.has(propertyOwner(resolved).text)
+    ) {
+      return domRefKinds.get(propertyOwner(resolved).text);
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "currentTarget"
+      && ts.isIdentifier(propertyOwner(resolved))
+      && domEventCurrentTargetKinds.has(propertyOwner(resolved).text)
+    ) {
+      return domEventCurrentTargetKinds.get(propertyOwner(resolved).text);
+    }
+
+    if (ts.isElementAccessExpression(resolved)) {
+      const collectionKind = domCollectionElementKind(resolved.expression, env);
+      if (collectionKind) return collectionKind;
+    }
+
+    if (!ts.isCallExpression(resolved)) return null;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return null;
+    }
+    const method = propertyName(callee);
+
+    if (method === "item") {
+      const collectionKind = domCollectionElementKind(propertyOwner(callee), env);
+      if (collectionKind) return collectionKind;
+    }
+
+    if (method === "querySelector" || method === "closest") {
+      const typed = domKindFromCallTypeArguments(resolved);
+      if (typed) return typed;
+      const selector = resolveDataExpression(resolved.arguments[0], env);
+      return selector && ts.isStringLiteralLike(selector)
+        ? domKindFromSelectorText(selector.text)
+        : null;
+    }
+
+    if (method !== "createElement") return null;
     const ownerText = propertyOwner(callee)?.getText(sourceFile);
     if (
       ownerText !== "document"
