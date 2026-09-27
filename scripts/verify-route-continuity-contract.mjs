@@ -522,6 +522,7 @@ function staticNavigationTransport(value) {
 
   const scheme = href.match(/^([A-Za-z][A-Za-z0-9+.-]*):/)?.[1]?.toLowerCase() ?? null;
   if (scheme === "https") return "https";
+  if (scheme === "http") return "http";
   if (scheme === "mailto") return "mailto";
   if (scheme === "tel") return "tel";
   if (scheme) return "other-scheme";
@@ -637,15 +638,10 @@ function auditStaticNavigationTransport(source, path) {
 
   if (
     violations.length !== 10
+    || transports.http !== 4
     || transports["other-scheme"] !== 1
     || transports["protocol-relative"] !== 3
-    || transports["relative"] !== 2
-    || transports["other-scheme"] !== 1
-    || violations.filter((violation) => violation.transport === "other-scheme").length !== 1
-    || violations.filter((violation) => violation.transport === "protocol-relative").length !== 3
-    || violations.filter((violation) => violation.transport === "relative").length !== 2
-    || violations.filter((violation) => violation.transport === "other-scheme").length !== 1
-    || violations.filter((violation) => violation.targets[0]?.startsWith("http://")).length !== 4
+    || transports.relative !== 2
   ) {
     throw new Error("Navigation transport policy self-test failed: " + JSON.stringify(violations));
   }
