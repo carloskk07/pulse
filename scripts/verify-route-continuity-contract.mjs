@@ -1414,6 +1414,7 @@ function auditImperativeNavigation(source, path) {
   const responseRedirectBindings = new Set();
   const webResponseRedirectBindings = new Set();
   const browserContextVariables = new Set();
+  const browserEventViewVariables = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
   const browserLocationReloadBindings = new Set();
@@ -1538,6 +1539,27 @@ function auditImperativeNavigation(source, path) {
     return kinds.length === 1 ? kinds[0] : null;
   }
 
+  function isWindowViewEventTypeNode(typeNode) {
+    if (!typeNode) return false;
+    if (ts.isParenthesizedTypeNode(typeNode)) return isWindowViewEventTypeNode(typeNode.type);
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      return typeNode.types.some(isWindowViewEventTypeNode);
+    }
+    if (!ts.isTypeReferenceNode(typeNode)) return false;
+    const name = typeNode.typeName.getText(sourceFile).split(".").pop();
+    return (
+      name === "UIEvent"
+      || name === "MouseEvent"
+      || name === "KeyboardEvent"
+      || name === "FocusEvent"
+      || name === "PointerEvent"
+      || name === "WheelEvent"
+      || name === "DragEvent"
+      || name === "TouchEvent"
+      || name === "CompositionEvent"
+    );
+  }
+
   function setStableKind(map, name, kind) {
     if (!name || !kind) return;
     if (!map.has(name)) {
@@ -1559,12 +1581,18 @@ function auditImperativeNavigation(source, path) {
         node.name.text,
         domEventCurrentTargetKindFromTypeNode(node.type),
       );
+      if (isWindowViewEventTypeNode(node.type)) {
+        browserEventViewVariables.add(node.name.text);
+      }
     }
 
     if (ts.isVariableDeclaration(node)) {
       declarations.push(node);
       if (ts.isIdentifier(node.name) && node.type) {
         setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
+        if (isWindowViewEventTypeNode(node.type)) {
+          browserEventViewVariables.add(node.name.text);
+        }
       }
       if (
         ts.isIdentifier(node.name)
@@ -1645,6 +1673,21 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
+  function isEventViewSource(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved)) {
+      return browserEventViewVariables.has(resolved.text);
+    }
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "nativeEvent"
+    ) {
+      return isEventViewSource(propertyOwner(resolved), env);
+    }
+    return false;
+  }
+
   function isBrowsingContextObject(expression, env = new Map(), seen = new Set()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1700,6 +1743,8 @@ function auditImperativeNavigation(source, path) {
     if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
       const name = propertyName(resolved);
       if (name === "contentWindow") return true;
+      if (name === "defaultView" && isDocumentObject(propertyOwner(resolved), env)) return true;
+      if (name === "view" && isEventViewSource(propertyOwner(resolved), env)) return true;
       if (
         name === "self"
         || name === "top"
@@ -1717,11 +1762,12 @@ function auditImperativeNavigation(source, path) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
     if (ts.isIdentifier(resolved) && resolved.text === "document") return true;
-    return Boolean(
-      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
-      && propertyName(resolved) === "document"
-      && isBrowsingContextObject(propertyOwner(resolved), env)
-    );
+    if (!(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))) {
+      return false;
+    }
+    const name = propertyName(resolved);
+    if (name === "ownerDocument") return true;
+    return name === "document" && isBrowsingContextObject(propertyOwner(resolved), env);
   }
 
   function isBrowserLocationObject(expression, env = new Map()) {
@@ -5060,6 +5106,9 @@ function auditNavigationSideEffectBoundary(source, path) {
 
   function sideEffectBrowsingContextText(text) {
     if (!text) return false;
+    if (text === "document.defaultView" || /\.ownerDocument\.defaultView$/.test(text)) {
+      return true;
+    }
     if (
       text === "window"
       || text === "globalThis"
