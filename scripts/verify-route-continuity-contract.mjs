@@ -1645,7 +1645,7 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
-  function isBrowsingContextObject(expression, env = new Map()) {
+  function isBrowsingContextObject(expression, env = new Map(), seen = new Set()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
 
@@ -1661,6 +1661,38 @@ function auditImperativeNavigation(source, path) {
       );
     }
 
+    if (ts.isCallExpression(resolved)) {
+      const callee = resolveDataExpression(resolved.expression, env);
+      const directOpen = Boolean(
+        callee
+        && (
+          (
+            ts.isIdentifier(callee)
+            && browserWindowOpenBindings.has(callee.text)
+          )
+          || (
+            (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+            && propertyName(callee) === "open"
+            && isBrowsingContextObject(propertyOwner(callee), env, seen)
+          )
+        )
+      );
+      if (directOpen) return true;
+
+      const definition = localFunctionFromCallee(resolved.expression, env);
+      if (definition && !seen.has(definition.key)) {
+        const nextSeen = new Set(seen);
+        nextSeen.add(definition.key);
+        const childEnv = functionEnvironment(definition, resolved, env);
+        if (
+          functionReturnExpressions(definition)
+            .some((candidate) => isBrowsingContextObject(candidate, childEnv, nextSeen))
+        ) {
+          return true;
+        }
+      }
+    }
+
     if (ts.isElementAccessExpression(resolved) && isFramesCollectionObject(resolved.expression, env)) {
       return true;
     }
@@ -1674,7 +1706,7 @@ function auditImperativeNavigation(source, path) {
         || name === "parent"
         || name === "opener"
       ) {
-        return isBrowsingContextObject(propertyOwner(resolved), env);
+        return isBrowsingContextObject(propertyOwner(resolved), env, seen);
       }
     }
 
@@ -4868,6 +4900,45 @@ function auditImperativeNavigation(source, path) {
     || counts["response-location-redirect"] !== 2
   ) {
     throw new Error("Server redirect primitive authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const popup = window.open();',
+    'popup.location = "/dashboard";',
+    'popup.location = getRouteNavigationHref("opened-context", "/dashboard");',
+    'const child = top.open();',
+    'child.location.assign("/earn");',
+    'const launch = window.open;',
+    'const aliasPopup = launch();',
+    'aliasPopup.location.href = "/wallet";',
+    'function spawnPopup() { return window.open(); }',
+    'const helperPopup = spawnPopup();',
+    'helperPopup.location.replace("/invite");',
+    'const historyPopup = window.open();',
+    'historyPopup.history.pushState({}, "", "/progress");',
+    'const navPopup = window.open();',
+    'navPopup.navigation.navigate("/progress");',
+    'const safePopup = window.open(getExternalNavigationHref("https://example.com/start"));',
+    'safePopup.location.replace(getExternalNavigationHref("https://example.com/next"));',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "opened-context-handle.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 6
+    || counts["browser-location"] !== 4
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+  ) {
+    throw new Error("Opened context handle provenance self-test failed: " + JSON.stringify(violations));
   }
 }
 
