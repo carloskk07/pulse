@@ -1286,6 +1286,20 @@ function auditImperativeNavigation(source, path) {
         report(node, "browser-location");
       }
 
+      if (
+        isProjectImportCallee(expression, env)
+        && node.arguments.some((argument) => (
+          isRouterObject(argument, env)
+          || isRouterMethodReference(argument, env)
+          || isBrowserLocationObject(argument, env)
+          || isBrowserLocationMethodReference(argument, env)
+          || isServerRedirectReference(argument, env)
+          || isResponseRedirectReference(argument, env)
+        ))
+      ) {
+        report(node, "cross-module-wrapper");
+      }
+
       const definition = localFunctionFromCallee(expression, env);
       if (definition && !callStack.has(definition.key)) {
         const nextStack = new Set(callStack);
@@ -1441,15 +1455,19 @@ function auditImperativeNavigation(source, path) {
 {
   const selfTest = [
     'import defaultBuilder, { buildTarget } from "@/lib/navigation-builders";',
+    'import { navigate } from "@/lib/navigation-wrapper";',
     'import * as navBuilders from "../lib/navigation-builders";',
-    'import { redirect } from "next/navigation";',
+    'import { redirect, useRouter } from "next/navigation";',
     'import { NextResponse as NR } from "next/server";',
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
     'redirect(buildTarget());',
     'function localTarget() { return buildTarget(); }',
     'redirect(localTarget());',
     'NR.redirect(new URL(navBuilders.buildTarget(), request.url), 303);',
     'NR.redirect(defaultBuilder(), 303);',
+    'navigate(router, "/earn");',
+    'navigate(router.push, "/wallet");',
     'redirect(getRouteNavigationHref("server", buildTarget()));',
     'NR.redirect(new URL(getRouteNavigationHref("server", navBuilders.buildTarget()), request.url), 303);',
   ].join("\n");
@@ -1459,10 +1477,152 @@ function auditImperativeNavigation(source, path) {
     return acc;
   }, {});
   if (
-    violations.length !== 4
+    violations.length !== 6
     || counts["cross-module-destination"] !== 4
+    || counts["cross-module-wrapper"] !== 2
   ) {
     throw new Error("Cross-module navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+function auditNavigationSideEffectBoundary(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const violations = [];
+  const redirectBindings = new Set([
+    ...importedBindingNames(sourceFile, "next/navigation", "redirect"),
+    ...importedBindingNames(sourceFile, "next/navigation", "permanentRedirect"),
+  ]);
+  const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
+  const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
+
+  function sideEffectPropertyName(expression) {
+    if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
+    if (
+      ts.isElementAccessExpression(expression)
+      && expression.argumentExpression
+      && ts.isStringLiteralLike(expression.argumentExpression)
+    ) return expression.argumentExpression.text;
+    return null;
+  }
+
+  function sideEffectPropertyOwner(expression) {
+    if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+      return expression.expression;
+    }
+    return null;
+  }
+
+  function report(node, kind) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      targets: [],
+    });
+  }
+
+  function browserOwnerText(expression) {
+    if (!expression) return "";
+    return expression.getText(sourceFile);
+  }
+
+  function visit(node) {
+    if (ts.isCallExpression(node)) {
+      const expression = node.expression;
+
+      if (
+        ts.isIdentifier(expression)
+        && (redirectBindings.has(expression.text) || useRouterBindings.has(expression.text))
+      ) {
+        report(node, redirectBindings.has(expression.text) ? "server-navigation" : "router-capability");
+      }
+
+      if (
+        (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      ) {
+        const owner = sideEffectPropertyOwner(expression);
+        const method = sideEffectPropertyName(expression);
+        const ownerText = browserOwnerText(owner);
+
+        if (
+          owner
+          && ts.isIdentifier(owner)
+          && nextResponseBindings.has(owner.text)
+          && method === "redirect"
+        ) {
+          report(node, "route-handler-navigation");
+        }
+
+        if (
+          (ownerText === "window.location" || ownerText === "location")
+          && (method === "assign" || method === "replace")
+        ) {
+          report(node, "browser-navigation");
+        }
+
+        if (
+          (ownerText === "window.history" || ownerText === "history")
+          && (method === "pushState" || method === "replaceState")
+        ) {
+          report(node, "history-navigation");
+        }
+
+        if (ownerText === "window" && method === "open") {
+          report(node, "browser-window-navigation");
+        }
+      }
+    }
+
+    if (
+      ts.isBinaryExpression(node)
+      && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+    ) {
+      const leftText = node.left.getText(sourceFile);
+      if (
+        leftText === "window.location"
+        || leftText === "location.href"
+        || leftText === "window.location.href"
+      ) {
+        report(node, "browser-navigation");
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { redirect, useRouter } from "next/navigation";',
+    'import { NextResponse } from "next/server";',
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'export function hiddenRedirect(target) { redirect(target); }',
+    'export function hiddenRouter() { return useRouter(); }',
+    'export function hiddenResponse(target) { return NextResponse.redirect(target); }',
+    'export function hiddenBrowser(target) { window.location.assign(target); }',
+    'export function pureHref(target) { return getRouteNavigationHref("lib", target); }',
+  ].join("\n");
+  const violations = auditNavigationSideEffectBoundary(
+    selfTest,
+    "lib/navigation-side-effect.self-test.ts",
+  );
+  const kinds = violations.map((violation) => violation.kind).sort();
+  if (
+    violations.length !== 4
+    || kinds.join(",") !== "browser-navigation,route-handler-navigation,router-capability,server-navigation"
+  ) {
+    throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
 }
 
@@ -1513,7 +1673,22 @@ if (nativeAnchorViolations.length > 0) {
   );
 }
 
-const imperativeNavigationViolations = ["app", "components"]
+const hiddenNavigationModuleViolations = ["lib", "providers"]
+  .flatMap(collectTypeScriptFiles)
+  .flatMap((path) => auditNavigationSideEffectBoundary(read(path), path));
+if (hiddenNavigationModuleViolations.length > 0) {
+  throw new Error(
+    "Navigation side-effect boundary failed:\n"
+    + hiddenNavigationModuleViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+      )
+      .join("\n"),
+  );
+}
+
+const imperativeNavigationViolations = ["app", "components", "lib", "providers"]
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
 if (imperativeNavigationViolations.length > 0) {
