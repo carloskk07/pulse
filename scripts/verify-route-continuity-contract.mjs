@@ -2190,6 +2190,83 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isKnownNavigationCapabilityValue(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+
+    return Boolean(
+      isRouterObject(resolved, env)
+      || isRouterMethodReference(resolved, env)
+      || isRouterTraversalReference(resolved, env)
+      || isBrowserLocationObject(resolved, env)
+      || isBrowserLocationMethodReference(resolved, env)
+      || isBrowserLocationReloadReference(resolved, env)
+      || isBrowserHistoryObject(resolved, env)
+      || isBrowserHistoryMethodReference(resolved, env)
+      || isBrowserHistoryTraversalReference(resolved, env)
+      || isBrowserNavigationApiObject(resolved, env)
+      || isBrowserNavigationApiMethodReference(resolved, env)
+      || isBrowserNavigationTraversalReference(resolved, env)
+      || isBrowserWindowOpenReference(resolved, env)
+      || isHeadersObject(resolved, env)
+      || isLocationHeaderMutationReference(resolved, env)
+      || domNavigationElementKind(resolved, env)
+      || isDomSetAttributeReference(resolved, env)
+      || isNativeDomSetAttributeReference(resolved, env)
+      || nativeDomSetterInfo(resolved, env)
+      || isDocumentHtmlWriteReference(resolved, env)
+      || isInsertAdjacentHtmlReference(resolved, env)
+      || isServerRedirectReference(resolved, env)
+      || isResponseRedirectReference(resolved, env)
+      || isBoundNavigationCapability(resolved, env)
+      || (
+        ts.isIdentifier(resolved)
+        && nextResponseBindings.has(resolved.text)
+      )
+      || isWebResponseObject(resolved, env)
+    );
+  }
+
+  function proxyFactoryKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+
+    if (ts.isIdentifier(resolved) && resolved.text === "Proxy") {
+      return "constructor";
+    }
+    if (resolved.getText(sourceFile) === "globalThis.Proxy") {
+      return "constructor";
+    }
+
+    if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
+      const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+      if (
+        propertyName(resolved) === "revocable"
+        && (ownerText === "Proxy" || ownerText === "globalThis.Proxy")
+      ) {
+        return "revocable";
+      }
+    }
+
+    return null;
+  }
+
+  function proxyNavigationCapabilityTarget(node, env = new Map()) {
+    if (ts.isNewExpression(node)) {
+      if (proxyFactoryKind(node.expression, env) !== "constructor") return null;
+      const target = node.arguments?.[0];
+      return target && isKnownNavigationCapabilityValue(target, env) ? target : null;
+    }
+
+    if (ts.isCallExpression(node)) {
+      if (proxyFactoryKind(node.expression, env) !== "revocable") return null;
+      const target = node.arguments[0];
+      return target && isKnownNavigationCapabilityValue(target, env) ? target : null;
+    }
+
+    return null;
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
@@ -2484,6 +2561,10 @@ function auditImperativeNavigation(source, path) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
+
+      if (proxyNavigationCapabilityTarget(node, env)) {
+        report(node, "proxy-navigation-capability");
+      }
 
       const indirectInvocation = indirectInvocationInfo(node, env);
       if (indirectInvocation) {
@@ -3004,6 +3085,10 @@ function auditImperativeNavigation(source, path) {
     }
 
     if (ts.isNewExpression(node)) {
+      if (proxyNavigationCapabilityTarget(node, env)) {
+        report(node, "proxy-navigation-capability");
+      }
+
       const headerTargets = headersConstructorLocationTargets(node, env);
       for (const locationTarget of headerTargets) {
         const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
