@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "@/components/icons";
+import { getRouteNavigationHref } from "@/lib/route-semantics";
 
 export function CashbackStartButton({
   opportunityId,
@@ -10,7 +11,7 @@ export function CashbackStartButton({
   label?: string;
 }) {
   return (
-    <form action="/api/cashback/start" method="post" className={compact ? "cashback-start-form compact" : "cashback-start-form"}>
+    <form action={getRouteNavigationHref("cashback", "/api/cashback/start")} method="post" className={compact ? "cashback-start-form compact" : "cashback-start-form"}>
       <input type="hidden" name="opportunity" value={opportunityId} />
       <button className={compact ? "inline-action" : "button button-light direct-primary-action"} type="submit">
         {label} <ArrowUpRight />
