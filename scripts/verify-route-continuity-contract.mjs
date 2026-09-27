@@ -71,9 +71,10 @@ requireText("lib/route-semantics.ts", [
 
 requireText("components/app-shell.tsx", [
   'import { ViewTransition } from "react";',
-  'import { getProductRouteHref, getRouteLinkProps, getRouteSemanticDimension } from "@/lib/route-semantics";',
+  'import { getProductRouteHref, getRouteLinkProps, getRouteNavigationHref, getRouteSemanticDimension } from "@/lib/route-semantics";',
   'href: getProductRouteHref("home")',
   "getRouteLinkProps(active, href)",
+  'getRouteNavigationHref("admin", href)',
   "const routeSemanticDimension = getRouteSemanticDimension(active);",
   'data-route-dimension={routeSemanticDimension ?? undefined}',
   'name="pc-route-topbar"',
