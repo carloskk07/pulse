@@ -4874,6 +4874,46 @@ function auditImperativeNavigation(source, path) {
 {
   const selfTest = [
     'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'top.location.assign("/dashboard");',
+    'parent.location.href = "/wallet";',
+    'self.location = getRouteNavigationHref("context", "/dashboard");',
+    'opener.location.replace("https://example.com/raw");',
+    'opener.location.replace(getExternalNavigationHref("https://example.com/safe"));',
+    'frames[0].location.assign("/earn");',
+    'window.frames[1].location = "/progress";',
+    'const ctx = parent;',
+    'const loc = ctx.location;',
+    'loc.assign("/invite");',
+    'iframe.contentWindow.location.assign("/dashboard");',
+    'top.history.pushState({}, "", "/wallet");',
+    'parent.history.replaceState({}, "", getRouteNavigationHref("context", "/wallet"));',
+    'parent.navigation.navigate("/earn");',
+    'parent.navigation.navigate(getRouteNavigationHref("context", "/earn"));',
+    'top.open("https://example.com/raw", "_blank");',
+    'top.open(getExternalNavigationHref("https://example.com/safe"), "_blank");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "browsing-context-navigation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 10
+    || counts["browser-location"] !== 7
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+    || counts["browser-window-open"] !== 1
+  ) {
+    throw new Error("Browsing context navigation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
     'history.pushState({}, "", "/earn");',
     'window.history.replaceState({}, "", getRouteNavigationHref("history", "/earn"));',
     'const hist = window.history;',
