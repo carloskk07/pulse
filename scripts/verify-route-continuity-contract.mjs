@@ -654,16 +654,6 @@ function authorityCall(expression, bindings) {
   );
 }
 
-function firstUrlArgument(expression) {
-  if (
-    expression
-    && ts.isNewExpression(expression)
-    && ts.isIdentifier(expression.expression)
-    && expression.expression.text === "URL"
-  ) return expression.arguments?.[0] ?? null;
-  return null;
-}
-
 function auditImperativeNavigation(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
