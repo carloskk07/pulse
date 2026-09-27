@@ -1884,6 +1884,12 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function reflectiveObjectPropertyValue(property) {
+    if (ts.isPropertyAssignment(property)) return property.initializer;
+    if (ts.isShorthandPropertyAssignment(property)) return property.name;
+    return null;
+  }
+
   function reflectiveCalleeName(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!(resolved && (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)))) {
@@ -2010,6 +2016,109 @@ function auditImperativeNavigation(source, path) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
+
+      const reflectiveCall = reflectiveCalleeName(expression, env);
+      const reflectiveTargetKind = reflectiveCall
+        ? domNavigationElementKind(firstArg, env)
+        : null;
+
+      if (reflectiveCall && reflectiveTargetKind) {
+        if (reflectiveCall === "Object.assign") {
+          for (const source of node.arguments.slice(1)) {
+            const resolvedSource = resolveDataExpression(source, env);
+            if (!resolvedSource || !ts.isObjectLiteralExpression(resolvedSource)) {
+              report(node, "dom-reflective-dynamic");
+              continue;
+            }
+            for (const property of resolvedSource.properties) {
+              if (ts.isSpreadAssignment(property)) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              const propertyNameText = staticObjectPropertyName(property, env);
+              const value = reflectiveObjectPropertyValue(property);
+              if (!propertyNameText) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              reportReflectiveDomProperty(
+                node,
+                reflectiveTargetKind,
+                propertyNameText,
+                value,
+                env,
+                callStack,
+              );
+            }
+          }
+        }
+
+        if (reflectiveCall === "Reflect.set") {
+          const propertyExpression = resolveDataExpression(node.arguments[1], env);
+          const propertyNameText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+            ? propertyExpression.text
+            : null;
+          if (!propertyNameText) {
+            report(node, "dom-reflective-dynamic");
+          } else {
+            reportReflectiveDomProperty(
+              node,
+              reflectiveTargetKind,
+              propertyNameText,
+              node.arguments[2],
+              env,
+              callStack,
+            );
+          }
+        }
+
+        if (reflectiveCall === "Object.defineProperty") {
+          const propertyExpression = resolveDataExpression(node.arguments[1], env);
+          const propertyNameText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+            ? propertyExpression.text
+            : null;
+          if (!propertyNameText) {
+            report(node, "dom-reflective-dynamic");
+          } else {
+            reportReflectiveDomProperty(
+              node,
+              reflectiveTargetKind,
+              propertyNameText,
+              descriptorNavigationValue(node.arguments[2], env),
+              env,
+              callStack,
+            );
+          }
+        }
+
+        if (reflectiveCall === "Object.defineProperties") {
+          const descriptors = resolveDataExpression(node.arguments[1], env);
+          if (!descriptors || !ts.isObjectLiteralExpression(descriptors)) {
+            report(node, "dom-reflective-dynamic");
+          } else {
+            for (const property of descriptors.properties) {
+              if (ts.isSpreadAssignment(property)) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              const propertyNameText = staticObjectPropertyName(property, env);
+              const descriptor = reflectiveObjectPropertyValue(property);
+              if (!propertyNameText) {
+                report(node, "dom-reflective-dynamic");
+                continue;
+              }
+              reportReflectiveDomProperty(
+                node,
+                reflectiveTargetKind,
+                propertyNameText,
+                descriptorNavigationValue(descriptor, env),
+                env,
+                callStack,
+              );
+            }
+          }
+        }
+      }
 
       if (isDomSetAttributeReference(expression, env)) {
         const kind = domSetAttributeElementKind(expression, env);
