@@ -2496,6 +2496,23 @@ function auditImperativeNavigation(source, path, options = {}) {
     const { method } = binding;
     if (method === "add") return true;
 
+    if (method === "remove") {
+      const protective = [];
+      for (const argument of args) {
+        const resolved = resolveDataExpression(argument, env);
+        if (!resolved || !ts.isStringLiteralLike(resolved)) {
+          report(node, "opener-protection-rel-dynamic");
+          return true;
+        }
+        const token = resolved.text.trim().toLowerCase();
+        if (token === "noopener" || token === "noreferrer") protective.push(token);
+      }
+      if (protective.length > 0) {
+        report(node, "opener-protection-rel-removal", protective);
+      }
+      return true;
+    }
+
     const first = resolveDataExpression(args[0], env);
     if (!first || !ts.isStringLiteralLike(first)) {
       report(node, "opener-protection-rel-dynamic");
@@ -2504,17 +2521,35 @@ function auditImperativeNavigation(source, path, options = {}) {
     const firstToken = first.text.trim().toLowerCase();
     const protective = firstToken === "noopener" || firstToken === "noreferrer";
 
-    if (method === "remove" || method === "toggle") {
-      if (protective) report(node, "opener-protection-rel-removal", [firstToken]);
-      return true;
-    }
-
-    if (method === "replace") {
+    if (method === "toggle" || method === "replace") {
       if (protective) report(node, "opener-protection-rel-removal", [firstToken]);
       return true;
     }
 
     return false;
+  }
+
+  function reportRemoveAttributeOpenerProtection(
+    node,
+    kind,
+    attributeExpression,
+    env = new Map(),
+  ) {
+    if (
+      !enforceOpenerProtectionMutationBoundary
+      || (kind !== "a" && kind !== "area")
+    ) return false;
+
+    const attribute = resolveDataExpression(attributeExpression, env);
+    if (!attribute || !ts.isStringLiteralLike(attribute)) {
+      report(node, "opener-protection-rel-dynamic");
+      return true;
+    }
+
+    if (attribute.text.trim().toLowerCase() === "rel") {
+      report(node, "opener-protection-rel-removal", ["rel"]);
+    }
+    return true;
   }
 
   function domTargetContextPropertyForKind(kind, property) {
@@ -3607,6 +3642,75 @@ function auditImperativeNavigation(source, path, options = {}) {
       || ownerText === "HTMLElement.prototype"
       || ownerText === "globalThis.HTMLElement.prototype"
       || Boolean(nativeDomPrototypeKind(owner, env))
+    );
+  }
+
+  function isNativeDomRemoveAttributeReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "removeAttribute"
+    ) return false;
+
+    const owner = propertyOwner(resolved);
+    if (!owner) return false;
+    const ownerText = owner.getText(sourceFile);
+    return (
+      ownerText === "Element.prototype"
+      || ownerText === "globalThis.Element.prototype"
+      || ownerText === "HTMLElement.prototype"
+      || ownerText === "globalThis.HTMLElement.prototype"
+      || Boolean(nativeDomPrototypeKind(owner, env))
+    );
+  }
+
+  function nativeDomRelListMutationInfo(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+    ) return null;
+
+    const method = propertyName(resolved);
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    if (
+      ownerText !== "DOMTokenList.prototype"
+      && ownerText !== "globalThis.DOMTokenList.prototype"
+    ) return null;
+
+    return (method === "add" || method === "remove" || method === "toggle" || method === "replace")
+      ? { method }
+      : null;
+  }
+
+  function nativeDomRelListValueSetter(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "set"
+    ) return false;
+
+    const descriptorCall = propertyOwner(resolved);
+    if (!descriptorCall || !ts.isCallExpression(descriptorCall)) return false;
+    const callee = resolveDataExpression(descriptorCall.expression, env);
+    if (
+      !callee
+      || !(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+      || propertyName(callee) !== "getOwnPropertyDescriptor"
+    ) return false;
+
+    const descriptorOwner = propertyOwner(callee)?.getText(sourceFile);
+    if (descriptorOwner !== "Object" && descriptorOwner !== "globalThis.Object") return false;
+    const prototypeText = resolveDataExpression(descriptorCall.arguments[0], env)?.getText(sourceFile);
+    const propertyExpression = resolveDataExpression(descriptorCall.arguments[1], env);
+
+    return (
+      (prototypeText === "DOMTokenList.prototype" || prototypeText === "globalThis.DOMTokenList.prototype")
+      && propertyExpression
+      && ts.isStringLiteralLike(propertyExpression)
+      && propertyExpression.text.toLowerCase() === "value"
     );
   }
 
