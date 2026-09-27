@@ -936,7 +936,7 @@ function auditImperativeNavigation(source, path) {
   const headerVariables = new Set();
   const headerMutationMethodBindings = new Set();
   const domNavigationElementKinds = new Map();
-  const domSetAttributeBindings = new Set();
+  const domSetAttributeBindings = new Map();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -975,6 +975,12 @@ function auditImperativeNavigation(source, path) {
   function addBinding(set, value) {
     if (!value || set.has(value)) return false;
     set.add(value);
+    return true;
+  }
+
+  function addKindBinding(map, value, kind) {
+    if (!value || !kind || map.get(value) === kind) return false;
+    map.set(value, kind);
     return true;
   }
 
@@ -1156,15 +1162,23 @@ function auditImperativeNavigation(source, path) {
       : null;
   }
 
-  function isDomSetAttributeReference(expression, env = new Map()) {
+  function domSetAttributeElementKind(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
-    if (!resolved) return false;
-    if (ts.isIdentifier(resolved) && domSetAttributeBindings.has(resolved.text)) return true;
-    return Boolean(
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && domSetAttributeBindings.has(resolved.text)) {
+      return domSetAttributeBindings.get(resolved.text);
+    }
+    if (
       (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
       && propertyName(resolved) === "setAttribute"
-      && domNavigationElementKind(propertyOwner(resolved), env)
-    );
+    ) {
+      return domNavigationElementKind(propertyOwner(resolved), env);
+    }
+    return null;
+  }
+
+  function isDomSetAttributeReference(expression, env = new Map()) {
+    return Boolean(domSetAttributeElementKind(expression, env));
   }
 
   function domNavigationPropertyForKind(kind, property) {
@@ -1280,8 +1294,9 @@ function auditImperativeNavigation(source, path) {
         if (isHeadersObject(owner) && (method === "set" || method === "append")) {
           changed = addBinding(headerMutationMethodBindings, local) || changed;
         }
-        if (domNavigationElementKind(owner) && method === "setAttribute") {
-          changed = addBinding(domSetAttributeBindings, local) || changed;
+        const domOwnerKind = domNavigationElementKind(owner);
+        if (domOwnerKind && method === "setAttribute") {
+          changed = addKindBinding(domSetAttributeBindings, local, domOwnerKind) || changed;
         }
       }
 
@@ -1326,7 +1341,11 @@ function auditImperativeNavigation(source, path) {
           changed = addBinding(headerMutationMethodBindings, local) || changed;
         }
         if (domSetAttributeBindings.has(initializer.text)) {
-          changed = addBinding(domSetAttributeBindings, local) || changed;
+          changed = addKindBinding(
+            domSetAttributeBindings,
+            local,
+            domSetAttributeBindings.get(initializer.text),
+          ) || changed;
         }
       }
     }
@@ -1386,7 +1405,11 @@ function auditImperativeNavigation(source, path) {
           changed = addBinding(headerMutationMethodBindings, localName) || changed;
         }
         if (fromDomNavigationElement && sourceName === "setAttribute") {
-          changed = addBinding(domSetAttributeBindings, localName) || changed;
+          changed = addKindBinding(
+            domSetAttributeBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
         }
       }
     }
