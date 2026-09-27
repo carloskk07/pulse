@@ -1248,6 +1248,42 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function syntheticActivationEventName(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isNewExpression(resolved)) return null;
+    const constructorText = resolved.expression.getText(sourceFile);
+    if (
+      constructorText !== "Event"
+      && constructorText !== "SubmitEvent"
+      && constructorText !== "MouseEvent"
+      && constructorText !== "PointerEvent"
+    ) return null;
+
+    const eventName = resolveDataExpression(resolved.arguments?.[0], env);
+    if (!eventName || !ts.isStringLiteralLike(eventName)) return null;
+    const normalized = eventName.text.toLowerCase();
+    return normalized === "submit" || normalized === "click" ? normalized : null;
+  }
+
+  function syntheticActivationTargetKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "dispatchEvent"
+    ) return null;
+    return domNavigationElementKind(propertyOwner(resolved), env);
+  }
+
+  function isUnprovenRequestSubmitReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return Boolean(
+      resolved
+      && (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "requestSubmit"
+    );
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -2106,6 +2142,36 @@ function auditImperativeNavigation(source, path) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
+      const activation = domActivationBinding(expression, env);
+      if (activation) {
+        if (activation.kind === "form") {
+          report(node, "dom-form-submit");
+        } else if (activation.method === "click") {
+          report(node, "dom-click-activation");
+        }
+      } else if (isUnprovenRequestSubmitReference(expression, env)) {
+        report(node, "dom-form-submit");
+      }
+
+      if (isNativeFormSubmitPrototypeCall(expression, env)) {
+        report(node, "dom-form-submit");
+      }
+
+      const syntheticTargetKind = syntheticActivationTargetKind(expression, env);
+      const syntheticEventName = syntheticActivationEventName(firstArg, env);
+      if (
+        syntheticTargetKind
+        && (
+          (syntheticEventName === "submit" && syntheticTargetKind === "form")
+          || (
+            syntheticEventName === "click"
+            && ["a", "area", "button", "input"].includes(syntheticTargetKind)
+          )
+        )
+      ) {
+        report(node, "dom-synthetic-activation");
+      }
+
       const reflectiveCall = reflectiveCalleeName(expression, env);
       const reflectiveTargetKind = reflectiveCall
         ? domNavigationElementKind(firstArg, env)
@@ -2382,6 +2448,7 @@ function auditImperativeNavigation(source, path) {
           || isLocationHeaderMutationReference(argument, env)
           || domNavigationElementKind(argument, env)
           || isDomSetAttributeReference(argument, env)
+          || domActivationBinding(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
         ))
