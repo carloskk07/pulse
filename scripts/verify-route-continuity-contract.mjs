@@ -1267,6 +1267,7 @@ function auditImperativeNavigation(source, path) {
   const domCollectionKinds = new Map();
   const domSetAttributeBindings = new Map();
   const domActivationMethodBindings = new Map();
+  const domVerifiedReplayForms = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -1752,6 +1753,47 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  const VERIFIED_REPLAY_SELECTOR = 'form[data-route-submit-authority="verified-replay"]';
+
+  function isVerifiedReplayFormSource(expression, env = new Map(), seen = new Set()) {
+    if (!expression) return false;
+
+    if (ts.isIdentifier(expression) && domVerifiedReplayForms.has(expression.text)) {
+      return true;
+    }
+    if (
+      ts.isAsExpression(expression)
+      || ts.isTypeAssertionExpression(expression)
+      || ts.isNonNullExpression(expression)
+    ) {
+      return isVerifiedReplayFormSource(expression.expression, env, seen);
+    }
+
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (resolved !== expression) {
+      const key = resolved.pos + ":" + resolved.end;
+      if (seen.has(key)) return false;
+      const nextSeen = new Set(seen);
+      nextSeen.add(key);
+      if (isVerifiedReplayFormSource(resolved, env, nextSeen)) return true;
+    }
+
+    if (!ts.isCallExpression(resolved)) return false;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return false;
+    }
+    const method = propertyName(callee);
+    if (method !== "closest" && method !== "querySelector") return false;
+    const selector = resolveDataExpression(resolved.arguments[0], env);
+    return Boolean(
+      selector
+      && ts.isStringLiteralLike(selector)
+      && selector.text === VERIFIED_REPLAY_SELECTOR
+    );
+  }
+
   function domActivationMethodForKind(kind, method) {
     if (kind === "form" && (method === "submit" || method === "requestSubmit")) {
       return method;
@@ -1778,14 +1820,29 @@ function auditImperativeNavigation(source, path) {
       || ts.isElementAccessExpression(resolved)
     ) {
       const method = propertyName(resolved);
-      const ownerKind = domNavigationElementKind(propertyOwner(resolved), env);
+      const owner = propertyOwner(resolved);
+      const ownerKind = domNavigationElementKind(owner, env);
       const activationMethod = domActivationMethodForKind(ownerKind, method);
-      if (activationMethod) return { kind: ownerKind, method: activationMethod };
+      if (activationMethod) {
+        return {
+          kind: ownerKind,
+          method: activationMethod,
+          verifiedReplay: (
+            activationMethod === "requestSubmit"
+            && isVerifiedReplayFormSource(owner, env)
+          ),
+        };
+      }
 
       // requestSubmit is unique to forms. Treat an untyped owner as unresolved
       // form capability instead of allowing it to bypass typed/ref tracking.
       if (method === "requestSubmit") {
-        return { kind: ownerKind ?? null, method, unresolved: !ownerKind };
+        return {
+          kind: ownerKind ?? null,
+          method,
+          unresolved: !ownerKind,
+          verifiedReplay: isVerifiedReplayFormSource(owner, env),
+        };
       }
     }
 
@@ -1927,6 +1984,11 @@ function auditImperativeNavigation(source, path) {
         changed = true;
       }
 
+      if (isVerifiedReplayFormSource(initializer) && !domVerifiedReplayForms.has(local)) {
+        domVerifiedReplayForms.add(local);
+        changed = true;
+      }
+
       if (initializer && (ts.isPropertyAccessExpression(initializer) || ts.isElementAccessExpression(initializer))) {
         const owner = propertyOwner(initializer);
         const method = propertyName(initializer);
@@ -2038,6 +2100,9 @@ function auditImperativeNavigation(source, path) {
             local,
             domSetAttributeBindings.get(initializer.text),
           ) || changed;
+        }
+        if (domVerifiedReplayForms.has(initializer.text)) {
+          changed = addBinding(domVerifiedReplayForms, local) || changed;
         }
         if (domActivationMethodBindings.has(initializer.text)) {
           const binding = domActivationMethodBindings.get(initializer.text);
@@ -3476,7 +3541,12 @@ function auditImperativeNavigation(source, path) {
       const directActivation = domActivationBinding(expression, env);
       if (directActivation) {
         if (directActivation.method === "submit" || directActivation.method === "requestSubmit") {
-          report(node, "dom-form-submit");
+          const verifiedReplay = (
+            directActivation.method === "requestSubmit"
+            && directActivation.verifiedReplay === true
+            && node.arguments.length === 0
+          );
+          if (!verifiedReplay) report(node, "dom-form-submit");
         } else if (directActivation.method === "click") {
           report(node, "dom-click-activation");
         }
