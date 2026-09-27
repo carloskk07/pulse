@@ -1740,6 +1740,23 @@ function auditImperativeNavigation(source, path) {
       return true;
     }
 
+    if (ts.isElementAccessExpression(resolved)) {
+      const index = resolveDataExpression(resolved.argumentExpression, env);
+      const numericIndex = Boolean(
+        index
+        && (
+          ts.isNumericLiteral(index)
+          || (ts.isStringLiteralLike(index) && /^\d+$/.test(index.text))
+        )
+      );
+      if (
+        numericIndex
+        && isBrowsingContextObject(resolved.expression, env, seen)
+      ) {
+        return true;
+      }
+    }
+
     if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
       const name = propertyName(resolved);
       if (name === "contentWindow") return true;
@@ -5186,7 +5203,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     ) return true;
 
     if (
-      /^(?:(?:window|globalThis|self|top|parent|opener)\.)?frames\[[^\]]+\]$/.test(text)
+      /^(?:(?:window|globalThis|self|top|parent|opener)\.)?frames\[[^\]]+\](?:\[\s*\d+\s*\])*$/.test(text)
+    ) return true;
+
+    if (
+      /^(?:window|globalThis|self|top|parent|opener)(?:\.(?:self|top|parent|opener))*(?:\[\s*\d+\s*\])+$/.test(text)
     ) return true;
 
     return /\.contentWindow$/.test(text);
