@@ -6026,6 +6026,45 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const dynamicTransport = chooseTransport();',
+    'const form = document.createElement("form");',
+    'form.method = "get";',
+    'form.method = "post";',
+    'form.enctype = "text/plain";',
+    'form.enctype = "multipart/form-data";',
+    'form.encoding = "text/plain";',
+    'const button = document.createElement("button");',
+    'button.formMethod = dynamicTransport;',
+    'button.formMethod = "get";',
+    'const input = document.createElement("input");',
+    'input.formEnctype = "text/plain";',
+    'form.setAttribute("method", "get");',
+    'Object.assign(form, { method: "get" });',
+    'Reflect.set(form, "enctype", "text/plain");',
+    'Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "method").set.call(form, "get");',
+    'Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "enctype").set.call(form, "multipart/form-data");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-form-submission-transport.self-test.ts",
+    { formSubmissionTransportPolicy: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 10
+    || counts["programmatic-form-method"] !== 5
+    || counts["programmatic-form-enctype"] !== 4
+    || counts["programmatic-form-transport-dynamic"] !== 1
+  ) {
+    throw new Error("Programmatic form submission transport policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getExternalNavigationHref } from "@/lib/route-semantics";',
     'const safeExternal = getExternalNavigationHref("https://example.com/safe");',
     'const dynamicTarget = chooseTarget();',
@@ -6589,7 +6628,10 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap((path) => auditImperativeNavigation(
     read(path),
     path,
-    { programmaticTargetContextPolicy: true },
+    {
+      programmaticTargetContextPolicy: true,
+      formSubmissionTransportPolicy: true,
+    },
   ));
 
 const dynamicCodeExecutionViolations = allImperativeNavigationViolations
@@ -6630,6 +6672,21 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormSubmissionTransportViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("programmatic-form-"));
+if (programmaticFormSubmissionTransportViolations.length > 0) {
+  throw new Error(
+    "Programmatic form submission transport policy failed:\n"
+    + programmaticFormSubmissionTransportViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
@@ -6683,6 +6740,7 @@ if (domNavigationMutationViolations.length > 0) {
 const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
     !violation.kind.startsWith("programmatic-target-")
+    && !violation.kind.startsWith("programmatic-form-")
     && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
