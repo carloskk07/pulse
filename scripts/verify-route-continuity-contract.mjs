@@ -665,7 +665,10 @@ function auditImperativeNavigation(source, path) {
   const violations = [];
   const reportedViolations = new Set();
   const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
-  const redirectBindings = importedBindingNames(sourceFile, "next/navigation", "redirect");
+  const redirectBindings = new Set([
+    ...importedBindingNames(sourceFile, "next/navigation", "redirect"),
+    ...importedBindingNames(sourceFile, "next/navigation", "permanentRedirect"),
+  ]);
   const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
   const navigationBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getRouteNavigationHref");
   const productHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getProductRouteHref");
@@ -705,6 +708,7 @@ function auditImperativeNavigation(source, path) {
   const routerVariables = new Set();
   const routerMethodBindings = new Set();
   const responseRedirectBindings = new Set();
+  const webResponseRedirectBindings = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
   const browserHistoryVariables = new Set();
@@ -875,6 +879,13 @@ function auditImperativeNavigation(source, path) {
     return text === "window" || text === "globalThis";
   }
 
+  function isWebResponseObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    const text = resolved.getText(sourceFile);
+    return text === "Response" || text === "globalThis.Response";
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -935,6 +946,9 @@ function auditImperativeNavigation(source, path) {
         ) {
           changed = addBinding(responseRedirectBindings, local) || changed;
         }
+        if (isWebResponseObject(owner) && method === "redirect") {
+          changed = addBinding(webResponseRedirectBindings, local) || changed;
+        }
         if (isBrowserLocationObject(owner) && (method === "assign" || method === "replace")) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
@@ -956,6 +970,9 @@ function auditImperativeNavigation(source, path) {
         if (responseRedirectBindings.has(initializer.text)) {
           changed = addBinding(responseRedirectBindings, local) || changed;
         }
+        if (webResponseRedirectBindings.has(initializer.text)) {
+          changed = addBinding(webResponseRedirectBindings, local) || changed;
+        }
         if (browserLocationMethodBindings.has(initializer.text)) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
@@ -974,6 +991,7 @@ function auditImperativeNavigation(source, path) {
     if (ts.isObjectBindingPattern(node.name) && initializer) {
       const fromRouter = isRouterObject(initializer);
       const fromResponse = ts.isIdentifier(initializer) && nextResponseBindings.has(initializer.text);
+      const fromWebResponse = isWebResponseObject(initializer);
       const fromLocation = isBrowserLocationObject(initializer);
       const fromHistory = isBrowserHistoryObject(initializer);
       const fromNavigationApi = isBrowserNavigationApiObject(initializer);
@@ -988,6 +1006,9 @@ function auditImperativeNavigation(source, path) {
         }
         if (fromResponse && sourceName === "redirect") {
           changed = addBinding(responseRedirectBindings, localName) || changed;
+        }
+        if (fromWebResponse && sourceName === "redirect") {
+          changed = addBinding(webResponseRedirectBindings, localName) || changed;
         }
         if (fromLocation && (sourceName === "assign" || sourceName === "replace")) {
           changed = addBinding(browserLocationMethodBindings, localName) || changed;
@@ -1180,13 +1201,24 @@ function auditImperativeNavigation(source, path) {
   function isResponseRedirectReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
-    if (ts.isIdentifier(resolved) && responseRedirectBindings.has(resolved.text)) return true;
+    if (
+      ts.isIdentifier(resolved)
+      && (
+        responseRedirectBindings.has(resolved.text)
+        || webResponseRedirectBindings.has(resolved.text)
+      )
+    ) return true;
+
+    if (!(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))) {
+      return false;
+    }
+    if (propertyName(resolved) !== "redirect") return false;
+    const owner = propertyOwner(resolved);
+    if (!owner) return false;
+    if (isWebResponseObject(owner, env)) return true;
     return Boolean(
-      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
-      && propertyName(resolved) === "redirect"
-      && propertyOwner(resolved)
-      && ts.isIdentifier(propertyOwner(resolved))
-      && nextResponseBindings.has(propertyOwner(resolved).text)
+      ts.isIdentifier(owner)
+      && nextResponseBindings.has(owner.text)
     );
   }
 
@@ -1339,6 +1371,52 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
+  function propertyAssignmentByName(objectLiteral, name) {
+    if (!objectLiteral || !ts.isObjectLiteralExpression(objectLiteral)) return null;
+    for (const property of objectLiteral.properties) {
+      if (!ts.isPropertyAssignment(property)) continue;
+      const propertyNameNode = property.name;
+      let propertyText = null;
+      if (ts.isIdentifier(propertyNameNode)) propertyText = propertyNameNode.text;
+      else if (ts.isStringLiteralLike(propertyNameNode)) propertyText = propertyNameNode.text;
+      if (propertyText?.toLowerCase() === name.toLowerCase()) return property.initializer;
+    }
+    return null;
+  }
+
+  function numericLiteralValue(expression) {
+    const resolved = resolveDataExpression(expression);
+    if (resolved && ts.isNumericLiteral(resolved)) return Number(resolved.text);
+    return null;
+  }
+
+  function responseConstructorLocationTarget(node, env = new Map()) {
+    if (!ts.isNewExpression(node)) return null;
+    const constructor = resolveDataExpression(node.expression, env);
+    if (!constructor) return null;
+
+    const constructorIsWebResponse = isWebResponseObject(constructor, env);
+    const constructorIsNextResponse = (
+      ts.isIdentifier(constructor)
+      && nextResponseBindings.has(constructor.text)
+    );
+    if (!constructorIsWebResponse && !constructorIsNextResponse) return null;
+
+    const init = node.arguments?.[1];
+    const resolvedInit = resolveDataExpression(init, env);
+    if (!resolvedInit || !ts.isObjectLiteralExpression(resolvedInit)) return null;
+
+    const status = numericLiteralValue(propertyAssignmentByName(resolvedInit, "status"));
+    if (status === null || status < 300 || status > 399) return null;
+
+    const headers = resolveDataExpression(
+      propertyAssignmentByName(resolvedInit, "headers"),
+      env,
+    );
+    if (!headers || !ts.isObjectLiteralExpression(headers)) return null;
+    return propertyAssignmentByName(headers, "location");
+  }
+
   function report(node, kind, targets = []) {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
     const uniqueTargets = [...new Set(targets)];
@@ -1463,6 +1541,28 @@ function auditImperativeNavigation(source, path) {
         nextStack.add(definition.key);
         const childEnv = functionEnvironment(definition, node, env);
         visit(definition.body, childEnv, nextStack);
+      }
+    }
+
+    if (ts.isNewExpression(node)) {
+      const locationTarget = responseConstructorLocationTarget(node, env);
+      if (locationTarget) {
+        const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
+          .map(normalizedProductRoute)
+          .filter(Boolean);
+        const authoritative = (
+          authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+        );
+        if (targets.length > 0 && !authoritative) {
+          report(node, "response-location-redirect", targets);
+        } else if (
+          !authoritative
+          && containsUnprovenProjectImportCall(locationTarget, env, callStack)
+        ) {
+          report(node, "cross-module-destination");
+        }
       }
     }
 
@@ -1644,6 +1744,42 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { permanentRedirect } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'permanentRedirect("/dashboard");',
+    'permanentRedirect(getProductRouteHref("home"));',
+    'Response.redirect("/earn", 302);',
+    'globalThis.Response.redirect("/wallet", 307);',
+    'const webRedirect = Response.redirect;',
+    'webRedirect("/progress", 308);',
+    'const { redirect: standardRedirect } = Response;',
+    'standardRedirect("/invite", 302);',
+    'Response.redirect(getRouteNavigationHref("server", "/earn"), 302);',
+    'new Response(null, { status: 302, headers: { Location: "/dashboard" } });',
+    'new NR(null, { status: 307, headers: { location: "/wallet" } });',
+    'new Response(null, { status: 302, headers: { Location: getRouteNavigationHref("server", "/dashboard") } });',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "server-redirect-primitives.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["server-redirect"] !== 1
+    || counts["route-handler-redirect"] !== 4
+    || counts["response-location-redirect"] !== 2
+  ) {
+    throw new Error("Server redirect primitive authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
     'history.pushState({}, "", "/earn");',
     'window.history.replaceState({}, "", getRouteNavigationHref("history", "/earn"));',
@@ -1718,6 +1854,48 @@ function auditNavigationSideEffectBoundary(source, path) {
     return null;
   }
 
+  function sideEffectObjectProperty(objectLiteral, name) {
+    if (!objectLiteral || !ts.isObjectLiteralExpression(objectLiteral)) return null;
+    for (const property of objectLiteral.properties) {
+      if (!ts.isPropertyAssignment(property)) continue;
+      const key = ts.isIdentifier(property.name)
+        ? property.name.text
+        : ts.isStringLiteralLike(property.name)
+          ? property.name.text
+          : null;
+      if (key?.toLowerCase() === name.toLowerCase()) return property.initializer;
+    }
+    return null;
+  }
+
+  function sideEffectRedirectConstructor(node) {
+    if (!ts.isNewExpression(node)) return false;
+    const constructorText = node.expression.getText(sourceFile);
+    const isResponseConstructor = (
+      constructorText === "Response"
+      || constructorText === "globalThis.Response"
+      || (
+        ts.isIdentifier(node.expression)
+        && nextResponseBindings.has(node.expression.text)
+      )
+    );
+    if (!isResponseConstructor) return false;
+
+    const init = node.arguments?.[1];
+    if (!init || !ts.isObjectLiteralExpression(init)) return false;
+    const statusExpression = sideEffectObjectProperty(init, "status");
+    if (!statusExpression || !ts.isNumericLiteral(statusExpression)) return false;
+    const status = Number(statusExpression.text);
+    if (status < 300 || status > 399) return false;
+
+    const headers = sideEffectObjectProperty(init, "headers");
+    return Boolean(
+      headers
+      && ts.isObjectLiteralExpression(headers)
+      && sideEffectObjectProperty(headers, "location")
+    );
+  }
+
   function report(node, kind) {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
     violations.push({
@@ -1762,6 +1940,13 @@ function auditNavigationSideEffectBoundary(source, path) {
         }
 
         if (
+          (ownerText === "Response" || ownerText === "globalThis.Response")
+          && method === "redirect"
+        ) {
+          report(node, "web-response-navigation");
+        }
+
+        if (
           (
             ownerText === "window.location"
             || ownerText === "document.location"
@@ -1801,6 +1986,10 @@ function auditNavigationSideEffectBoundary(source, path) {
       }
     }
 
+    if (sideEffectRedirectConstructor(node)) {
+      report(node, "response-location-navigation");
+    }
+
     if (
       ts.isBinaryExpression(node)
       && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
@@ -1834,6 +2023,8 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenRedirect(target) { redirect(target); }',
     'export function hiddenRouter() { return useRouter(); }',
     'export function hiddenResponse(target) { return NextResponse.redirect(target); }',
+    'export function hiddenWebResponse(target) { return Response.redirect(target); }',
+    'export function hiddenResponseInit(target) { return new Response(null, { status: 302, headers: { Location: target } }); }',
     'export function hiddenBrowser(target) { window.location.assign(target); }',
     'export function hiddenDocument(target) { document.location.replace(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
@@ -1847,8 +2038,8 @@ function auditNavigationSideEffectBoundary(source, path) {
   );
   const kinds = violations.map((violation) => violation.kind).sort();
   if (
-    violations.length !== 8
-    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-window-navigation,history-navigation,navigation-api,route-handler-navigation,router-capability,server-navigation"
+    violations.length !== 10
+    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-window-navigation,history-navigation,navigation-api,response-location-navigation,route-handler-navigation,router-capability,server-navigation,web-response-navigation"
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
