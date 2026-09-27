@@ -716,6 +716,8 @@ function auditImperativeNavigation(source, path) {
   const browserNavigationApiVariables = new Set();
   const browserNavigationApiMethodBindings = new Set();
   const browserWindowOpenBindings = new Set();
+  const headerVariables = new Set();
+  const headerMutationMethodBindings = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -886,6 +888,27 @@ function auditImperativeNavigation(source, path) {
     return text === "Response" || text === "globalThis.Response";
   }
 
+  function isHeadersObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && headerVariables.has(resolved.text)) return true;
+
+    if (
+      ts.isNewExpression(resolved)
+      && (
+        (ts.isIdentifier(resolved.expression) && resolved.expression.text === "Headers")
+        || resolved.expression.getText(sourceFile) === "globalThis.Headers"
+      )
+    ) return true;
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "headers"
+    ) return true;
+
+    return false;
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -931,6 +954,9 @@ function auditImperativeNavigation(source, path) {
       if (initializer && ts.isIdentifier(initializer) && browserNavigationApiVariables.has(initializer.text)) {
         changed = addBinding(browserNavigationApiVariables, local) || changed;
       }
+      if (isHeadersObject(initializer)) {
+        changed = addBinding(headerVariables, local) || changed;
+      }
 
       if (initializer && (ts.isPropertyAccessExpression(initializer) || ts.isElementAccessExpression(initializer))) {
         const owner = propertyOwner(initializer);
@@ -961,6 +987,9 @@ function auditImperativeNavigation(source, path) {
         if (isBrowserWindowObject(owner) && method === "open") {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
         }
+        if (isHeadersObject(owner) && (method === "set" || method === "append")) {
+          changed = addBinding(headerMutationMethodBindings, local) || changed;
+        }
       }
 
       if (initializer && ts.isIdentifier(initializer)) {
@@ -985,6 +1014,12 @@ function auditImperativeNavigation(source, path) {
         if (browserWindowOpenBindings.has(initializer.text)) {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
         }
+        if (headerVariables.has(initializer.text)) {
+          changed = addBinding(headerVariables, local) || changed;
+        }
+        if (headerMutationMethodBindings.has(initializer.text)) {
+          changed = addBinding(headerMutationMethodBindings, local) || changed;
+        }
       }
     }
 
@@ -996,6 +1031,7 @@ function auditImperativeNavigation(source, path) {
       const fromHistory = isBrowserHistoryObject(initializer);
       const fromNavigationApi = isBrowserNavigationApiObject(initializer);
       const fromWindow = isBrowserWindowObject(initializer);
+      const fromHeaders = isHeadersObject(initializer);
 
       for (const element of node.name.elements) {
         const sourceName = bindingSourceName(element);
@@ -1021,6 +1057,9 @@ function auditImperativeNavigation(source, path) {
         }
         if (fromWindow && sourceName === "open") {
           changed = addBinding(browserWindowOpenBindings, localName) || changed;
+        }
+        if (fromHeaders && (sourceName === "set" || sourceName === "append")) {
+          changed = addBinding(headerMutationMethodBindings, localName) || changed;
         }
       }
     }
