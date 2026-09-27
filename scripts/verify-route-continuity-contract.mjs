@@ -935,6 +935,8 @@ function auditImperativeNavigation(source, path) {
   const browserWindowOpenBindings = new Set();
   const headerVariables = new Set();
   const headerMutationMethodBindings = new Set();
+  const domNavigationElementKinds = new Map();
+  const domSetAttributeBindings = new Map();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -973,6 +975,12 @@ function auditImperativeNavigation(source, path) {
   function addBinding(set, value) {
     if (!value || set.has(value)) return false;
     set.add(value);
+    return true;
+  }
+
+  function addKindBinding(map, value, kind) {
+    if (!value || !kind || map.get(value) === kind) return false;
+    map.set(value, kind);
     return true;
   }
 
@@ -1126,6 +1134,65 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
+  function domNavigationElementKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && domNavigationElementKinds.has(resolved.text)) {
+      return domNavigationElementKinds.get(resolved.text);
+    }
+
+    if (!ts.isCallExpression(resolved)) return null;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return null;
+    }
+    if (propertyName(callee) !== "createElement") return null;
+    const ownerText = propertyOwner(callee)?.getText(sourceFile);
+    if (
+      ownerText !== "document"
+      && ownerText !== "window.document"
+      && ownerText !== "globalThis.document"
+    ) return null;
+
+    const tag = resolveDataExpression(resolved.arguments[0], env);
+    if (!tag || !ts.isStringLiteralLike(tag)) return null;
+    const kind = tag.text.toLowerCase();
+    return ["a", "area", "base", "form", "button", "input"].includes(kind)
+      ? kind
+      : null;
+  }
+
+  function domSetAttributeElementKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && domSetAttributeBindings.has(resolved.text)) {
+      return domSetAttributeBindings.get(resolved.text);
+    }
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "setAttribute"
+    ) {
+      return domNavigationElementKind(propertyOwner(resolved), env);
+    }
+    return null;
+  }
+
+  function isDomSetAttributeReference(expression, env = new Map()) {
+    return Boolean(domSetAttributeElementKind(expression, env));
+  }
+
+  function domNavigationPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if ((kind === "a" || kind === "area" || kind === "base") && normalized === "href") {
+      return "href";
+    }
+    if (kind === "form" && normalized === "action") return "action";
+    if ((kind === "button" || kind === "input") && normalized === "formaction") {
+      return "formaction";
+    }
+    return null;
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -1173,6 +1240,11 @@ function auditImperativeNavigation(source, path) {
       }
       if (isHeadersObject(initializer)) {
         changed = addBinding(headerVariables, local) || changed;
+      }
+      const domKind = domNavigationElementKind(initializer);
+      if (domKind && domNavigationElementKinds.get(local) !== domKind) {
+        domNavigationElementKinds.set(local, domKind);
+        changed = true;
       }
 
       if (initializer && (ts.isPropertyAccessExpression(initializer) || ts.isElementAccessExpression(initializer))) {
@@ -1222,6 +1294,10 @@ function auditImperativeNavigation(source, path) {
         if (isHeadersObject(owner) && (method === "set" || method === "append")) {
           changed = addBinding(headerMutationMethodBindings, local) || changed;
         }
+        const domOwnerKind = domNavigationElementKind(owner);
+        if (domOwnerKind && method === "setAttribute") {
+          changed = addKindBinding(domSetAttributeBindings, local, domOwnerKind) || changed;
+        }
       }
 
       if (initializer && ts.isIdentifier(initializer)) {
@@ -1264,6 +1340,13 @@ function auditImperativeNavigation(source, path) {
         if (headerMutationMethodBindings.has(initializer.text)) {
           changed = addBinding(headerMutationMethodBindings, local) || changed;
         }
+        if (domSetAttributeBindings.has(initializer.text)) {
+          changed = addKindBinding(
+            domSetAttributeBindings,
+            local,
+            domSetAttributeBindings.get(initializer.text),
+          ) || changed;
+        }
       }
     }
 
@@ -1276,6 +1359,7 @@ function auditImperativeNavigation(source, path) {
       const fromNavigationApi = isBrowserNavigationApiObject(initializer);
       const fromWindow = isBrowserWindowObject(initializer);
       const fromHeaders = isHeadersObject(initializer);
+      const fromDomNavigationElement = Boolean(domNavigationElementKind(initializer));
 
       for (const element of node.name.elements) {
         const sourceName = bindingSourceName(element);
@@ -1319,6 +1403,13 @@ function auditImperativeNavigation(source, path) {
         }
         if (fromHeaders && (sourceName === "set" || sourceName === "append")) {
           changed = addBinding(headerMutationMethodBindings, localName) || changed;
+        }
+        if (fromDomNavigationElement && sourceName === "setAttribute") {
+          changed = addKindBinding(
+            domSetAttributeBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
         }
       }
     }
@@ -1713,6 +1804,37 @@ function auditImperativeNavigation(source, path) {
       || authorityExpressionResolved(expression, externalHrefBindings, env, callStack);
   }
 
+  function domNavigationAuthority(expression, env = new Map(), callStack = new Set()) {
+    return authorityExpressionResolved(expression, navigationBindings, env, callStack)
+      || authorityExpressionResolved(expression, productHrefBindings, env, callStack)
+      || authorityExpressionResolved(expression, externalHrefBindings, env, callStack);
+  }
+
+  function isDocumentHtmlWriteReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (!(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))) {
+      return false;
+    }
+    const method = propertyName(resolved);
+    if (method !== "write" && method !== "writeln") return false;
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    return (
+      ownerText === "document"
+      || ownerText === "window.document"
+      || ownerText === "globalThis.document"
+    );
+  }
+
+  function isInsertAdjacentHtmlReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return Boolean(
+      resolved
+      && (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "insertAdjacentHTML"
+    );
+  }
+
   function isBrowserHrefAssignmentTarget(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1833,6 +1955,36 @@ function auditImperativeNavigation(source, path) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
+
+      if (isDomSetAttributeReference(expression, env)) {
+        const kind = domSetAttributeElementKind(expression, env);
+        const attributeName = resolveDataExpression(firstArg, env);
+        const target = node.arguments[1];
+
+        if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+          report(node, "dom-dynamic-attribute");
+        } else {
+          const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
+          if (navProperty === "href" && kind === "base") {
+            report(node, "dom-base-href");
+          } else if (
+            navProperty
+            && target
+            && !domNavigationAuthority(target, env, callStack)
+          ) {
+            const targets = staticHrefCandidatesResolved(target, env, callStack);
+            report(node, "dom-attribute", targets);
+          }
+        }
+      }
+
+      if (isDocumentHtmlWriteReference(expression, env)) {
+        report(node, "dom-html-injection");
+      }
+
+      if (isInsertAdjacentHtmlReference(expression, env)) {
+        report(node, "dom-html-injection");
+      }
 
       if (isRouterTraversalReference(expression, env)) {
         report(node, "router-traversal");
@@ -1975,6 +2127,8 @@ function auditImperativeNavigation(source, path) {
           || isBrowserWindowOpenReference(argument, env)
           || isHeadersObject(argument, env)
           || isLocationHeaderMutationReference(argument, env)
+          || domNavigationElementKind(argument, env)
+          || isDomSetAttributeReference(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
         ))
@@ -2030,6 +2184,31 @@ function auditImperativeNavigation(source, path) {
         ) {
           report(node, "cross-module-destination");
         }
+      }
+    }
+
+    if (
+      ts.isBinaryExpression(node)
+      && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+      && (ts.isPropertyAccessExpression(node.left) || ts.isElementAccessExpression(node.left))
+    ) {
+      const leftOwner = propertyOwner(node.left);
+      const leftProperty = propertyName(node.left);
+      const domKind = domNavigationElementKind(leftOwner, env);
+      const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
+
+      if (domKind === "base" && domProperty === "href") {
+        report(node, "dom-base-href");
+      } else if (
+        domProperty
+        && !domNavigationAuthority(node.right, env, callStack)
+      ) {
+        const targets = staticHrefCandidatesResolved(node.right, env, callStack);
+        report(node, "dom-property", targets);
+      }
+
+      if (leftProperty === "innerHTML" || leftProperty === "outerHTML") {
+        report(node, "dom-html-injection");
       }
     }
 
@@ -2206,6 +2385,50 @@ function auditImperativeNavigation(source, path) {
     || counts["cross-module-wrapper"] !== 2
   ) {
     throw new Error("Cross-module navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const anchor = document.createElement("a");',
+    'anchor.href = "/earn";',
+    'anchor.href = getRouteNavigationHref("dom", "/earn");',
+    'anchor.setAttribute("href", "https://example.com/raw");',
+    'anchor.setAttribute("href", getExternalNavigationHref("https://example.com/safe"));',
+    'const setAnchorAttribute = anchor.setAttribute;',
+    'setAnchorAttribute("href", "/wallet");',
+    'const form = document.createElement("form");',
+    'form.action = "/api/withdrawals";',
+    'form.action = getRouteNavigationHref("dom", "/api/withdrawals");',
+    'const button = document.createElement("button");',
+    'button.formAction = "/api/pulse/claim";',
+    'const base = document.createElement("base");',
+    'base.href = getRouteNavigationHref("dom", "/dashboard/");',
+    'const setBaseAttribute = base.setAttribute;',
+    'setBaseAttribute("href", getRouteNavigationHref("dom", "/dashboard/"));',
+    'anchor.setAttribute(dynamicAttributeName, "/invite");',
+    'document.write("<a href=\"/dashboard\">open</a>");',
+    'root.innerHTML = "<form action=\"/api/pulse/claim\"></form>";',
+    'root.insertAdjacentHTML("beforeend", "<a href=\"/progress\">progress</a>");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "dom-navigation-mutation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["dom-property"] !== 3
+    || counts["dom-attribute"] !== 2
+    || counts["dom-base-href"] !== 2
+    || counts["dom-dynamic-attribute"] !== 1
+    || counts["dom-html-injection"] !== 3
+  ) {
+    throw new Error("DOM navigation mutation authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
@@ -2696,9 +2919,27 @@ if (hiddenNavigationModuleViolations.length > 0) {
   );
 }
 
-const imperativeNavigationViolations = ["app", "components", "lib", "providers"]
+const allImperativeNavigationViolations = ["app", "components", "lib", "providers"]
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
+
+const domNavigationMutationViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("dom-"));
+if (domNavigationMutationViolations.length > 0) {
+  throw new Error(
+    "DOM navigation mutation authority failed:\n"
+    + domNavigationMutationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const imperativeNavigationViolations = allImperativeNavigationViolations
+  .filter((violation) => !violation.kind.startsWith("dom-"));
 if (imperativeNavigationViolations.length > 0) {
   throw new Error(
     "Imperative navigation provenance failed:\n"
