@@ -35,7 +35,7 @@ export default async function SupportPage({ searchParams }: Props) {
     <section className="completion-grid shell">
       <div className="completion-card support-form-card"><span className="app-eyebrow">Support request</span><h2>Tell us what happened.</h2>
         {params.state ? <div className={`claim-message ${params.state === "created" ? "success" : "neutral"}`}>{messages[params.state] ?? "Support status updated."}{params.case ? ` Reference: ${params.case.toUpperCase()}` : ""}</div> : null}
-        <form action={createSupportCase} className="completion-form">
+        <form action={createSupportCase} className="completion-form" data-route-submit-authority="verified-replay">
           {!user ? <label>Email<input name="email" type="email" required autoComplete="email" placeholder="you@example.com" /></label> : <div className="completion-identity">Signed in as <strong>{user.email}</strong></div>}
           <label>Category<select name="category" defaultValue={defaultCategory} required><option value="earning">Faucet or extra reward</option><option value="withdrawal">Payout / withdrawal</option><option value="account">Account & access</option><option value="privacy">Privacy & data</option><option value="other">Other</option></select></label>
           <label>Subject<input name="subject" required minLength={3} maxLength={120} placeholder="Short description" /></label>
