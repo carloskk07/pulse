@@ -4951,6 +4951,37 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'document.defaultView.location.assign("/dashboard");',
+    'element.ownerDocument.defaultView.location.href = "/wallet";',
+    'const view = document.defaultView;',
+    'view.location.replace("/earn");',
+    'function onClick(event: MouseEvent) { event.view.location.assign("/invite"); }',
+    'function onReact(event: React.MouseEvent<HTMLButtonElement>) { event.nativeEvent.view.history.pushState({}, "", "/progress"); }',
+    'function onKey(event: KeyboardEvent) { event.view.navigation.navigate("/wallet"); }',
+    'const safeView = document.defaultView;',
+    'safeView.location = getRouteNavigationHref("rehydrated-window", "/dashboard");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "rehydrated-window-handle.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 6
+    || counts["browser-location"] !== 4
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+  ) {
+    throw new Error("Rehydrated window handle authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
     'const popup = window.open();',
     'popup.location = "/dashboard";',
