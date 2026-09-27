@@ -4336,10 +4336,20 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
 
         const indirectThisKind = domNavigationElementKind(indirectInvocation.thisArg, env);
+        const indirectThisRelListKind = domRelListKind(indirectInvocation.thisArg, env);
         const nativeSetter = nativeDomSetterInfo(indirectTarget, env);
+        const nativeRelListValueSetter = nativeDomRelListValueSetter(indirectTarget, env);
         const setAttributeCapability = (
           isDomSetAttributeReference(indirectTarget, env)
           || isNativeDomSetAttributeReference(indirectTarget, env)
+        );
+        const removeAttributeCapability = (
+          isDomRemoveAttributeReference(indirectTarget, env)
+          || isNativeDomRemoveAttributeReference(indirectTarget, env)
+        );
+        const relListMutationCapability = (
+          domRelListMutationBinding(indirectTarget, env)
+          || nativeDomRelListMutationInfo(indirectTarget, env)
         );
         const activationCapability = (
           domActivationBinding(indirectTarget, env)
@@ -4348,7 +4358,10 @@ function auditImperativeNavigation(source, path, options = {}) {
 
         const indirectRecognized = Boolean(
           nativeSetter
+          || nativeRelListValueSetter
           || setAttributeCapability
+          || removeAttributeCapability
+          || relListMutationCapability
           || activationCapability
           || isDocumentHtmlWriteReference(indirectTarget, env)
           || isInsertAdjacentHtmlReference(indirectTarget, env)
@@ -4391,6 +4404,47 @@ function auditImperativeNavigation(source, path, options = {}) {
               && (!expectedKind || expectedKind === actualKind || activationCapability.generic)
             ) {
               report(node, "native-invoke-dom-activation");
+            }
+          }
+
+          if (nativeRelListValueSetter && enforceOpenerProtectionMutationBoundary) {
+            if (!indirectThisRelListKind) {
+              report(node, "opener-protection-rel-dynamic");
+            } else {
+              reportOpenerProtectionValue(
+                node,
+                indirectThisRelListKind,
+                "rel",
+                indirectFirstArg,
+                env,
+              );
+            }
+          }
+
+          if (relListMutationCapability && enforceOpenerProtectionMutationBoundary) {
+            const effectiveBinding = {
+              kind: relListMutationCapability.kind ?? indirectThisRelListKind,
+              method: relListMutationCapability.method,
+            };
+            if (!effectiveBinding.kind) {
+              report(node, "opener-protection-rel-dynamic");
+            } else {
+              reportRelListMutation(node, effectiveBinding, indirectArgs, env);
+            }
+          }
+
+          if (removeAttributeCapability && enforceOpenerProtectionMutationBoundary) {
+            const expectedKind = domRemoveAttributeElementKind(indirectTarget, env);
+            const effectiveKind = expectedKind ?? indirectThisKind;
+            if (!effectiveKind) {
+              report(node, "opener-protection-rel-dynamic");
+            } else {
+              reportRemoveAttributeOpenerProtection(
+                node,
+                effectiveKind,
+                indirectFirstArg,
+                env,
+              );
             }
           }
 
@@ -4659,6 +4713,20 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
       }
 
+      const directRelListMutation = domRelListMutationBinding(expression, env);
+      if (directRelListMutation) {
+        reportRelListMutation(node, directRelListMutation, node.arguments, env);
+      }
+
+      if (isDomRemoveAttributeReference(expression, env)) {
+        reportRemoveAttributeOpenerProtection(
+          node,
+          domRemoveAttributeElementKind(expression, env),
+          firstArg,
+          env,
+        );
+      }
+
       const directActivation = domActivationBinding(expression, env);
       if (directActivation) {
         if (directActivation.method === "submit" || directActivation.method === "requestSubmit") {
@@ -4692,6 +4760,90 @@ function auditImperativeNavigation(source, path, options = {}) {
       const reflectiveTargetKind = reflectiveCall
         ? domNavigationElementKind(firstArg, env)
         : null;
+      const reflectiveRelListKind = reflectiveCall
+        ? domRelListKind(firstArg, env)
+        : null;
+
+      if (
+        reflectiveCall
+        && reflectiveRelListKind
+        && enforceOpenerProtectionMutationBoundary
+      ) {
+        const reportRelListReflectiveValue = (propertyNameText, value) => {
+          if (propertyNameText?.toLowerCase() === "value") {
+            reportOpenerProtectionValue(
+              node,
+              reflectiveRelListKind,
+              "rel",
+              value,
+              env,
+            );
+          }
+        };
+
+        if (reflectiveCall === "Object.assign") {
+          for (const source of node.arguments.slice(1)) {
+            const resolvedSource = resolveDataExpression(source, env);
+            if (!resolvedSource || !ts.isObjectLiteralExpression(resolvedSource)) {
+              report(node, "opener-protection-rel-dynamic");
+              continue;
+            }
+            for (const property of resolvedSource.properties) {
+              if (ts.isSpreadAssignment(property)) {
+                report(node, "opener-protection-rel-dynamic");
+                continue;
+              }
+              const propertyNameText = staticObjectPropertyName(property, env);
+              reportRelListReflectiveValue(
+                propertyNameText,
+                reflectiveObjectPropertyValue(property),
+              );
+            }
+          }
+        }
+
+        if (reflectiveCall === "Reflect.set") {
+          const propertyExpression = resolveDataExpression(node.arguments[1], env);
+          const propertyNameText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+            ? propertyExpression.text
+            : null;
+          if (!propertyNameText) report(node, "opener-protection-rel-dynamic");
+          else reportRelListReflectiveValue(propertyNameText, node.arguments[2]);
+        }
+
+        if (reflectiveCall === "Object.defineProperty") {
+          const propertyExpression = resolveDataExpression(node.arguments[1], env);
+          const propertyNameText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+            ? propertyExpression.text
+            : null;
+          if (!propertyNameText) report(node, "opener-protection-rel-dynamic");
+          else {
+            reportRelListReflectiveValue(
+              propertyNameText,
+              descriptorNavigationValue(node.arguments[2], env),
+            );
+          }
+        }
+
+        if (reflectiveCall === "Object.defineProperties") {
+          const descriptors = resolveDataExpression(node.arguments[1], env);
+          if (!descriptors || !ts.isObjectLiteralExpression(descriptors)) {
+            report(node, "opener-protection-rel-dynamic");
+          } else {
+            for (const property of descriptors.properties) {
+              if (ts.isSpreadAssignment(property)) {
+                report(node, "opener-protection-rel-dynamic");
+                continue;
+              }
+              const propertyNameText = staticObjectPropertyName(property, env);
+              reportRelListReflectiveValue(
+                propertyNameText,
+                descriptorNavigationValue(reflectiveObjectPropertyValue(property), env),
+              );
+            }
+          }
+        }
+      }
 
       if (reflectiveCall && reflectiveTargetKind) {
         if (reflectiveCall === "Object.assign") {
