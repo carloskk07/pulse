@@ -1501,6 +1501,23 @@ function auditNavigationSideEffectBoundary(source, path) {
   const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
   const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
 
+  function sideEffectPropertyName(expression) {
+    if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
+    if (
+      ts.isElementAccessExpression(expression)
+      && expression.argumentExpression
+      && ts.isStringLiteralLike(expression.argumentExpression)
+    ) return expression.argumentExpression.text;
+    return null;
+  }
+
+  function sideEffectPropertyOwner(expression) {
+    if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+      return expression.expression;
+    }
+    return null;
+  }
+
   function report(node, kind) {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
     violations.push({
@@ -1531,8 +1548,8 @@ function auditNavigationSideEffectBoundary(source, path) {
       if (
         (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
       ) {
-        const owner = propertyOwner(expression);
-        const method = propertyName(expression);
+        const owner = sideEffectPropertyOwner(expression);
+        const method = sideEffectPropertyName(expression);
         const ownerText = browserOwnerText(owner);
 
         if (
