@@ -332,7 +332,7 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "function domKindFromSelectorText",
   "function domCollectionElementKind",
   "function domRefKindFromInitializer",
-  "const domSetAttributeBindings = new Map();
+  "const domSetAttributeBindings = new Map();",
   "function domNavigationElementKind",
   "function domSetAttributeElementKind",
   "function domNavigationPropertyForKind",
