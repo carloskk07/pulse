@@ -11,7 +11,7 @@ import { ArrowUpRight, Shield, Spark } from "@/components/icons";
 import { getRankedOpportunities, type RankedOpportunity } from "@/lib/opportunities";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { getEarningExperience } from "@/lib/product-experience";
-import { getRouteTransitionTypesForHref } from "@/lib/route-semantics";
+import { getExternalNavigationHref, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getRewardEntryChannels } from "@/providers/registry";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
@@ -145,7 +145,7 @@ export default async function EarnPage({ searchParams }: Props) {
           ) : best?.sourceType === "affiliate" ? (
             <CashbackStartButton opportunityId={best.id} />
           ) : primaryChannel ? (
-            <a className="button button-light direct-primary-action" href={primaryChannel.href} target="_blank" rel="noopener sponsored" data-route-semantic="outside-product">Open extra rewards <ArrowUpRight /></a>
+            <a className="button button-light direct-primary-action" href={getExternalNavigationHref(primaryChannel.href)} target="_blank" rel="noopener sponsored" data-route-semantic="outside-product">Open extra rewards <ArrowUpRight /></a>
           ) : (
             <Link className="button button-light direct-primary-action" href="/dashboard" transitionTypes={getRouteTransitionTypesForHref("earn", "/dashboard")}>Back to rewards <ArrowUpRight /></Link>
           )}
