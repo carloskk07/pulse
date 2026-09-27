@@ -518,6 +518,32 @@ function normalizedProductRoute(value) {
   return PRODUCT_ROUTE_PATHS.has(path) ? path : null;
 }
 
+function classifyStaticNavigationHref(value) {
+  const href = String(value ?? "").trim();
+  if (!href) return "empty";
+  if (href.startsWith("#")) return "fragment";
+  if (href.startsWith("/") && !href.startsWith("//")) return "internal";
+  if (href.startsWith("//")) return "protocol-relative";
+
+  const scheme = href.match(/^([A-Za-z][A-Za-z0-9+.-]*):/)?.[1]?.toLowerCase() ?? null;
+  if (scheme === "https") return "https";
+  if (scheme) return "forbidden-scheme";
+
+  return "relative";
+}
+
+function unsafeStaticNavigationValues(values) {
+  return values.filter((value) => {
+    const kind = classifyStaticNavigationHref(value);
+    return (
+      kind === "empty"
+      || kind === "protocol-relative"
+      || kind === "forbidden-scheme"
+      || kind === "relative"
+    );
+  });
+}
+
 function auditSemanticLinks(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -548,7 +574,19 @@ function auditSemanticLinks(source, path) {
       ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
       const routeLinkAuthority = hasRouteLinkAuthority(node, routeLinkAuthorityBindings);
       const unresolvedDynamicHref = hasUnresolvedDynamicHref(href);
+      const staticHrefValues = hrefCandidates(href);
+      const unsafeHrefValues = unsafeStaticNavigationValues(staticHrefValues);
       const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+
+      if (unsafeHrefValues.length > 0) {
+        violations.push({
+          kind: "scheme",
+          path,
+          line: position.line + 1,
+          column: position.character + 1,
+          targets: [...new Set(unsafeHrefValues)],
+        });
+      }
 
       if (unresolvedDynamicHref && !routeLinkAuthority && !explicitOutsideProduct) {
         violations.push({
@@ -576,6 +614,39 @@ function auditSemanticLinks(source, path) {
 
   visit(sourceFile);
   return violations;
+}
+
+{
+  const selfTest = [
+    'const Fixture = () => (<>',
+    '  <Link href="javascript:alert(1)">Bad Link scheme</Link>',
+    '  <Link href="//example.com/path">Protocol-relative Link</Link>',
+    '  <a href="data:text/html,boom" data-route-semantic="outside-product">Bad anchor</a>',
+    '  <a href="http://example.com" data-route-semantic="outside-product">HTTP downgrade</a>',
+    '  <a href="https://example.com" data-route-semantic="outside-product">HTTPS allowed</a>',
+    '  <a href="#section">Fragment allowed</a>',
+    '  <form action="javascript:alert(1)"></form>',
+    '  <button formAction="../relative">Relative action</button>',
+    '  <meta httpEquiv="refresh" content="0; url=data:text/html,boom" />',
+    '</>);',
+  ].join("\n");
+
+  const linkViolations = auditSemanticLinks(selfTest, "navigation-scheme.self-test.tsx");
+  const anchorViolations = auditNativeAnchors(selfTest, "navigation-scheme.self-test.tsx");
+  const declarativeViolations = auditDeclarativeNavigation(
+    selfTest,
+    "navigation-scheme.self-test.tsx",
+  );
+
+  const schemeViolations = [
+    ...linkViolations.filter((violation) => violation.kind === "scheme"),
+    ...anchorViolations.filter((violation) => violation.kind === "scheme"),
+    ...declarativeViolations.filter((violation) => violation.kind === "navigation-scheme"),
+  ];
+
+  if (schemeViolations.length !== 7) {
+    throw new Error("Navigation scheme authority self-test failed: " + JSON.stringify(schemeViolations));
+  }
 }
 
 {
@@ -627,10 +698,21 @@ function auditNativeAnchors(source, path) {
         jsxAttribute(node, "data-route-semantic"),
       ) === OUTSIDE_PRODUCT_ROUTE_MARKER;
       const unresolvedDynamicHref = hasUnresolvedDynamicHref(href);
+      const staticHrefValues = hrefCandidates(href);
+      const unsafeHrefValues = unsafeStaticNavigationValues(staticHrefValues);
       const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
 
-      if ((targets.length > 0 || unresolvedDynamicHref) && !explicitOutsideProduct) {
+      if (unsafeHrefValues.length > 0) {
         violations.push({
+          kind: "scheme",
+          path,
+          line: position.line + 1,
+          column: position.character + 1,
+          targets: [...new Set(unsafeHrefValues)],
+        });
+      } else if ((targets.length > 0 || unresolvedDynamicHref) && !explicitOutsideProduct) {
+        violations.push({
+          kind: "semantic",
           path,
           line: position.line + 1,
           column: position.character + 1,
@@ -739,8 +821,19 @@ function auditDeclarativeNavigation(source, path) {
     if (!attribute?.initializer) return;
     const expression = declarativeAttributeExpression(attribute);
     const staticValues = staticNavigationLikeValues(attribute);
-    const internalValues = staticValues.filter((value) => value.startsWith("/") || value.startsWith("#"));
-    const externalValues = staticValues.filter((value) => /^https?:\/\//i.test(value));
+    const unsafeValues = unsafeStaticNavigationValues(staticValues);
+    const internalValues = staticValues.filter((value) => {
+      const kind = classifyStaticNavigationHref(value);
+      return kind === "internal" || kind === "fragment";
+    });
+    const externalValues = staticValues.filter(
+      (value) => classifyStaticNavigationHref(value) === "https",
+    );
+
+    if (unsafeValues.length > 0) {
+      report(node, "navigation-scheme", unsafeValues);
+      return;
+    }
 
     if (internalValues.length > 0 && !hasInternalAuthority(expression)) {
       report(node, kind, internalValues);
@@ -794,12 +887,14 @@ function auditDeclarativeNavigation(source, path) {
           const literalContent = literalJsxAttributeValue(content);
           const target = metaRefreshTarget(literalContent);
 
-          if (
+          if (target && unsafeStaticNavigationValues([target]).length > 0) {
+            report(node, "navigation-scheme", [target]);
+          } else if (
             target
             && (
               (target.startsWith("/") || target.startsWith("#"))
                 ? !hasInternalAuthority(expression)
-                : /^https?:\/\//i.test(target)
+                : classifyStaticNavigationHref(target) === "https"
                   ? !hasExternalAuthority(expression)
                   : true
             )
@@ -3046,6 +3141,32 @@ function auditNavigationSideEffectBoundary(source, path) {
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
+}
+
+const navigationSchemeViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => {
+    const source = read(path);
+    return [
+      ...auditSemanticLinks(source, path)
+        .filter((violation) => violation.kind === "scheme"),
+      ...auditNativeAnchors(source, path)
+        .filter((violation) => violation.kind === "scheme"),
+      ...auditDeclarativeNavigation(source, path)
+        .filter((violation) => violation.kind === "navigation-scheme"),
+    ];
+  });
+if (navigationSchemeViolations.length > 0) {
+  throw new Error(
+    "Navigation scheme authority failed:\n"
+    + navigationSchemeViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
+      )
+      .join("\n"),
+  );
 }
 
 const semanticLinkViolations = SEMANTIC_LINK_ROOTS
