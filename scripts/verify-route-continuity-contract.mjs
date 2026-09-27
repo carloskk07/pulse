@@ -5552,6 +5552,46 @@ function auditImperativeNavigation(source, path) {
   }
 }
 
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const iframe = document.createElement("iframe");',
+    'iframe.src = "/dashboard";',
+    'iframe.src = getRouteNavigationHref("embedded-runtime", "/dashboard");',
+    'iframe.srcdoc = "<p>inline</p>";',
+    'iframe.setAttribute("src", "https://example.com/raw");',
+    'iframe.setAttribute("src", getExternalNavigationHref("https://example.com/safe"));',
+    'iframe.setAttribute("srcdoc", "<p>inline</p>");',
+    'const object = document.createElement("object");',
+    'Object.assign(object, { data: "/wallet" });',
+    'const embed = document.createElement("embed");',
+    'Reflect.set(embed, "src", "/earn");',
+    'const frame = document.querySelector<HTMLFrameElement>("#legacy");',
+    'frame.src = "/progress";',
+    'const embeddedRef = useRef<HTMLIFrameElement | null>(null);',
+    'embeddedRef.current.src = "/invite";',
+    'function onLoad(event: React.SyntheticEvent<HTMLIFrameElement>) { event.currentTarget.src = "/dashboard"; }',
+    'Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "src").set.call(iframe, "/wallet");',
+    'Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "src").set.call(iframe, getRouteNavigationHref("embedded-runtime", "/wallet"));',
+    'Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "srcdoc").set.call(iframe, "<p>inline</p>");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "embedded-context-runtime-source.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["embedded-runtime-source"] !== 8
+    || counts["embedded-runtime-srcdoc"] !== 3
+  ) {
+    throw new Error("Embedded context runtime source authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditNavigationSideEffectBoundary(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -6096,6 +6136,21 @@ if (nativeInvocationViolations.length > 0) {
   );
 }
 
+const embeddedContextRuntimeSourceViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("embedded-runtime-"));
+if (embeddedContextRuntimeSourceViolations.length > 0) {
+  throw new Error(
+    "Embedded context runtime source authority failed:\n"
+    + embeddedContextRuntimeSourceViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
 const domNavigationMutationViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("dom-"));
 if (domNavigationMutationViolations.length > 0) {
@@ -6113,7 +6168,8 @@ if (domNavigationMutationViolations.length > 0) {
 
 const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
-    !violation.kind.startsWith("dom-")
+    !violation.kind.startsWith("embedded-runtime-")
+    && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
     && !violation.kind.startsWith("proxy-navigation-")
     && !violation.kind.startsWith("dynamic-code-")
