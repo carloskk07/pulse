@@ -2267,6 +2267,122 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function isEvalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && resolved.text === "eval") return true;
+    const text = resolved.getText(sourceFile);
+    return text === "globalThis.eval" || text === "window.eval";
+  }
+
+  function isFunctionConstructorReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+
+    if (ts.isIdentifier(resolved) && resolved.text === "Function") return true;
+    const text = resolved.getText(sourceFile);
+    if (text === "globalThis.Function" || text === "window.Function") return true;
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "constructor"
+    ) {
+      const owner = resolveDataExpression(propertyOwner(resolved), env);
+      if (!owner) return false;
+      if (ts.isArrowFunction(owner) || ts.isFunctionExpression(owner)) return true;
+      if (
+        ts.isIdentifier(owner)
+        && localFunctions.has(owner.text)
+        && localFunctions.get(owner.text)
+      ) return true;
+    }
+
+    return false;
+  }
+
+  function dynamicCodeTimerKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+
+    if (ts.isIdentifier(resolved)) {
+      if (resolved.text === "setTimeout" || resolved.text === "setInterval") {
+        return resolved.text;
+      }
+      return null;
+    }
+
+    if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
+      const method = propertyName(resolved);
+      const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+      if (
+        (method === "setTimeout" || method === "setInterval")
+        && (
+          ownerText === "window"
+          || ownerText === "globalThis"
+        )
+      ) return method;
+    }
+
+    return null;
+  }
+
+  function isCodeStringExpression(expression, env = new Map(), seen = new Set()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+
+    const key = resolved.pos + ":" + resolved.end;
+    if (seen.has(key)) return false;
+    const nextSeen = new Set(seen);
+    nextSeen.add(key);
+
+    if (ts.isStringLiteralLike(resolved) || ts.isTemplateExpression(resolved)) return true;
+    if (
+      ts.isBinaryExpression(resolved)
+      && resolved.operatorToken.kind === ts.SyntaxKind.PlusToken
+    ) {
+      return (
+        isCodeStringExpression(resolved.left, env, nextSeen)
+        || isCodeStringExpression(resolved.right, env, nextSeen)
+      );
+    }
+    return false;
+  }
+
+  function isReflectConstructReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "construct"
+    ) return false;
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    return ownerText === "Reflect" || ownerText === "globalThis.Reflect";
+  }
+
+  function boundDynamicCodeInfo(expression, env = new Map()) {
+    const bound = boundCallableInfo(expression, env);
+    if (!bound?.target) return null;
+    if (
+      isEvalReference(bound.target, env)
+      || isFunctionConstructorReference(bound.target, env)
+    ) return bound;
+
+    if (
+      dynamicCodeTimerKind(bound.target, env)
+      && isCodeStringExpression(bound.args[0], env)
+    ) return bound;
+
+    return null;
+  }
+
+  function isDynamicCodeCapabilityValue(expression, env = new Map()) {
+    return Boolean(
+      isEvalReference(expression, env)
+      || isFunctionConstructorReference(expression, env)
+      || boundDynamicCodeInfo(expression, env)
+    );
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
