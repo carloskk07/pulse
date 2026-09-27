@@ -1762,20 +1762,40 @@ function auditNavigationSideEffectBoundary(source, path) {
         }
 
         if (
-          (ownerText === "window.location" || ownerText === "location")
+          (
+            ownerText === "window.location"
+            || ownerText === "document.location"
+            || ownerText === "globalThis.location"
+            || ownerText === "location"
+          )
           && (method === "assign" || method === "replace")
         ) {
           report(node, "browser-navigation");
         }
 
         if (
-          (ownerText === "window.history" || ownerText === "history")
+          (
+            ownerText === "window.history"
+            || ownerText === "globalThis.history"
+            || ownerText === "history"
+          )
           && (method === "pushState" || method === "replaceState")
         ) {
           report(node, "history-navigation");
         }
 
-        if (ownerText === "window" && method === "open") {
+        if (
+          (
+            ownerText === "window.navigation"
+            || ownerText === "globalThis.navigation"
+            || ownerText === "navigation"
+          )
+          && method === "navigate"
+        ) {
+          report(node, "navigation-api");
+        }
+
+        if ((ownerText === "window" || ownerText === "globalThis") && method === "open") {
           report(node, "browser-window-navigation");
         }
       }
@@ -1788,8 +1808,12 @@ function auditNavigationSideEffectBoundary(source, path) {
       const leftText = node.left.getText(sourceFile);
       if (
         leftText === "window.location"
+        || leftText === "document.location"
+        || leftText === "globalThis.location"
         || leftText === "location.href"
         || leftText === "window.location.href"
+        || leftText === "document.location.href"
+        || leftText === "globalThis.location.href"
       ) {
         report(node, "browser-navigation");
       }
@@ -1811,6 +1835,10 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenRouter() { return useRouter(); }',
     'export function hiddenResponse(target) { return NextResponse.redirect(target); }',
     'export function hiddenBrowser(target) { window.location.assign(target); }',
+    'export function hiddenDocument(target) { document.location.replace(target); }',
+    'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenWindow(target) { window.open(target, "_blank"); }',
+    'export function hiddenNavigationApi(target) { navigation.navigate(target); }',
     'export function pureHref(target) { return getRouteNavigationHref("lib", target); }',
   ].join("\n");
   const violations = auditNavigationSideEffectBoundary(
@@ -1819,8 +1847,8 @@ function auditNavigationSideEffectBoundary(source, path) {
   );
   const kinds = violations.map((violation) => violation.kind).sort();
   if (
-    violations.length !== 4
-    || kinds.join(",") !== "browser-navigation,route-handler-navigation,router-capability,server-navigation"
+    violations.length !== 8
+    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-window-navigation,history-navigation,navigation-api,route-handler-navigation,router-capability,server-navigation"
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
