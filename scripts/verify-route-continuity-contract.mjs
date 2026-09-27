@@ -1156,15 +1156,13 @@ function auditImperativeNavigation(source, path) {
         const nextStack = new Set(callStack);
         nextStack.add(definition.key);
         const childEnv = functionEnvironment(definition, resolved, env);
-        if (
-          functionReturnExpressions(definition)
-            .some((candidate) => containsUnprovenProjectImportCall(
-              candidate,
-              childEnv,
-              nextStack,
-              nextSeen,
-            ))
-        ) return true;
+        return functionReturnExpressions(definition)
+          .some((candidate) => containsUnprovenProjectImportCall(
+            candidate,
+            childEnv,
+            nextStack,
+            nextSeen,
+          ));
       }
 
       if (isProjectImportCallee(resolved.expression, env)) return true;
