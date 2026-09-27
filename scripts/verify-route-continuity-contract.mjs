@@ -2897,6 +2897,50 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { useRef } from "react";',
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const selected = document.querySelector("a.promo");',
+    'selected.href = "/earn";',
+    'selected.href = getRouteNavigationHref("rehydrated-dom", "/earn");',
+    'const typedForm = document.querySelector<HTMLFormElement>("#payout");',
+    'typedForm.action = "/api/withdrawals";',
+    'const casted = document.getElementById("invite") as HTMLAnchorElement;',
+    'casted.href = "/invite";',
+    'const linkRef = useRef<HTMLAnchorElement | null>(null);',
+    'linkRef.current!.href = "/progress";',
+    'function onClick(event: React.MouseEvent<HTMLAnchorElement>) { event.currentTarget.href = "/wallet"; }',
+    'const existingForm: HTMLFormElement = someNode;',
+    'existingForm.action = "/api/pulse/claim";',
+    'const selectedButton = document.querySelectorAll("button.submit")[0];',
+    'selectedButton.formAction = "/api/pulse/claim";',
+    'const byTag = document.getElementsByTagName("a").item(0);',
+    'byTag.href = "/dashboard";',
+    'const forms = document.forms;',
+    'forms[0].action = "/api/return-reminder";',
+    'const links = document.links;',
+    'links[0].href = "/invite";',
+    'const existingBase = document.querySelector("base");',
+    'existingBase.href = getRouteNavigationHref("rehydrated-dom", "/dashboard/");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "rehydrated-dom-handle.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["dom-property"] !== 10
+    || counts["dom-base-href"] !== 1
+  ) {
+    throw new Error("Rehydrated DOM handle authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRouter } from "next/navigation";',
     'const router = useRouter();',
     'router.back();',
