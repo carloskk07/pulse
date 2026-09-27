@@ -2521,8 +2521,36 @@ function auditImperativeNavigation(source, path, options = {}) {
     const firstToken = first.text.trim().toLowerCase();
     const protective = firstToken === "noopener" || firstToken === "noreferrer";
 
-    if (method === "toggle" || method === "replace") {
-      if (protective) report(node, "opener-protection-rel-removal", [firstToken]);
+    if (method === "toggle") {
+      if (!protective) return true;
+      const force = resolveDataExpression(args[1], env);
+      if (!force) {
+        report(node, "opener-protection-rel-removal", [firstToken]);
+      } else if (force.kind === ts.SyntaxKind.TrueKeyword) {
+        // Explicit force=true can only add/preserve the protective token.
+      } else if (force.kind === ts.SyntaxKind.FalseKeyword) {
+        report(node, "opener-protection-rel-removal", [firstToken]);
+      } else {
+        report(node, "opener-protection-rel-dynamic");
+      }
+      return true;
+    }
+
+    if (method === "replace") {
+      if (!protective) return true;
+      const replacement = resolveDataExpression(args[1], env);
+      if (!replacement || !ts.isStringLiteralLike(replacement)) {
+        report(node, "opener-protection-rel-dynamic");
+        return true;
+      }
+      const replacementToken = replacement.text.trim().toLowerCase();
+      const replacementProtective = (
+        replacementToken === "noopener"
+        || replacementToken === "noreferrer"
+      );
+      if (!replacementProtective) {
+        report(node, "opener-protection-rel-removal", [firstToken]);
+      }
       return true;
     }
 
