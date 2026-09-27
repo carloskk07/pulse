@@ -42,7 +42,7 @@ export default async function RecoverPage({ searchParams }: Props) {
           {params.error ? <div className="auth-alert error">{errorCopy[params.error] ?? "Recovery could not continue. Request a new link."}</div> : null}
           {params.message === "check-email" ? <div className="auth-alert success">If an account can be recovered for that address, a reset email is on its way. Check spam or junk folders too.</div> : null}
 
-          <form action={requestPasswordReset} className="auth-form">
+          <form action={requestPasswordReset} className="auth-form" data-route-submit-authority="verified-replay">
             <label>Email<input required name="email" type="email" autoComplete="email" placeholder="you@example.com" /></label>
             <TurnstileField action="password_recovery" />
             <button className="button button-lg" type="submit">Send recovery link</button>
