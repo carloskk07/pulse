@@ -1415,6 +1415,7 @@ function auditImperativeNavigation(source, path) {
   const webResponseRedirectBindings = new Set();
   const browserContextVariables = new Set();
   const browserEventViewVariables = new Set();
+  const browserMessageEventVariables = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
   const browserLocationReloadBindings = new Set();
@@ -1560,6 +1561,16 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isMessageEventTypeNode(typeNode) {
+    if (!typeNode) return false;
+    if (ts.isParenthesizedTypeNode(typeNode)) return isMessageEventTypeNode(typeNode.type);
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      return typeNode.types.some(isMessageEventTypeNode);
+    }
+    if (!ts.isTypeReferenceNode(typeNode)) return false;
+    return typeNode.typeName.getText(sourceFile).split(".").pop() === "MessageEvent";
+  }
+
   function setStableKind(map, name, kind) {
     if (!name || !kind) return;
     if (!map.has(name)) {
@@ -1584,6 +1595,9 @@ function auditImperativeNavigation(source, path) {
       if (isWindowViewEventTypeNode(node.type)) {
         browserEventViewVariables.add(node.name.text);
       }
+      if (isMessageEventTypeNode(node.type)) {
+        browserMessageEventVariables.add(node.name.text);
+      }
     }
 
     if (ts.isVariableDeclaration(node)) {
@@ -1592,6 +1606,9 @@ function auditImperativeNavigation(source, path) {
         setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
         if (isWindowViewEventTypeNode(node.type)) {
           browserEventViewVariables.add(node.name.text);
+        }
+        if (isMessageEventTypeNode(node.type)) {
+          browserMessageEventVariables.add(node.name.text);
         }
       }
       if (
