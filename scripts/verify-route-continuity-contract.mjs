@@ -596,7 +596,7 @@ function auditExecutableUrlSchemes(source, path) {
   const selfTest = [
     'const Fixture = () => (<>',
     '  <a href="javascript:alert(1)">bad</a>',
-    '  <Link href={"JaVaScRiPt:location.href=\"/earn\""}>bad link</Link>',
+    '  <Link href="JaVaScRiPt:alert(2)">bad link</Link>',
     '  <form action="vbscript:msgbox(1)" />',
     '  <button formAction="data:text/html,<script>alert(1)</script>">bad form action</button>',
     '  <input formAction="data:application/xhtml+xml,<html />" />',
