@@ -9,7 +9,7 @@ import { ShareRhythmButton } from "@/components/share-rhythm-button";
 import { SponsoredVisitButton } from "@/components/sponsored-visit-button";
 import { getCircuitAchievements, getNextCircuitAchievement } from "@/lib/circuit-achievements";
 import { getCircuitProgress } from "@/lib/circuit-progress";
-import { getProductRouteHref, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
+import { getProductRouteHref, getRouteNavigationHref, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { getRecentPulseReceipt } from "@/lib/pulse-receipt";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
@@ -145,7 +145,7 @@ export default async function ClaimedPage() {
 
           <div className="pc-v8-return-actions">
             {canScheduleReturn ? (
-              <form action="/api/return-reminder" method="post" className="pc-v8-reminder-form">
+              <form action={getRouteNavigationHref("home", "/api/return-reminder")} method="post" className="pc-v8-reminder-form">
                 <div><Spark /><span><strong>Need a reminder?</strong><small>Create one reminder for the next real eligibility window.</small></span></div>
                 <button type="submit">Set reminder <ArrowUpRight /></button>
               </form>
