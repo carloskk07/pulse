@@ -686,6 +686,7 @@ function auditImperativeNavigation(source, path) {
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
   const declarations = [];
+  const constInitializers = new Map();
 
   function bindingSourceName(element) {
     if (!ts.isBindingElement(element) || !ts.isIdentifier(element.name)) return null;
@@ -828,7 +829,17 @@ function auditImperativeNavigation(source, path) {
   }
 
   function collectDeclarations(node) {
-    if (ts.isVariableDeclaration(node)) declarations.push(node);
+    if (ts.isVariableDeclaration(node)) {
+      declarations.push(node);
+      if (
+        ts.isIdentifier(node.name)
+        && node.initializer
+        && ts.isVariableDeclarationList(node.parent)
+        && (node.parent.flags & ts.NodeFlags.Const) !== 0
+      ) {
+        constInitializers.set(node.name.text, node.initializer);
+      }
+    }
     ts.forEachChild(node, collectDeclarations);
   }
 
@@ -839,6 +850,61 @@ function auditImperativeNavigation(source, path) {
       changed = discoverDeclaration(declaration) || changed;
     }
     if (!changed) break;
+  }
+
+  function resolveLocalExpression(expression, seen = new Set()) {
+    if (!expression) return expression;
+    if (ts.isParenthesizedExpression(expression)) {
+      return resolveLocalExpression(expression.expression, seen);
+    }
+    if (ts.isIdentifier(expression) && constInitializers.has(expression.text)) {
+      if (seen.has(expression.text)) return expression;
+      const nextSeen = new Set(seen);
+      nextSeen.add(expression.text);
+      return resolveLocalExpression(constInitializers.get(expression.text), nextSeen);
+    }
+    return expression;
+  }
+
+  function staticHrefCandidatesResolved(expression, seen = new Set()) {
+    if (!expression) return [];
+    if (ts.isParenthesizedExpression(expression)) {
+      return staticHrefCandidatesResolved(expression.expression, seen);
+    }
+    if (ts.isIdentifier(expression) && constInitializers.has(expression.text)) {
+      if (seen.has(expression.text)) return [];
+      const nextSeen = new Set(seen);
+      nextSeen.add(expression.text);
+      return staticHrefCandidatesResolved(constInitializers.get(expression.text), nextSeen);
+    }
+    if (ts.isStringLiteralLike(expression)) return [expression.text];
+    if (ts.isConditionalExpression(expression)) {
+      return [
+        ...staticHrefCandidatesResolved(expression.whenTrue, seen),
+        ...staticHrefCandidatesResolved(expression.whenFalse, seen),
+      ];
+    }
+    if (
+      ts.isBinaryExpression(expression)
+      && expression.operatorToken.kind === ts.SyntaxKind.PlusToken
+    ) {
+      return [
+        ...staticHrefCandidatesResolved(expression.left, seen),
+        ...staticHrefCandidatesResolved(expression.right, seen),
+      ];
+    }
+    if (ts.isTemplateExpression(expression)) return [expression.head.text];
+    return [];
+  }
+
+  function authorityCallResolved(expression, bindings) {
+    return authorityCall(resolveLocalExpression(expression), bindings);
+  }
+
+  function firstUrlArgumentResolved(expression) {
+    const resolved = resolveLocalExpression(expression);
+    const urlArg = firstUrlArgument(resolved);
+    return urlArg ? resolveLocalExpression(urlArg) : null;
   }
 
   function report(node, kind, targets = []) {
@@ -884,18 +950,18 @@ function auditImperativeNavigation(source, path) {
         && (propertyName(expression) === "push" || propertyName(expression) === "replace")
       );
       const aliasedRouterMethod = ts.isIdentifier(expression) && routerMethodBindings.has(expression.text);
-      if ((directRouterMethod || aliasedRouterMethod) && !authorityCall(firstArg, navigationBindings)) {
+      if ((directRouterMethod || aliasedRouterMethod) && !authorityCallResolved(firstArg, navigationBindings)) {
         report(node, "router");
       }
 
       if (ts.isIdentifier(expression) && redirectBindings.has(expression.text)) {
-        const targets = staticHrefCandidates(firstArg)
+        const targets = staticHrefCandidatesResolved(firstArg)
           .map(normalizedProductRoute)
           .filter(Boolean);
         if (
           targets.length > 0
-          && !authorityCall(firstArg, navigationBindings)
-          && !authorityCall(firstArg, productHrefBindings)
+          && !authorityCallResolved(firstArg, navigationBindings)
+          && !authorityCallResolved(firstArg, productHrefBindings)
         ) report(node, "server-redirect", targets);
       }
 
@@ -909,14 +975,14 @@ function auditImperativeNavigation(source, path) {
       const aliasedResponseRedirect = ts.isIdentifier(expression)
         && responseRedirectBindings.has(expression.text);
       if (directResponseRedirect || aliasedResponseRedirect) {
-        const urlArg = firstUrlArgument(firstArg);
-        const targets = staticHrefCandidates(urlArg)
+        const urlArg = firstUrlArgumentResolved(firstArg);
+        const targets = staticHrefCandidatesResolved(urlArg)
           .map(normalizedProductRoute)
           .filter(Boolean);
         if (
           targets.length > 0
-          && !authorityCall(urlArg, navigationBindings)
-          && !authorityCall(urlArg, productHrefBindings)
+          && !authorityCallResolved(urlArg, navigationBindings)
+          && !authorityCallResolved(urlArg, productHrefBindings)
         ) report(node, "route-handler-redirect", targets);
       }
 
@@ -993,6 +1059,43 @@ function auditImperativeNavigation(source, path) {
     || counts["browser-location"] !== 4
   ) {
     throw new Error("Navigation call-site provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { redirect } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getProductRouteHref } from "@/lib/route-semantics";',
+    'const hiddenServerTarget = "/wallet?hidden=1";',
+    'redirect(hiddenServerTarget);',
+    'const hiddenServerAlias = hiddenServerTarget;',
+    'redirect(hiddenServerAlias);',
+    'const conditionalTarget = signedIn ? "/invite#network" : "/auth";',
+    'redirect(conditionalTarget);',
+    'const safeServerTarget = getProductRouteHref("wallet", "?safe=1");',
+    'redirect(safeServerTarget);',
+    'const hiddenRoutePath = "/dashboard?hidden=1";',
+    'const hiddenRoutePathAlias = hiddenRoutePath;',
+    'const hiddenRouteUrl = new URL(hiddenRoutePathAlias, request.url);',
+    'NR.redirect(hiddenRouteUrl, 303);',
+    'const hiddenRouteUrlAlias = hiddenRouteUrl;',
+    'NR.redirect(hiddenRouteUrlAlias, 303);',
+    'const safeRoutePath = getProductRouteHref("home", "?safe=1");',
+    'const safeRouteUrl = new URL(safeRoutePath, request.url);',
+    'NR.redirect(safeRouteUrl, 303);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(selfTest, "navigation-destination-dataflow.self-test.ts");
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["server-redirect"] !== 3
+    || counts["route-handler-redirect"] !== 2
+  ) {
+    throw new Error("Navigation destination dataflow self-test failed: " + JSON.stringify(violations));
   }
 }
 
