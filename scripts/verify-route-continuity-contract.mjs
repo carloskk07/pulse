@@ -2635,6 +2635,8 @@ function auditImperativeNavigation(source, path) {
       nativeDomSetterInfo(target, env)
       || isDomSetAttributeReference(target, env)
       || isNativeDomSetAttributeReference(target, env)
+      || domActivationBinding(target, env)
+      || nativeDomActivationInfo(target, env)
       || isDocumentHtmlWriteReference(target, env)
       || isInsertAdjacentHtmlReference(target, env)
       || isRouterTraversalReference(target, env)
@@ -2675,6 +2677,8 @@ function auditImperativeNavigation(source, path) {
       || domNavigationElementKind(resolved, env)
       || isDomSetAttributeReference(resolved, env)
       || isNativeDomSetAttributeReference(resolved, env)
+      || domActivationBinding(resolved, env)
+      || nativeDomActivationInfo(resolved, env)
       || nativeDomSetterInfo(resolved, env)
       || isDocumentHtmlWriteReference(resolved, env)
       || isInsertAdjacentHtmlReference(resolved, env)
@@ -3225,10 +3229,15 @@ function auditImperativeNavigation(source, path) {
           isDomSetAttributeReference(indirectTarget, env)
           || isNativeDomSetAttributeReference(indirectTarget, env)
         );
+        const activationCapability = (
+          domActivationBinding(indirectTarget, env)
+          || nativeDomActivationInfo(indirectTarget, env)
+        );
 
         const indirectRecognized = Boolean(
           nativeSetter
           || setAttributeCapability
+          || activationCapability
           || isDocumentHtmlWriteReference(indirectTarget, env)
           || isInsertAdjacentHtmlReference(indirectTarget, env)
           || isRouterTraversalReference(indirectTarget, env)
@@ -3248,6 +3257,31 @@ function auditImperativeNavigation(source, path) {
         if (indirectInvocation.dynamic && indirectRecognized) {
           report(node, "native-invoke-dynamic-arguments");
         } else if (!indirectInvocation.dynamic) {
+          if (activationCapability) {
+            const actualKind = indirectThisKind;
+            const expectedKind = activationCapability.kind;
+            const method = activationCapability.method;
+            const validClickKinds = ["a", "area", "button", "input"];
+
+            if (!actualKind) {
+              if (!activationCapability.generic) {
+                report(node, "native-invoke-dom-dynamic-target");
+              }
+            } else if (
+              (method === "submit" || method === "requestSubmit")
+              && actualKind === "form"
+              && (!expectedKind || expectedKind === "form")
+            ) {
+              report(node, "native-invoke-dom-activation");
+            } else if (
+              method === "click"
+              && validClickKinds.includes(actualKind)
+              && (!expectedKind || expectedKind === actualKind || activationCapability.generic)
+            ) {
+              report(node, "native-invoke-dom-activation");
+            }
+          }
+
           if (nativeSetter) {
             if (!indirectThisKind) {
               report(node, "native-invoke-dom-dynamic-target");
@@ -3437,6 +3471,30 @@ function auditImperativeNavigation(source, path) {
             report(node, "native-invoke-browser-navigation-api");
           }
         }
+      }
+
+      const directActivation = domActivationBinding(expression, env);
+      if (directActivation) {
+        if (directActivation.method === "submit" || directActivation.method === "requestSubmit") {
+          report(node, "dom-form-submit");
+        } else if (directActivation.method === "click") {
+          report(node, "dom-click-activation");
+        }
+      }
+
+      const syntheticTargetKind = syntheticActivationTargetKind(expression, env);
+      const syntheticEventName = syntheticActivationEventName(firstArg, env);
+      if (
+        syntheticTargetKind
+        && (
+          (syntheticEventName === "submit" && syntheticTargetKind === "form")
+          || (
+            syntheticEventName === "click"
+            && ["a", "area", "button", "input"].includes(syntheticTargetKind)
+          )
+        )
+      ) {
+        report(node, "dom-synthetic-activation");
       }
 
       const reflectiveCall = reflectiveCalleeName(expression, env);
@@ -3715,6 +3773,8 @@ function auditImperativeNavigation(source, path) {
           || isLocationHeaderMutationReference(argument, env)
           || domNavigationElementKind(argument, env)
           || isDomSetAttributeReference(argument, env)
+          || domActivationBinding(argument, env)
+          || nativeDomActivationInfo(argument, env)
           || isBoundNavigationCapability(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
