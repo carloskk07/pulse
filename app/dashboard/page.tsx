@@ -10,7 +10,7 @@ import { PulseCountdown } from "@/components/pulse-countdown";
 import { TurnstileField } from "@/components/turnstile-field";
 import { ValueFlow } from "@/components/value-flow";
 import { getCircuitProgress } from "@/lib/circuit-progress";
-import { getRouteLinkProps, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
+import { getRouteLinkProps, getRouteNavigationHref, getRouteTransitionTypesForHref } from "@/lib/route-semantics";
 import { getUserNextAction } from "@/lib/experience-presentation";
 import { getEarningExperience } from "@/lib/product-experience";
 import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
@@ -135,7 +135,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               ) : !state.signedIn ? (
                 <Link {...getRouteLinkProps("home", nextAction.href)} className="button button-light pulse-claim-button">{nextAction.actionLabel} <ArrowUpRight /></Link>
               ) : canClaim ? (
-                <form action="/api/pulse/claim" method="post" className="claim-form">
+                <form action={getRouteNavigationHref("home", "/api/pulse/claim")} method="post" className="claim-form">
                   <TurnstileField action="hourly_pulse" />
                   <button className="button button-light pulse-claim-button pc-luxe-claim pc-v9-primary-cta" type="submit">
                     {state.claimRewardVariable ? "Reveal reward" : `Claim ${formatUsdFromCredits(state.claimRewardCredits)}`} <ArrowUpRight />
@@ -147,7 +147,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                 <div className="pc-next-action-row">
                   <button className="button button-light pulse-claim-button" disabled>Waiting for next claim</button>
                   {canScheduleReturn ? (
-                    <form action="/api/return-reminder" method="post">
+                    <form action={getRouteNavigationHref("home", "/api/return-reminder")} method="post">
                       <button className="button button-secondary" type="submit">Set reminder</button>
                     </form>
                   ) : null}
