@@ -1471,9 +1471,32 @@ function auditImperativeNavigation(source, path) {
       if (initializer && ts.isIdentifier(initializer) && browserNavigationApiVariables.has(initializer.text)) {
         changed = addBinding(browserNavigationApiVariables, local) || changed;
       }
+      if (initializer && ts.isIdentifier(initializer) && domRefKinds.has(initializer.text)) {
+        changed = addKindBinding(domRefKinds, local, domRefKinds.get(initializer.text)) || changed;
+      }
+      if (initializer && ts.isIdentifier(initializer) && domCollectionKinds.has(initializer.text)) {
+        changed = addKindBinding(
+          domCollectionKinds,
+          local,
+          domCollectionKinds.get(initializer.text),
+        ) || changed;
+      }
       if (isHeadersObject(initializer)) {
         changed = addBinding(headerVariables, local) || changed;
       }
+
+      const refKind = domRefKindFromInitializer(initializer);
+      if (refKind && domRefKinds.get(local) !== refKind) {
+        domRefKinds.set(local, refKind);
+        changed = true;
+      }
+
+      const collectionKind = domCollectionElementKind(initializer);
+      if (collectionKind && domCollectionKinds.get(local) !== collectionKind) {
+        domCollectionKinds.set(local, collectionKind);
+        changed = true;
+      }
+
       const domKind = domNavigationElementKind(initializer);
       if (domKind && domNavigationElementKinds.get(local) !== domKind) {
         domNavigationElementKinds.set(local, domKind);
