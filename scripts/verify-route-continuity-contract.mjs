@@ -937,6 +937,7 @@ function auditImperativeNavigation(source, path) {
   const headerMutationMethodBindings = new Set();
   const domNavigationElementKinds = new Map();
   const domSetAttributeBindings = new Map();
+  const domActivationMethodBindings = new Map();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -1193,6 +1194,60 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function domActivationMethodForKind(kind, method) {
+    if (kind === "form" && (method === "submit" || method === "requestSubmit")) {
+      return method;
+    }
+    if (
+      (kind === "a" || kind === "area" || kind === "button" || kind === "input")
+      && method === "click"
+    ) {
+      return method;
+    }
+    return null;
+  }
+
+  function domActivationBinding(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && domActivationMethodBindings.has(resolved.text)) {
+      return domActivationMethodBindings.get(resolved.text);
+    }
+    if (
+      ts.isPropertyAccessExpression(resolved)
+      || ts.isElementAccessExpression(resolved)
+    ) {
+      const ownerKind = domNavigationElementKind(propertyOwner(resolved), env);
+      const method = domActivationMethodForKind(ownerKind, propertyName(resolved));
+      return method ? { kind: ownerKind, method } : null;
+    }
+    return null;
+  }
+
+  function isNativeFormSubmitPrototypeCall(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!(resolved && (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)))) {
+      return false;
+    }
+    const invokeMethod = propertyName(resolved);
+    if (invokeMethod !== "call" && invokeMethod !== "apply") return false;
+
+    const target = propertyOwner(resolved);
+    if (!(target && (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)))) {
+      return false;
+    }
+    if (propertyName(target) !== "submit") return false;
+
+    const prototype = propertyOwner(target);
+    if (!(prototype && (ts.isPropertyAccessExpression(prototype) || ts.isElementAccessExpression(prototype)))) {
+      return false;
+    }
+    return (
+      propertyName(prototype) === "prototype"
+      && propertyOwner(prototype)?.getText(sourceFile) === "HTMLFormElement"
+    );
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -1298,6 +1353,14 @@ function auditImperativeNavigation(source, path) {
         if (domOwnerKind && method === "setAttribute") {
           changed = addKindBinding(domSetAttributeBindings, local, domOwnerKind) || changed;
         }
+        const activationMethod = domActivationMethodForKind(domOwnerKind, method);
+        if (activationMethod) {
+          const binding = domActivationMethodBindings.get(local);
+          if (!binding || binding.kind !== domOwnerKind || binding.method !== activationMethod) {
+            domActivationMethodBindings.set(local, { kind: domOwnerKind, method: activationMethod });
+            changed = true;
+          }
+        }
       }
 
       if (initializer && ts.isIdentifier(initializer)) {
@@ -1346,6 +1409,17 @@ function auditImperativeNavigation(source, path) {
             local,
             domSetAttributeBindings.get(initializer.text),
           ) || changed;
+        }
+        if (domActivationMethodBindings.has(initializer.text)) {
+          const binding = domActivationMethodBindings.get(initializer.text);
+          const existing = domActivationMethodBindings.get(local);
+          if (
+            binding
+            && (!existing || existing.kind !== binding.kind || existing.method !== binding.method)
+          ) {
+            domActivationMethodBindings.set(local, binding);
+            changed = true;
+          }
         }
       }
     }
@@ -1410,6 +1484,21 @@ function auditImperativeNavigation(source, path) {
             localName,
             domNavigationElementKind(initializer),
           ) || changed;
+        }
+        if (fromDomNavigationElement) {
+          const kind = domNavigationElementKind(initializer);
+          const activationMethod = domActivationMethodForKind(kind, sourceName);
+          if (activationMethod) {
+            const existing = domActivationMethodBindings.get(localName);
+            if (
+              !existing
+              || existing.kind !== kind
+              || existing.method !== activationMethod
+            ) {
+              domActivationMethodBindings.set(localName, { kind, method: activationMethod });
+              changed = true;
+            }
+          }
         }
       }
     }
