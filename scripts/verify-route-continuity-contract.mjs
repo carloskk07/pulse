@@ -5002,6 +5002,39 @@ function auditImperativeNavigation(source, path) {
 {
   const selfTest = [
     'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'function onMessage(event: MessageEvent) {',
+    '  event.source.location.assign("/dashboard");',
+    '  event.source.history.pushState({}, "", "/progress");',
+    '  event.source.navigation.navigate("/invite");',
+    '  const source = event.source;',
+    '  source.location.href = "/wallet";',
+    '  event.source.open("https://example.com/raw", "_blank");',
+    '  event.source.location.assign(getRouteNavigationHref("message-source", "/dashboard"));',
+    '  event.source.open(getExternalNavigationHref("https://example.com/safe"), "_blank");',
+    '}',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "message-source-window.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["browser-location"] !== 2
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+    || counts["browser-window-open"] !== 1
+  ) {
+    throw new Error("Message source window authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
     'window[0].location.assign("/dashboard");',
     'parent[1].location.href = "/wallet";',
     'const indexedChild = window[0];',
@@ -5509,7 +5542,9 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenTop(target) { top.location.assign(target); }',
     'export function hiddenFrame(target) { frames[0].location.replace(target); }',
     'export function hiddenIndexedContext(target) { window[0].location.assign(target); }',
+    'export function hiddenMessageSource(event: MessageEvent, target) { event.source.location.assign(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenMessageSourceHistory(event: MessageEvent, target) { event.source.history.pushState({}, "", target); }',
     'export function hiddenIndexedContextHistory(target) { parent[1].history.pushState({}, "", target); }',
     'export function hiddenEmbeddedViewHistory(target) { iframe.contentDocument.defaultView.history.pushState({}, "", target); }',
     'export function hiddenParentHistory(target) { parent.history.pushState({}, "", target); }',
@@ -5531,11 +5566,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     return acc;
   }, {});
   if (
-    violations.length !== 22
-    || counts["browser-navigation"] !== 6
+    violations.length !== 24
+    || counts["browser-navigation"] !== 7
     || counts["browser-reload"] !== 1
     || counts["browser-window-navigation"] !== 2
-    || counts["history-navigation"] !== 4
+    || counts["history-navigation"] !== 5
     || counts["history-traversal"] !== 1
     || counts["navigation-api"] !== 2
     || counts["navigation-api-traversal"] !== 1
