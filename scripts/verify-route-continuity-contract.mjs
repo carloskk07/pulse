@@ -1266,6 +1266,7 @@ function auditImperativeNavigation(source, path) {
   const domRefKinds = new Map();
   const domCollectionKinds = new Map();
   const domSetAttributeBindings = new Map();
+  const domActivationMethodBindings = new Map();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -1751,6 +1752,104 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function domActivationMethodForKind(kind, method) {
+    if (kind === "form" && (method === "submit" || method === "requestSubmit")) {
+      return method;
+    }
+    if (
+      (kind === "a" || kind === "area" || kind === "button" || kind === "input")
+      && method === "click"
+    ) {
+      return method;
+    }
+    return null;
+  }
+
+  function domActivationBinding(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+
+    if (ts.isIdentifier(resolved) && domActivationMethodBindings.has(resolved.text)) {
+      return domActivationMethodBindings.get(resolved.text);
+    }
+
+    if (
+      ts.isPropertyAccessExpression(resolved)
+      || ts.isElementAccessExpression(resolved)
+    ) {
+      const method = propertyName(resolved);
+      const ownerKind = domNavigationElementKind(propertyOwner(resolved), env);
+      const activationMethod = domActivationMethodForKind(ownerKind, method);
+      if (activationMethod) return { kind: ownerKind, method: activationMethod };
+
+      // requestSubmit is unique to forms. Treat an untyped owner as unresolved
+      // form capability instead of allowing it to bypass typed/ref tracking.
+      if (method === "requestSubmit") {
+        return { kind: ownerKind ?? null, method, unresolved: !ownerKind };
+      }
+    }
+
+    return null;
+  }
+
+  function nativeDomActivationInfo(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+    ) return null;
+
+    const method = propertyName(resolved);
+    const owner = propertyOwner(resolved);
+    if (!owner) return null;
+
+    const prototypeKind = nativeDomPrototypeKind(owner, env);
+    const activationMethod = domActivationMethodForKind(prototypeKind, method);
+    if (activationMethod) {
+      return { kind: prototypeKind, method: activationMethod, generic: false };
+    }
+
+    const ownerText = owner.getText(sourceFile);
+    if (
+      method === "click"
+      && (
+        ownerText === "HTMLElement.prototype"
+        || ownerText === "globalThis.HTMLElement.prototype"
+      )
+    ) {
+      return { kind: null, method: "click", generic: true };
+    }
+
+    return null;
+  }
+
+  function syntheticActivationEventName(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isNewExpression(resolved)) return null;
+    const constructorText = resolved.expression.getText(sourceFile);
+    if (
+      constructorText !== "Event"
+      && constructorText !== "SubmitEvent"
+      && constructorText !== "MouseEvent"
+      && constructorText !== "PointerEvent"
+    ) return null;
+
+    const eventName = resolveDataExpression(resolved.arguments?.[0], env);
+    if (!eventName || !ts.isStringLiteralLike(eventName)) return null;
+    const normalized = eventName.text.toLowerCase();
+    return normalized === "submit" || normalized === "click" ? normalized : null;
+  }
+
+  function syntheticActivationTargetKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "dispatchEvent"
+    ) return null;
+    return domNavigationElementKind(propertyOwner(resolved), env);
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -1879,6 +1978,18 @@ function auditImperativeNavigation(source, path) {
         if (domOwnerKind && method === "setAttribute") {
           changed = addKindBinding(domSetAttributeBindings, local, domOwnerKind) || changed;
         }
+        const activationMethod = domActivationMethodForKind(domOwnerKind, method);
+        if (activationMethod) {
+          const existing = domActivationMethodBindings.get(local);
+          if (
+            !existing
+            || existing.kind !== domOwnerKind
+            || existing.method !== activationMethod
+          ) {
+            domActivationMethodBindings.set(local, { kind: domOwnerKind, method: activationMethod });
+            changed = true;
+          }
+        }
       }
 
       if (initializer && ts.isIdentifier(initializer)) {
@@ -1927,6 +2038,17 @@ function auditImperativeNavigation(source, path) {
             local,
             domSetAttributeBindings.get(initializer.text),
           ) || changed;
+        }
+        if (domActivationMethodBindings.has(initializer.text)) {
+          const binding = domActivationMethodBindings.get(initializer.text);
+          const existing = domActivationMethodBindings.get(local);
+          if (
+            binding
+            && (!existing || existing.kind !== binding.kind || existing.method !== binding.method)
+          ) {
+            domActivationMethodBindings.set(local, binding);
+            changed = true;
+          }
         }
       }
     }
@@ -1991,6 +2113,21 @@ function auditImperativeNavigation(source, path) {
             localName,
             domNavigationElementKind(initializer),
           ) || changed;
+        }
+        if (fromDomNavigationElement) {
+          const kind = domNavigationElementKind(initializer);
+          const activationMethod = domActivationMethodForKind(kind, sourceName);
+          if (activationMethod) {
+            const existing = domActivationMethodBindings.get(localName);
+            if (
+              !existing
+              || existing.kind !== kind
+              || existing.method !== activationMethod
+            ) {
+              domActivationMethodBindings.set(localName, { kind, method: activationMethod });
+              changed = true;
+            }
+          }
         }
       }
     }
