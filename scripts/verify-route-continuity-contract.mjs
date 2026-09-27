@@ -1416,7 +1416,7 @@ function auditImperativeNavigation(source, path) {
         const historyTarget = node.arguments[2];
         if (
           historyTarget
-          && !browserNavigationAuthority(historyTarget, env, callStack)
+          && !authorityExpressionResolved(historyTarget, navigationBindings, env, callStack)
         ) {
           report(node, "browser-history");
         }
@@ -1639,6 +1639,49 @@ function auditImperativeNavigation(source, path) {
     || counts["cross-module-wrapper"] !== 2
   ) {
     throw new Error("Cross-module navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'history.pushState({}, "", "/earn");',
+    'window.history.replaceState({}, "", getRouteNavigationHref("history", "/earn"));',
+    'const hist = window.history;',
+    'hist.pushState({}, "", "/wallet");',
+    'const { replaceState: swapHistory } = history;',
+    'swapHistory({}, "", "/progress");',
+    'window.open("https://example.com", "_blank");',
+    'const launch = window.open;',
+    'launch("https://example.com/alias");',
+    'window.open(getExternalNavigationHref("https://example.com/safe"), "_blank");',
+    'document.location.assign("/dashboard");',
+    'document.location.href = "/wallet";',
+    'window.location = "/earn";',
+    'document.location = getRouteNavigationHref("browser", "/dashboard");',
+    'globalThis.location.replace("https://example.com/raw");',
+    'globalThis.location.replace(getExternalNavigationHref("https://example.com/safe"));',
+    'navigation.navigate("/invite");',
+    'window.navigation.navigate(getRouteNavigationHref("browser", "/invite"));',
+    'const navApi = window.navigation;',
+    'navApi.navigate("/progress");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "browser-navigation-primitives.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["browser-history"] !== 3
+    || counts["browser-window-open"] !== 2
+    || counts["browser-location"] !== 4
+    || counts["browser-navigation-api"] !== 2
+  ) {
+    throw new Error("Browser navigation primitive authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
