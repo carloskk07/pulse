@@ -2598,6 +2598,49 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const anchor = document.createElement("a");',
+    'Object.assign(anchor, { href: "/earn" });',
+    'Object.assign(anchor, { href: getRouteNavigationHref("reflective-dom", "/earn") });',
+    'Object.assign(anchor, dynamicProps);',
+    'Reflect.set(anchor, "href", "/wallet");',
+    'Reflect.set(anchor, "href", getRouteNavigationHref("reflective-dom", "/wallet"));',
+    'Reflect.set(anchor, dynamicPropertyName, getRouteNavigationHref("reflective-dom", "/invite"));',
+    'Object.defineProperty(anchor, "href", { value: "/invite" });',
+    'Object.defineProperty(anchor, "href", { value: getRouteNavigationHref("reflective-dom", "/invite") });',
+    'Object.defineProperty(anchor, "href", { get: () => "/progress" });',
+    'const form = document.createElement("form");',
+    'Object.defineProperties(form, { action: { value: "/api/withdrawals" } });',
+    'Object.defineProperties(form, { action: { value: getRouteNavigationHref("reflective-dom", "/api/withdrawals") } });',
+    'const button = document.createElement("button");',
+    'Object.defineProperties(button, { formAction: { value: "/api/pulse/claim" } });',
+    'const base = document.createElement("base");',
+    'Object.assign(base, { href: getRouteNavigationHref("reflective-dom", "/dashboard/") });',
+    'Reflect.set(base, "href", getRouteNavigationHref("reflective-dom", "/dashboard/"));',
+    'Object.defineProperty(base, "href", { value: getRouteNavigationHref("reflective-dom", "/dashboard/") });',
+    'Object.defineProperties(base, { href: { value: getRouteNavigationHref("reflective-dom", "/dashboard/") } });',
+    'Object.assign(anchor, { href: getExternalNavigationHref("https://example.com/safe") });',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "reflective-dom-mutation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 12
+    || counts["dom-reflective-property"] !== 6
+    || counts["dom-reflective-dynamic"] !== 2
+    || counts["dom-base-href"] !== 4
+  ) {
+    throw new Error("Reflective DOM mutation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRouter } from "next/navigation";',
     'const router = useRouter();',
     'router.back();',
