@@ -1978,6 +1978,126 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function staticInvocationArguments(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isArrayLiteralExpression(resolved)) {
+      return { args: [], dynamic: true };
+    }
+    if (resolved.elements.some((element) => ts.isSpreadElement(element))) {
+      return { args: [], dynamic: true };
+    }
+    return { args: [...resolved.elements], dynamic: false };
+  }
+
+  function indirectInvocationInfo(callExpression, env = new Map()) {
+    if (!ts.isCallExpression(callExpression)) return null;
+    const resolvedCallee = resolveDataExpression(callExpression.expression, env);
+    if (!resolvedCallee) return null;
+
+    if (
+      ts.isPropertyAccessExpression(resolvedCallee)
+      || ts.isElementAccessExpression(resolvedCallee)
+    ) {
+      const method = propertyName(resolvedCallee);
+      const target = propertyOwner(resolvedCallee);
+      const ownerText = propertyOwner(resolvedCallee)?.getText(sourceFile);
+      if (
+        method === "apply"
+        && (ownerText === "Reflect" || ownerText === "globalThis.Reflect")
+      ) {
+        const invocation = staticInvocationArguments(callExpression.arguments[2], env);
+        return {
+          target: callExpression.arguments[0] ?? null,
+          thisArg: callExpression.arguments[1] ?? null,
+          args: invocation.args,
+          dynamic: invocation.dynamic,
+        };
+      }
+
+      if (method === "call") {
+        const invocationArgs = callExpression.arguments.slice(1);
+        return {
+          target,
+          thisArg: callExpression.arguments[0] ?? null,
+          args: invocationArgs.some((argument) => ts.isSpreadElement(argument))
+            ? []
+            : invocationArgs,
+          dynamic: invocationArgs.some((argument) => ts.isSpreadElement(argument)),
+        };
+      }
+      if (method === "apply") {
+        const invocation = staticInvocationArguments(callExpression.arguments[1], env);
+        return {
+          target,
+          thisArg: callExpression.arguments[0] ?? null,
+          args: invocation.args,
+          dynamic: invocation.dynamic,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function nativeDomPrototypeKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    const text = resolved.getText(sourceFile);
+    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement)\.prototype$/);
+    return match ? domKindFromTypeNameText(match[1]) : null;
+  }
+
+  function nativeDomSetterInfo(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "set"
+    ) return null;
+
+    const descriptorCall = propertyOwner(resolved);
+    if (!descriptorCall || !ts.isCallExpression(descriptorCall)) return null;
+    const descriptorCallee = resolveDataExpression(descriptorCall.expression, env);
+    if (
+      !descriptorCallee
+      || !(ts.isPropertyAccessExpression(descriptorCallee) || ts.isElementAccessExpression(descriptorCallee))
+      || propertyName(descriptorCallee) !== "getOwnPropertyDescriptor"
+    ) return null;
+
+    const descriptorOwner = propertyOwner(descriptorCallee)?.getText(sourceFile);
+    if (descriptorOwner !== "Object" && descriptorOwner !== "globalThis.Object") return null;
+
+    const kind = nativeDomPrototypeKind(descriptorCall.arguments[0], env);
+    const propertyExpression = resolveDataExpression(descriptorCall.arguments[1], env);
+    const propertyText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+      ? propertyExpression.text
+      : null;
+    const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
+    return kind && navigationProperty
+      ? { kind, property: navigationProperty }
+      : null;
+  }
+
+  function isNativeDomSetAttributeReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "setAttribute"
+    ) return false;
+
+    const owner = propertyOwner(resolved);
+    if (!owner) return false;
+    const ownerText = owner.getText(sourceFile);
+    return (
+      ownerText === "Element.prototype"
+      || ownerText === "globalThis.Element.prototype"
+      || ownerText === "HTMLElement.prototype"
+      || ownerText === "globalThis.HTMLElement.prototype"
+      || Boolean(nativeDomPrototypeKind(owner, env))
+    );
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
@@ -2272,6 +2392,231 @@ function auditImperativeNavigation(source, path) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
+
+      const indirectInvocation = indirectInvocationInfo(node, env);
+      if (indirectInvocation) {
+        const indirectTarget = indirectInvocation.target;
+        const indirectArgs = indirectInvocation.args;
+        const indirectFirstArg = indirectArgs[0];
+        const indirectThisKind = domNavigationElementKind(indirectInvocation.thisArg, env);
+        const nativeSetter = nativeDomSetterInfo(indirectTarget, env);
+        const setAttributeCapability = (
+          isDomSetAttributeReference(indirectTarget, env)
+          || isNativeDomSetAttributeReference(indirectTarget, env)
+        );
+
+        const indirectRecognized = Boolean(
+          nativeSetter
+          || setAttributeCapability
+          || isDocumentHtmlWriteReference(indirectTarget, env)
+          || isInsertAdjacentHtmlReference(indirectTarget, env)
+          || isRouterTraversalReference(indirectTarget, env)
+          || isRouterMethodReference(indirectTarget, env)
+          || isServerRedirectReference(indirectTarget, env)
+          || isResponseRedirectReference(indirectTarget, env)
+          || isLocationHeaderMutationReference(indirectTarget, env)
+          || isBrowserLocationReloadReference(indirectTarget, env)
+          || isBrowserLocationMethodReference(indirectTarget, env)
+          || isBrowserHistoryTraversalReference(indirectTarget, env)
+          || isBrowserHistoryMethodReference(indirectTarget, env)
+          || isBrowserWindowOpenReference(indirectTarget, env)
+          || isBrowserNavigationTraversalReference(indirectTarget, env)
+          || isBrowserNavigationApiMethodReference(indirectTarget, env)
+        );
+
+        if (indirectInvocation.dynamic && indirectRecognized) {
+          report(node, "native-invoke-dynamic-arguments");
+        } else if (!indirectInvocation.dynamic) {
+          if (nativeSetter) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else if (indirectThisKind === nativeSetter.kind) {
+              if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
+                report(node, "native-invoke-dom-base-href");
+              } else if (
+                !indirectFirstArg
+                || !domNavigationAuthority(indirectFirstArg, env, callStack)
+              ) {
+                const targets = indirectFirstArg
+                  ? staticHrefCandidatesResolved(indirectFirstArg, env, callStack)
+                  : [];
+                report(node, "native-invoke-dom-setter", targets);
+              }
+            }
+          }
+
+          if (setAttributeCapability) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else {
+              const attributeName = resolveDataExpression(indirectFirstArg, env);
+              const target = indirectArgs[1];
+              if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else {
+                const navProperty = domNavigationPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
+                if (indirectThisKind === "base" && navProperty === "href") {
+                  report(node, "native-invoke-dom-base-href");
+                } else if (
+                  navProperty
+                  && (!target || !domNavigationAuthority(target, env, callStack))
+                ) {
+                  const targets = target
+                    ? staticHrefCandidatesResolved(target, env, callStack)
+                    : [];
+                  report(node, "native-invoke-dom-attribute", targets);
+                }
+              }
+            }
+          }
+
+          if (
+            isDocumentHtmlWriteReference(indirectTarget, env)
+            || isInsertAdjacentHtmlReference(indirectTarget, env)
+          ) {
+            report(node, "native-invoke-dom-html");
+          }
+
+          if (isRouterTraversalReference(indirectTarget, env)) {
+            report(node, "native-invoke-router-traversal");
+          }
+
+          if (
+            isRouterMethodReference(indirectTarget, env)
+            && !authorityExpressionResolved(
+              indirectFirstArg,
+              navigationBindings,
+              env,
+              callStack,
+            )
+          ) {
+            report(node, "native-invoke-router");
+          }
+
+          if (isServerRedirectReference(indirectTarget, env)) {
+            const targets = staticHrefCandidatesResolved(
+              indirectFirstArg,
+              env,
+              callStack,
+            ).map(normalizedProductRoute).filter(Boolean);
+            const authoritative = (
+              authorityExpressionResolved(indirectFirstArg, navigationBindings, env, callStack)
+              || authorityExpressionResolved(indirectFirstArg, productHrefBindings, env, callStack)
+            );
+            if (targets.length > 0 && !authoritative) {
+              report(node, "native-invoke-server-redirect", targets);
+            } else if (
+              !authoritative
+              && containsUnprovenProjectImportCall(indirectFirstArg, env, callStack)
+            ) {
+              report(node, "native-invoke-cross-module-destination");
+            }
+          }
+
+          if (isResponseRedirectReference(indirectTarget, env)) {
+            const targetExpressions = routeRedirectTargetExpressions(
+              indirectFirstArg,
+              env,
+              callStack,
+            );
+            const targets = targetExpressions
+              .flatMap((target) => staticHrefCandidatesResolved(target, env, callStack))
+              .map(normalizedProductRoute)
+              .filter(Boolean);
+            const authoritative = targetExpressions.length > 0
+              && targetExpressions.every((target) => (
+                authorityExpressionResolved(target, navigationBindings, env, callStack)
+                || authorityExpressionResolved(target, productHrefBindings, env, callStack)
+              ));
+            if (targets.length > 0 && !authoritative) {
+              report(node, "native-invoke-route-handler-redirect", targets);
+            } else if (
+              !authoritative
+              && containsUnprovenProjectImportCall(indirectFirstArg, env, callStack)
+            ) {
+              report(node, "native-invoke-cross-module-destination");
+            }
+          }
+
+          if (isLocationHeaderMutationReference(indirectTarget, env)) {
+            const headerName = resolveDataExpression(indirectFirstArg, env);
+            const locationTarget = indirectArgs[1];
+            if (
+              headerName
+              && ts.isStringLiteralLike(headerName)
+              && headerName.text.toLowerCase() === "location"
+              && locationTarget
+            ) {
+              const authoritative = (
+                authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+                || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+                || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+              );
+              if (!authoritative) {
+                const targets = staticHrefCandidatesResolved(
+                  locationTarget,
+                  env,
+                  callStack,
+                ).map(normalizedProductRoute).filter(Boolean);
+                report(node, "native-invoke-location-header", targets);
+              }
+            }
+          }
+
+          if (isBrowserLocationReloadReference(indirectTarget, env)) {
+            report(node, "native-invoke-browser-reload");
+          }
+
+          if (
+            isBrowserLocationMethodReference(indirectTarget, env)
+            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+          ) {
+            report(node, "native-invoke-browser-location");
+          }
+
+          if (isBrowserHistoryTraversalReference(indirectTarget, env)) {
+            report(node, "native-invoke-history-traversal");
+          }
+
+          if (isBrowserHistoryMethodReference(indirectTarget, env)) {
+            const historyTarget = indirectArgs[2];
+            if (
+              historyTarget
+              && !authorityExpressionResolved(
+                historyTarget,
+                navigationBindings,
+                env,
+                callStack,
+              )
+            ) {
+              report(node, "native-invoke-browser-history");
+            }
+          }
+
+          if (
+            isBrowserWindowOpenReference(indirectTarget, env)
+            && indirectFirstArg
+            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+          ) {
+            report(node, "native-invoke-browser-window-open");
+          }
+
+          if (isBrowserNavigationTraversalReference(indirectTarget, env)) {
+            report(node, "native-invoke-navigation-api-traversal");
+          }
+
+          if (
+            isBrowserNavigationApiMethodReference(indirectTarget, env)
+            && indirectFirstArg
+            && !browserNavigationAuthority(indirectFirstArg, env, callStack)
+          ) {
+            report(node, "native-invoke-browser-navigation-api");
+          }
+        }
+      }
 
       const reflectiveCall = reflectiveCalleeName(expression, env);
       const reflectiveTargetKind = reflectiveCall
@@ -2897,6 +3242,79 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { redirect, useRouter } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
+    'router.push.call(router, "/earn");',
+    'router.push.call(router, getRouteNavigationHref("native-invoke", "/earn"));',
+    'router.replace.apply(router, ["/wallet"]);',
+    'Reflect.apply(router.push, router, [getRouteNavigationHref("native-invoke", "/progress")]);',
+    'router.back.call(router);',
+    'history.pushState.call(history, {}, "", "/progress");',
+    'Reflect.apply(history.replaceState, history, [{}, "", getRouteNavigationHref("native-invoke", "/progress")]);',
+    'history.go.apply(history, [-1]);',
+    'location.assign.call(location, "https://example.com/raw");',
+    'Reflect.apply(location.replace, location, [getExternalNavigationHref("https://example.com/safe")]);',
+    'location.reload.call(location);',
+    'window.open.apply(window, ["https://example.com/raw"]);',
+    'navigation.navigate.call(navigation, "/invite");',
+    'navigation.back.call(navigation);',
+    'redirect.call(null, "/wallet");',
+    'redirect.call(null, getProductRouteHref("wallet"));',
+    'NR.redirect.call(NR, new URL("/dashboard", request.url), 303);',
+    'NR.redirect.call(NR, new URL(getProductRouteHref("home"), request.url), 303);',
+    'const headers = new Headers();',
+    'headers.set.call(headers, "Location", "/dashboard");',
+    'headers.set.call(headers, "Location", getRouteNavigationHref("headers", "/dashboard"));',
+    'const anchor = document.createElement("a");',
+    'anchor.setAttribute.call(anchor, "href", "/invite");',
+    'Reflect.apply(anchor.setAttribute, anchor, ["href", getRouteNavigationHref("native-invoke", "/invite")]);',
+    'Element.prototype.setAttribute.call(anchor, "href", "/dashboard");',
+    'Reflect.apply(Element.prototype.setAttribute, anchor, ["href", getRouteNavigationHref("native-invoke", "/dashboard")]);',
+    'const hrefSetter = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "href").set;',
+    'hrefSetter.call(anchor, "/earn");',
+    'hrefSetter.call(anchor, getRouteNavigationHref("native-invoke", "/earn"));',
+    'const form = document.createElement("form");',
+    'Reflect.apply(Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "action").set, form, ["/api/withdrawals"]);',
+    'Reflect.apply(Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "action").set, form, [getRouteNavigationHref("native-invoke", "/api/withdrawals")]);',
+    'const base = document.createElement("base");',
+    'Object.getOwnPropertyDescriptor(HTMLBaseElement.prototype, "href").set.call(base, getRouteNavigationHref("native-invoke", "/dashboard/"));',
+    'router.push.apply(router, dynamicArguments);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "native-invocation-boundary.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 19
+    || counts["native-invoke-router"] !== 2
+    || counts["native-invoke-router-traversal"] !== 1
+    || counts["native-invoke-browser-history"] !== 1
+    || counts["native-invoke-history-traversal"] !== 1
+    || counts["native-invoke-browser-location"] !== 1
+    || counts["native-invoke-browser-reload"] !== 1
+    || counts["native-invoke-browser-window-open"] !== 1
+    || counts["native-invoke-browser-navigation-api"] !== 1
+    || counts["native-invoke-navigation-api-traversal"] !== 1
+    || counts["native-invoke-server-redirect"] !== 1
+    || counts["native-invoke-route-handler-redirect"] !== 1
+    || counts["native-invoke-location-header"] !== 1
+    || counts["native-invoke-dom-attribute"] !== 2
+    || counts["native-invoke-dom-setter"] !== 2
+    || counts["native-invoke-dom-base-href"] !== 1
+    || counts["native-invoke-dynamic-arguments"] !== 1
+  ) {
+    throw new Error("Native invocation boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRef } from "react";',
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'const selected = document.querySelector("a.promo");',
@@ -3430,6 +3848,21 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
 
+const nativeInvocationViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("native-invoke-"));
+if (nativeInvocationViolations.length > 0) {
+  throw new Error(
+    "Native invocation boundary failed:\n"
+    + nativeInvocationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
 const domNavigationMutationViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("dom-"));
 if (domNavigationMutationViolations.length > 0) {
@@ -3446,7 +3879,10 @@ if (domNavigationMutationViolations.length > 0) {
 }
 
 const imperativeNavigationViolations = allImperativeNavigationViolations
-  .filter((violation) => !violation.kind.startsWith("dom-"));
+  .filter((violation) =>
+    !violation.kind.startsWith("dom-")
+    && !violation.kind.startsWith("native-invoke-")
+  );
 if (imperativeNavigationViolations.length > 0) {
   throw new Error(
     "Imperative navigation provenance failed:\n"
