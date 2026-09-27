@@ -5753,6 +5753,53 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 }
 
+{
+  const selfTest = [
+    'import { getExternalNavigationHref } from "@/lib/route-semantics";',
+    'const safeExternal = getExternalNavigationHref("https://example.com/safe");',
+    'const dynamicTarget = chooseTarget();',
+    'window.open(safeExternal, "_blank");',
+    'window.open(safeExternal, "_blank", "noopener,noreferrer");',
+    'window.open(safeExternal, "_self");',
+    'window.open(safeExternal, "_top", "noopener");',
+    'window.open(safeExternal, dynamicTarget, "noopener");',
+    'window.open(safeExternal);',
+    'const openAlias = window.open;',
+    'openAlias(safeExternal, "named-window", "noopener");',
+    'const boundSafeOpen = window.open.bind(window, safeExternal, "_blank", "noopener");',
+    'boundSafeOpen();',
+    'const anchor = document.createElement("a");',
+    'anchor.target = "_blank";',
+    'anchor.target = "_self";',
+    'const form = document.createElement("form");',
+    'form.target = "_parent";',
+    'const button = document.createElement("button");',
+    'button.formTarget = dynamicTarget;',
+    'anchor.setAttribute("target", "named-frame");',
+    'Object.assign(form, { target: "_blank" });',
+    'Reflect.set(anchor, "target", "_self");',
+    'Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "target").set.call(anchor, "_blank");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-target-context.self-test.ts",
+    { programmaticTargetContextPolicy: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["programmatic-target-context"] !== 7
+    || counts["programmatic-target-dynamic"] !== 2
+    || counts["programmatic-target-blank-opener"] !== 1
+    || counts["programmatic-target-implicit"] !== 1
+  ) {
+    throw new Error("Programmatic target context policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditNavigationSideEffectBoundary(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -6252,7 +6299,11 @@ if (hiddenNavigationModuleViolations.length > 0) {
 
 const allImperativeNavigationViolations = ["app", "components", "lib", "providers"]
   .flatMap(collectTypeScriptFiles)
-  .flatMap((path) => auditImperativeNavigation(read(path), path));
+  .flatMap((path) => auditImperativeNavigation(
+    read(path),
+    path,
+    { programmaticTargetContextPolicy: true },
+  ));
 
 const dynamicCodeExecutionViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("dynamic-code-"));
@@ -6297,6 +6348,21 @@ if (nativeInvocationViolations.length > 0) {
   );
 }
 
+const programmaticTargetContextViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("programmatic-target-"));
+if (programmaticTargetContextViolations.length > 0) {
+  throw new Error(
+    "Programmatic target context policy failed:\n"
+    + programmaticTargetContextViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
 const embeddedContextRuntimeSourceViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("embedded-runtime-"));
 if (embeddedContextRuntimeSourceViolations.length > 0) {
@@ -6329,7 +6395,8 @@ if (domNavigationMutationViolations.length > 0) {
 
 const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
-    !violation.kind.startsWith("embedded-runtime-")
+    !violation.kind.startsWith("programmatic-target-")
+    && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
     && !violation.kind.startsWith("proxy-navigation-")
