@@ -5,12 +5,13 @@ import {
   RETENTION_ATTRIBUTION_COOKIE,
   RETENTION_ATTRIBUTION_MAX_AGE_SECONDS,
 } from "@/lib/retention-attribution";
+import { getProductRouteHref } from "@/lib/route-semantics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 function dashboardRedirect(request: NextRequest, state: string) {
-  const url = new URL("/dashboard", request.url);
+  const url = new URL(getProductRouteHref("home"), request.url);
   url.searchParams.set("return", state);
   const response = NextResponse.redirect(url, 303);
   response.headers.set("Cache-Control", "private, no-store");
