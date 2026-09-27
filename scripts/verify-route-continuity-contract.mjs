@@ -1871,6 +1871,61 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function staticObjectPropertyName(property, env = new Map()) {
+    if (!property) return null;
+    if (ts.isIdentifier(property.name)) return property.name.text;
+    if (ts.isStringLiteralLike(property.name) || ts.isNumericLiteral(property.name)) {
+      return property.name.text;
+    }
+    if (ts.isComputedPropertyName(property.name)) {
+      const expression = resolveDataExpression(property.name.expression, env);
+      return expression && ts.isStringLiteralLike(expression) ? expression.text : null;
+    }
+    return null;
+  }
+
+  function reflectiveCalleeName(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!(resolved && (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)))) {
+      return null;
+    }
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    const method = propertyName(resolved);
+    if (ownerText === "Object" || ownerText === "globalThis.Object") {
+      if (method === "assign" || method === "defineProperty" || method === "defineProperties") {
+        return "Object." + method;
+      }
+    }
+    if ((ownerText === "Reflect" || ownerText === "globalThis.Reflect") && method === "set") {
+      return "Reflect.set";
+    }
+    return null;
+  }
+
+  function descriptorNavigationValue(descriptor, env = new Map()) {
+    const resolved = resolveDataExpression(descriptor, env);
+    if (!resolved || !ts.isObjectLiteralExpression(resolved)) return null;
+    if (
+      propertyAssignmentByName(resolved, "get")
+      || propertyAssignmentByName(resolved, "set")
+    ) return null;
+    return propertyAssignmentByName(resolved, "value");
+  }
+
+  function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
+    const navProperty = domNavigationPropertyForKind(kind, propertyNameText);
+    if (!navProperty) return false;
+    if (kind === "base" && navProperty === "href") {
+      report(node, "dom-base-href");
+      return true;
+    }
+    if (!value || !domNavigationAuthority(value, env, callStack)) {
+      const targets = value ? staticHrefCandidatesResolved(value, env, callStack) : [];
+      report(node, "dom-reflective-property", targets);
+    }
+    return true;
+  }
+
   function numericLiteralValue(expression) {
     const resolved = resolveDataExpression(expression);
     if (resolved && ts.isNumericLiteral(resolved)) return Number(resolved.text);
