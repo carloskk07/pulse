@@ -1743,6 +1743,11 @@ function auditImperativeNavigation(source, path) {
     if (normalized === "HTMLFormElement") return "form";
     if (normalized === "HTMLButtonElement") return "button";
     if (normalized === "HTMLInputElement") return "input";
+    if (normalized === "HTMLIFrameElement") return "iframe";
+    if (normalized === "HTMLFrameElement") return "frame";
+    if (normalized === "HTMLFencedFrameElement") return "fencedframe";
+    if (normalized === "HTMLObjectElement") return "object";
+    if (normalized === "HTMLEmbedElement") return "embed";
     return null;
   }
 
@@ -2135,7 +2140,7 @@ function auditImperativeNavigation(source, path) {
 
   function domKindFromSelectorText(value) {
     if (typeof value !== "string") return null;
-    const match = value.match(/^\s*(a|area|base|form|button|input)(?=$|[.#:\[\s>+~])/i);
+    const match = value.match(/^\s*(a|area|base|form|button|input|iframe|frame|fencedframe|object|embed)(?=$|[.#:\[\s>+~])/i);
     return match ? match[1].toLowerCase() : null;
   }
 
@@ -2191,7 +2196,7 @@ function auditImperativeNavigation(source, path) {
       const tag = resolveDataExpression(resolved.arguments[0], env);
       if (!tag || !ts.isStringLiteralLike(tag)) return null;
       const kind = tag.text.toLowerCase();
-      return ["a", "area", "base", "form", "button", "input"].includes(kind)
+      return ["a", "area", "base", "form", "button", "input", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
         ? kind
         : null;
     }
@@ -2320,7 +2325,7 @@ function auditImperativeNavigation(source, path) {
     const tag = resolveDataExpression(resolved.arguments[0], env);
     if (!tag || !ts.isStringLiteralLike(tag)) return null;
     const kind = tag.text.toLowerCase();
-    return ["a", "area", "base", "form", "button", "input"].includes(kind)
+    return ["a", "area", "base", "form", "button", "input", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
       ? kind
       : null;
   }
@@ -2353,7 +2358,27 @@ function auditImperativeNavigation(source, path) {
     if ((kind === "button" || kind === "input") && normalized === "formaction") {
       return "formaction";
     }
+    if (
+      (kind === "iframe" || kind === "frame" || kind === "fencedframe" || kind === "embed")
+      && normalized === "src"
+    ) return "src";
+    if (kind === "object" && normalized === "data") return "data";
+    if (kind === "iframe" && normalized === "srcdoc") return "srcdoc";
     return null;
+  }
+
+  function isEmbeddedContextKind(kind) {
+    return (
+      kind === "iframe"
+      || kind === "frame"
+      || kind === "fencedframe"
+      || kind === "object"
+      || kind === "embed"
+    );
+  }
+
+  function isEmbeddedInlineDocumentProperty(kind, property) {
+    return kind === "iframe" && property === "srcdoc";
   }
 
   const VERIFIED_REPLAY_SELECTOR = 'form[data-route-submit-authority="verified-replay"]';
@@ -3232,7 +3257,7 @@ function auditImperativeNavigation(source, path) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return null;
     const text = resolved.getText(sourceFile);
-    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement)\.prototype$/);
+    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement|HTMLIFrameElement|HTMLFrameElement|HTMLFencedFrameElement|HTMLObjectElement|HTMLEmbedElement)\.prototype$/);
     return match ? domKindFromTypeNameText(match[1]) : null;
   }
 
@@ -3719,9 +3744,17 @@ function auditImperativeNavigation(source, path) {
       report(node, "dom-base-href");
       return true;
     }
+    if (isEmbeddedInlineDocumentProperty(kind, navProperty)) {
+      report(node, "embedded-runtime-srcdoc");
+      return true;
+    }
     if (!value || !domNavigationAuthority(value, env, callStack)) {
       const targets = value ? staticHrefCandidatesResolved(value, env, callStack) : [];
-      report(node, "dom-reflective-property", targets);
+      report(
+        node,
+        isEmbeddedContextKind(kind) ? "embedded-runtime-source" : "dom-reflective-property",
+        targets,
+      );
     }
     return true;
   }
@@ -3944,13 +3977,23 @@ function auditImperativeNavigation(source, path) {
               if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
                 report(node, "native-invoke-dom-base-href");
               } else if (
+                isEmbeddedInlineDocumentProperty(nativeSetter.kind, nativeSetter.property)
+              ) {
+                report(node, "embedded-runtime-srcdoc");
+              } else if (
                 !indirectFirstArg
                 || !domNavigationAuthority(indirectFirstArg, env, callStack)
               ) {
                 const targets = indirectFirstArg
                   ? staticHrefCandidatesResolved(indirectFirstArg, env, callStack)
                   : [];
-                report(node, "native-invoke-dom-setter", targets);
+                report(
+                  node,
+                  isEmbeddedContextKind(nativeSetter.kind)
+                    ? "embedded-runtime-source"
+                    : "native-invoke-dom-setter",
+                  targets,
+                );
               }
             }
           }
@@ -3971,13 +4014,23 @@ function auditImperativeNavigation(source, path) {
                 if (indirectThisKind === "base" && navProperty === "href") {
                   report(node, "native-invoke-dom-base-href");
                 } else if (
+                  isEmbeddedInlineDocumentProperty(indirectThisKind, navProperty)
+                ) {
+                  report(node, "embedded-runtime-srcdoc");
+                } else if (
                   navProperty
                   && (!target || !domNavigationAuthority(target, env, callStack))
                 ) {
                   const targets = target
                     ? staticHrefCandidatesResolved(target, env, callStack)
                     : [];
-                  report(node, "native-invoke-dom-attribute", targets);
+                  report(
+                    node,
+                    isEmbeddedContextKind(indirectThisKind)
+                      ? "embedded-runtime-source"
+                      : "native-invoke-dom-attribute",
+                    targets,
+                  );
                 }
               }
             }
@@ -4271,13 +4324,19 @@ function auditImperativeNavigation(source, path) {
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (navProperty === "href" && kind === "base") {
             report(node, "dom-base-href");
+          } else if (isEmbeddedInlineDocumentProperty(kind, navProperty)) {
+            report(node, "embedded-runtime-srcdoc");
           } else if (
             navProperty
             && target
             && !domNavigationAuthority(target, env, callStack)
           ) {
             const targets = staticHrefCandidatesResolved(target, env, callStack);
-            report(node, "dom-attribute", targets);
+            report(
+              node,
+              isEmbeddedContextKind(kind) ? "embedded-runtime-source" : "dom-attribute",
+              targets,
+            );
           }
         }
       }
@@ -4524,12 +4583,18 @@ function auditImperativeNavigation(source, path) {
 
       if (domKind === "base" && domProperty === "href") {
         report(node, "dom-base-href");
+      } else if (isEmbeddedInlineDocumentProperty(domKind, domProperty)) {
+        report(node, "embedded-runtime-srcdoc");
       } else if (
         domProperty
         && !domNavigationAuthority(node.right, env, callStack)
       ) {
         const targets = staticHrefCandidatesResolved(node.right, env, callStack);
-        report(node, "dom-property", targets);
+        report(
+          node,
+          isEmbeddedContextKind(domKind) ? "embedded-runtime-source" : "dom-property",
+          targets,
+        );
       }
 
       if (leftProperty === "innerHTML" || leftProperty === "outerHTML") {
@@ -5487,6 +5552,46 @@ function auditImperativeNavigation(source, path) {
   }
 }
 
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const iframe = document.createElement("iframe");',
+    'iframe.src = "/dashboard";',
+    'iframe.src = getRouteNavigationHref("embedded-runtime", "/dashboard");',
+    'iframe.srcdoc = "<p>inline</p>";',
+    'iframe.setAttribute("src", "https://example.com/raw");',
+    'iframe.setAttribute("src", getExternalNavigationHref("https://example.com/safe"));',
+    'iframe.setAttribute("srcdoc", "<p>inline</p>");',
+    'const object = document.createElement("object");',
+    'Object.assign(object, { data: "/wallet" });',
+    'const embed = document.createElement("embed");',
+    'Reflect.set(embed, "src", "/earn");',
+    'const frame = document.querySelector<HTMLFrameElement>("#legacy");',
+    'frame.src = "/progress";',
+    'const embeddedRef = useRef<HTMLIFrameElement | null>(null);',
+    'embeddedRef.current.src = "/invite";',
+    'function onLoad(event: React.SyntheticEvent<HTMLIFrameElement>) { event.currentTarget.src = "/dashboard"; }',
+    'Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "src").set.call(iframe, "/wallet");',
+    'Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "src").set.call(iframe, getRouteNavigationHref("embedded-runtime", "/wallet"));',
+    'Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "srcdoc").set.call(iframe, "<p>inline</p>");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "embedded-context-runtime-source.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["embedded-runtime-source"] !== 8
+    || counts["embedded-runtime-srcdoc"] !== 3
+  ) {
+    throw new Error("Embedded context runtime source authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditNavigationSideEffectBoundary(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -6031,6 +6136,21 @@ if (nativeInvocationViolations.length > 0) {
   );
 }
 
+const embeddedContextRuntimeSourceViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("embedded-runtime-"));
+if (embeddedContextRuntimeSourceViolations.length > 0) {
+  throw new Error(
+    "Embedded context runtime source authority failed:\n"
+    + embeddedContextRuntimeSourceViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
 const domNavigationMutationViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("dom-"));
 if (domNavigationMutationViolations.length > 0) {
@@ -6048,7 +6168,8 @@ if (domNavigationMutationViolations.length > 0) {
 
 const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
-    !violation.kind.startsWith("dom-")
+    !violation.kind.startsWith("embedded-runtime-")
+    && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
     && !violation.kind.startsWith("proxy-navigation-")
     && !violation.kind.startsWith("dynamic-code-")
