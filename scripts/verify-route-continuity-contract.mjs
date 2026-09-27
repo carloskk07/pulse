@@ -2710,6 +2710,42 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'const form = document.createElement("form");',
+    'form.submit();',
+    'form.requestSubmit();',
+    'const submitForm = form.submit;',
+    'submitForm();',
+    'const { requestSubmit: requestForm } = form;',
+    'requestForm();',
+    'const anchor = document.createElement("a");',
+    'anchor.click();',
+    'const button = document.createElement("button");',
+    'button.click();',
+    'form.dispatchEvent(new SubmitEvent("submit"));',
+    'anchor.dispatchEvent(new MouseEvent("click"));',
+    'HTMLFormElement.prototype.submit.call(form);',
+    'HTMLFormElement.prototype.submit.apply(form, []);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-activation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 10
+    || counts["dom-form-submit"] !== 6
+    || counts["dom-click-activation"] !== 2
+    || counts["dom-synthetic-activation"] !== 2
+  ) {
+    throw new Error("Programmatic activation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
     'const anchor = document.createElement("a");',
     'anchor.href = "/earn";',
