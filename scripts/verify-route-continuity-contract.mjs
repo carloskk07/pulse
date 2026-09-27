@@ -1989,10 +1989,77 @@ function auditImperativeNavigation(source, path) {
     return { args: [...resolved.elements], dynamic: false };
   }
 
+  function boundCallableInfo(expression, env = new Map(), seen = new Set()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isCallExpression(resolved)) return null;
+
+    const key = resolved.pos + ":" + resolved.end;
+    if (seen.has(key)) return null;
+    const nextSeen = new Set(seen);
+    nextSeen.add(key);
+
+    const bindCallee = resolveDataExpression(resolved.expression, env);
+    if (
+      !bindCallee
+      || !(ts.isPropertyAccessExpression(bindCallee) || ts.isElementAccessExpression(bindCallee))
+      || propertyName(bindCallee) !== "bind"
+    ) return null;
+
+    const target = propertyOwner(bindCallee);
+    if (!target) return null;
+
+    const boundArgs = resolved.arguments.slice(1);
+    const dynamic = boundArgs.some((argument) => ts.isSpreadElement(argument));
+    const nested = boundCallableInfo(target, env, nextSeen);
+    if (nested) {
+      return {
+        target: nested.target,
+        thisArg: nested.thisArg,
+        args: dynamic || nested.dynamic ? [] : [...nested.args, ...boundArgs],
+        dynamic: dynamic || nested.dynamic,
+      };
+    }
+
+    return {
+      target,
+      thisArg: resolved.arguments[0] ?? null,
+      args: dynamic ? [] : boundArgs,
+      dynamic,
+    };
+  }
+
+  function mergeBoundInvocation(invocation, env = new Map()) {
+    if (!invocation?.target) return invocation;
+    const bound = boundCallableInfo(invocation.target, env);
+    if (!bound) return invocation;
+    return {
+      target: bound.target,
+      thisArg: bound.thisArg,
+      args: invocation.dynamic || bound.dynamic
+        ? []
+        : [...bound.args, ...invocation.args],
+      dynamic: invocation.dynamic || bound.dynamic,
+    };
+  }
+
   function indirectInvocationInfo(callExpression, env = new Map()) {
     if (!ts.isCallExpression(callExpression)) return null;
     const resolvedCallee = resolveDataExpression(callExpression.expression, env);
     if (!resolvedCallee) return null;
+
+    const directlyBound = boundCallableInfo(callExpression.expression, env);
+    if (directlyBound) {
+      const runtimeArgs = callExpression.arguments;
+      const runtimeDynamic = runtimeArgs.some((argument) => ts.isSpreadElement(argument));
+      return {
+        target: directlyBound.target,
+        thisArg: directlyBound.thisArg,
+        args: runtimeDynamic || directlyBound.dynamic
+          ? []
+          : [...directlyBound.args, ...runtimeArgs],
+        dynamic: runtimeDynamic || directlyBound.dynamic,
+      };
+    }
 
     if (
       ts.isPropertyAccessExpression(resolvedCallee)
@@ -2006,33 +2073,33 @@ function auditImperativeNavigation(source, path) {
         && (ownerText === "Reflect" || ownerText === "globalThis.Reflect")
       ) {
         const invocation = staticInvocationArguments(callExpression.arguments[2], env);
-        return {
+        return mergeBoundInvocation({
           target: callExpression.arguments[0] ?? null,
           thisArg: callExpression.arguments[1] ?? null,
           args: invocation.args,
           dynamic: invocation.dynamic,
-        };
+        }, env);
       }
 
       if (method === "call") {
         const invocationArgs = callExpression.arguments.slice(1);
-        return {
+        return mergeBoundInvocation({
           target,
           thisArg: callExpression.arguments[0] ?? null,
           args: invocationArgs.some((argument) => ts.isSpreadElement(argument))
             ? []
             : invocationArgs,
           dynamic: invocationArgs.some((argument) => ts.isSpreadElement(argument)),
-        };
+        }, env);
       }
       if (method === "apply") {
         const invocation = staticInvocationArguments(callExpression.arguments[1], env);
-        return {
+        return mergeBoundInvocation({
           target,
           thisArg: callExpression.arguments[0] ?? null,
           args: invocation.args,
           dynamic: invocation.dynamic,
-        };
+        }, env);
       }
     }
 
@@ -2095,6 +2162,31 @@ function auditImperativeNavigation(source, path) {
       || ownerText === "HTMLElement.prototype"
       || ownerText === "globalThis.HTMLElement.prototype"
       || Boolean(nativeDomPrototypeKind(owner, env))
+    );
+  }
+
+  function isBoundNavigationCapability(expression, env = new Map()) {
+    const bound = boundCallableInfo(expression, env);
+    if (!bound?.target) return false;
+    const target = bound.target;
+    return Boolean(
+      nativeDomSetterInfo(target, env)
+      || isDomSetAttributeReference(target, env)
+      || isNativeDomSetAttributeReference(target, env)
+      || isDocumentHtmlWriteReference(target, env)
+      || isInsertAdjacentHtmlReference(target, env)
+      || isRouterTraversalReference(target, env)
+      || isRouterMethodReference(target, env)
+      || isServerRedirectReference(target, env)
+      || isResponseRedirectReference(target, env)
+      || isLocationHeaderMutationReference(target, env)
+      || isBrowserLocationReloadReference(target, env)
+      || isBrowserLocationMethodReference(target, env)
+      || isBrowserHistoryTraversalReference(target, env)
+      || isBrowserHistoryMethodReference(target, env)
+      || isBrowserWindowOpenReference(target, env)
+      || isBrowserNavigationTraversalReference(target, env)
+      || isBrowserNavigationApiMethodReference(target, env)
     );
   }
 
@@ -2894,6 +2986,7 @@ function auditImperativeNavigation(source, path) {
           || isLocationHeaderMutationReference(argument, env)
           || domNavigationElementKind(argument, env)
           || isDomSetAttributeReference(argument, env)
+          || isBoundNavigationCapability(argument, env)
           || isServerRedirectReference(argument, env)
           || isResponseRedirectReference(argument, env)
         ))
@@ -3310,6 +3403,87 @@ function auditImperativeNavigation(source, path) {
     || counts["native-invoke-dynamic-arguments"] !== 1
   ) {
     throw new Error("Native invocation boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { redirect, useRouter } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { navigate } from "@/lib/navigation-wrapper";',
+    'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
+    'const boundPush = router.push.bind(router);',
+    'boundPush("/earn");',
+    'boundPush(getRouteNavigationHref("bound", "/earn"));',
+    'const boundPreRaw = router.push.bind(router, "/wallet");',
+    'boundPreRaw();',
+    'const boundPreSafe = router.push.bind(router, getRouteNavigationHref("bound", "/wallet"));',
+    'boundPreSafe();',
+    'boundPush.call(null, "/progress");',
+    'const boundBack = router.back.bind(router);',
+    'boundBack();',
+    'const boundHistory = history.pushState.bind(history, {}, "", "/progress");',
+    'boundHistory();',
+    'const boundLocation = location.assign.bind(location, "https://example.com/raw");',
+    'boundLocation();',
+    'const boundLocationSafe = location.assign.bind(location, getExternalNavigationHref("https://example.com/safe"));',
+    'boundLocationSafe();',
+    'const boundOpen = window.open.bind(window, "https://example.com/raw");',
+    'boundOpen();',
+    'const boundNavigate = navigation.navigate.bind(navigation, "/invite");',
+    'boundNavigate();',
+    'const boundRedirect = redirect.bind(null, "/wallet");',
+    'boundRedirect();',
+    'const boundRedirectSafe = redirect.bind(null, getProductRouteHref("wallet"));',
+    'boundRedirectSafe();',
+    'const boundResponseRedirect = NR.redirect.bind(NR, new URL("/dashboard", request.url), 303);',
+    'boundResponseRedirect();',
+    'const headers = new Headers();',
+    'const boundHeader = headers.set.bind(headers, "Location", "/dashboard");',
+    'boundHeader();',
+    'const anchor = document.createElement("a");',
+    'const boundAttribute = anchor.setAttribute.bind(anchor, "href", "/invite");',
+    'boundAttribute();',
+    'const boundAttributeSafe = anchor.setAttribute.bind(anchor, "href", getRouteNavigationHref("bound", "/invite"));',
+    'boundAttributeSafe();',
+    'const hrefSetter = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "href").set;',
+    'const boundSetter = hrefSetter.bind(anchor, "/earn");',
+    'boundSetter();',
+    'const base = document.createElement("base");',
+    'const baseSetter = Object.getOwnPropertyDescriptor(HTMLBaseElement.prototype, "href").set;',
+    'const boundBase = baseSetter.bind(base, getRouteNavigationHref("bound", "/dashboard/"));',
+    'boundBase();',
+    'const boundDynamic = router.push.bind(router, ...dynamicArguments);',
+    'boundDynamic();',
+    'navigate(router.push.bind(router), "/earn");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "bound-navigation-invocation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 16
+    || counts["native-invoke-router"] !== 3
+    || counts["native-invoke-router-traversal"] !== 1
+    || counts["native-invoke-browser-history"] !== 1
+    || counts["native-invoke-browser-location"] !== 1
+    || counts["native-invoke-browser-window-open"] !== 1
+    || counts["native-invoke-browser-navigation-api"] !== 1
+    || counts["native-invoke-server-redirect"] !== 1
+    || counts["native-invoke-route-handler-redirect"] !== 1
+    || counts["native-invoke-location-header"] !== 1
+    || counts["native-invoke-dom-attribute"] !== 1
+    || counts["native-invoke-dom-setter"] !== 1
+    || counts["native-invoke-dom-base-href"] !== 1
+    || counts["native-invoke-dynamic-arguments"] !== 1
+    || counts["cross-module-wrapper"] !== 1
+  ) {
+    throw new Error("Bound navigation invocation authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
