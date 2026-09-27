@@ -2358,6 +2358,25 @@ function auditImperativeNavigation(source, path, options = {}) {
     return Boolean(domSetAttributeElementKind(expression, env));
   }
 
+  function domRemoveAttributeElementKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && domRemoveAttributeBindings.has(resolved.text)) {
+      return domRemoveAttributeBindings.get(resolved.text);
+    }
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "removeAttribute"
+    ) {
+      return domNavigationElementKind(propertyOwner(resolved), env);
+    }
+    return null;
+  }
+
+  function isDomRemoveAttributeReference(expression, env = new Map()) {
+    return Boolean(domRemoveAttributeElementKind(expression, env));
+  }
+
   function domNavigationPropertyForKind(kind, property) {
     const normalized = property?.toLowerCase();
     if ((kind === "a" || kind === "area" || kind === "base") && normalized === "href") {
@@ -2807,6 +2826,12 @@ function auditImperativeNavigation(source, path, options = {}) {
         changed = true;
       }
 
+      const relListKind = domRelListKind(initializer);
+      if (relListKind && domRelListKinds.get(local) !== relListKind) {
+        domRelListKinds.set(local, relListKind);
+        changed = true;
+      }
+
       if (isVerifiedReplayFormSource(initializer) && !domVerifiedReplayForms.has(local)) {
         domVerifiedReplayForms.add(local);
         changed = true;
@@ -2862,6 +2887,24 @@ function auditImperativeNavigation(source, path, options = {}) {
         const domOwnerKind = domNavigationElementKind(owner);
         if (domOwnerKind && method === "setAttribute") {
           changed = addKindBinding(domSetAttributeBindings, local, domOwnerKind) || changed;
+        }
+        if (domOwnerKind && method === "removeAttribute") {
+          changed = addKindBinding(domRemoveAttributeBindings, local, domOwnerKind) || changed;
+        }
+        const ownerRelListKind = domRelListKind(owner);
+        if (
+          ownerRelListKind
+          && (method === "add" || method === "remove" || method === "toggle" || method === "replace")
+        ) {
+          const existing = domRelListMethodBindings.get(local);
+          if (
+            !existing
+            || existing.kind !== ownerRelListKind
+            || existing.method !== method
+          ) {
+            domRelListMethodBindings.set(local, { kind: ownerRelListKind, method });
+            changed = true;
+          }
         }
         const activationMethod = domActivationMethodForKind(domOwnerKind, method);
         if (activationMethod) {
@@ -2924,6 +2967,31 @@ function auditImperativeNavigation(source, path, options = {}) {
             domSetAttributeBindings.get(initializer.text),
           ) || changed;
         }
+        if (domRemoveAttributeBindings.has(initializer.text)) {
+          changed = addKindBinding(
+            domRemoveAttributeBindings,
+            local,
+            domRemoveAttributeBindings.get(initializer.text),
+          ) || changed;
+        }
+        if (domRelListKinds.has(initializer.text)) {
+          changed = addKindBinding(
+            domRelListKinds,
+            local,
+            domRelListKinds.get(initializer.text),
+          ) || changed;
+        }
+        if (domRelListMethodBindings.has(initializer.text)) {
+          const binding = domRelListMethodBindings.get(initializer.text);
+          const existing = domRelListMethodBindings.get(local);
+          if (
+            binding
+            && (!existing || existing.kind !== binding.kind || existing.method !== binding.method)
+          ) {
+            domRelListMethodBindings.set(local, binding);
+            changed = true;
+          }
+        }
         if (domVerifiedReplayForms.has(initializer.text)) {
           changed = addBinding(domVerifiedReplayForms, local) || changed;
         }
@@ -2951,6 +3019,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       const fromWindow = isBrowserWindowObject(initializer);
       const fromHeaders = isHeadersObject(initializer);
       const fromDomNavigationElement = Boolean(domNavigationElementKind(initializer));
+      const fromRelListKind = domRelListKind(initializer);
 
       for (const element of node.name.elements) {
         const sourceName = bindingSourceName(element);
@@ -3001,6 +3070,27 @@ function auditImperativeNavigation(source, path, options = {}) {
             localName,
             domNavigationElementKind(initializer),
           ) || changed;
+        }
+        if (fromDomNavigationElement && sourceName === "removeAttribute") {
+          changed = addKindBinding(
+            domRemoveAttributeBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
+        }
+        if (
+          fromRelListKind
+          && (sourceName === "add" || sourceName === "remove" || sourceName === "toggle" || sourceName === "replace")
+        ) {
+          const existing = domRelListMethodBindings.get(localName);
+          if (
+            !existing
+            || existing.kind !== fromRelListKind
+            || existing.method !== sourceName
+          ) {
+            domRelListMethodBindings.set(localName, { kind: fromRelListKind, method: sourceName });
+            changed = true;
+          }
         }
         if (fromDomNavigationElement) {
           const kind = domNavigationElementKind(initializer);
