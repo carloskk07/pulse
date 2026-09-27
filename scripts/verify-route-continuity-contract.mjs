@@ -1876,6 +1876,39 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const headers = new Headers();',
+    'headers.set("Location", "/dashboard");',
+    'headers.append("location", "/earn");',
+    'const alias = headers;',
+    'alias.set("Location", getRouteNavigationHref("headers", "/dashboard"));',
+    'const setter = headers.set;',
+    'setter("Location", "/wallet");',
+    'const { append: addLocation } = headers;',
+    'addLocation("Location", "/progress");',
+    'response.headers.set("Location", "/invite");',
+    'new Headers({ Location: "/dashboard" });',
+    'new Headers([["Location", "/wallet"]]);',
+    'new Headers({ Location: getRouteNavigationHref("headers", "/dashboard") });',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "location-header-mutation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["location-header"] !== 7
+  ) {
+    throw new Error("Location header mutation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { permanentRedirect } from "next/navigation";',
     'import { NextResponse as NR } from "next/server";',
     'import { getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
