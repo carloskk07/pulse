@@ -513,6 +513,117 @@ function hasUnresolvedDynamicHref(attribute) {
   return staticHrefCandidates(attribute.initializer.expression).length === 0;
 }
 
+function executableUrlScheme(value) {
+  if (typeof value !== "string") return null;
+  const normalized = value
+    .replace(/[\u0000-\u0020\u007f]/g, "")
+    .toLowerCase();
+
+  if (normalized.startsWith("javascript:")) return "javascript";
+  if (normalized.startsWith("vbscript:")) return "vbscript";
+  if (!normalized.startsWith("data:")) return null;
+
+  const mediaType = normalized
+    .slice("data:".length)
+    .split(/[;,]/, 1)[0];
+  if (
+    mediaType === "text/html"
+    || mediaType === "application/xhtml+xml"
+    || mediaType === "image/svg+xml"
+    || mediaType === "text/javascript"
+    || mediaType === "application/javascript"
+    || mediaType === "text/ecmascript"
+    || mediaType === "application/ecmascript"
+  ) return "data-executable";
+
+  return null;
+}
+
+function auditExecutableUrlSchemes(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const attributeByTag = new Map([
+    ["Link", "href"],
+    ["a", "href"],
+    ["area", "href"],
+    ["form", "action"],
+    ["button", "formAction"],
+    ["input", "formAction"],
+    ["base", "href"],
+    ["iframe", "src"],
+    ["object", "data"],
+    ["embed", "src"],
+    ["script", "src"],
+    ["Script", "src"],
+  ]);
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile);
+      const attributeName = attributeByTag.get(tag);
+      if (attributeName) {
+        const attribute = jsxAttribute(node, attributeName);
+        const values = hrefCandidates(attribute);
+        const executableValues = values
+          .map((value) => ({ value, scheme: executableUrlScheme(value) }))
+          .filter((entry) => entry.scheme);
+        if (executableValues.length > 0) {
+          const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+          violations.push({
+            path,
+            line: position.line + 1,
+            column: position.character + 1,
+            targets: executableValues.map((entry) => entry.value),
+            schemes: [...new Set(executableValues.map((entry) => entry.scheme))],
+          });
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'const Fixture = () => (<>',
+    '  <a href="javascript:alert(1)">bad</a>',
+    '  <Link href="JaVaScRiPt:alert(2)">bad link</Link>',
+    '  <form action="vbscript:msgbox(1)" />',
+    '  <button formAction="data:text/html,<script>alert(1)</script>">bad form action</button>',
+    '  <input formAction="data:application/xhtml+xml,<html />" />',
+    '  <iframe src="data:image/svg+xml,<svg onload=alert(1) />" />',
+    '  <object data="data:text/html;base64,PGgxPkJhZDwvaDE+" />',
+    '  <base href="javascript:alert(1)" />',
+    '  <a href="https://example.com">safe https</a>',
+    '  <a href="mailto:hello@example.com">safe mail</a>',
+    '  <a href="tel:+555555555">safe phone</a>',
+    '  <img src="data:image/png;base64,AA==" />',
+    '</>);',
+  ].join("\n");
+  const violations = auditExecutableUrlSchemes(
+    selfTest,
+    "executable-url-scheme.self-test.tsx",
+  );
+  const schemes = violations.flatMap((violation) => violation.schemes);
+  if (
+    violations.length !== 8
+    || schemes.filter((scheme) => scheme === "javascript").length !== 3
+    || schemes.filter((scheme) => scheme === "vbscript").length !== 1
+    || schemes.filter((scheme) => scheme === "data-executable").length !== 4
+  ) {
+    throw new Error("Executable URL scheme boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function normalizedProductRoute(value) {
   const path = value.split("#", 1)[0]?.split("?", 1)[0] ?? value;
   return PRODUCT_ROUTE_PATHS.has(path) ? path : null;
@@ -4318,6 +4429,22 @@ function auditNavigationSideEffectBoundary(source, path) {
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
+}
+
+const executableUrlSchemeViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditExecutableUrlSchemes(read(path), path));
+if (executableUrlSchemeViolations.length > 0) {
+  throw new Error(
+    "Executable URL scheme boundary failed:\n"
+    + executableUrlSchemeViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.schemes.join(", ")
+        + " [" + violation.targets.join(", ") + "]"
+      )
+      .join("\n"),
+  );
 }
 
 const semanticLinkViolations = SEMANTIC_LINK_ROOTS
