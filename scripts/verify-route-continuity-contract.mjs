@@ -920,14 +920,18 @@ function auditImperativeNavigation(source, path) {
 
   const routerVariables = new Set();
   const routerMethodBindings = new Set();
+  const routerTraversalMethodBindings = new Set();
   const responseRedirectBindings = new Set();
   const webResponseRedirectBindings = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
+  const browserLocationReloadBindings = new Set();
   const browserHistoryVariables = new Set();
   const browserHistoryMethodBindings = new Set();
+  const browserHistoryTraversalMethodBindings = new Set();
   const browserNavigationApiVariables = new Set();
   const browserNavigationApiMethodBindings = new Set();
+  const browserNavigationTraversalMethodBindings = new Set();
   const browserWindowOpenBindings = new Set();
   const headerVariables = new Set();
   const headerMutationMethodBindings = new Set();
@@ -1177,6 +1181,9 @@ function auditImperativeNavigation(source, path) {
         if (isRouterObject(owner) && (method === "push" || method === "replace")) {
           changed = addBinding(routerMethodBindings, local) || changed;
         }
+        if (isRouterObject(owner) && (method === "back" || method === "forward")) {
+          changed = addBinding(routerTraversalMethodBindings, local) || changed;
+        }
         if (
           owner
           && ts.isIdentifier(owner)
@@ -1191,11 +1198,23 @@ function auditImperativeNavigation(source, path) {
         if (isBrowserLocationObject(owner) && (method === "assign" || method === "replace")) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
+        if (isBrowserLocationObject(owner) && method === "reload") {
+          changed = addBinding(browserLocationReloadBindings, local) || changed;
+        }
         if (isBrowserHistoryObject(owner) && (method === "pushState" || method === "replaceState")) {
           changed = addBinding(browserHistoryMethodBindings, local) || changed;
         }
+        if (isBrowserHistoryObject(owner) && (method === "back" || method === "forward" || method === "go")) {
+          changed = addBinding(browserHistoryTraversalMethodBindings, local) || changed;
+        }
         if (isBrowserNavigationApiObject(owner) && method === "navigate") {
           changed = addBinding(browserNavigationApiMethodBindings, local) || changed;
+        }
+        if (
+          isBrowserNavigationApiObject(owner)
+          && (method === "back" || method === "forward" || method === "reload" || method === "traverseTo")
+        ) {
+          changed = addBinding(browserNavigationTraversalMethodBindings, local) || changed;
         }
         if (isBrowserWindowObject(owner) && method === "open") {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
@@ -1209,6 +1228,9 @@ function auditImperativeNavigation(source, path) {
         if (routerMethodBindings.has(initializer.text)) {
           changed = addBinding(routerMethodBindings, local) || changed;
         }
+        if (routerTraversalMethodBindings.has(initializer.text)) {
+          changed = addBinding(routerTraversalMethodBindings, local) || changed;
+        }
         if (responseRedirectBindings.has(initializer.text)) {
           changed = addBinding(responseRedirectBindings, local) || changed;
         }
@@ -1218,11 +1240,20 @@ function auditImperativeNavigation(source, path) {
         if (browserLocationMethodBindings.has(initializer.text)) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
+        if (browserLocationReloadBindings.has(initializer.text)) {
+          changed = addBinding(browserLocationReloadBindings, local) || changed;
+        }
         if (browserHistoryMethodBindings.has(initializer.text)) {
           changed = addBinding(browserHistoryMethodBindings, local) || changed;
         }
+        if (browserHistoryTraversalMethodBindings.has(initializer.text)) {
+          changed = addBinding(browserHistoryTraversalMethodBindings, local) || changed;
+        }
         if (browserNavigationApiMethodBindings.has(initializer.text)) {
           changed = addBinding(browserNavigationApiMethodBindings, local) || changed;
+        }
+        if (browserNavigationTraversalMethodBindings.has(initializer.text)) {
+          changed = addBinding(browserNavigationTraversalMethodBindings, local) || changed;
         }
         if (browserWindowOpenBindings.has(initializer.text)) {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
@@ -1253,6 +1284,9 @@ function auditImperativeNavigation(source, path) {
         if (fromRouter && (sourceName === "push" || sourceName === "replace")) {
           changed = addBinding(routerMethodBindings, localName) || changed;
         }
+        if (fromRouter && (sourceName === "back" || sourceName === "forward")) {
+          changed = addBinding(routerTraversalMethodBindings, localName) || changed;
+        }
         if (fromResponse && sourceName === "redirect") {
           changed = addBinding(responseRedirectBindings, localName) || changed;
         }
@@ -1262,11 +1296,23 @@ function auditImperativeNavigation(source, path) {
         if (fromLocation && (sourceName === "assign" || sourceName === "replace")) {
           changed = addBinding(browserLocationMethodBindings, localName) || changed;
         }
+        if (fromLocation && sourceName === "reload") {
+          changed = addBinding(browserLocationReloadBindings, localName) || changed;
+        }
         if (fromHistory && (sourceName === "pushState" || sourceName === "replaceState")) {
           changed = addBinding(browserHistoryMethodBindings, localName) || changed;
         }
+        if (fromHistory && (sourceName === "back" || sourceName === "forward" || sourceName === "go")) {
+          changed = addBinding(browserHistoryTraversalMethodBindings, localName) || changed;
+        }
         if (fromNavigationApi && sourceName === "navigate") {
           changed = addBinding(browserNavigationApiMethodBindings, localName) || changed;
+        }
+        if (
+          fromNavigationApi
+          && (sourceName === "back" || sourceName === "forward" || sourceName === "reload" || sourceName === "traverseTo")
+        ) {
+          changed = addBinding(browserNavigationTraversalMethodBindings, localName) || changed;
         }
         if (fromWindow && sourceName === "open") {
           changed = addBinding(browserWindowOpenBindings, localName) || changed;
@@ -1441,6 +1487,17 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isRouterTraversalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && routerTraversalMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isRouterObject(propertyOwner(resolved), env)
+      && (propertyName(resolved) === "back" || propertyName(resolved) === "forward")
+    );
+  }
+
   function isServerRedirectReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     return Boolean(
@@ -1485,6 +1542,17 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isBrowserLocationReloadReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && browserLocationReloadBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isBrowserLocationObject(propertyOwner(resolved), env)
+      && propertyName(resolved) === "reload"
+    );
+  }
+
   function isBrowserHistoryMethodReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1496,6 +1564,21 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isBrowserHistoryTraversalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && browserHistoryTraversalMethodBindings.has(resolved.text)) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isBrowserHistoryObject(propertyOwner(resolved), env)
+      && (
+        propertyName(resolved) === "back"
+        || propertyName(resolved) === "forward"
+        || propertyName(resolved) === "go"
+      )
+    );
+  }
+
   function isBrowserNavigationApiMethodReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1504,6 +1587,25 @@ function auditImperativeNavigation(source, path) {
       (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
       && isBrowserNavigationApiObject(propertyOwner(resolved), env)
       && propertyName(resolved) === "navigate"
+    );
+  }
+
+  function isBrowserNavigationTraversalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (
+      ts.isIdentifier(resolved)
+      && browserNavigationTraversalMethodBindings.has(resolved.text)
+    ) return true;
+    return Boolean(
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && isBrowserNavigationApiObject(propertyOwner(resolved), env)
+      && (
+        propertyName(resolved) === "back"
+        || propertyName(resolved) === "forward"
+        || propertyName(resolved) === "reload"
+        || propertyName(resolved) === "traverseTo"
+      )
     );
   }
 
@@ -1732,6 +1834,10 @@ function auditImperativeNavigation(source, path) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
+      if (isRouterTraversalReference(expression, env)) {
+        report(node, "router-traversal");
+      }
+
       if (
         isRouterMethodReference(expression, env)
         && !authorityExpressionResolved(firstArg, navigationBindings, env, callStack)
@@ -1806,11 +1912,19 @@ function auditImperativeNavigation(source, path) {
         }
       }
 
+      if (isBrowserLocationReloadReference(expression, env)) {
+        report(node, "browser-reload");
+      }
+
       if (
         isBrowserLocationMethodReference(expression, env)
         && !browserNavigationAuthority(firstArg, env, callStack)
       ) {
         report(node, "browser-location");
+      }
+
+      if (isBrowserHistoryTraversalReference(expression, env)) {
+        report(node, "history-traversal");
       }
 
       if (isBrowserHistoryMethodReference(expression, env)) {
@@ -1831,6 +1945,10 @@ function auditImperativeNavigation(source, path) {
         report(node, "browser-window-open");
       }
 
+      if (isBrowserNavigationTraversalReference(expression, env)) {
+        report(node, "navigation-api-traversal");
+      }
+
       if (
         isBrowserNavigationApiMethodReference(expression, env)
         && firstArg
@@ -1844,12 +1962,16 @@ function auditImperativeNavigation(source, path) {
         && node.arguments.some((argument) => (
           isRouterObject(argument, env)
           || isRouterMethodReference(argument, env)
+          || isRouterTraversalReference(argument, env)
           || isBrowserLocationObject(argument, env)
           || isBrowserLocationMethodReference(argument, env)
+          || isBrowserLocationReloadReference(argument, env)
           || isBrowserHistoryObject(argument, env)
           || isBrowserHistoryMethodReference(argument, env)
+          || isBrowserHistoryTraversalReference(argument, env)
           || isBrowserNavigationApiObject(argument, env)
           || isBrowserNavigationApiMethodReference(argument, env)
+          || isBrowserNavigationTraversalReference(argument, env)
           || isBrowserWindowOpenReference(argument, env)
           || isHeadersObject(argument, env)
           || isLocationHeaderMutationReference(argument, env)
@@ -2084,6 +2206,42 @@ function auditImperativeNavigation(source, path) {
     || counts["cross-module-wrapper"] !== 2
   ) {
     throw new Error("Cross-module navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { useRouter } from "next/navigation";',
+    'const router = useRouter();',
+    'router.back();',
+    'router.forward();',
+    'const goBack = router.back;',
+    'goBack();',
+    'history.back();',
+    'window.history.forward();',
+    'history.go(-1);',
+    'location.reload();',
+    'navigation.back();',
+    'navigation.forward();',
+    'navigation.traverseTo("entry-key");',
+    'navigation.reload();',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "implicit-history-traversal.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["router-traversal"] !== 3
+    || counts["history-traversal"] !== 3
+    || counts["browser-reload"] !== 1
+    || counts["navigation-api-traversal"] !== 4
+  ) {
+    throw new Error("Implicit history traversal boundary self-test failed: " + JSON.stringify(violations));
   }
 }
 
@@ -2338,6 +2496,18 @@ function auditNavigationSideEffectBoundary(source, path) {
 
         if (
           (
+            ownerText === "window.location"
+            || ownerText === "document.location"
+            || ownerText === "globalThis.location"
+            || ownerText === "location"
+          )
+          && method === "reload"
+        ) {
+          report(node, "browser-reload");
+        }
+
+        if (
+          (
             ownerText === "window.history"
             || ownerText === "globalThis.history"
             || ownerText === "history"
@@ -2349,6 +2519,17 @@ function auditNavigationSideEffectBoundary(source, path) {
 
         if (
           (
+            ownerText === "window.history"
+            || ownerText === "globalThis.history"
+            || ownerText === "history"
+          )
+          && (method === "back" || method === "forward" || method === "go")
+        ) {
+          report(node, "history-traversal");
+        }
+
+        if (
+          (
             ownerText === "window.navigation"
             || ownerText === "globalThis.navigation"
             || ownerText === "navigation"
@@ -2356,6 +2537,17 @@ function auditNavigationSideEffectBoundary(source, path) {
           && method === "navigate"
         ) {
           report(node, "navigation-api");
+        }
+
+        if (
+          (
+            ownerText === "window.navigation"
+            || ownerText === "globalThis.navigation"
+            || ownerText === "navigation"
+          )
+          && (method === "back" || method === "forward" || method === "reload" || method === "traverseTo")
+        ) {
+          report(node, "navigation-api-traversal");
         }
 
         if ((ownerText === "window" || ownerText === "globalThis") && method === "open") {
@@ -2406,8 +2598,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenBrowser(target) { window.location.assign(target); }',
     'export function hiddenDocument(target) { document.location.replace(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenHistoryBack() { history.back(); }',
+    'export function hiddenReload() { location.reload(); }',
     'export function hiddenWindow(target) { window.open(target, "_blank"); }',
     'export function hiddenNavigationApi(target) { navigation.navigate(target); }',
+    'export function hiddenNavigationBack() { navigation.back(); }',
     'export function pureHref(target) { return getRouteNavigationHref("lib", target); }',
   ].join("\n");
   const violations = auditNavigationSideEffectBoundary(
@@ -2416,8 +2611,8 @@ function auditNavigationSideEffectBoundary(source, path) {
   );
   const kinds = violations.map((violation) => violation.kind).sort();
   if (
-    violations.length !== 10
-    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-window-navigation,history-navigation,navigation-api,response-location-navigation,route-handler-navigation,router-capability,server-navigation,web-response-navigation"
+    violations.length !== 13
+    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-reload,browser-window-navigation,history-navigation,history-traversal,navigation-api,navigation-api-traversal,response-location-navigation,route-handler-navigation,router-capability,server-navigation,web-response-navigation"
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
