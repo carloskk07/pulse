@@ -3616,11 +3616,13 @@ function auditImperativeNavigation(source, path, options = {}) {
       : null;
     const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
     const targetContextProperty = domTargetContextPropertyForKind(kind, propertyText);
-    return kind && (navigationProperty || targetContextProperty)
+    const openerProtectionProperty = domOpenerProtectionPropertyForKind(kind, propertyText);
+    return kind && (navigationProperty || targetContextProperty || openerProtectionProperty)
       ? {
           kind,
-          property: navigationProperty ?? targetContextProperty,
+          property: navigationProperty ?? targetContextProperty ?? openerProtectionProperty,
           targetContext: Boolean(targetContextProperty),
+          openerProtection: Boolean(openerProtectionProperty),
         }
       : null;
   }
@@ -4150,6 +4152,16 @@ function auditImperativeNavigation(source, path, options = {}) {
       )
     ) return true;
 
+    if (
+      reportOpenerProtectionValue(
+        node,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
     const navProperty = domNavigationPropertyForKind(kind, propertyNameText);
     if (!navProperty) return false;
     if (kind === "base" && navProperty === "href") {
@@ -4397,6 +4409,17 @@ function auditImperativeNavigation(source, path, options = {}) {
                 )
               ) {
                 // Target-context policy handled above.
+              } else if (
+                nativeSetter.openerProtection
+                && reportOpenerProtectionValue(
+                  node,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Opener-protection policy handled above.
               } else if (nativeSetter.kind === "base" && nativeSetter.property === "href") {
                 report(node, "native-invoke-dom-base-href");
               } else if (
@@ -4438,6 +4461,10 @@ function auditImperativeNavigation(source, path, options = {}) {
                   indirectThisKind,
                   attributeName.text,
                 );
+                const openerProtectionProperty = domOpenerProtectionPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 if (
                   targetContextProperty
                   && reportProgrammaticDomTarget(
@@ -4449,6 +4476,17 @@ function auditImperativeNavigation(source, path, options = {}) {
                   )
                 ) {
                   // Target-context policy handled above.
+                } else if (
+                  openerProtectionProperty
+                  && reportOpenerProtectionValue(
+                    node,
+                    indirectThisKind,
+                    openerProtectionProperty,
+                    target,
+                    env,
+                  )
+                ) {
+                  // Opener-protection policy handled above.
                 } else if (indirectThisKind === "base" && navProperty === "href") {
                   report(node, "native-invoke-dom-base-href");
                 } else if (
@@ -4765,6 +4803,10 @@ function auditImperativeNavigation(source, path, options = {}) {
             kind,
             attributeName.text,
           );
+          const openerProtectionProperty = domOpenerProtectionPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (
             targetContextProperty
@@ -4777,6 +4819,17 @@ function auditImperativeNavigation(source, path, options = {}) {
             )
           ) {
             // Target-context policy handled above.
+          } else if (
+            openerProtectionProperty
+            && reportOpenerProtectionValue(
+              node,
+              kind,
+              openerProtectionProperty,
+              target,
+              env,
+            )
+          ) {
+            // Opener-protection policy handled above.
           } else if (navProperty === "href" && kind === "base") {
             report(node, "dom-base-href");
           } else if (isEmbeddedInlineDocumentProperty(kind, navProperty)) {
@@ -5037,7 +5090,9 @@ function auditImperativeNavigation(source, path, options = {}) {
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
       const targetContextProperty = domTargetContextPropertyForKind(domKind, leftProperty);
+      const openerProtectionProperty = domOpenerProtectionPropertyForKind(domKind, leftProperty);
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
+      const relListKind = domRelListKind(leftOwner, env);
 
       if (
         targetContextProperty
@@ -5050,6 +5105,29 @@ function auditImperativeNavigation(source, path, options = {}) {
         )
       ) {
         // Target-context policy handled above.
+      } else if (
+        openerProtectionProperty
+        && reportOpenerProtectionValue(
+          node,
+          domKind,
+          openerProtectionProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Opener-protection policy handled above.
+      } else if (
+        relListKind
+        && leftProperty === "value"
+        && reportOpenerProtectionValue(
+          node,
+          relListKind,
+          "rel",
+          node.right,
+          env,
+        )
+      ) {
+        // relList.value opener-protection policy handled above.
       } else if (domKind === "base" && domProperty === "href") {
         report(node, "dom-base-href");
       } else if (isEmbeddedInlineDocumentProperty(domKind, domProperty)) {
