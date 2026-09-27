@@ -2000,6 +2000,20 @@ function auditImperativeNavigation(source, path) {
     ) {
       const method = propertyName(resolvedCallee);
       const target = propertyOwner(resolvedCallee);
+      const ownerText = propertyOwner(resolvedCallee)?.getText(sourceFile);
+      if (
+        method === "apply"
+        && (ownerText === "Reflect" || ownerText === "globalThis.Reflect")
+      ) {
+        const invocation = staticInvocationArguments(callExpression.arguments[2], env);
+        return {
+          target: callExpression.arguments[0] ?? null,
+          thisArg: callExpression.arguments[1] ?? null,
+          args: invocation.args,
+          dynamic: invocation.dynamic,
+        };
+      }
+
       if (method === "call") {
         const invocationArgs = callExpression.arguments.slice(1);
         return {
@@ -2016,20 +2030,6 @@ function auditImperativeNavigation(source, path) {
         return {
           target,
           thisArg: callExpression.arguments[0] ?? null,
-          args: invocation.args,
-          dynamic: invocation.dynamic,
-        };
-      }
-
-      const ownerText = propertyOwner(resolvedCallee)?.getText(sourceFile);
-      if (
-        method === "apply"
-        && (ownerText === "Reflect" || ownerText === "globalThis.Reflect")
-      ) {
-        const invocation = staticInvocationArguments(callExpression.arguments[2], env);
-        return {
-          target: callExpression.arguments[0] ?? null,
-          thisArg: callExpression.arguments[1] ?? null,
           args: invocation.args,
           dynamic: invocation.dynamic,
         };
