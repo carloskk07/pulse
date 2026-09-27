@@ -1422,6 +1422,150 @@ function auditDeclarativeNavigation(source, path) {
   }
 }
 
+function auditFormSubmissionTransport(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const safeEncodings = new Set([
+    "application/x-www-form-urlencoded",
+    "multipart/form-data",
+  ]);
+
+  function report(node, kind, value = null) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      value,
+    });
+  }
+
+  function literalAttribute(attribute) {
+    const value = literalJsxAttributeValue(attribute);
+    return value === null ? null : value.trim().toLowerCase();
+  }
+
+  function clearlyUrlBackedAction(openingElement) {
+    const action = jsxAttribute(openingElement, "action");
+    if (!action?.initializer) return false;
+    if (ts.isStringLiteral(action.initializer)) return true;
+    if (!ts.isJsxExpression(action.initializer)) return false;
+    const expression = action.initializer.expression;
+    if (!expression) return false;
+    return !isServerActionReferenceExpression(expression);
+  }
+
+  function validateMethod(node, attribute, kind, required) {
+    if (!attribute?.initializer) {
+      if (required) report(node, kind + "-implicit");
+      return;
+    }
+    const value = literalAttribute(attribute);
+    if (value === null) {
+      report(node, kind + "-dynamic");
+      return;
+    }
+    if (value !== "post") report(node, kind, value);
+  }
+
+  function validateEncoding(node, attribute, kind) {
+    if (!attribute?.initializer) return;
+    const value = literalAttribute(attribute);
+    if (value === null) {
+      report(node, kind + "-dynamic");
+      return;
+    }
+    if (!safeEncodings.has(value)) report(node, kind, value);
+  }
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile).toLowerCase();
+
+      if (tag === "form") {
+        validateMethod(
+          node,
+          jsxAttribute(node, "method"),
+          "form-method",
+          clearlyUrlBackedAction(node),
+        );
+        validateEncoding(
+          node,
+          jsxAttribute(node, "encType") ?? jsxAttribute(node, "enctype"),
+          "form-enctype",
+        );
+      }
+
+      if (tag === "button" || tag === "input") {
+        validateMethod(
+          node,
+          jsxAttribute(node, "formMethod") ?? jsxAttribute(node, "formmethod"),
+          "submitter-method",
+          false,
+        );
+        validateEncoding(
+          node,
+          jsxAttribute(node, "formEncType") ?? jsxAttribute(node, "formenctype"),
+          "submitter-enctype",
+        );
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const saveProfile = async (formData) => { "use server"; };',
+    'const dynamicMethod = chooseMethod();',
+    'const Fixture = () => (<>',
+    '  <form action={saveProfile}>server action</form>',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/safe")} method="post" />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/implicit")} />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/get")} method="get" />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/dynamic")} method={dynamicMethod} />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/plain")} method="post" encType="text/plain" />',
+    '  <form action={getRouteNavigationHref("form-mode", "/api/upload")} method="post" encType="multipart/form-data" />',
+    '  <button formMethod="get">bad override</button>',
+    '  <input formMethod={dynamicMethod} />',
+    '  <button formEncType="text/plain">bad encoding</button>',
+    '  <input formEncType="multipart/form-data" />',
+    '</>);',
+  ].join("\n");
+  const violations = auditFormSubmissionTransport(
+    selfTest,
+    "form-submission-transport.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["form-method-implicit"] !== 1
+    || counts["form-method"] !== 1
+    || counts["form-method-dynamic"] !== 1
+    || counts["form-enctype"] !== 1
+    || counts["submitter-method"] !== 1
+    || counts["submitter-method-dynamic"] !== 1
+    || counts["submitter-enctype"] !== 1
+  ) {
+    throw new Error("Form submission transport policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditVerifiedReplayForms(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -1599,6 +1743,9 @@ function authorityCall(expression, bindings) {
 function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticTargetContextPolicy = (
     options.programmaticTargetContextPolicy === true
+  );
+  const enforceFormSubmissionTransportPolicy = (
+    options.formSubmissionTransportPolicy === true
   );
   const sourceFile = ts.createSourceFile(
     path,
@@ -2393,6 +2540,67 @@ function auditImperativeNavigation(source, path, options = {}) {
       return "formtarget";
     }
     return null;
+  }
+
+  function domSubmissionTransportPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if (kind === "form" && normalized === "method") return "method";
+    if (kind === "form" && (normalized === "enctype" || normalized === "encoding")) {
+      return "enctype";
+    }
+    if ((kind === "button" || kind === "input") && normalized === "formmethod") {
+      return "method";
+    }
+    if ((kind === "button" || kind === "input") && normalized === "formenctype") {
+      return "enctype";
+    }
+    return null;
+  }
+
+  function literalSubmissionTransport(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return resolved && ts.isStringLiteralLike(resolved)
+      ? resolved.text.trim().toLowerCase()
+      : null;
+  }
+
+  function reportProgrammaticDomSubmissionTransport(
+    node,
+    kind,
+    property,
+    value,
+    env = new Map(),
+  ) {
+    if (!enforceFormSubmissionTransportPolicy) return false;
+    const normalizedProperty = property?.toLowerCase();
+    const transportProperty = (
+      normalizedProperty === "method" || normalizedProperty === "enctype"
+    )
+      ? normalizedProperty
+      : domSubmissionTransportPropertyForKind(kind, property);
+    if (!transportProperty) return false;
+
+    const literal = literalSubmissionTransport(value, env);
+    if (literal === null) {
+      report(node, "programmatic-form-transport-dynamic");
+      return true;
+    }
+
+    if (transportProperty === "method" && literal !== "post") {
+      report(node, "programmatic-form-method", [literal]);
+      return true;
+    }
+
+    if (
+      transportProperty === "enctype"
+      && literal !== "application/x-www-form-urlencoded"
+      && literal !== "multipart/form-data"
+    ) {
+      report(node, "programmatic-form-enctype", [literal]);
+      return true;
+    }
+
+    return true;
   }
 
   function literalTargetContext(expression, env = new Map()) {
@@ -3377,11 +3585,13 @@ function auditImperativeNavigation(source, path, options = {}) {
       : null;
     const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
     const targetContextProperty = domTargetContextPropertyForKind(kind, propertyText);
-    return kind && (navigationProperty || targetContextProperty)
+    const submissionTransportProperty = domSubmissionTransportPropertyForKind(kind, propertyText);
+    return kind && (navigationProperty || targetContextProperty || submissionTransportProperty)
       ? {
           kind,
-          property: navigationProperty ?? targetContextProperty,
+          property: navigationProperty ?? targetContextProperty ?? submissionTransportProperty,
           targetContext: Boolean(targetContextProperty),
+          submissionTransport: Boolean(submissionTransportProperty),
         }
       : null;
   }
@@ -3833,6 +4043,16 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
     if (
+      reportProgrammaticDomSubmissionTransport(
+        node,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
+    if (
       reportProgrammaticDomTarget(
         node,
         kind,
@@ -4079,6 +4299,17 @@ function auditImperativeNavigation(source, path, options = {}) {
               report(node, "native-invoke-dom-dynamic-target");
             } else if (indirectThisKind === nativeSetter.kind) {
               if (
+                nativeSetter.submissionTransport
+                && reportProgrammaticDomSubmissionTransport(
+                  node,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Form submission transport policy handled above.
+              } else if (
                 nativeSetter.targetContext
                 && reportProgrammaticDomTarget(
                   node,
@@ -4122,6 +4353,10 @@ function auditImperativeNavigation(source, path, options = {}) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
+                const submissionTransportProperty = domSubmissionTransportPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const targetContextProperty = domTargetContextPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
@@ -4131,6 +4366,17 @@ function auditImperativeNavigation(source, path, options = {}) {
                   attributeName.text,
                 );
                 if (
+                  submissionTransportProperty
+                  && reportProgrammaticDomSubmissionTransport(
+                    node,
+                    indirectThisKind,
+                    submissionTransportProperty,
+                    target,
+                    env,
+                  )
+                ) {
+                  // Form submission transport policy handled above.
+                } else if (
                   targetContextProperty
                   && reportProgrammaticDomTarget(
                     node,
@@ -4453,12 +4699,27 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
+          const submissionTransportProperty = domSubmissionTransportPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const targetContextProperty = domTargetContextPropertyForKind(
             kind,
             attributeName.text,
           );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (
+            submissionTransportProperty
+            && reportProgrammaticDomSubmissionTransport(
+              node,
+              kind,
+              submissionTransportProperty,
+              target,
+              env,
+            )
+          ) {
+            // Form submission transport policy handled above.
+          } else if (
             targetContextProperty
             && reportProgrammaticDomTarget(
               node,
@@ -4728,10 +4989,25 @@ function auditImperativeNavigation(source, path, options = {}) {
       const leftOwner = propertyOwner(node.left);
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
+      const submissionTransportProperty = domSubmissionTransportPropertyForKind(
+        domKind,
+        leftProperty,
+      );
       const targetContextProperty = domTargetContextPropertyForKind(domKind, leftProperty);
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
 
       if (
+        submissionTransportProperty
+        && reportProgrammaticDomSubmissionTransport(
+          node,
+          domKind,
+          submissionTransportProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Form submission transport policy handled above.
+      } else if (
         targetContextProperty
         && reportProgrammaticDomTarget(
           node,
@@ -5755,6 +6031,45 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const dynamicTransport = chooseTransport();',
+    'const form = document.createElement("form");',
+    'form.method = "get";',
+    'form.method = "post";',
+    'form.enctype = "text/plain";',
+    'form.enctype = "multipart/form-data";',
+    'form.encoding = "text/plain";',
+    'const button = document.createElement("button");',
+    'button.formMethod = dynamicTransport;',
+    'button.formMethod = "get";',
+    'const input = document.createElement("input");',
+    'input.formEnctype = "text/plain";',
+    'form.setAttribute("method", "get");',
+    'Object.assign(form, { method: "get" });',
+    'Reflect.set(form, "enctype", "text/plain");',
+    'Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "method").set.call(form, "get");',
+    'Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "enctype").set.call(form, "multipart/form-data");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-form-submission-transport.self-test.ts",
+    { formSubmissionTransportPolicy: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 10
+    || counts["programmatic-form-method"] !== 5
+    || counts["programmatic-form-enctype"] !== 4
+    || counts["programmatic-form-transport-dynamic"] !== 1
+  ) {
+    throw new Error("Programmatic form submission transport policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getExternalNavigationHref } from "@/lib/route-semantics";',
     'const safeExternal = getExternalNavigationHref("https://example.com/safe");',
     'const dynamicTarget = chooseTarget();',
@@ -6263,6 +6578,22 @@ if (declarativeNavigationViolations.length > 0) {
   );
 }
 
+const formSubmissionTransportViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditFormSubmissionTransport(read(path), path));
+if (formSubmissionTransportViolations.length > 0) {
+  throw new Error(
+    "Form submission transport policy failed:\n"
+    + formSubmissionTransportViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.value !== null ? " [" + violation.value + "]" : "")
+      )
+      .join("\n"),
+  );
+}
+
 const nativeAnchorViolations = SEMANTIC_LINK_ROOTS
   .flatMap(collectTsxFiles)
   .flatMap((path) => auditNativeAnchors(read(path), path));
@@ -6302,7 +6633,10 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap((path) => auditImperativeNavigation(
     read(path),
     path,
-    { programmaticTargetContextPolicy: true },
+    {
+      programmaticTargetContextPolicy: true,
+      formSubmissionTransportPolicy: true,
+    },
   ));
 
 const dynamicCodeExecutionViolations = allImperativeNavigationViolations
@@ -6343,6 +6677,21 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormSubmissionTransportViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("programmatic-form-"));
+if (programmaticFormSubmissionTransportViolations.length > 0) {
+  throw new Error(
+    "Programmatic form submission transport policy failed:\n"
+    + programmaticFormSubmissionTransportViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
@@ -6396,6 +6745,7 @@ if (domNavigationMutationViolations.length > 0) {
 const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
     !violation.kind.startsWith("programmatic-target-")
+    && !violation.kind.startsWith("programmatic-form-")
     && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
