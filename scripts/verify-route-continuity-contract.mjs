@@ -2267,6 +2267,134 @@ function auditImperativeNavigation(source, path) {
     return null;
   }
 
+  function isEvalReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved) && resolved.text === "eval") return true;
+    if (
+      ts.isBinaryExpression(resolved)
+      && resolved.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isEvalReference(resolved.right, env);
+    }
+    const text = resolved.getText(sourceFile);
+    return text === "globalThis.eval" || text === "window.eval";
+  }
+
+  function isFunctionConstructorReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+
+    if (ts.isIdentifier(resolved) && resolved.text === "Function") return true;
+    if (
+      ts.isBinaryExpression(resolved)
+      && resolved.operatorToken.kind === ts.SyntaxKind.CommaToken
+    ) {
+      return isFunctionConstructorReference(resolved.right, env);
+    }
+    const text = resolved.getText(sourceFile);
+    if (text === "globalThis.Function" || text === "window.Function") return true;
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "constructor"
+    ) {
+      const owner = resolveDataExpression(propertyOwner(resolved), env);
+      if (!owner) return false;
+      if (ts.isArrowFunction(owner) || ts.isFunctionExpression(owner)) return true;
+      if (
+        ts.isIdentifier(owner)
+        && localFunctions.has(owner.text)
+        && localFunctions.get(owner.text)
+      ) return true;
+    }
+
+    return false;
+  }
+
+  function dynamicCodeTimerKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+
+    if (ts.isIdentifier(resolved)) {
+      if (resolved.text === "setTimeout" || resolved.text === "setInterval") {
+        return resolved.text;
+      }
+      return null;
+    }
+
+    if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
+      const method = propertyName(resolved);
+      const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+      if (
+        (method === "setTimeout" || method === "setInterval")
+        && (
+          ownerText === "window"
+          || ownerText === "globalThis"
+        )
+      ) return method;
+    }
+
+    return null;
+  }
+
+  function isCodeStringExpression(expression, env = new Map(), seen = new Set()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+
+    const key = resolved.pos + ":" + resolved.end;
+    if (seen.has(key)) return false;
+    const nextSeen = new Set(seen);
+    nextSeen.add(key);
+
+    if (ts.isStringLiteralLike(resolved) || ts.isTemplateExpression(resolved)) return true;
+    if (
+      ts.isBinaryExpression(resolved)
+      && resolved.operatorToken.kind === ts.SyntaxKind.PlusToken
+    ) {
+      return (
+        isCodeStringExpression(resolved.left, env, nextSeen)
+        || isCodeStringExpression(resolved.right, env, nextSeen)
+      );
+    }
+    return false;
+  }
+
+  function isReflectConstructReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "construct"
+    ) return false;
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    return ownerText === "Reflect" || ownerText === "globalThis.Reflect";
+  }
+
+  function boundDynamicCodeInfo(expression, env = new Map()) {
+    const bound = boundCallableInfo(expression, env);
+    if (!bound?.target) return null;
+    if (
+      isEvalReference(bound.target, env)
+      || isFunctionConstructorReference(bound.target, env)
+    ) return bound;
+
+    if (
+      dynamicCodeTimerKind(bound.target, env)
+      && isCodeStringExpression(bound.args[0], env)
+    ) return bound;
+
+    return null;
+  }
+
+  function isDynamicCodeCapabilityValue(expression, env = new Map()) {
+    return Boolean(
+      isEvalReference(expression, env)
+      || isFunctionConstructorReference(expression, env)
+      || boundDynamicCodeInfo(expression, env)
+    );
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
@@ -2562,6 +2690,50 @@ function auditImperativeNavigation(source, path) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
+      if (isEvalReference(expression, env)) {
+        report(node, "dynamic-code-eval");
+      }
+
+      if (isFunctionConstructorReference(expression, env)) {
+        report(node, "dynamic-code-function-constructor");
+      }
+
+      if (
+        dynamicCodeTimerKind(expression, env)
+        && isCodeStringExpression(firstArg, env)
+      ) {
+        report(node, "dynamic-code-string-timer");
+      }
+
+      if (isReflectConstructReference(expression, env)) {
+        const constructorTarget = node.arguments[0];
+        if (
+          isFunctionConstructorReference(constructorTarget, env)
+          || boundDynamicCodeInfo(constructorTarget, env)
+        ) {
+          report(node, "dynamic-code-function-constructor");
+        }
+      }
+
+      if (boundDynamicCodeInfo(node, env)) {
+        report(node, "dynamic-code-bound-capability");
+      }
+
+      const proxyKind = proxyFactoryKind(expression, env);
+      if (
+        proxyKind === "revocable"
+        && isDynamicCodeCapabilityValue(firstArg, env)
+      ) {
+        report(node, "dynamic-code-proxy-capability");
+      }
+
+      if (
+        isProjectImportCallee(expression, env)
+        && node.arguments.some((argument) => isDynamicCodeCapabilityValue(argument, env))
+      ) {
+        report(node, "dynamic-code-capability-export");
+      }
+
       if (proxyNavigationCapabilityTarget(node, env)) {
         report(node, "proxy-navigation-capability");
       }
@@ -2571,6 +2743,20 @@ function auditImperativeNavigation(source, path) {
         const indirectTarget = indirectInvocation.target;
         const indirectArgs = indirectInvocation.args;
         const indirectFirstArg = indirectArgs[0];
+
+        if (isEvalReference(indirectTarget, env)) {
+          report(node, "dynamic-code-indirect-eval");
+        }
+        if (isFunctionConstructorReference(indirectTarget, env)) {
+          report(node, "dynamic-code-indirect-function");
+        }
+        if (
+          dynamicCodeTimerKind(indirectTarget, env)
+          && isCodeStringExpression(indirectFirstArg, env)
+        ) {
+          report(node, "dynamic-code-string-timer");
+        }
+
         const indirectThisKind = domNavigationElementKind(indirectInvocation.thisArg, env);
         const nativeSetter = nativeDomSetterInfo(indirectTarget, env);
         const setAttributeCapability = (
@@ -3085,6 +3271,20 @@ function auditImperativeNavigation(source, path) {
     }
 
     if (ts.isNewExpression(node)) {
+      if (
+        isFunctionConstructorReference(node.expression, env)
+        || boundDynamicCodeInfo(node.expression, env)
+      ) {
+        report(node, "dynamic-code-function-constructor");
+      }
+
+      if (
+        proxyFactoryKind(node.expression, env) === "constructor"
+        && isDynamicCodeCapabilityValue(node.arguments?.[0], env)
+      ) {
+        report(node, "dynamic-code-proxy-capability");
+      }
+
       if (proxyNavigationCapabilityTarget(node, env)) {
         report(node, "proxy-navigation-capability");
       }
@@ -3613,6 +3813,57 @@ function auditImperativeNavigation(source, path) {
     || counts["proxy-navigation-capability"] !== 16
   ) {
     throw new Error("Proxy navigation capability boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { execute } from "@/lib/dynamic-wrapper";',
+    'eval("location.href = \'/earn\'");',
+    'const evaluator = eval;',
+    'evaluator(runtimeCode);',
+    '(0, eval)("location.href = \'/wallet\'");',
+    'eval.call(null, "location.href = \'/progress\'");',
+    'Reflect.apply(eval, null, ["location.href = \'/invite\'"]);',
+    'Function("return location.href")();',
+    'new Function("return location.href");',
+    'const F = Function;',
+    'new F("return location.href");',
+    '(() => {}).constructor("return location.href")();',
+    'Reflect.construct(Function, ["return location.href"]);',
+    'setTimeout("location.href = \'/dashboard\'", 0);',
+    'const repeat = setInterval;',
+    'repeat("location.href = \'/earn\'", 1000);',
+    'const boundEval = eval.bind(null);',
+    'const boundFunction = Function.bind(null, "return location.href");',
+    'const boundTimer = setTimeout.bind(window, "location.href = \'/wallet\'", 0);',
+    'boundEval("location.href = \'/progress\'");',
+    'new boundFunction();',
+    'boundTimer();',
+    'new Proxy(eval, {});',
+    'Proxy.revocable(Function, {});',
+    'execute(eval);',
+    'setTimeout(() => console.log("safe"), 0);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "dynamic-code-execution.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 21
+    || counts["dynamic-code-eval"] !== 3
+    || counts["dynamic-code-indirect-eval"] !== 3
+    || counts["dynamic-code-function-constructor"] !== 6
+    || counts["dynamic-code-string-timer"] !== 3
+    || counts["dynamic-code-bound-capability"] !== 3
+    || counts["dynamic-code-proxy-capability"] !== 2
+    || counts["dynamic-code-capability-export"] !== 1
+  ) {
+    throw new Error("Dynamic code execution boundary self-test failed: " + JSON.stringify(violations));
   }
 }
 
@@ -4151,6 +4402,20 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
 
+const dynamicCodeExecutionViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("dynamic-code-"));
+if (dynamicCodeExecutionViolations.length > 0) {
+  throw new Error(
+    "Dynamic code execution boundary failed:\n"
+    + dynamicCodeExecutionViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+      )
+      .join("\n"),
+  );
+}
+
 const proxyNavigationViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("proxy-navigation-"));
 if (proxyNavigationViolations.length > 0) {
@@ -4200,6 +4465,7 @@ const imperativeNavigationViolations = allImperativeNavigationViolations
     !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
     && !violation.kind.startsWith("proxy-navigation-")
+    && !violation.kind.startsWith("dynamic-code-")
   );
 if (imperativeNavigationViolations.length > 0) {
   throw new Error(
