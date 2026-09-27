@@ -1415,6 +1415,7 @@ function auditImperativeNavigation(source, path) {
   const webResponseRedirectBindings = new Set();
   const browserContextVariables = new Set();
   const browserEventViewVariables = new Set();
+  const browserMessageEventVariables = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
   const browserLocationReloadBindings = new Set();
@@ -1560,6 +1561,16 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isMessageEventTypeNode(typeNode) {
+    if (!typeNode) return false;
+    if (ts.isParenthesizedTypeNode(typeNode)) return isMessageEventTypeNode(typeNode.type);
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      return typeNode.types.some(isMessageEventTypeNode);
+    }
+    if (!ts.isTypeReferenceNode(typeNode)) return false;
+    return typeNode.typeName.getText(sourceFile).split(".").pop() === "MessageEvent";
+  }
+
   function setStableKind(map, name, kind) {
     if (!name || !kind) return;
     if (!map.has(name)) {
@@ -1584,6 +1595,9 @@ function auditImperativeNavigation(source, path) {
       if (isWindowViewEventTypeNode(node.type)) {
         browserEventViewVariables.add(node.name.text);
       }
+      if (isMessageEventTypeNode(node.type)) {
+        browserMessageEventVariables.add(node.name.text);
+      }
     }
 
     if (ts.isVariableDeclaration(node)) {
@@ -1592,6 +1606,9 @@ function auditImperativeNavigation(source, path) {
         setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
         if (isWindowViewEventTypeNode(node.type)) {
           browserEventViewVariables.add(node.name.text);
+        }
+        if (isMessageEventTypeNode(node.type)) {
+          browserMessageEventVariables.add(node.name.text);
         }
       }
       if (
@@ -1688,6 +1705,21 @@ function auditImperativeNavigation(source, path) {
     return false;
   }
 
+  function isMessageEventSource(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved)) {
+      return browserMessageEventVariables.has(resolved.text);
+    }
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "nativeEvent"
+    ) {
+      return isMessageEventSource(propertyOwner(resolved), env);
+    }
+    return false;
+  }
+
   function isBrowsingContextObject(expression, env = new Map(), seen = new Set()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -1762,6 +1794,7 @@ function auditImperativeNavigation(source, path) {
       if (name === "contentWindow") return true;
       if (name === "defaultView" && isDocumentObject(propertyOwner(resolved), env)) return true;
       if (name === "view" && isEventViewSource(propertyOwner(resolved), env)) return true;
+      if (name === "source" && isMessageEventSource(propertyOwner(resolved), env)) return true;
       if (
         name === "self"
         || name === "top"
@@ -4969,6 +5002,39 @@ function auditImperativeNavigation(source, path) {
 {
   const selfTest = [
     'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'function onMessage(event: MessageEvent) {',
+    '  event.source.location.assign("/dashboard");',
+    '  event.source.history.pushState({}, "", "/progress");',
+    '  event.source.navigation.navigate("/invite");',
+    '  const source = event.source;',
+    '  source.location.href = "/wallet";',
+    '  event.source.open("https://example.com/raw", "_blank");',
+    '  event.source.location.assign(getRouteNavigationHref("message-source", "/dashboard"));',
+    '  event.source.open(getExternalNavigationHref("https://example.com/safe"), "_blank");',
+    '}',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "message-source-window.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["browser-location"] !== 2
+    || counts["browser-history"] !== 1
+    || counts["browser-navigation-api"] !== 1
+    || counts["browser-window-open"] !== 1
+  ) {
+    throw new Error("Message source window authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
     'window[0].location.assign("/dashboard");',
     'parent[1].location.href = "/wallet";',
     'const indexedChild = window[0];',
@@ -5197,6 +5263,33 @@ function auditNavigationSideEffectBoundary(source, path) {
   ]);
   const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
   const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
+  const sideEffectMessageEventVariables = new Set();
+
+  function sideEffectIsMessageEventTypeNode(typeNode) {
+    if (!typeNode) return false;
+    if (ts.isParenthesizedTypeNode(typeNode)) {
+      return sideEffectIsMessageEventTypeNode(typeNode.type);
+    }
+    if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+      return typeNode.types.some(sideEffectIsMessageEventTypeNode);
+    }
+    if (!ts.isTypeReferenceNode(typeNode)) return false;
+    return typeNode.typeName.getText(sourceFile).split(".").pop() === "MessageEvent";
+  }
+
+  function collectSideEffectMessageEvents(node) {
+    if (
+      (ts.isParameter(node) || ts.isVariableDeclaration(node))
+      && ts.isIdentifier(node.name)
+      && node.type
+      && sideEffectIsMessageEventTypeNode(node.type)
+    ) {
+      sideEffectMessageEventVariables.add(node.name.text);
+    }
+    ts.forEachChild(node, collectSideEffectMessageEvents);
+  }
+
+  collectSideEffectMessageEvents(sourceFile);
 
   function sideEffectPropertyName(expression) {
     if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
@@ -5217,6 +5310,10 @@ function auditNavigationSideEffectBoundary(source, path) {
 
   function sideEffectBrowsingContextText(text) {
     if (!text) return false;
+    if (text.endsWith(".source")) {
+      const eventText = text.slice(0, -".source".length);
+      if (sideEffectMessageEventVariables.has(eventText)) return true;
+    }
     if (text.endsWith(".defaultView")) {
       const documentText = text.slice(0, -".defaultView".length);
       if (sideEffectDocumentText(documentText)) return true;
@@ -5445,7 +5542,9 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenTop(target) { top.location.assign(target); }',
     'export function hiddenFrame(target) { frames[0].location.replace(target); }',
     'export function hiddenIndexedContext(target) { window[0].location.assign(target); }',
+    'export function hiddenMessageSource(event: MessageEvent, target) { event.source.location.assign(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenMessageSourceHistory(event: MessageEvent, target) { event.source.history.pushState({}, "", target); }',
     'export function hiddenIndexedContextHistory(target) { parent[1].history.pushState({}, "", target); }',
     'export function hiddenEmbeddedViewHistory(target) { iframe.contentDocument.defaultView.history.pushState({}, "", target); }',
     'export function hiddenParentHistory(target) { parent.history.pushState({}, "", target); }',
@@ -5467,11 +5566,11 @@ function auditNavigationSideEffectBoundary(source, path) {
     return acc;
   }, {});
   if (
-    violations.length !== 22
-    || counts["browser-navigation"] !== 6
+    violations.length !== 24
+    || counts["browser-navigation"] !== 7
     || counts["browser-reload"] !== 1
     || counts["browser-window-navigation"] !== 2
-    || counts["history-navigation"] !== 4
+    || counts["history-navigation"] !== 5
     || counts["history-traversal"] !== 1
     || counts["navigation-api"] !== 2
     || counts["navigation-api-traversal"] !== 1
