@@ -1743,6 +1743,11 @@ function auditImperativeNavigation(source, path) {
     if (normalized === "HTMLFormElement") return "form";
     if (normalized === "HTMLButtonElement") return "button";
     if (normalized === "HTMLInputElement") return "input";
+    if (normalized === "HTMLIFrameElement") return "iframe";
+    if (normalized === "HTMLFrameElement") return "frame";
+    if (normalized === "HTMLFencedFrameElement") return "fencedframe";
+    if (normalized === "HTMLObjectElement") return "object";
+    if (normalized === "HTMLEmbedElement") return "embed";
     return null;
   }
 
@@ -2135,7 +2140,7 @@ function auditImperativeNavigation(source, path) {
 
   function domKindFromSelectorText(value) {
     if (typeof value !== "string") return null;
-    const match = value.match(/^\s*(a|area|base|form|button|input)(?=$|[.#:\[\s>+~])/i);
+    const match = value.match(/^\s*(a|area|base|form|button|input|iframe|frame|fencedframe|object|embed)(?=$|[.#:\[\s>+~])/i);
     return match ? match[1].toLowerCase() : null;
   }
 
@@ -2191,7 +2196,7 @@ function auditImperativeNavigation(source, path) {
       const tag = resolveDataExpression(resolved.arguments[0], env);
       if (!tag || !ts.isStringLiteralLike(tag)) return null;
       const kind = tag.text.toLowerCase();
-      return ["a", "area", "base", "form", "button", "input"].includes(kind)
+      return ["a", "area", "base", "form", "button", "input", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
         ? kind
         : null;
     }
@@ -2320,7 +2325,7 @@ function auditImperativeNavigation(source, path) {
     const tag = resolveDataExpression(resolved.arguments[0], env);
     if (!tag || !ts.isStringLiteralLike(tag)) return null;
     const kind = tag.text.toLowerCase();
-    return ["a", "area", "base", "form", "button", "input"].includes(kind)
+    return ["a", "area", "base", "form", "button", "input", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
       ? kind
       : null;
   }
@@ -2353,7 +2358,27 @@ function auditImperativeNavigation(source, path) {
     if ((kind === "button" || kind === "input") && normalized === "formaction") {
       return "formaction";
     }
+    if (
+      (kind === "iframe" || kind === "frame" || kind === "fencedframe" || kind === "embed")
+      && normalized === "src"
+    ) return "src";
+    if (kind === "object" && normalized === "data") return "data";
+    if (kind === "iframe" && normalized === "srcdoc") return "srcdoc";
     return null;
+  }
+
+  function isEmbeddedContextKind(kind) {
+    return (
+      kind === "iframe"
+      || kind === "frame"
+      || kind === "fencedframe"
+      || kind === "object"
+      || kind === "embed"
+    );
+  }
+
+  function isEmbeddedInlineDocumentProperty(kind, property) {
+    return kind === "iframe" && property === "srcdoc";
   }
 
   const VERIFIED_REPLAY_SELECTOR = 'form[data-route-submit-authority="verified-replay"]';
@@ -3232,7 +3257,7 @@ function auditImperativeNavigation(source, path) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return null;
     const text = resolved.getText(sourceFile);
-    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement)\.prototype$/);
+    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement|HTMLIFrameElement|HTMLFrameElement|HTMLFencedFrameElement|HTMLObjectElement|HTMLEmbedElement)\.prototype$/);
     return match ? domKindFromTypeNameText(match[1]) : null;
   }
 
