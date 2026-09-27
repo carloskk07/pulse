@@ -1989,10 +1989,77 @@ function auditImperativeNavigation(source, path) {
     return { args: [...resolved.elements], dynamic: false };
   }
 
+  function boundCallableInfo(expression, env = new Map(), seen = new Set()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isCallExpression(resolved)) return null;
+
+    const key = resolved.pos + ":" + resolved.end;
+    if (seen.has(key)) return null;
+    const nextSeen = new Set(seen);
+    nextSeen.add(key);
+
+    const bindCallee = resolveDataExpression(resolved.expression, env);
+    if (
+      !bindCallee
+      || !(ts.isPropertyAccessExpression(bindCallee) || ts.isElementAccessExpression(bindCallee))
+      || propertyName(bindCallee) !== "bind"
+    ) return null;
+
+    const target = propertyOwner(bindCallee);
+    if (!target) return null;
+
+    const boundArgs = resolved.arguments.slice(1);
+    const dynamic = boundArgs.some((argument) => ts.isSpreadElement(argument));
+    const nested = boundCallableInfo(target, env, nextSeen);
+    if (nested) {
+      return {
+        target: nested.target,
+        thisArg: nested.thisArg,
+        args: dynamic || nested.dynamic ? [] : [...nested.args, ...boundArgs],
+        dynamic: dynamic || nested.dynamic,
+      };
+    }
+
+    return {
+      target,
+      thisArg: resolved.arguments[0] ?? null,
+      args: dynamic ? [] : boundArgs,
+      dynamic,
+    };
+  }
+
+  function mergeBoundInvocation(invocation, env = new Map()) {
+    if (!invocation?.target) return invocation;
+    const bound = boundCallableInfo(invocation.target, env);
+    if (!bound) return invocation;
+    return {
+      target: bound.target,
+      thisArg: bound.thisArg,
+      args: invocation.dynamic || bound.dynamic
+        ? []
+        : [...bound.args, ...invocation.args],
+      dynamic: invocation.dynamic || bound.dynamic,
+    };
+  }
+
   function indirectInvocationInfo(callExpression, env = new Map()) {
     if (!ts.isCallExpression(callExpression)) return null;
     const resolvedCallee = resolveDataExpression(callExpression.expression, env);
     if (!resolvedCallee) return null;
+
+    const directlyBound = boundCallableInfo(callExpression.expression, env);
+    if (directlyBound) {
+      const runtimeArgs = callExpression.arguments;
+      const runtimeDynamic = runtimeArgs.some((argument) => ts.isSpreadElement(argument));
+      return {
+        target: directlyBound.target,
+        thisArg: directlyBound.thisArg,
+        args: runtimeDynamic || directlyBound.dynamic
+          ? []
+          : [...directlyBound.args, ...runtimeArgs],
+        dynamic: runtimeDynamic || directlyBound.dynamic,
+      };
+    }
 
     if (
       ts.isPropertyAccessExpression(resolvedCallee)
@@ -2006,33 +2073,33 @@ function auditImperativeNavigation(source, path) {
         && (ownerText === "Reflect" || ownerText === "globalThis.Reflect")
       ) {
         const invocation = staticInvocationArguments(callExpression.arguments[2], env);
-        return {
+        return mergeBoundInvocation({
           target: callExpression.arguments[0] ?? null,
           thisArg: callExpression.arguments[1] ?? null,
           args: invocation.args,
           dynamic: invocation.dynamic,
-        };
+        }, env);
       }
 
       if (method === "call") {
         const invocationArgs = callExpression.arguments.slice(1);
-        return {
+        return mergeBoundInvocation({
           target,
           thisArg: callExpression.arguments[0] ?? null,
           args: invocationArgs.some((argument) => ts.isSpreadElement(argument))
             ? []
             : invocationArgs,
           dynamic: invocationArgs.some((argument) => ts.isSpreadElement(argument)),
-        };
+        }, env);
       }
       if (method === "apply") {
         const invocation = staticInvocationArguments(callExpression.arguments[1], env);
-        return {
+        return mergeBoundInvocation({
           target,
           thisArg: callExpression.arguments[0] ?? null,
           args: invocation.args,
           dynamic: invocation.dynamic,
-        };
+        }, env);
       }
     }
 
