@@ -670,6 +670,37 @@ function auditImperativeNavigation(source, path) {
   const navigationBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getRouteNavigationHref");
   const productHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getProductRouteHref");
   const externalHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getExternalNavigationHref");
+  const projectImportBindings = new Set();
+  const projectImportNamespaces = new Set();
+
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || !statement.importClause
+    ) continue;
+
+    const moduleName = statement.moduleSpecifier.text;
+    const isProjectModule = (
+      moduleName.startsWith("@/")
+      || moduleName.startsWith("./")
+      || moduleName.startsWith("../")
+    );
+    if (!isProjectModule || moduleName === "@/lib/route-semantics") continue;
+
+    if (statement.importClause.name) {
+      projectImportBindings.add(statement.importClause.name.text);
+    }
+    const namedBindings = statement.importClause.namedBindings;
+    if (namedBindings && ts.isNamedImports(namedBindings)) {
+      for (const element of namedBindings.elements) {
+        projectImportBindings.add(element.name.text);
+      }
+    }
+    if (namedBindings && ts.isNamespaceImport(namedBindings)) {
+      projectImportNamespaces.add(namedBindings.name.text);
+    }
+  }
 
   const routerVariables = new Set();
   const routerMethodBindings = new Set();
@@ -1082,6 +1113,85 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function isProjectImportCallee(callee, env = new Map()) {
+    const resolved = resolveDataExpression(callee, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved)) return projectImportBindings.has(resolved.text);
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyOwner(resolved)
+      && ts.isIdentifier(propertyOwner(resolved))
+    ) {
+      return projectImportNamespaces.has(propertyOwner(resolved).text);
+    }
+    return false;
+  }
+
+  function containsUnprovenProjectImportCall(
+    expression,
+    env = new Map(),
+    callStack = new Set(),
+    seen = new Set(),
+  ) {
+    if (!expression) return false;
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+
+    const positionKey = resolved.pos + ":" + resolved.end;
+    if (seen.has(positionKey)) return false;
+    const nextSeen = new Set(seen);
+    nextSeen.add(positionKey);
+
+    if (
+      authorityCall(resolved, navigationBindings)
+      || authorityCall(resolved, productHrefBindings)
+      || authorityCall(resolved, externalHrefBindings)
+    ) {
+      return false;
+    }
+
+    if (ts.isCallExpression(resolved)) {
+      const definition = localFunctionFromCallee(resolved.expression, env);
+      if (definition && !callStack.has(definition.key)) {
+        const nextStack = new Set(callStack);
+        nextStack.add(definition.key);
+        const childEnv = functionEnvironment(definition, resolved, env);
+        if (
+          functionReturnExpressions(definition)
+            .some((candidate) => containsUnprovenProjectImportCall(
+              candidate,
+              childEnv,
+              nextStack,
+              nextSeen,
+            ))
+        ) return true;
+      }
+
+      if (isProjectImportCallee(resolved.expression, env)) return true;
+      return resolved.arguments.some((argument) => (
+        containsUnprovenProjectImportCall(argument, env, callStack, nextSeen)
+      ));
+    }
+
+    if (ts.isConditionalExpression(resolved)) {
+      return containsUnprovenProjectImportCall(resolved.whenTrue, env, callStack, nextSeen)
+        || containsUnprovenProjectImportCall(resolved.whenFalse, env, callStack, nextSeen);
+    }
+
+    if (ts.isNewExpression(resolved)) {
+      return Boolean(resolved.arguments?.some((argument) => (
+        containsUnprovenProjectImportCall(argument, env, callStack, nextSeen)
+      )));
+    }
+
+    if (ts.isBinaryExpression(resolved)) {
+      return containsUnprovenProjectImportCall(resolved.left, env, callStack, nextSeen)
+        || containsUnprovenProjectImportCall(resolved.right, env, callStack, nextSeen);
+    }
+
+    return false;
+  }
+
   function browserNavigationAuthority(expression, env = new Map(), callStack = new Set()) {
     return authorityExpressionResolved(expression, navigationBindings, env, callStack)
       || authorityExpressionResolved(expression, externalHrefBindings, env, callStack);
@@ -1136,11 +1246,18 @@ function auditImperativeNavigation(source, path) {
         const targets = staticHrefCandidatesResolved(firstArg, env, callStack)
           .map(normalizedProductRoute)
           .filter(Boolean);
-        if (
-          targets.length > 0
-          && !authorityExpressionResolved(firstArg, navigationBindings, env, callStack)
-          && !authorityExpressionResolved(firstArg, productHrefBindings, env, callStack)
-        ) report(node, "server-redirect", targets);
+        const authoritative = (
+          authorityExpressionResolved(firstArg, navigationBindings, env, callStack)
+          || authorityExpressionResolved(firstArg, productHrefBindings, env, callStack)
+        );
+        if (targets.length > 0 && !authoritative) {
+          report(node, "server-redirect", targets);
+        } else if (
+          !authoritative
+          && containsUnprovenProjectImportCall(firstArg, env, callStack)
+        ) {
+          report(node, "cross-module-destination");
+        }
       }
 
       if (isResponseRedirectReference(expression, env)) {
@@ -1156,6 +1273,11 @@ function auditImperativeNavigation(source, path) {
           ));
         if (targets.length > 0 && !authoritative) {
           report(node, "route-handler-redirect", targets);
+        } else if (
+          !authoritative
+          && containsUnprovenProjectImportCall(firstArg, env, callStack)
+        ) {
+          report(node, "cross-module-destination");
         }
       }
 
@@ -1315,6 +1437,34 @@ function auditImperativeNavigation(source, path) {
     || counts["browser-location"] !== 1
   ) {
     throw new Error("Interprocedural navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import defaultBuilder, { buildTarget } from "@/lib/navigation-builders";',
+    'import * as navBuilders from "../lib/navigation-builders";',
+    'import { redirect } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getRouteNavigationHref } from "@/lib/route-semantics";',
+    'redirect(buildTarget());',
+    'function localTarget() { return buildTarget(); }',
+    'redirect(localTarget());',
+    'NR.redirect(new URL(navBuilders.buildTarget(), request.url), 303);',
+    'NR.redirect(defaultBuilder(), 303);',
+    'redirect(getRouteNavigationHref("server", buildTarget()));',
+    'NR.redirect(new URL(getRouteNavigationHref("server", navBuilders.buildTarget()), request.url), 303);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(selfTest, "cross-module-navigation.self-test.ts");
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 4
+    || counts["cross-module-destination"] !== 4
+  ) {
+    throw new Error("Cross-module navigation provenance self-test failed: " + JSON.stringify(violations));
   }
 }
 
