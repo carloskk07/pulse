@@ -514,6 +514,107 @@ function hasUnresolvedDynamicHref(attribute) {
   return staticHrefCandidates(attribute.initializer.expression).length === 0;
 }
 
+function auditNavigationTargetContexts(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const configByTag = new Map([
+    ["Link", { target: "target", linkLike: true }],
+    ["a", { target: "target", linkLike: true }],
+    ["area", { target: "target", linkLike: true }],
+    ["form", { target: "target", linkLike: false }],
+    ["button", { target: "formTarget", linkLike: false }],
+    ["input", { target: "formTarget", linkLike: false }],
+  ]);
+
+  function report(node, kind, target = null) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      target,
+    });
+  }
+
+  function relProtectsBlank(node) {
+    const rel = literalJsxAttributeValue(jsxAttribute(node, "rel"));
+    if (!rel) return false;
+    const tokens = new Set(rel.toLowerCase().split(/\s+/).filter(Boolean));
+    return tokens.has("noopener") || tokens.has("noreferrer");
+  }
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile);
+      const config = configByTag.get(tag);
+      if (config) {
+        const targetAttribute = jsxAttribute(node, config.target);
+        if (targetAttribute?.initializer) {
+          const target = literalJsxAttributeValue(targetAttribute);
+          if (target === null) {
+            report(node, "target-dynamic");
+          } else {
+            const normalized = target.trim().toLowerCase();
+            if (normalized === "_self" || normalized === "") {
+              // Explicit same-context navigation is safe.
+            } else if (normalized === "_blank") {
+              if (!config.linkLike) {
+                report(node, "target-context", target);
+              } else if (!relProtectsBlank(node)) {
+                report(node, "target-blank-rel", target);
+              }
+            } else {
+              report(node, "target-context", target);
+            }
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'const dynamicTarget = "_blank";',
+    'const Fixture = () => (<>',
+    '  <a href="/dashboard" target="_top">top</a>',
+    '  <form action="/api/withdrawals" target="_parent" />',
+    '  <button formTarget="named-frame">named</button>',
+    '  <a href="https://example.com" target="_blank">unsafe blank</a>',
+    '  <a href="https://example.com" target="_blank" rel="noopener">safe blank</a>',
+    '  <Link href="/dashboard" target="_self">same context</Link>',
+    '  <input formTarget={dynamicTarget} />',
+    '</>);',
+  ].join("\n");
+  const violations = auditNavigationTargetContexts(
+    selfTest,
+    "navigation-target-context.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["target-context"] !== 3
+    || counts["target-blank-rel"] !== 1
+    || counts["target-dynamic"] !== 1
+  ) {
+    throw new Error("Navigation target context policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function staticNavigationTransport(value) {
   const href = String(value ?? "").trim();
   if (!href) return "empty";
@@ -5582,6 +5683,22 @@ function auditNavigationSideEffectBoundary(source, path) {
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
+}
+
+const navigationTargetContextViolations = ["app", "components"]
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditNavigationTargetContexts(read(path), path));
+if (navigationTargetContextViolations.length > 0) {
+  throw new Error(
+    "Navigation target context policy failed:\n"
+    + navigationTargetContextViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.target ? " [" + violation.target + "]" : "")
+      )
+      .join("\n"),
+  );
 }
 
 const navigationTransportViolations = ["app", "components"]
