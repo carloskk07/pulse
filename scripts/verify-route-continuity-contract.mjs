@@ -1766,7 +1766,7 @@ function auditImperativeNavigation(source, path) {
       return false;
     }
     const name = propertyName(resolved);
-    if (name === "ownerDocument") return true;
+    if (name === "ownerDocument" || name === "contentDocument") return true;
     return name === "document" && isBrowsingContextObject(propertyOwner(resolved), env);
   }
 
@@ -5137,8 +5137,9 @@ function auditNavigationSideEffectBoundary(source, path) {
 
   function sideEffectBrowsingContextText(text) {
     if (!text) return false;
-    if (text === "document.defaultView" || /\.ownerDocument\.defaultView$/.test(text)) {
-      return true;
+    if (text.endsWith(".defaultView")) {
+      const documentText = text.slice(0, -".defaultView".length);
+      if (sideEffectDocumentText(documentText)) return true;
     }
     if (
       text === "window"
@@ -5162,6 +5163,7 @@ function auditNavigationSideEffectBoundary(source, path) {
 
   function sideEffectDocumentText(text) {
     if (text === "document") return true;
+    if (text?.endsWith(".ownerDocument") || text?.endsWith(".contentDocument")) return true;
     if (!text?.endsWith(".document")) return false;
     return sideEffectBrowsingContextText(text.slice(0, -".document".length));
   }
