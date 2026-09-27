@@ -3408,6 +3408,87 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { redirect, useRouter } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { navigate } from "@/lib/navigation-wrapper";',
+    'import { getExternalNavigationHref, getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const router = useRouter();',
+    'const boundPush = router.push.bind(router);',
+    'boundPush("/earn");',
+    'boundPush(getRouteNavigationHref("bound", "/earn"));',
+    'const boundPreRaw = router.push.bind(router, "/wallet");',
+    'boundPreRaw();',
+    'const boundPreSafe = router.push.bind(router, getRouteNavigationHref("bound", "/wallet"));',
+    'boundPreSafe();',
+    'boundPush.call(null, "/progress");',
+    'const boundBack = router.back.bind(router);',
+    'boundBack();',
+    'const boundHistory = history.pushState.bind(history, {}, "", "/progress");',
+    'boundHistory();',
+    'const boundLocation = location.assign.bind(location, "https://example.com/raw");',
+    'boundLocation();',
+    'const boundLocationSafe = location.assign.bind(location, getExternalNavigationHref("https://example.com/safe"));',
+    'boundLocationSafe();',
+    'const boundOpen = window.open.bind(window, "https://example.com/raw");',
+    'boundOpen();',
+    'const boundNavigate = navigation.navigate.bind(navigation, "/invite");',
+    'boundNavigate();',
+    'const boundRedirect = redirect.bind(null, "/wallet");',
+    'boundRedirect();',
+    'const boundRedirectSafe = redirect.bind(null, getProductRouteHref("wallet"));',
+    'boundRedirectSafe();',
+    'const boundResponseRedirect = NR.redirect.bind(NR, new URL("/dashboard", request.url), 303);',
+    'boundResponseRedirect();',
+    'const headers = new Headers();',
+    'const boundHeader = headers.set.bind(headers, "Location", "/dashboard");',
+    'boundHeader();',
+    'const anchor = document.createElement("a");',
+    'const boundAttribute = anchor.setAttribute.bind(anchor, "href", "/invite");',
+    'boundAttribute();',
+    'const boundAttributeSafe = anchor.setAttribute.bind(anchor, "href", getRouteNavigationHref("bound", "/invite"));',
+    'boundAttributeSafe();',
+    'const hrefSetter = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "href").set;',
+    'const boundSetter = hrefSetter.bind(anchor, "/earn");',
+    'boundSetter();',
+    'const base = document.createElement("base");',
+    'const baseSetter = Object.getOwnPropertyDescriptor(HTMLBaseElement.prototype, "href").set;',
+    'const boundBase = baseSetter.bind(base, getRouteNavigationHref("bound", "/dashboard/"));',
+    'boundBase();',
+    'const boundDynamic = router.push.bind(router, ...dynamicArguments);',
+    'boundDynamic();',
+    'navigate(router.push.bind(router), "/earn");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "bound-navigation-invocation.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 16
+    || counts["native-invoke-router"] !== 3
+    || counts["native-invoke-router-traversal"] !== 1
+    || counts["native-invoke-browser-history"] !== 1
+    || counts["native-invoke-browser-location"] !== 1
+    || counts["native-invoke-browser-window-open"] !== 1
+    || counts["native-invoke-browser-navigation-api"] !== 1
+    || counts["native-invoke-server-redirect"] !== 1
+    || counts["native-invoke-route-handler-redirect"] !== 1
+    || counts["native-invoke-location-header"] !== 1
+    || counts["native-invoke-dom-attribute"] !== 1
+    || counts["native-invoke-dom-setter"] !== 1
+    || counts["native-invoke-dom-base-href"] !== 1
+    || counts["native-invoke-dynamic-arguments"] !== 1
+    || counts["cross-module-wrapper"] !== 1
+  ) {
+    throw new Error("Bound navigation invocation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRef } from "react";',
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'const selected = document.querySelector("a.promo");',
