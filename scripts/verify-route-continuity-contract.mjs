@@ -1978,6 +1978,126 @@ function auditImperativeNavigation(source, path) {
     );
   }
 
+  function staticInvocationArguments(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isArrayLiteralExpression(resolved)) {
+      return { args: [], dynamic: true };
+    }
+    if (resolved.elements.some((element) => ts.isSpreadElement(element))) {
+      return { args: [], dynamic: true };
+    }
+    return { args: [...resolved.elements], dynamic: false };
+  }
+
+  function indirectInvocationInfo(callExpression, env = new Map()) {
+    if (!ts.isCallExpression(callExpression)) return null;
+    const resolvedCallee = resolveDataExpression(callExpression.expression, env);
+    if (!resolvedCallee) return null;
+
+    if (
+      ts.isPropertyAccessExpression(resolvedCallee)
+      || ts.isElementAccessExpression(resolvedCallee)
+    ) {
+      const method = propertyName(resolvedCallee);
+      const target = propertyOwner(resolvedCallee);
+      if (method === "call") {
+        const invocationArgs = callExpression.arguments.slice(1);
+        return {
+          target,
+          thisArg: callExpression.arguments[0] ?? null,
+          args: invocationArgs.some((argument) => ts.isSpreadElement(argument))
+            ? []
+            : invocationArgs,
+          dynamic: invocationArgs.some((argument) => ts.isSpreadElement(argument)),
+        };
+      }
+      if (method === "apply") {
+        const invocation = staticInvocationArguments(callExpression.arguments[1], env);
+        return {
+          target,
+          thisArg: callExpression.arguments[0] ?? null,
+          args: invocation.args,
+          dynamic: invocation.dynamic,
+        };
+      }
+
+      const ownerText = propertyOwner(resolvedCallee)?.getText(sourceFile);
+      if (
+        method === "apply"
+        && (ownerText === "Reflect" || ownerText === "globalThis.Reflect")
+      ) {
+        const invocation = staticInvocationArguments(callExpression.arguments[2], env);
+        return {
+          target: callExpression.arguments[0] ?? null,
+          thisArg: callExpression.arguments[1] ?? null,
+          args: invocation.args,
+          dynamic: invocation.dynamic,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function nativeDomPrototypeKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    const text = resolved.getText(sourceFile);
+    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement)\.prototype$/);
+    return match ? domKindFromTypeNameText(match[1]) : null;
+  }
+
+  function nativeDomSetterInfo(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "set"
+    ) return null;
+
+    const descriptorCall = propertyOwner(resolved);
+    if (!descriptorCall || !ts.isCallExpression(descriptorCall)) return null;
+    const descriptorCallee = resolveDataExpression(descriptorCall.expression, env);
+    if (
+      !descriptorCallee
+      || !(ts.isPropertyAccessExpression(descriptorCallee) || ts.isElementAccessExpression(descriptorCallee))
+      || propertyName(descriptorCallee) !== "getOwnPropertyDescriptor"
+    ) return null;
+
+    const descriptorOwner = propertyOwner(descriptorCallee)?.getText(sourceFile);
+    if (descriptorOwner !== "Object" && descriptorOwner !== "globalThis.Object") return null;
+
+    const kind = nativeDomPrototypeKind(descriptorCall.arguments[0], env);
+    const propertyExpression = resolveDataExpression(descriptorCall.arguments[1], env);
+    const propertyText = propertyExpression && ts.isStringLiteralLike(propertyExpression)
+      ? propertyExpression.text
+      : null;
+    const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
+    return kind && navigationProperty
+      ? { kind, property: navigationProperty }
+      : null;
+  }
+
+  function isNativeDomSetAttributeReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "setAttribute"
+    ) return false;
+
+    const owner = propertyOwner(resolved);
+    if (!owner) return false;
+    const ownerText = owner.getText(sourceFile);
+    return (
+      ownerText === "Element.prototype"
+      || ownerText === "globalThis.Element.prototype"
+      || ownerText === "HTMLElement.prototype"
+      || ownerText === "globalThis.HTMLElement.prototype"
+      || Boolean(nativeDomPrototypeKind(owner, env))
+    );
+  }
+
   function isProjectImportCallee(callee, env = new Map()) {
     const resolved = resolveDataExpression(callee, env);
     if (!resolved) return false;
