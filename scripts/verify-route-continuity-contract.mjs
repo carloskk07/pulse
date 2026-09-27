@@ -1544,6 +1544,28 @@ function auditImperativeNavigation(source, path) {
       }
     }
 
+    if (ts.isNewExpression(node)) {
+      const locationTarget = responseConstructorLocationTarget(node, env);
+      if (locationTarget) {
+        const targets = staticHrefCandidatesResolved(locationTarget, env, callStack)
+          .map(normalizedProductRoute)
+          .filter(Boolean);
+        const authoritative = (
+          authorityExpressionResolved(locationTarget, navigationBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, productHrefBindings, env, callStack)
+          || authorityExpressionResolved(locationTarget, externalHrefBindings, env, callStack)
+        );
+        if (targets.length > 0 && !authoritative) {
+          report(node, "response-location-redirect", targets);
+        } else if (
+          !authoritative
+          && containsUnprovenProjectImportCall(locationTarget, env, callStack)
+        ) {
+          report(node, "cross-module-destination");
+        }
+      }
+    }
+
     if (
       ts.isBinaryExpression(node)
       && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
@@ -1717,6 +1739,42 @@ function auditImperativeNavigation(source, path) {
     || counts["cross-module-wrapper"] !== 2
   ) {
     throw new Error("Cross-module navigation provenance self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { permanentRedirect } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'import { getProductRouteHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'permanentRedirect("/dashboard");',
+    'permanentRedirect(getProductRouteHref("home"));',
+    'Response.redirect("/earn", 302);',
+    'globalThis.Response.redirect("/wallet", 307);',
+    'const webRedirect = Response.redirect;',
+    'webRedirect("/progress", 308);',
+    'const { redirect: standardRedirect } = Response;',
+    'standardRedirect("/invite", 302);',
+    'Response.redirect(getRouteNavigationHref("server", "/earn"), 302);',
+    'new Response(null, { status: 302, headers: { Location: "/dashboard" } });',
+    'new NR(null, { status: 307, headers: { location: "/wallet" } });',
+    'new Response(null, { status: 302, headers: { Location: getRouteNavigationHref("server", "/dashboard") } });',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "server-redirect-primitives.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["server-redirect"] !== 1
+    || counts["route-handler-redirect"] !== 4
+    || counts["response-location-redirect"] !== 2
+  ) {
+    throw new Error("Server redirect primitive authority self-test failed: " + JSON.stringify(violations));
   }
 }
 
