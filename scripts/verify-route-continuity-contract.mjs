@@ -665,7 +665,10 @@ function auditImperativeNavigation(source, path) {
   const violations = [];
   const reportedViolations = new Set();
   const useRouterBindings = importedBindingNames(sourceFile, "next/navigation", "useRouter");
-  const redirectBindings = importedBindingNames(sourceFile, "next/navigation", "redirect");
+  const redirectBindings = new Set([
+    ...importedBindingNames(sourceFile, "next/navigation", "redirect"),
+    ...importedBindingNames(sourceFile, "next/navigation", "permanentRedirect"),
+  ]);
   const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
   const navigationBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getRouteNavigationHref");
   const productHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getProductRouteHref");
@@ -705,6 +708,7 @@ function auditImperativeNavigation(source, path) {
   const routerVariables = new Set();
   const routerMethodBindings = new Set();
   const responseRedirectBindings = new Set();
+  const webResponseRedirectBindings = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
   const browserHistoryVariables = new Set();
@@ -875,6 +879,13 @@ function auditImperativeNavigation(source, path) {
     return text === "window" || text === "globalThis";
   }
 
+  function isWebResponseObject(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    const text = resolved.getText(sourceFile);
+    return text === "Response" || text === "globalThis.Response";
+  }
+
   function discoverDeclaration(node) {
     if (!ts.isVariableDeclaration(node)) return false;
     let changed = false;
@@ -935,6 +946,9 @@ function auditImperativeNavigation(source, path) {
         ) {
           changed = addBinding(responseRedirectBindings, local) || changed;
         }
+        if (isWebResponseObject(owner) && method === "redirect") {
+          changed = addBinding(webResponseRedirectBindings, local) || changed;
+        }
         if (isBrowserLocationObject(owner) && (method === "assign" || method === "replace")) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
@@ -956,6 +970,9 @@ function auditImperativeNavigation(source, path) {
         if (responseRedirectBindings.has(initializer.text)) {
           changed = addBinding(responseRedirectBindings, local) || changed;
         }
+        if (webResponseRedirectBindings.has(initializer.text)) {
+          changed = addBinding(webResponseRedirectBindings, local) || changed;
+        }
         if (browserLocationMethodBindings.has(initializer.text)) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
@@ -974,6 +991,7 @@ function auditImperativeNavigation(source, path) {
     if (ts.isObjectBindingPattern(node.name) && initializer) {
       const fromRouter = isRouterObject(initializer);
       const fromResponse = ts.isIdentifier(initializer) && nextResponseBindings.has(initializer.text);
+      const fromWebResponse = isWebResponseObject(initializer);
       const fromLocation = isBrowserLocationObject(initializer);
       const fromHistory = isBrowserHistoryObject(initializer);
       const fromNavigationApi = isBrowserNavigationApiObject(initializer);
@@ -988,6 +1006,9 @@ function auditImperativeNavigation(source, path) {
         }
         if (fromResponse && sourceName === "redirect") {
           changed = addBinding(responseRedirectBindings, localName) || changed;
+        }
+        if (fromWebResponse && sourceName === "redirect") {
+          changed = addBinding(webResponseRedirectBindings, localName) || changed;
         }
         if (fromLocation && (sourceName === "assign" || sourceName === "replace")) {
           changed = addBinding(browserLocationMethodBindings, localName) || changed;
