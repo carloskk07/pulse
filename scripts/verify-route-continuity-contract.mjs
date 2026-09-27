@@ -2390,6 +2390,114 @@ function auditImperativeNavigation(source, path, options = {}) {
     return kind === "iframe" && property === "srcdoc";
   }
 
+  function domOpenerProtectionPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    return (kind === "a" || kind === "area") && normalized === "rel"
+      ? "rel"
+      : null;
+  }
+
+  function literalRelTokens(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isStringLiteralLike(resolved)) return null;
+    return new Set(
+      resolved.text
+        .toLowerCase()
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter(Boolean),
+    );
+  }
+
+  function relTokensPreserveOpenerProtection(tokens) {
+    return Boolean(tokens && (tokens.has("noopener") || tokens.has("noreferrer")));
+  }
+
+  function reportOpenerProtectionValue(
+    node,
+    kind,
+    property,
+    value,
+    env = new Map(),
+  ) {
+    if (!enforceOpenerProtectionMutationBoundary) return false;
+    const openerProperty = domOpenerProtectionPropertyForKind(kind, property);
+    if (!openerProperty) return false;
+
+    const tokens = literalRelTokens(value, env);
+    if (!tokens) {
+      report(node, "opener-protection-rel-dynamic");
+    } else if (!relTokensPreserveOpenerProtection(tokens)) {
+      report(node, "opener-protection-rel-unsafe");
+    }
+    return true;
+  }
+
+  function domRelListKind(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+
+    if (ts.isIdentifier(resolved) && domRelListKinds.has(resolved.text)) {
+      return domRelListKinds.get(resolved.text);
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === "relList"
+    ) {
+      const kind = domNavigationElementKind(propertyOwner(resolved), env);
+      return kind === "a" || kind === "area" ? kind : null;
+    }
+    return null;
+  }
+
+  function domRelListMutationBinding(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+
+    if (ts.isIdentifier(resolved) && domRelListMethodBindings.has(resolved.text)) {
+      return domRelListMethodBindings.get(resolved.text);
+    }
+
+    if (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved)) {
+      const method = propertyName(resolved);
+      const kind = domRelListKind(propertyOwner(resolved), env);
+      if (
+        kind
+        && (method === "add" || method === "remove" || method === "toggle" || method === "replace")
+      ) {
+        return { kind, method };
+      }
+    }
+    return null;
+  }
+
+  function reportRelListMutation(node, binding, args, env = new Map()) {
+    if (!enforceOpenerProtectionMutationBoundary || !binding) return false;
+    const { method } = binding;
+    if (method === "add") return true;
+
+    const first = resolveDataExpression(args[0], env);
+    if (!first || !ts.isStringLiteralLike(first)) {
+      report(node, "opener-protection-rel-dynamic");
+      return true;
+    }
+    const firstToken = first.text.trim().toLowerCase();
+    const protective = firstToken === "noopener" || firstToken === "noreferrer";
+
+    if (method === "remove" || method === "toggle") {
+      if (protective) report(node, "opener-protection-rel-removal", [firstToken]);
+      return true;
+    }
+
+    if (method === "replace") {
+      if (protective) report(node, "opener-protection-rel-removal", [firstToken]);
+      return true;
+    }
+
+    return false;
+  }
+
   function domTargetContextPropertyForKind(kind, property) {
     const normalized = property?.toLowerCase();
     if ((kind === "a" || kind === "area" || kind === "form") && normalized === "target") {
