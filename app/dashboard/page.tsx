@@ -135,7 +135,7 @@ export default async function DashboardPage({ searchParams }: Props) {
               ) : !state.signedIn ? (
                 <Link {...getRouteLinkProps("home", nextAction.href)} className="button button-light pulse-claim-button">{nextAction.actionLabel} <ArrowUpRight /></Link>
               ) : canClaim ? (
-                <form action={getRouteNavigationHref("home", "/api/pulse/claim")} method="post" className="claim-form">
+                <form action={getRouteNavigationHref("home", "/api/pulse/claim")} method="post" className="claim-form" data-route-submit-authority="verified-replay">
                   <TurnstileField action="hourly_pulse" />
                   <button className="button button-light pulse-claim-button pc-luxe-claim pc-v9-primary-cta" type="submit">
                     {state.claimRewardVariable ? "Reveal reward" : `Claim ${formatUsdFromCredits(state.claimRewardCredits)}`} <ArrowUpRight />
