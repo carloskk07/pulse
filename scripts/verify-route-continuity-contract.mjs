@@ -4947,6 +4947,53 @@ function auditNavigationSideEffectBoundary(source, path) {
     return null;
   }
 
+  function sideEffectBrowsingContextText(text) {
+    if (!text) return false;
+    if (
+      text === "window"
+      || text === "globalThis"
+      || text === "self"
+      || text === "top"
+      || text === "parent"
+      || text === "opener"
+    ) return true;
+
+    if (
+      /^(?:window|globalThis|self|top|parent|opener)(?:\.(?:self|top|parent|opener))+$/.test(text)
+    ) return true;
+
+    if (
+      /^(?:(?:window|globalThis|self|top|parent|opener)\.)?frames\[[^\]]+\]$/.test(text)
+    ) return true;
+
+    return /\.contentWindow$/.test(text);
+  }
+
+  function sideEffectDocumentText(text) {
+    if (text === "document") return true;
+    if (!text?.endsWith(".document")) return false;
+    return sideEffectBrowsingContextText(text.slice(0, -".document".length));
+  }
+
+  function sideEffectLocationText(text) {
+    if (text === "location") return true;
+    if (!text?.endsWith(".location")) return false;
+    const owner = text.slice(0, -".location".length);
+    return sideEffectBrowsingContextText(owner) || sideEffectDocumentText(owner);
+  }
+
+  function sideEffectHistoryText(text) {
+    if (text === "history") return true;
+    if (!text?.endsWith(".history")) return false;
+    return sideEffectBrowsingContextText(text.slice(0, -".history".length));
+  }
+
+  function sideEffectNavigationText(text) {
+    if (text === "navigation") return true;
+    if (!text?.endsWith(".navigation")) return false;
+    return sideEffectBrowsingContextText(text.slice(0, -".navigation".length));
+  }
+
   function sideEffectObjectProperty(objectLiteral, name) {
     if (!objectLiteral || !ts.isObjectLiteralExpression(objectLiteral)) return null;
     for (const property of objectLiteral.properties) {
@@ -5040,74 +5087,42 @@ function auditNavigationSideEffectBoundary(source, path) {
         }
 
         if (
-          (
-            ownerText === "window.location"
-            || ownerText === "document.location"
-            || ownerText === "globalThis.location"
-            || ownerText === "location"
-          )
+          sideEffectLocationText(ownerText)
           && (method === "assign" || method === "replace")
         ) {
           report(node, "browser-navigation");
         }
 
-        if (
-          (
-            ownerText === "window.location"
-            || ownerText === "document.location"
-            || ownerText === "globalThis.location"
-            || ownerText === "location"
-          )
-          && method === "reload"
-        ) {
+        if (sideEffectLocationText(ownerText) && method === "reload") {
           report(node, "browser-reload");
         }
 
         if (
-          (
-            ownerText === "window.history"
-            || ownerText === "globalThis.history"
-            || ownerText === "history"
-          )
+          sideEffectHistoryText(ownerText)
           && (method === "pushState" || method === "replaceState")
         ) {
           report(node, "history-navigation");
         }
 
         if (
-          (
-            ownerText === "window.history"
-            || ownerText === "globalThis.history"
-            || ownerText === "history"
-          )
+          sideEffectHistoryText(ownerText)
           && (method === "back" || method === "forward" || method === "go")
         ) {
           report(node, "history-traversal");
         }
 
-        if (
-          (
-            ownerText === "window.navigation"
-            || ownerText === "globalThis.navigation"
-            || ownerText === "navigation"
-          )
-          && method === "navigate"
-        ) {
+        if (sideEffectNavigationText(ownerText) && method === "navigate") {
           report(node, "navigation-api");
         }
 
         if (
-          (
-            ownerText === "window.navigation"
-            || ownerText === "globalThis.navigation"
-            || ownerText === "navigation"
-          )
+          sideEffectNavigationText(ownerText)
           && (method === "back" || method === "forward" || method === "reload" || method === "traverseTo")
         ) {
           report(node, "navigation-api-traversal");
         }
 
-        if ((ownerText === "window" || ownerText === "globalThis") && method === "open") {
+        if (sideEffectBrowsingContextText(ownerText) && method === "open") {
           report(node, "browser-window-navigation");
         }
       }
@@ -5122,15 +5137,10 @@ function auditNavigationSideEffectBoundary(source, path) {
       && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
     ) {
       const leftText = node.left.getText(sourceFile);
-      if (
-        leftText === "window.location"
-        || leftText === "document.location"
-        || leftText === "globalThis.location"
-        || leftText === "location.href"
-        || leftText === "window.location.href"
-        || leftText === "document.location.href"
-        || leftText === "globalThis.location.href"
-      ) {
+      const locationAssignment = sideEffectLocationText(leftText);
+      const hrefAssignment = leftText.endsWith(".href")
+        && sideEffectLocationText(leftText.slice(0, -".href".length));
+      if (locationAssignment || hrefAssignment) {
         report(node, "browser-navigation");
       }
     }
@@ -5154,11 +5164,16 @@ function auditNavigationSideEffectBoundary(source, path) {
     'export function hiddenResponseInit(target) { return new Response(null, { status: 302, headers: { Location: target } }); }',
     'export function hiddenBrowser(target) { window.location.assign(target); }',
     'export function hiddenDocument(target) { document.location.replace(target); }',
+    'export function hiddenTop(target) { top.location.assign(target); }',
+    'export function hiddenFrame(target) { frames[0].location.replace(target); }',
     'export function hiddenHistory(target) { history.pushState({}, "", target); }',
+    'export function hiddenParentHistory(target) { parent.history.pushState({}, "", target); }',
     'export function hiddenHistoryBack() { history.back(); }',
     'export function hiddenReload() { location.reload(); }',
     'export function hiddenWindow(target) { window.open(target, "_blank"); }',
+    'export function hiddenOpenerWindow(target) { opener.open(target, "_blank"); }',
     'export function hiddenNavigationApi(target) { navigation.navigate(target); }',
+    'export function hiddenSelfNavigation(target) { self.navigation.navigate(target); }',
     'export function hiddenNavigationBack() { navigation.back(); }',
     'export function pureHref(target) { return getRouteNavigationHref("lib", target); }',
   ].join("\n");
@@ -5166,10 +5181,24 @@ function auditNavigationSideEffectBoundary(source, path) {
     selfTest,
     "lib/navigation-side-effect.self-test.ts",
   );
-  const kinds = violations.map((violation) => violation.kind).sort();
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
   if (
-    violations.length !== 13
-    || kinds.join(",") !== "browser-navigation,browser-navigation,browser-reload,browser-window-navigation,history-navigation,history-traversal,navigation-api,navigation-api-traversal,response-location-navigation,route-handler-navigation,router-capability,server-navigation,web-response-navigation"
+    violations.length !== 18
+    || counts["browser-navigation"] !== 4
+    || counts["browser-reload"] !== 1
+    || counts["browser-window-navigation"] !== 2
+    || counts["history-navigation"] !== 2
+    || counts["history-traversal"] !== 1
+    || counts["navigation-api"] !== 2
+    || counts["navigation-api-traversal"] !== 1
+    || counts["response-location-navigation"] !== 1
+    || counts["route-handler-navigation"] !== 1
+    || counts["router-capability"] !== 1
+    || counts["server-navigation"] !== 1
+    || counts["web-response-navigation"] !== 1
   ) {
     throw new Error("Navigation side-effect boundary self-test failed: " + JSON.stringify(violations));
   }
