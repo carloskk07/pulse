@@ -749,6 +749,144 @@ function auditStaticNavigationTransport(source, path) {
   }
 }
 
+function auditEmbeddedContextSources(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+  const internalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getRouteNavigationHref",
+  );
+  const productAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getProductRouteHref",
+  );
+  const externalAuthorityBindings = importedBindingNames(
+    sourceFile,
+    "@/lib/route-semantics",
+    "getExternalNavigationHref",
+  );
+  const sourceByTag = new Map([
+    ["iframe", "src"],
+    ["frame", "src"],
+    ["fencedframe", "src"],
+    ["object", "data"],
+    ["embed", "src"],
+  ]);
+
+  function report(node, kind, targets = []) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+      targets: [...new Set(targets)],
+    });
+  }
+
+  function hasInternalAuthority(expression) {
+    return expressionContainsAuthorityCall(expression, internalAuthorityBindings)
+      || expressionContainsAuthorityCall(expression, productAuthorityBindings);
+  }
+
+  function hasExternalAuthority(expression) {
+    return expressionContainsAuthorityCall(expression, externalAuthorityBindings);
+  }
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile).toLowerCase();
+
+      if (tag === "iframe") {
+        const srcDoc = jsxAttribute(node, "srcDoc") ?? jsxAttribute(node, "srcdoc");
+        if (srcDoc?.initializer) report(node, "embedded-srcdoc");
+      }
+
+      const sourceAttributeName = sourceByTag.get(tag);
+      if (sourceAttributeName) {
+        const attribute = jsxAttribute(node, sourceAttributeName);
+        if (attribute?.initializer) {
+          const expression = declarativeAttributeExpression(attribute);
+          const values = staticNavigationLikeValues(attribute);
+
+          if (values.length === 0) {
+            if (
+              !hasInternalAuthority(expression)
+              && !hasExternalAuthority(expression)
+            ) {
+              report(node, "embedded-source-dynamic");
+            }
+          } else {
+            for (const value of values) {
+              const transport = staticNavigationTransport(value);
+              if (transport === "internal" || transport === "fragment") {
+                if (!hasInternalAuthority(expression)) {
+                  report(node, "embedded-source", [value]);
+                }
+              } else if (transport === "https") {
+                if (!hasExternalAuthority(expression)) {
+                  report(node, "embedded-source", [value]);
+                }
+              } else {
+                report(node, "embedded-source-transport", [value]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'import { getExternalNavigationHref, getRouteNavigationHref } from "@/lib/route-semantics";',
+    'const dynamicSource = chooseSource();',
+    'const Fixture = () => (<>',
+    '  <iframe src="/dashboard" />',
+    '  <iframe src={getRouteNavigationHref("embedded-source", "/dashboard")} />',
+    '  <object data="https://example.com/doc" />',
+    '  <embed src={getExternalNavigationHref("https://example.com/doc")} />',
+    '  <iframe src={dynamicSource} />',
+    '  <iframe src="http://example.com/insecure" />',
+    '  <object data="//example.com/protocol-relative" />',
+    '  <frame src="/wallet" />',
+    '  <iframe srcDoc="<a href=\"/dashboard\">inside</a>" />',
+    '  <iframe />',
+    '</>);',
+  ].join("\n");
+  const violations = auditEmbeddedContextSources(
+    selfTest,
+    "embedded-context-source.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["embedded-source"] !== 3
+    || counts["embedded-source-dynamic"] !== 1
+    || counts["embedded-source-transport"] !== 2
+    || counts["embedded-srcdoc"] !== 1
+  ) {
+    throw new Error("Embedded context source authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function executableUrlScheme(value) {
   if (typeof value !== "string") return null;
   const normalized = value
@@ -5712,6 +5850,22 @@ if (navigationTransportViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.transport
         + " [" + violation.targets.join(", ") + "]"
+      )
+      .join("\n"),
+  );
+}
+
+const embeddedContextSourceViolations = ["app", "components"]
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditEmbeddedContextSources(read(path), path));
+if (embeddedContextSourceViolations.length > 0) {
+  throw new Error(
+    "Embedded context source authority failed:\n"
+    + embeddedContextSourceViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
