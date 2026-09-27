@@ -3574,6 +3574,50 @@ function auditImperativeNavigation(source, path) {
 
 {
   const selfTest = [
+    'import { redirect, useRouter } from "next/navigation";',
+    'import { NextResponse as NR } from "next/server";',
+    'const router = useRouter();',
+    'new Proxy(router, {});',
+    'new Proxy(router.push, {});',
+    'new Proxy(router.back, {});',
+    'new Proxy(history, {});',
+    'new Proxy(location.assign, {});',
+    'new Proxy(navigation.navigate, {});',
+    'new Proxy(window.open, {});',
+    'new Proxy(redirect, {});',
+    'new Proxy(NR, {});',
+    'new Proxy(Response, {});',
+    'const headers = new Headers();',
+    'new Proxy(headers, {});',
+    'const anchor = document.createElement("a");',
+    'new Proxy(anchor, {});',
+    'new Proxy(anchor.setAttribute, {});',
+    'const boundPush = router.push.bind(router);',
+    'new Proxy(boundPush, {});',
+    'Proxy.revocable(router.push, {});',
+    'const makeRevocable = Proxy.revocable;',
+    'makeRevocable(location.assign, {});',
+    'const PlainProxy = Proxy;',
+    'new PlainProxy({ value: 1 }, {});',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "proxy-navigation-capability.self-test.ts",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 16
+    || counts["proxy-navigation-capability"] !== 16
+  ) {
+    throw new Error("Proxy navigation capability boundary self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRef } from "react";',
     'import { getRouteNavigationHref } from "@/lib/route-semantics";',
     'const selected = document.querySelector("a.promo");',
@@ -4107,6 +4151,20 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
   .flatMap(collectTypeScriptFiles)
   .flatMap((path) => auditImperativeNavigation(read(path), path));
 
+const proxyNavigationViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("proxy-navigation-"));
+if (proxyNavigationViolations.length > 0) {
+  throw new Error(
+    "Proxy navigation capability boundary failed:\n"
+    + proxyNavigationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+      )
+      .join("\n"),
+  );
+}
+
 const nativeInvocationViolations = allImperativeNavigationViolations
   .filter((violation) => violation.kind.startsWith("native-invoke-"));
 if (nativeInvocationViolations.length > 0) {
@@ -4141,6 +4199,7 @@ const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
     !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
+    && !violation.kind.startsWith("proxy-navigation-")
   );
 if (imperativeNavigationViolations.length > 0) {
   throw new Error(
