@@ -920,14 +920,18 @@ function auditImperativeNavigation(source, path) {
 
   const routerVariables = new Set();
   const routerMethodBindings = new Set();
+  const routerTraversalMethodBindings = new Set();
   const responseRedirectBindings = new Set();
   const webResponseRedirectBindings = new Set();
   const browserLocationVariables = new Set();
   const browserLocationMethodBindings = new Set();
+  const browserLocationReloadBindings = new Set();
   const browserHistoryVariables = new Set();
   const browserHistoryMethodBindings = new Set();
+  const browserHistoryTraversalMethodBindings = new Set();
   const browserNavigationApiVariables = new Set();
   const browserNavigationApiMethodBindings = new Set();
+  const browserNavigationTraversalMethodBindings = new Set();
   const browserWindowOpenBindings = new Set();
   const headerVariables = new Set();
   const headerMutationMethodBindings = new Set();
@@ -1177,6 +1181,9 @@ function auditImperativeNavigation(source, path) {
         if (isRouterObject(owner) && (method === "push" || method === "replace")) {
           changed = addBinding(routerMethodBindings, local) || changed;
         }
+        if (isRouterObject(owner) && (method === "back" || method === "forward")) {
+          changed = addBinding(routerTraversalMethodBindings, local) || changed;
+        }
         if (
           owner
           && ts.isIdentifier(owner)
@@ -1191,11 +1198,23 @@ function auditImperativeNavigation(source, path) {
         if (isBrowserLocationObject(owner) && (method === "assign" || method === "replace")) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
+        if (isBrowserLocationObject(owner) && method === "reload") {
+          changed = addBinding(browserLocationReloadBindings, local) || changed;
+        }
         if (isBrowserHistoryObject(owner) && (method === "pushState" || method === "replaceState")) {
           changed = addBinding(browserHistoryMethodBindings, local) || changed;
         }
+        if (isBrowserHistoryObject(owner) && (method === "back" || method === "forward" || method === "go")) {
+          changed = addBinding(browserHistoryTraversalMethodBindings, local) || changed;
+        }
         if (isBrowserNavigationApiObject(owner) && method === "navigate") {
           changed = addBinding(browserNavigationApiMethodBindings, local) || changed;
+        }
+        if (
+          isBrowserNavigationApiObject(owner)
+          && (method === "back" || method === "forward" || method === "reload" || method === "traverseTo")
+        ) {
+          changed = addBinding(browserNavigationTraversalMethodBindings, local) || changed;
         }
         if (isBrowserWindowObject(owner) && method === "open") {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
@@ -1209,6 +1228,9 @@ function auditImperativeNavigation(source, path) {
         if (routerMethodBindings.has(initializer.text)) {
           changed = addBinding(routerMethodBindings, local) || changed;
         }
+        if (routerTraversalMethodBindings.has(initializer.text)) {
+          changed = addBinding(routerTraversalMethodBindings, local) || changed;
+        }
         if (responseRedirectBindings.has(initializer.text)) {
           changed = addBinding(responseRedirectBindings, local) || changed;
         }
@@ -1218,11 +1240,20 @@ function auditImperativeNavigation(source, path) {
         if (browserLocationMethodBindings.has(initializer.text)) {
           changed = addBinding(browserLocationMethodBindings, local) || changed;
         }
+        if (browserLocationReloadBindings.has(initializer.text)) {
+          changed = addBinding(browserLocationReloadBindings, local) || changed;
+        }
         if (browserHistoryMethodBindings.has(initializer.text)) {
           changed = addBinding(browserHistoryMethodBindings, local) || changed;
         }
+        if (browserHistoryTraversalMethodBindings.has(initializer.text)) {
+          changed = addBinding(browserHistoryTraversalMethodBindings, local) || changed;
+        }
         if (browserNavigationApiMethodBindings.has(initializer.text)) {
           changed = addBinding(browserNavigationApiMethodBindings, local) || changed;
+        }
+        if (browserNavigationTraversalMethodBindings.has(initializer.text)) {
+          changed = addBinding(browserNavigationTraversalMethodBindings, local) || changed;
         }
         if (browserWindowOpenBindings.has(initializer.text)) {
           changed = addBinding(browserWindowOpenBindings, local) || changed;
@@ -1253,6 +1284,9 @@ function auditImperativeNavigation(source, path) {
         if (fromRouter && (sourceName === "push" || sourceName === "replace")) {
           changed = addBinding(routerMethodBindings, localName) || changed;
         }
+        if (fromRouter && (sourceName === "back" || sourceName === "forward")) {
+          changed = addBinding(routerTraversalMethodBindings, localName) || changed;
+        }
         if (fromResponse && sourceName === "redirect") {
           changed = addBinding(responseRedirectBindings, localName) || changed;
         }
@@ -1262,11 +1296,23 @@ function auditImperativeNavigation(source, path) {
         if (fromLocation && (sourceName === "assign" || sourceName === "replace")) {
           changed = addBinding(browserLocationMethodBindings, localName) || changed;
         }
+        if (fromLocation && sourceName === "reload") {
+          changed = addBinding(browserLocationReloadBindings, localName) || changed;
+        }
         if (fromHistory && (sourceName === "pushState" || sourceName === "replaceState")) {
           changed = addBinding(browserHistoryMethodBindings, localName) || changed;
         }
+        if (fromHistory && (sourceName === "back" || sourceName === "forward" || sourceName === "go")) {
+          changed = addBinding(browserHistoryTraversalMethodBindings, localName) || changed;
+        }
         if (fromNavigationApi && sourceName === "navigate") {
           changed = addBinding(browserNavigationApiMethodBindings, localName) || changed;
+        }
+        if (
+          fromNavigationApi
+          && (sourceName === "back" || sourceName === "forward" || sourceName === "reload" || sourceName === "traverseTo")
+        ) {
+          changed = addBinding(browserNavigationTraversalMethodBindings, localName) || changed;
         }
         if (fromWindow && sourceName === "open") {
           changed = addBinding(browserWindowOpenBindings, localName) || changed;
