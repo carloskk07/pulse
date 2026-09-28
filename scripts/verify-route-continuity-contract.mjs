@@ -5074,6 +5074,10 @@ function auditImperativeNavigation(source, path, options = {}) {
           isDomRemoveAttributeNSReference(indirectTarget, env)
           || isNativeDomRemoveAttributeNSReference(indirectTarget, env)
         );
+        const setCustomValidityCapability = (
+          isDomSetCustomValidityReference(indirectTarget, env)
+          || isNativeDomSetCustomValidityReference(indirectTarget, env)
+        );
         const activationCapability = (
           domActivationBinding(indirectTarget, env)
           || nativeDomActivationInfo(indirectTarget, env)
@@ -5086,6 +5090,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           || toggleAttributeCapability
           || removeAttributeCapability
           || removeAttributeNSCapability
+          || setCustomValidityCapability
           || activationCapability
           || isDocumentHtmlWriteReference(indirectTarget, env)
           || isInsertAdjacentHtmlReference(indirectTarget, env)
@@ -5153,6 +5158,18 @@ function auditImperativeNavigation(source, path, options = {}) {
               report(node, "native-invoke-dom-dynamic-target");
             } else if (indirectThisKind === nativeSetter.kind) {
               if (
+                nativeSetter.participationIntegrity
+                && reportProgrammaticFormParticipationMutation(
+                  node,
+                  indirectInvocation.thisArg,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Form control participation policy handled above.
+              } else if (
                 nativeSetter.constraintIntegrity
                 && reportProgrammaticFormConstraintMutation(
                   node,
@@ -5220,6 +5237,20 @@ function auditImperativeNavigation(source, path, options = {}) {
             }
           }
 
+          if (setCustomValidityCapability) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else {
+              reportProgrammaticCustomValidityMutation(
+                node,
+                indirectInvocation.thisArg,
+                indirectThisKind,
+                indirectFirstArg,
+                env,
+              );
+            }
+          }
+
           if (setAttributeNSCapability) {
             if (!indirectThisKind) {
               report(node, "native-invoke-dom-dynamic-target");
@@ -5244,6 +5275,18 @@ function auditImperativeNavigation(source, path, options = {}) {
                   attributeName.text,
                 );
                 if (
+                  reportProgrammaticFormParticipationMutation(
+                    node,
+                    indirectInvocation.thisArg,
+                    indirectThisKind,
+                    attributeName.text,
+                    target,
+                    env,
+                    "set-attribute",
+                  )
+                ) {
+                  // Standard-namespace form participation mutation handled above.
+                } else if (
                   constraintProperty
                   && reportProgrammaticFormConstraintMutation(
                     node,
@@ -5289,6 +5332,18 @@ function auditImperativeNavigation(source, path, options = {}) {
                   attributeName.text,
                 );
                 if (
+                  reportProgrammaticFormParticipationMutation(
+                    node,
+                    indirectInvocation.thisArg,
+                    indirectThisKind,
+                    attributeName.text,
+                    indirectArgs[1],
+                    env,
+                    "toggle-attribute",
+                  )
+                ) {
+                  // Form participation toggle handled above.
+                } else if (
                   constraintProperty
                   && reportProgrammaticFormConstraintMutation(
                     node,
@@ -5330,14 +5385,26 @@ function auditImperativeNavigation(source, path, options = {}) {
               ) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else if (namespace === "standard") {
-                reportProgrammaticFormConstraintMutation(
-                  node,
-                  indirectThisKind,
-                  attributeName.text,
-                  null,
-                  env,
-                  "remove-attribute",
-                );
+                if (
+                  !reportProgrammaticFormParticipationMutation(
+                    node,
+                    indirectInvocation.thisArg,
+                    indirectThisKind,
+                    attributeName.text,
+                    null,
+                    env,
+                    "remove-attribute",
+                  )
+                ) {
+                  reportProgrammaticFormConstraintMutation(
+                    node,
+                    indirectThisKind,
+                    attributeName.text,
+                    null,
+                    env,
+                    "remove-attribute",
+                  );
+                }
               }
             }
           }
@@ -5350,14 +5417,26 @@ function auditImperativeNavigation(source, path, options = {}) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
-                reportProgrammaticFormConstraintMutation(
-                  node,
-                  indirectThisKind,
-                  attributeName.text,
-                  null,
-                  env,
-                  "remove-attribute",
-                );
+                if (
+                  !reportProgrammaticFormParticipationMutation(
+                    node,
+                    indirectInvocation.thisArg,
+                    indirectThisKind,
+                    attributeName.text,
+                    null,
+                    env,
+                    "remove-attribute",
+                  )
+                ) {
+                  reportProgrammaticFormConstraintMutation(
+                    node,
+                    indirectThisKind,
+                    attributeName.text,
+                    null,
+                    env,
+                    "remove-attribute",
+                  );
+                }
               }
             }
           }
@@ -5392,6 +5471,18 @@ function auditImperativeNavigation(source, path, options = {}) {
                   attributeName.text,
                 );
                 if (
+                  reportProgrammaticFormParticipationMutation(
+                    node,
+                    indirectInvocation.thisArg,
+                    indirectThisKind,
+                    attributeName.text,
+                    target,
+                    env,
+                    "set-attribute",
+                  )
+                ) {
+                  // Form participation attribute mutation handled above.
+                } else if (
                   constraintProperty
                   && reportProgrammaticFormConstraintMutation(
                     node,
@@ -5754,6 +5845,17 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
       }
 
+      if (isDomSetCustomValidityReference(expression, env)) {
+        const kind = domSetCustomValidityElementKind(expression, env);
+        reportProgrammaticCustomValidityMutation(
+          node,
+          domMethodTargetExpression(expression, "setCustomValidity", env),
+          kind,
+          firstArg,
+          env,
+        );
+      }
+
       if (isDomSetAttributeNSReference(expression, env)) {
         const kind = domSetAttributeNSElementKind(expression, env);
         const namespace = standardAttributeNamespace(firstArg, env);
@@ -5777,6 +5879,18 @@ function auditImperativeNavigation(source, path, options = {}) {
             attributeName.text,
           );
           if (
+            reportProgrammaticFormParticipationMutation(
+              node,
+              domMethodTargetExpression(expression, "setAttributeNS", env),
+              kind,
+              attributeName.text,
+              target,
+              env,
+              "set-attribute",
+            )
+          ) {
+            // Standard-namespace form participation mutation handled above.
+          } else if (
             constraintProperty
             && reportProgrammaticFormConstraintMutation(
               node,
@@ -5819,6 +5933,18 @@ function auditImperativeNavigation(source, path, options = {}) {
             attributeName.text,
           );
           if (
+            reportProgrammaticFormParticipationMutation(
+              node,
+              domMethodTargetExpression(expression, "toggleAttribute", env),
+              kind,
+              attributeName.text,
+              node.arguments[1],
+              env,
+              "toggle-attribute",
+            )
+          ) {
+            // Form participation toggle handled above.
+          } else if (
             constraintProperty
             && reportProgrammaticFormConstraintMutation(
               node,
@@ -5858,14 +5984,26 @@ function auditImperativeNavigation(source, path, options = {}) {
         ) {
           report(node, "dom-dynamic-attribute");
         } else if (namespace === "standard") {
-          reportProgrammaticFormConstraintMutation(
-            node,
-            kind,
-            attributeName.text,
-            null,
-            env,
-            "remove-attribute",
-          );
+          if (
+            !reportProgrammaticFormParticipationMutation(
+              node,
+              domMethodTargetExpression(expression, "removeAttributeNS", env),
+              kind,
+              attributeName.text,
+              null,
+              env,
+              "remove-attribute",
+            )
+          ) {
+            reportProgrammaticFormConstraintMutation(
+              node,
+              kind,
+              attributeName.text,
+              null,
+              env,
+              "remove-attribute",
+            );
+          }
         }
       }
 
@@ -5875,14 +6013,26 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
-          reportProgrammaticFormConstraintMutation(
-            node,
-            kind,
-            attributeName.text,
-            null,
-            env,
-            "remove-attribute",
-          );
+          if (
+            !reportProgrammaticFormParticipationMutation(
+              node,
+              domMethodTargetExpression(expression, "removeAttribute", env),
+              kind,
+              attributeName.text,
+              null,
+              env,
+              "remove-attribute",
+            )
+          ) {
+            reportProgrammaticFormConstraintMutation(
+              node,
+              kind,
+              attributeName.text,
+              null,
+              env,
+              "remove-attribute",
+            );
+          }
         }
       }
 
@@ -5912,6 +6062,18 @@ function auditImperativeNavigation(source, path, options = {}) {
           );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (
+            reportProgrammaticFormParticipationMutation(
+              node,
+              domMethodTargetExpression(expression, "setAttribute", env),
+              kind,
+              attributeName.text,
+              target,
+              env,
+              "set-attribute",
+            )
+          ) {
+            // Form participation attribute mutation handled above.
+          } else if (
             constraintProperty
             && reportProgrammaticFormConstraintMutation(
               node,
@@ -6133,6 +6295,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           || isDomToggleAttributeReference(argument, env)
           || isDomRemoveAttributeReference(argument, env)
           || isDomRemoveAttributeNSReference(argument, env)
+          || isDomSetCustomValidityReference(argument, env)
           || domActivationBinding(argument, env)
           || nativeDomActivationInfo(argument, env)
           || isBoundNavigationCapability(argument, env)
@@ -6220,6 +6383,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       const leftOwner = propertyOwner(node.left);
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
+      const participationProperty = domParticipationPropertyForKind(
+        domKind,
+        leftProperty,
+      );
       const constraintProperty = domConstraintPropertyForKind(
         domKind,
         leftProperty,
@@ -6236,6 +6403,18 @@ function auditImperativeNavigation(source, path, options = {}) {
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
 
       if (
+        participationProperty
+        && reportProgrammaticFormParticipationMutation(
+          node,
+          leftOwner,
+          domKind,
+          participationProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Form control participation policy handled above.
+      } else if (
         constraintProperty
         && reportProgrammaticFormConstraintMutation(
           node,
@@ -7331,6 +7510,62 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const dynamicValidity = chooseValidityMessage();',
+    'const form = document.createElement("form");',
+    'const input = document.createElement("input");',
+    'form.appendChild(input);',
+    'input.disabled = true;',
+    'input.disabled = false;',
+    'input.readOnly = true;',
+    'input.readOnly = false;',
+    'input.name = "renamed";',
+    'input.setAttribute("disabled", "");',
+    'input.removeAttribute("disabled");',
+    'input.setAttribute("readonly", "");',
+    'input.removeAttribute("readonly");',
+    'input.setAttribute("name", "renamed-again");',
+    'input.removeAttribute("name");',
+    'input.setAttribute("form", "other-form");',
+    'input.removeAttribute("form");',
+    'input.toggleAttribute("disabled", true);',
+    'input.toggleAttribute("disabled", false);',
+    'input.setCustomValidity("");',
+    'input.setCustomValidity("Still invalid");',
+    'input.setCustomValidity(dynamicValidity);',
+    'Reflect.set(input, "disabled", true);',
+    'Object.assign(input, { name: "reflective-name" });',
+    'Object.defineProperty(input, "readOnly", { value: true });',
+    'Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "disabled").set.call(input, true);',
+    'Reflect.apply(HTMLInputElement.prototype.setCustomValidity, input, [""]);',
+    'const byElements = form.elements.namedItem("email") as HTMLInputElement;',
+    'byElements.readOnly = true;',
+    'const detached = document.createElement("textarea");',
+    'detached.readOnly = true;',
+    'detached.setCustomValidity("");',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-form-control-participation.self-test.ts",
+    { formControlParticipationPolicy: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 18
+    || counts["programmatic-participation-weaken"] !== 9
+    || counts["programmatic-participation-identity"] !== 4
+    || counts["programmatic-participation-association"] !== 2
+    || counts["programmatic-participation-validity-clear"] !== 2
+    || counts["programmatic-participation-dynamic"] !== 1
+  ) {
+    throw new Error("Programmatic form control participation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'const dynamicConstraint = chooseConstraintMode();',
     'const input = document.createElement("input");',
     'input.required = false;',
@@ -8027,6 +8262,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       formSubmissionTransportPolicy: true,
       formValidationBypassPolicy: true,
       formConstraintIntegrityPolicy: true,
+      formControlParticipationPolicy: true,
     },
   ));
 
@@ -8068,6 +8304,21 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormControlParticipationViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("programmatic-participation-"));
+if (programmaticFormControlParticipationViolations.length > 0) {
+  throw new Error(
+    "Programmatic form control participation authority failed:\n"
+    + programmaticFormControlParticipationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
@@ -8169,6 +8420,7 @@ const imperativeNavigationViolations = allImperativeNavigationViolations
     && !violation.kind.startsWith("programmatic-form-")
     && !violation.kind.startsWith("programmatic-validation-")
     && !violation.kind.startsWith("programmatic-constraint-")
+    && !violation.kind.startsWith("programmatic-participation-")
     && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
