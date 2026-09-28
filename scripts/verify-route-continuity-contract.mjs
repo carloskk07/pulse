@@ -1949,7 +1949,8 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domFormOwnedElementIds = new Map();
   const domFormOwnedElementKinds = new Map();
   const domFormOwnedRefs = new Map();
-  const domFormOwnedEventTargets = new Map();
+  const domFormOwnedEventScopes = new Map();
+  const domScopedEventCurrentTargetKinds = new Map();
   const domFormOwnerIds = new Set();
   const declarations = [];
   const constInitializers = new Map();
@@ -2118,6 +2119,46 @@ function auditImperativeNavigation(source, path, options = {}) {
       return;
     }
     if (map.get(name) !== owned) map.set(name, null);
+  }
+
+  function eventScopeKey(functionNode, parameterName) {
+    return functionNode && parameterName
+      ? functionNode.pos + ":" + parameterName
+      : null;
+  }
+
+  function nearestFunctionScope(node) {
+    let current = node?.parent ?? null;
+    while (current) {
+      if (ts.isFunctionLike(current)) return current;
+      current = current.parent;
+    }
+    return null;
+  }
+
+  function setScopedEventEvidence(functionNode, parameterName, owned, kind = null) {
+    const key = eventScopeKey(functionNode, parameterName);
+    if (!key) return;
+    setStableOwnership(domFormOwnedEventScopes, key, owned);
+    if (kind) setStableKind(domScopedEventCurrentTargetKinds, key, kind);
+  }
+
+  function scopedEventTargetInfo(expression) {
+    if (
+      !enforceFormOwnershipProvenancePolicy
+      || !(ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      || propertyName(expression) !== "currentTarget"
+      || !ts.isIdentifier(propertyOwner(expression))
+    ) return null;
+
+    const owner = propertyOwner(expression);
+    const scope = nearestFunctionScope(expression);
+    const key = eventScopeKey(scope, owner.text);
+    if (!key) return null;
+    return {
+      owned: domFormOwnedEventScopes.get(key) ?? null,
+      kind: domScopedEventCurrentTargetKinds.get(key) ?? null,
+    };
   }
 
   function collectDeclarations(node) {
@@ -2597,10 +2638,15 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (
       (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
       && propertyName(expression) === "currentTarget"
-      && ts.isIdentifier(propertyOwner(expression))
-      && domEventCurrentTargetKinds.has(propertyOwner(expression).text)
     ) {
-      return domEventCurrentTargetKinds.get(propertyOwner(expression).text);
+      const scopedEvent = scopedEventTargetInfo(expression);
+      if (scopedEvent?.kind) return scopedEvent.kind;
+      if (
+        ts.isIdentifier(propertyOwner(expression))
+        && domEventCurrentTargetKinds.has(propertyOwner(expression).text)
+      ) {
+        return domEventCurrentTargetKinds.get(propertyOwner(expression).text);
+      }
     }
 
     if (ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression)) {
@@ -2639,10 +2685,15 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (
       (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
       && propertyName(resolved) === "currentTarget"
-      && ts.isIdentifier(propertyOwner(resolved))
-      && domEventCurrentTargetKinds.has(propertyOwner(resolved).text)
     ) {
-      return domEventCurrentTargetKinds.get(propertyOwner(resolved).text);
+      const scopedEvent = scopedEventTargetInfo(resolved);
+      if (scopedEvent?.kind) return scopedEvent.kind;
+      if (
+        ts.isIdentifier(propertyOwner(resolved))
+        && domEventCurrentTargetKinds.has(propertyOwner(resolved).text)
+      ) {
+        return domEventCurrentTargetKinds.get(propertyOwner(resolved).text);
+      }
     }
 
     if (ts.isElementAccessExpression(resolved)) {
@@ -3877,7 +3928,7 @@ function auditImperativeNavigation(source, path, options = {}) {
 
       if (ts.isIdentifier(expression)) {
         setStableOwnership(handlerOwnership, expression.text, associated);
-        if (associated && kind) setStableKind(handlerKinds, expression.text, kind);
+        if (kind) setStableKind(handlerKinds, expression.text, kind);
         return;
       }
 
@@ -3887,8 +3938,7 @@ function auditImperativeNavigation(source, path, options = {}) {
         && ts.isIdentifier(expression.parameters[0].name)
       ) {
         const parameterName = expression.parameters[0].name.text;
-        setStableOwnership(domFormOwnedEventTargets, parameterName, associated);
-        if (kind) setStableKind(domEventCurrentTargetKinds, parameterName, kind);
+        setScopedEventEvidence(expression, parameterName, associated, kind);
       }
     }
 
@@ -3954,13 +4004,16 @@ function auditImperativeNavigation(source, path, options = {}) {
     invalidateManualHandlerCalls(sourceFile);
 
     for (const [handlerName, owned] of handlerOwnership) {
-      if (owned !== true) continue;
+      if (typeof owned !== "boolean") continue;
       const definition = localFunctions.get(handlerName);
       const parameter = definition?.parameters?.[0];
-      if (!parameter || !ts.isIdentifier(parameter.name)) continue;
-      setStableOwnership(domFormOwnedEventTargets, parameter.name.text, true);
-      const kind = handlerKinds.get(handlerName);
-      if (kind) setStableKind(domEventCurrentTargetKinds, parameter.name.text, kind);
+      if (!definition?.node || !parameter || !ts.isIdentifier(parameter.name)) continue;
+      setScopedEventEvidence(
+        definition.node,
+        parameter.name.text,
+        owned,
+        handlerKinds.get(handlerName) ?? null,
+      );
     }
   }
 
@@ -4012,10 +4065,7 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     if (
       enforceFormOwnershipProvenancePolicy
-      && (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
-      && propertyName(expression) === "currentTarget"
-      && ts.isIdentifier(propertyOwner(expression))
-      && domFormOwnedEventTargets.get(propertyOwner(expression).text) === true
+      && scopedEventTargetInfo(expression)?.owned === true
     ) {
       return true;
     }
