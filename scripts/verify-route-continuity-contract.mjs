@@ -8965,12 +8965,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     return acc;
   }, {});
   if (
-    violations.length !== 10
-    || counts["programmatic-participation-weaken"] !== 4
+    violations.length !== 11
+    || counts["programmatic-participation-weaken"] !== 3
     || counts["programmatic-participation-identity"] !== 2
     || counts["programmatic-ownership-reassociate"] !== 1
     || counts["programmatic-ownership-escape"] !== 1
-    || counts["programmatic-ownership-detach"] !== 1
+    || counts["programmatic-ownership-detach"] !== 2
+    || counts["programmatic-ownership-replace"] !== 1
     || counts["programmatic-ownership-state-evict"] !== 1
   ) {
     throw new Error("Programmatic ownership state authority self-test failed: " + JSON.stringify(violations));
