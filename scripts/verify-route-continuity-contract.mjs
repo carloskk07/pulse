@@ -4292,7 +4292,9 @@ function auditImperativeNavigation(source, path, options = {}) {
     const submissionTransportProperty = domSubmissionTransportPropertyForKind(kind, propertyText);
     const validationBypassProperty = domValidationBypassPropertyForKind(kind, propertyText);
     const constraintProperty = domConstraintPropertyForKind(kind, propertyText);
-    const participationProperty = domParticipationPropertyForKind(kind, propertyText);
+    const participationProperty = enforceFormControlParticipationPolicy
+      ? domParticipationPropertyForKind(kind, propertyText)
+      : null;
     return kind && (
       navigationProperty
       || targetContextProperty
