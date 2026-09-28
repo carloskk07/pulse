@@ -1867,6 +1867,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceFormOwnershipRelocationPolicy = (
     options.formOwnershipRelocationPolicy === true
   );
+  const enforceProgrammaticFormOwnershipStatePolicy = (
+    options.programmaticFormOwnershipStatePolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1967,6 +1970,10 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domFormLifecycleOwnedControls = new Set();
   const domFormLifecycleControlOwners = new Map();
   const domFormLifecycleControlAssociationModes = new Map();
+  const programmaticOwnershipBindingCounts = new Map();
+  const programmaticOwnershipBindingIdentities = new Map();
+  const programmaticOwnershipStates = new Map();
+  const programmaticOwnershipKinds = new Map();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -2169,6 +2176,17 @@ function auditImperativeNavigation(source, path, options = {}) {
     return null;
   }
 
+  function programmaticBindingKey(identifier) {
+    if (!identifier || !ts.isIdentifier(identifier)) return null;
+    const scope = nearestFunctionScope(identifier);
+    return (scope ? "function:" + scope.pos : "root") + ":" + identifier.text;
+  }
+
+  function programmaticBindingIsUnambiguous(identifier) {
+    const key = programmaticBindingKey(identifier);
+    return Boolean(key && programmaticOwnershipBindingCounts.get(key) === 1);
+  }
+
   function setScopedEventEvidence(
     functionNode,
     parameterName,
@@ -2238,6 +2256,15 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     if (ts.isVariableDeclaration(node)) {
       declarations.push(node);
+      if (ts.isIdentifier(node.name)) {
+        const bindingKey = programmaticBindingKey(node.name);
+        if (bindingKey) {
+          programmaticOwnershipBindingCounts.set(
+            bindingKey,
+            (programmaticOwnershipBindingCounts.get(bindingKey) ?? 0) + 1,
+          );
+        }
+      }
       if (ts.isIdentifier(node.name) && node.type) {
         setStableKind(domTypedIdentifierKinds, node.name.text, domKindFromTypeNode(node.type));
         if (isWindowViewEventTypeNode(node.type)) {
@@ -4306,6 +4333,122 @@ function auditImperativeNavigation(source, path, options = {}) {
     return formOwnerIdentity(propertyOwner(resolved), env);
   }
 
+  function programmaticFormControlCreationKind(expression, env = new Map()) {
+    if (!enforceProgrammaticFormOwnershipStatePolicy || !expression) return null;
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isCallExpression(resolved)) return null;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return null;
+    }
+    if (
+      propertyName(callee) !== "createElement"
+      || !isDocumentObject(propertyOwner(callee), env)
+    ) return null;
+    const tag = resolveDataExpression(resolved.arguments[0], env);
+    if (!tag || !ts.isStringLiteralLike(tag)) return null;
+    const kind = tag.text.toLowerCase();
+    return isFormParticipatingControlKind(kind) ? kind : null;
+  }
+
+  function programmaticOwnershipIdentity(expression, env = new Map(), seen = new Set()) {
+    if (!enforceProgrammaticFormOwnershipStatePolicy || !expression) return null;
+
+    if (
+      ts.isAsExpression(expression)
+      || ts.isTypeAssertionExpression(expression)
+      || ts.isNonNullExpression(expression)
+      || ts.isParenthesizedExpression(expression)
+    ) {
+      return programmaticOwnershipIdentity(expression.expression, env, seen);
+    }
+
+    if (!ts.isIdentifier(expression)) return null;
+
+    const envKey = "programmatic-state-env:" + expression.text;
+    if (env.has(expression.text) && !seen.has(envKey)) {
+      const nextSeen = new Set(seen);
+      nextSeen.add(envKey);
+      const fromEnv = programmaticOwnershipIdentity(
+        env.get(expression.text),
+        env,
+        nextSeen,
+      );
+      if (fromEnv) return fromEnv;
+    }
+
+    const bindingKey = programmaticBindingKey(expression);
+    if (!bindingKey || programmaticOwnershipBindingCounts.get(bindingKey) !== 1) {
+      return null;
+    }
+    return programmaticOwnershipBindingIdentities.get(bindingKey) ?? null;
+  }
+
+  function programmaticOwnershipStateInfo(expression, env = new Map()) {
+    const identity = programmaticOwnershipIdentity(expression, env);
+    if (!identity || !programmaticOwnershipStates.has(identity)) {
+      return {
+        known: false,
+        identity: null,
+        owned: false,
+        owner: null,
+        associationMode: null,
+      };
+    }
+    const state = programmaticOwnershipStates.get(identity);
+    return {
+      known: true,
+      identity,
+      owned: state.owned === true,
+      owner: state.owner ?? null,
+      associationMode: state.associationMode ?? "programmatic",
+    };
+  }
+
+  function setProgrammaticOwnershipState(identity, state) {
+    if (!identity || !enforceProgrammaticFormOwnershipStatePolicy) return false;
+    programmaticOwnershipStates.set(identity, {
+      owned: state.owned === true,
+      owner: state.owner ?? null,
+      associationMode: state.associationMode ?? "programmatic",
+    });
+    return true;
+  }
+
+  function registerProgrammaticOwnershipDeclaration(node, env = new Map()) {
+    if (
+      !enforceProgrammaticFormOwnershipStatePolicy
+      || !ts.isVariableDeclaration(node)
+      || !ts.isIdentifier(node.name)
+      || !node.initializer
+      || !programmaticBindingIsUnambiguous(node.name)
+    ) return false;
+
+    const bindingKey = programmaticBindingKey(node.name);
+    if (!bindingKey || programmaticOwnershipBindingIdentities.has(bindingKey)) {
+      return false;
+    }
+
+    const aliasIdentity = programmaticOwnershipIdentity(node.initializer, env);
+    if (aliasIdentity) {
+      programmaticOwnershipBindingIdentities.set(bindingKey, aliasIdentity);
+      return true;
+    }
+
+    const kind = programmaticFormControlCreationKind(node.initializer, env);
+    if (!kind) return false;
+
+    const identity = "programmatic-control:" + node.pos + ":" + node.end;
+    programmaticOwnershipBindingIdentities.set(bindingKey, identity);
+    programmaticOwnershipKinds.set(identity, kind);
+    setProgrammaticOwnershipState(identity, {
+      owned: false,
+      owner: null,
+      associationMode: "programmatic",
+    });
+    return true;
+  }
+
   function currentFormOwnershipInfo(expression, env = new Map(), seen = new Set()) {
     if (!expression || !enforceFormOwnershipLifecyclePolicy) {
       return { owned: false, owner: null, associationMode: null };
@@ -4318,6 +4461,15 @@ function auditImperativeNavigation(source, path, options = {}) {
       || ts.isParenthesizedExpression(expression)
     ) {
       return currentFormOwnershipInfo(expression.expression, env, seen);
+    }
+
+    const programmaticState = programmaticOwnershipStateInfo(expression, env);
+    if (programmaticState.known) {
+      return {
+        owned: programmaticState.owned,
+        owner: programmaticState.owner,
+        associationMode: programmaticState.associationMode,
+      };
     }
 
     if (
@@ -4436,6 +4588,8 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function isProvenFormAssociatedControl(expression, env = new Map(), seen = new Set()) {
     if (!expression) return false;
+    const programmaticState = programmaticOwnershipStateInfo(expression, env);
+    if (programmaticState.known) return programmaticState.owned;
     if (ts.isIdentifier(expression) && domFormAssociatedControls.has(expression.text)) return true;
 
     if (
@@ -5107,6 +5261,229 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     return { owner: null, kind };
+  }
+
+  function transitionProgrammaticControlToDestination(
+    targetExpression,
+    destinationExpression,
+    env = new Map(),
+  ) {
+    const identity = programmaticOwnershipIdentity(targetExpression, env);
+    if (!identity) return false;
+    const destination = relocationDestinationInfo(destinationExpression, env);
+    if (!destination.owner) {
+      return setProgrammaticOwnershipState(identity, {
+        owned: false,
+        owner: null,
+        associationMode: "programmatic",
+      });
+    }
+    return setProgrammaticOwnershipState(identity, {
+      owned: true,
+      owner: destination.owner,
+      associationMode: "programmatic",
+    });
+  }
+
+  function detachProgrammaticControl(targetExpression, env = new Map()) {
+    const identity = programmaticOwnershipIdentity(targetExpression, env);
+    if (!identity) return false;
+    return setProgrammaticOwnershipState(identity, {
+      owned: false,
+      owner: null,
+      associationMode: "programmatic",
+    });
+  }
+
+  function reportProgrammaticOwnershipStateEviction(
+    node,
+    destinationExpression,
+    retainedExpressions,
+    method,
+    env = new Map(),
+  ) {
+    if (
+      !enforceProgrammaticFormOwnershipStatePolicy
+      || method !== "replaceChildren"
+    ) return false;
+
+    const destination = relocationDestinationInfo(destinationExpression, env);
+    if (!destination.owner) return false;
+
+    const retained = new Set(
+      retainedExpressions
+        .map((expression) => programmaticOwnershipIdentity(expression, env))
+        .filter(Boolean),
+    );
+    const evicted = [...programmaticOwnershipStates.entries()].some(
+      ([identity, state]) => (
+        state.owned === true
+        && state.owner === destination.owner
+        && !retained.has(identity)
+      ),
+    );
+    if (!evicted) return false;
+    report(node, "programmatic-ownership-state-evict", [method]);
+    return true;
+  }
+
+  function applyProgrammaticOwnershipCallTransition(callExpression, env = new Map()) {
+    if (
+      !enforceProgrammaticFormOwnershipStatePolicy
+      || !ts.isCallExpression(callExpression)
+    ) return false;
+
+    let changed = false;
+    const direct = resolveDataExpression(callExpression.expression, env);
+    if (
+      direct
+      && (ts.isPropertyAccessExpression(direct) || ts.isElementAccessExpression(direct))
+    ) {
+      const method = propertyName(direct);
+      const destination = propertyOwner(direct);
+
+      if (
+        ["append", "appendChild", "prepend", "insertBefore", "replaceChildren", "replaceChild"]
+          .includes(method)
+      ) {
+        const targets = relocationTargetsForMethod(method, callExpression);
+        if (method === "replaceChildren") {
+          const destinationInfo = relocationDestinationInfo(destination, env);
+          if (destinationInfo.owner) {
+            const retained = new Set(
+              targets
+                .map((target) => programmaticOwnershipIdentity(target, env))
+                .filter(Boolean),
+            );
+            for (const [identity, state] of programmaticOwnershipStates) {
+              if (
+                state.owned === true
+                && state.owner === destinationInfo.owner
+                && !retained.has(identity)
+              ) {
+                setProgrammaticOwnershipState(identity, {
+                  owned: false,
+                  owner: null,
+                  associationMode: "programmatic",
+                });
+                changed = true;
+              }
+            }
+          }
+        }
+        if (method === "replaceChild" && callExpression.arguments[1]) {
+          changed = detachProgrammaticControl(callExpression.arguments[1], env) || changed;
+        }
+        for (const target of targets) {
+          changed = (
+            transitionProgrammaticControlToDestination(target, destination, env)
+            || changed
+          );
+        }
+      }
+
+      if (method === "remove" || method === "replaceWith") {
+        const oldInfo = programmaticOwnershipStateInfo(destination, env);
+        changed = detachProgrammaticControl(destination, env) || changed;
+        if (
+          method === "replaceWith"
+          && oldInfo.known
+          && oldInfo.owned
+          && oldInfo.associationMode !== "explicit"
+        ) {
+          for (const replacement of callExpression.arguments) {
+            const replacementIdentity = programmaticOwnershipIdentity(replacement, env);
+            if (!replacementIdentity) continue;
+            setProgrammaticOwnershipState(replacementIdentity, {
+              owned: true,
+              owner: oldInfo.owner,
+              associationMode: "programmatic",
+            });
+            changed = true;
+          }
+        }
+      }
+
+      if (method === "removeChild" && callExpression.arguments[0]) {
+        changed = detachProgrammaticControl(callExpression.arguments[0], env) || changed;
+      }
+    }
+
+    const indirect = indirectInvocationInfo(callExpression, env);
+    if (!indirect || indirect.dynamic) return changed;
+
+    const relocation = nativeDomOwnershipRelocationInfo(indirect.target, env);
+    if (relocation) {
+      const indexes = relocation.targetIndexes === "all"
+        ? indirect.args.map((_, index) => index)
+        : relocation.targetIndexes;
+      const targets = indexes.map((index) => indirect.args[index]).filter(Boolean);
+
+      if (relocation.method === "replaceChildren") {
+        const destinationInfo = relocationDestinationInfo(indirect.thisArg, env);
+        if (destinationInfo.owner) {
+          const retained = new Set(
+            targets
+              .map((target) => programmaticOwnershipIdentity(target, env))
+              .filter(Boolean),
+          );
+          for (const [identity, state] of programmaticOwnershipStates) {
+            if (
+              state.owned === true
+              && state.owner === destinationInfo.owner
+              && !retained.has(identity)
+            ) {
+              setProgrammaticOwnershipState(identity, {
+                owned: false,
+                owner: null,
+                associationMode: "programmatic",
+              });
+              changed = true;
+            }
+          }
+        }
+      }
+
+      if (relocation.method === "replaceChild" && indirect.args[1]) {
+        changed = detachProgrammaticControl(indirect.args[1], env) || changed;
+      }
+
+      for (const target of targets) {
+        changed = (
+          transitionProgrammaticControlToDestination(target, indirect.thisArg, env)
+          || changed
+        );
+      }
+    }
+
+    const lifecycle = nativeDomOwnershipLifecycleInfo(indirect.target, env);
+    if (lifecycle) {
+      const lifecycleTarget = lifecycle.targetMode === "this"
+        ? indirect.thisArg
+        : indirect.args[lifecycle.targetIndex];
+      const oldInfo = programmaticOwnershipStateInfo(lifecycleTarget, env);
+      changed = detachProgrammaticControl(lifecycleTarget, env) || changed;
+
+      if (
+        lifecycle.method === "replaceWith"
+        && oldInfo.known
+        && oldInfo.owned
+        && oldInfo.associationMode !== "explicit"
+      ) {
+        for (const replacement of indirect.args) {
+          const replacementIdentity = programmaticOwnershipIdentity(replacement, env);
+          if (!replacementIdentity) continue;
+          setProgrammaticOwnershipState(replacementIdentity, {
+            owned: true,
+            owner: oldInfo.owner,
+            associationMode: "programmatic",
+          });
+          changed = true;
+        }
+      }
+    }
+
+    return changed;
   }
 
   function reportProgrammaticFormOwnershipRelocation(
@@ -5929,12 +6306,33 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function visit(node, env = new Map(), callStack = new Set()) {
+    registerProgrammaticOwnershipDeclaration(node, env);
+
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const firstArg = node.arguments[0];
 
       reportDirectFormOwnershipLifecycle(node, env);
       reportDirectFormOwnershipRelocation(node, env);
+      if (enforceProgrammaticFormOwnershipStatePolicy) {
+        const directOwnershipCallee = resolveDataExpression(node.expression, env);
+        if (
+          directOwnershipCallee
+          && (
+            ts.isPropertyAccessExpression(directOwnershipCallee)
+            || ts.isElementAccessExpression(directOwnershipCallee)
+          )
+          && propertyName(directOwnershipCallee) === "replaceChildren"
+        ) {
+          reportProgrammaticOwnershipStateEviction(
+            node,
+            propertyOwner(directOwnershipCallee),
+            [...node.arguments],
+            "replaceChildren",
+            env,
+          );
+        }
+      }
 
       if (isEvalReference(expression, env)) {
         report(node, "dynamic-code-eval");
@@ -6041,6 +6439,19 @@ function auditImperativeNavigation(source, path, options = {}) {
           indirectTarget,
           env,
         );
+
+        if (
+          ownershipRelocationCapability?.method === "replaceChildren"
+          && !indirectInvocation.dynamic
+        ) {
+          reportProgrammaticOwnershipStateEviction(
+            node,
+            indirectInvocation.thisArg,
+            indirectArgs,
+            "replaceChildren",
+            env,
+          );
+        }
 
         const indirectRecognized = Boolean(
           nativeSetter
@@ -7482,6 +7893,10 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     ts.forEachChild(node, (child) => visit(child, env, callStack));
+
+    if (ts.isCallExpression(node)) {
+      applyProgrammaticOwnershipCallTransition(node, env);
+    }
   }
 
   visit(sourceFile);
@@ -8503,6 +8918,68 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const formB = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'input.disabled = true;',
+    'formA.append(input);',
+    'input.disabled = true;',
+    'const alias = input;',
+    'alias.name = "owned";',
+    'formA.appendChild(alias);',
+    'formB.append(input);',
+    'input.readOnly = true;',
+    'outside.append(input);',
+    'input.disabled = true;',
+    'formA.prepend(input);',
+    'input.remove();',
+    'input.name = "detached";',
+    'formA.append(input);',
+    'formA.replaceChildren();',
+    'input.readOnly = true;',
+    'formA.append(input);',
+    'formA.replaceChildren(input);',
+    'input.disabled = true;',
+    'const replacement = document.createElement("input");',
+    'input.replaceWith(replacement);',
+    'replacement.name = "replacement-owned";',
+    'replacement.remove();',
+    'replacement.disabled = true;',
+    'const nested = document.createElement("input");',
+    'formA.append(nested.disabled = true as any);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-state.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 11
+    || counts["programmatic-participation-weaken"] !== 3
+    || counts["programmatic-participation-identity"] !== 2
+    || counts["programmatic-ownership-reassociate"] !== 1
+    || counts["programmatic-ownership-escape"] !== 1
+    || counts["programmatic-ownership-detach"] !== 2
+    || counts["programmatic-ownership-replace"] !== 1
+    || counts["programmatic-ownership-state-evict"] !== 1
+  ) {
+    throw new Error("Programmatic ownership state authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { useRef } from "react";',
     'const ownedRef = useRef<HTMLInputElement | null>(null);',
     'const explicitRef = useRef<HTMLInputElement | null>(null);',
@@ -9417,6 +9894,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       formOwnershipProvenancePolicy: true,
       formOwnershipLifecyclePolicy: true,
       formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
     },
   ));
 
@@ -9458,6 +9936,21 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormOwnershipStateViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind === "programmatic-ownership-state-evict");
+if (programmaticFormOwnershipStateViolations.length > 0) {
+  throw new Error(
+    "Programmatic form ownership state authority failed:\n"
+    + programmaticFormOwnershipStateViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
