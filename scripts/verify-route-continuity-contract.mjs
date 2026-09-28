@@ -1928,6 +1928,8 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domRefKinds = new Map();
   const domCollectionKinds = new Map();
   const domSetAttributeBindings = new Map();
+  const domSetAttributeNSBindings = new Map();
+  const domToggleAttributeBindings = new Map();
   const domActivationMethodBindings = new Map();
   const domVerifiedReplayForms = new Set();
   const declarations = [];
@@ -2604,6 +2606,47 @@ function auditImperativeNavigation(source, path, options = {}) {
     return Boolean(domSetAttributeElementKind(expression, env));
   }
 
+  function domAttributeMethodElementKind(expression, methodName, bindings, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && bindings.has(resolved.text)) {
+      return bindings.get(resolved.text);
+    }
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === methodName
+    ) {
+      return domNavigationElementKind(propertyOwner(resolved), env);
+    }
+    return null;
+  }
+
+  function domSetAttributeNSElementKind(expression, env = new Map()) {
+    return domAttributeMethodElementKind(
+      expression,
+      "setAttributeNS",
+      domSetAttributeNSBindings,
+      env,
+    );
+  }
+
+  function isDomSetAttributeNSReference(expression, env = new Map()) {
+    return Boolean(domSetAttributeNSElementKind(expression, env));
+  }
+
+  function domToggleAttributeElementKind(expression, env = new Map()) {
+    return domAttributeMethodElementKind(
+      expression,
+      "toggleAttribute",
+      domToggleAttributeBindings,
+      env,
+    );
+  }
+
+  function isDomToggleAttributeReference(expression, env = new Map()) {
+    return Boolean(domToggleAttributeElementKind(expression, env));
+  }
+
   function domNavigationPropertyForKind(kind, property) {
     const normalized = property?.toLowerCase();
     if ((kind === "a" || kind === "area" || kind === "base") && normalized === "href") {
@@ -2705,6 +2748,40 @@ function auditImperativeNavigation(source, path, options = {}) {
       report(node, "programmatic-validation-dynamic", [validationProperty]);
     }
     return true;
+  }
+
+  function reportProgrammaticFormValidationToggle(
+    node,
+    kind,
+    property,
+    force,
+    env = new Map(),
+  ) {
+    if (!enforceFormValidationBypassPolicy) return false;
+    const validationProperty = domValidationBypassPropertyForKind(kind, property);
+    if (!validationProperty) return false;
+
+    if (!force) {
+      report(node, "programmatic-validation-dynamic", [validationProperty]);
+      return true;
+    }
+    return reportProgrammaticFormValidationBypass(
+      node,
+      kind,
+      validationProperty,
+      force,
+      env,
+    );
+  }
+
+  function standardAttributeNamespace(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return "dynamic";
+    if (resolved.kind === ts.SyntaxKind.NullKeyword) return "standard";
+    if (ts.isStringLiteralLike(resolved)) {
+      return resolved.text === "" ? "standard" : "namespaced";
+    }
+    return "dynamic";
   }
 
   function literalSubmissionTransport(expression, env = new Map()) {
@@ -3107,6 +3184,12 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (domOwnerKind && method === "setAttribute") {
           changed = addKindBinding(domSetAttributeBindings, local, domOwnerKind) || changed;
         }
+        if (domOwnerKind && method === "setAttributeNS") {
+          changed = addKindBinding(domSetAttributeNSBindings, local, domOwnerKind) || changed;
+        }
+        if (domOwnerKind && method === "toggleAttribute") {
+          changed = addKindBinding(domToggleAttributeBindings, local, domOwnerKind) || changed;
+        }
         const activationMethod = domActivationMethodForKind(domOwnerKind, method);
         if (activationMethod) {
           const existing = domActivationMethodBindings.get(local);
@@ -3166,6 +3249,20 @@ function auditImperativeNavigation(source, path, options = {}) {
             domSetAttributeBindings,
             local,
             domSetAttributeBindings.get(initializer.text),
+          ) || changed;
+        }
+        if (domSetAttributeNSBindings.has(initializer.text)) {
+          changed = addKindBinding(
+            domSetAttributeNSBindings,
+            local,
+            domSetAttributeNSBindings.get(initializer.text),
+          ) || changed;
+        }
+        if (domToggleAttributeBindings.has(initializer.text)) {
+          changed = addKindBinding(
+            domToggleAttributeBindings,
+            local,
+            domToggleAttributeBindings.get(initializer.text),
           ) || changed;
         }
         if (domVerifiedReplayForms.has(initializer.text)) {
@@ -3242,6 +3339,20 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (fromDomNavigationElement && sourceName === "setAttribute") {
           changed = addKindBinding(
             domSetAttributeBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
+        }
+        if (fromDomNavigationElement && sourceName === "setAttributeNS") {
+          changed = addKindBinding(
+            domSetAttributeNSBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
+        }
+        if (fromDomNavigationElement && sourceName === "toggleAttribute") {
+          changed = addKindBinding(
+            domToggleAttributeBindings,
             localName,
             domNavigationElementKind(initializer),
           ) || changed;
@@ -3758,12 +3869,16 @@ function auditImperativeNavigation(source, path, options = {}) {
       : null;
   }
 
-  function isNativeDomSetAttributeReference(expression, env = new Map()) {
+  function isNativeDomAttributeMethodReference(
+    expression,
+    methodName,
+    env = new Map(),
+  ) {
     const resolved = resolveDataExpression(expression, env);
     if (
       !resolved
       || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
-      || propertyName(resolved) !== "setAttribute"
+      || propertyName(resolved) !== methodName
     ) return false;
 
     const owner = propertyOwner(resolved);
@@ -3778,6 +3893,18 @@ function auditImperativeNavigation(source, path, options = {}) {
     );
   }
 
+  function isNativeDomSetAttributeReference(expression, env = new Map()) {
+    return isNativeDomAttributeMethodReference(expression, "setAttribute", env);
+  }
+
+  function isNativeDomSetAttributeNSReference(expression, env = new Map()) {
+    return isNativeDomAttributeMethodReference(expression, "setAttributeNS", env);
+  }
+
+  function isNativeDomToggleAttributeReference(expression, env = new Map()) {
+    return isNativeDomAttributeMethodReference(expression, "toggleAttribute", env);
+  }
+
   function isBoundNavigationCapability(expression, env = new Map()) {
     const bound = boundCallableInfo(expression, env);
     if (!bound?.target) return false;
@@ -3786,6 +3913,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       nativeDomSetterInfo(target, env)
       || isDomSetAttributeReference(target, env)
       || isNativeDomSetAttributeReference(target, env)
+      || isDomSetAttributeNSReference(target, env)
+      || isNativeDomSetAttributeNSReference(target, env)
+      || isDomToggleAttributeReference(target, env)
+      || isNativeDomToggleAttributeReference(target, env)
       || domActivationBinding(target, env)
       || nativeDomActivationInfo(target, env)
       || isDocumentHtmlWriteReference(target, env)
@@ -3828,6 +3959,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       || domNavigationElementKind(resolved, env)
       || isDomSetAttributeReference(resolved, env)
       || isNativeDomSetAttributeReference(resolved, env)
+      || isDomSetAttributeNSReference(resolved, env)
+      || isNativeDomSetAttributeNSReference(resolved, env)
+      || isDomToggleAttributeReference(resolved, env)
+      || isNativeDomToggleAttributeReference(resolved, env)
       || domActivationBinding(resolved, env)
       || nativeDomActivationInfo(resolved, env)
       || nativeDomSetterInfo(resolved, env)
@@ -4413,6 +4548,14 @@ function auditImperativeNavigation(source, path, options = {}) {
           isDomSetAttributeReference(indirectTarget, env)
           || isNativeDomSetAttributeReference(indirectTarget, env)
         );
+        const setAttributeNSCapability = (
+          isDomSetAttributeNSReference(indirectTarget, env)
+          || isNativeDomSetAttributeNSReference(indirectTarget, env)
+        );
+        const toggleAttributeCapability = (
+          isDomToggleAttributeReference(indirectTarget, env)
+          || isNativeDomToggleAttributeReference(indirectTarget, env)
+        );
         const activationCapability = (
           domActivationBinding(indirectTarget, env)
           || nativeDomActivationInfo(indirectTarget, env)
@@ -4421,6 +4564,8 @@ function auditImperativeNavigation(source, path, options = {}) {
         const indirectRecognized = Boolean(
           nativeSetter
           || setAttributeCapability
+          || setAttributeNSCapability
+          || toggleAttributeCapability
           || activationCapability
           || isDocumentHtmlWriteReference(indirectTarget, env)
           || isInsertAdjacentHtmlReference(indirectTarget, env)
@@ -4540,6 +4685,70 @@ function auditImperativeNavigation(source, path, options = {}) {
                     : "native-invoke-dom-setter",
                   targets,
                 );
+              }
+            }
+          }
+
+          if (setAttributeNSCapability) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else {
+              const namespace = standardAttributeNamespace(indirectArgs[0], env);
+              const attributeName = resolveDataExpression(indirectArgs[1], env);
+              const target = indirectArgs[2];
+              if (namespace === "dynamic") {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else if (
+                namespace === "standard"
+                && (!attributeName || !ts.isStringLiteralLike(attributeName))
+              ) {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else if (namespace === "standard") {
+                const validationBypassProperty = domValidationBypassPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
+                if (
+                  validationBypassProperty
+                  && reportProgrammaticFormValidationBypass(
+                    node,
+                    indirectThisKind,
+                    validationBypassProperty,
+                    target,
+                    env,
+                    true,
+                  )
+                ) {
+                  // Standard-namespace boolean validation attributes are enabled by presence.
+                }
+              }
+            }
+          }
+
+          if (toggleAttributeCapability) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else {
+              const attributeName = resolveDataExpression(indirectArgs[0], env);
+              if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else {
+                const validationBypassProperty = domValidationBypassPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
+                if (
+                  validationBypassProperty
+                  && reportProgrammaticFormValidationToggle(
+                    node,
+                    indirectThisKind,
+                    validationBypassProperty,
+                    indirectArgs[1],
+                    env,
+                  )
+                ) {
+                  // Form validation toggle policy handled above.
+                }
               }
             }
           }
@@ -4916,6 +5125,65 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
       }
 
+      if (isDomSetAttributeNSReference(expression, env)) {
+        const kind = domSetAttributeNSElementKind(expression, env);
+        const namespace = standardAttributeNamespace(firstArg, env);
+        const attributeName = resolveDataExpression(node.arguments[1], env);
+        const target = node.arguments[2];
+
+        if (namespace === "dynamic") {
+          report(node, "dom-dynamic-attribute");
+        } else if (
+          namespace === "standard"
+          && (!attributeName || !ts.isStringLiteralLike(attributeName))
+        ) {
+          report(node, "dom-dynamic-attribute");
+        } else if (namespace === "standard") {
+          const validationBypassProperty = domValidationBypassPropertyForKind(
+            kind,
+            attributeName.text,
+          );
+          if (
+            validationBypassProperty
+            && reportProgrammaticFormValidationBypass(
+              node,
+              kind,
+              validationBypassProperty,
+              target,
+              env,
+              true,
+            )
+          ) {
+            // Standard-namespace boolean validation attributes are enabled by presence.
+          }
+        }
+      }
+
+      if (isDomToggleAttributeReference(expression, env)) {
+        const kind = domToggleAttributeElementKind(expression, env);
+        const attributeName = resolveDataExpression(firstArg, env);
+        if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+          report(node, "dom-dynamic-attribute");
+        } else {
+          const validationBypassProperty = domValidationBypassPropertyForKind(
+            kind,
+            attributeName.text,
+          );
+          if (
+            validationBypassProperty
+            && reportProgrammaticFormValidationToggle(
+              node,
+              kind,
+              validationBypassProperty,
+              node.arguments[1],
+              env,
+            )
+          ) {
+            // Form validation toggle policy handled above.
+          }
+        }
+      }
+
       if (isDomSetAttributeReference(expression, env)) {
         const kind = domSetAttributeElementKind(expression, env);
         const attributeName = resolveDataExpression(firstArg, env);
@@ -5143,6 +5411,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           || isLocationHeaderMutationReference(argument, env)
           || domNavigationElementKind(argument, env)
           || isDomSetAttributeReference(argument, env)
+          || isDomSetAttributeNSReference(argument, env)
+          || isDomToggleAttributeReference(argument, env)
           || domActivationBinding(argument, env)
           || nativeDomActivationInfo(argument, env)
           || isBoundNavigationCapability(argument, env)
@@ -6332,6 +6602,10 @@ function auditImperativeNavigation(source, path, options = {}) {
     'form.noValidate = false;',
     'form.noValidate = dynamicValidation;',
     'form.setAttribute("novalidate", "false");',
+    'form.setAttributeNS(null, "novalidate", "false");',
+    'form.toggleAttribute("novalidate", true);',
+    'form.toggleAttribute("novalidate", false);',
+    'form.toggleAttribute("novalidate");',
     'Object.assign(form, { noValidate: true });',
     'Reflect.set(form, "noValidate", false);',
     'Object.defineProperty(form, "noValidate", { value: true });',
@@ -6344,6 +6618,8 @@ function auditImperativeNavigation(source, path, options = {}) {
     'const input = document.createElement("input");',
     'input.formNoValidate = dynamicValidation;',
     'Reflect.set(input, "formNoValidate", true);',
+    'Reflect.apply(Element.prototype.setAttributeNS, input, [null, "formnovalidate", ""]);',
+    'Reflect.apply(Element.prototype.toggleAttribute, button, ["formnovalidate", true]);',
     'form.submit();',
     'form.requestSubmit(button);',
     'HTMLFormElement.prototype.submit.call(form);',
@@ -6359,9 +6635,9 @@ function auditImperativeNavigation(source, path, options = {}) {
     return acc;
   }, {});
   if (
-    violations.length !== 14
-    || counts["programmatic-validation-bypass"] !== 8
-    || counts["programmatic-validation-dynamic"] !== 2
+    violations.length !== 19
+    || counts["programmatic-validation-bypass"] !== 12
+    || counts["programmatic-validation-dynamic"] !== 3
     || counts["programmatic-validation-submit"] !== 2
     || counts["programmatic-validation-submitter"] !== 2
   ) {
