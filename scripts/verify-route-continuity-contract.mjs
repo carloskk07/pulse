@@ -1864,6 +1864,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceFormOwnershipLifecyclePolicy = (
     options.formOwnershipLifecyclePolicy === true
   );
+  const enforceFormOwnershipRelocationPolicy = (
+    options.formOwnershipRelocationPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1951,11 +1954,19 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domFormAssociatedControls = new Set();
   const domFormOwnedElementIds = new Map();
   const domFormOwnedElementKinds = new Map();
+  const domFormOwnedElementOwners = new Map();
+  const domFormOwnedElementAssociationModes = new Map();
   const domFormOwnedRefs = new Map();
+  const domFormOwnedRefOwners = new Map();
+  const domFormOwnedRefAssociationModes = new Map();
   const domFormOwnedEventScopes = new Map();
   const domScopedEventCurrentTargetKinds = new Map();
+  const domFormOwnedEventScopeOwners = new Map();
+  const domFormOwnedEventScopeAssociationModes = new Map();
   const domFormOwnerIds = new Set();
   const domFormLifecycleOwnedControls = new Set();
+  const domFormLifecycleControlOwners = new Map();
+  const domFormLifecycleControlAssociationModes = new Map();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -2125,6 +2136,24 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (map.get(name) !== owned) map.set(name, null);
   }
 
+  function setStableOwner(map, name, owner) {
+    if (!name || !owner) return;
+    if (!map.has(name)) {
+      map.set(name, owner);
+      return;
+    }
+    if (map.get(name) !== owner) map.set(name, null);
+  }
+
+  function setStableAssociationMode(map, name, mode) {
+    if (!name || !mode) return;
+    if (!map.has(name)) {
+      map.set(name, mode);
+      return;
+    }
+    if (map.get(name) !== mode) map.set(name, "unknown");
+  }
+
   function eventScopeKey(functionNode, parameterName) {
     return functionNode && parameterName
       ? functionNode.pos + ":" + parameterName
@@ -2140,11 +2169,31 @@ function auditImperativeNavigation(source, path, options = {}) {
     return null;
   }
 
-  function setScopedEventEvidence(functionNode, parameterName, owned, kind = null) {
+  function setScopedEventEvidence(
+    functionNode,
+    parameterName,
+    owned,
+    kind = null,
+    owner = null,
+    associationMode = null,
+  ) {
     const key = eventScopeKey(functionNode, parameterName);
     if (!key) return;
     setStableOwnership(domFormOwnedEventScopes, key, owned);
     if (kind) setStableKind(domScopedEventCurrentTargetKinds, key, kind);
+    if (owned === false) {
+      domFormOwnedEventScopeOwners.set(key, null);
+      domFormOwnedEventScopeAssociationModes.set(key, "unknown");
+      return;
+    }
+    if (owner) setStableOwner(domFormOwnedEventScopeOwners, key, owner);
+    if (associationMode) {
+      setStableAssociationMode(
+        domFormOwnedEventScopeAssociationModes,
+        key,
+        associationMode,
+      );
+    }
   }
 
   function scopedEventTargetInfo(expression) {
@@ -2162,6 +2211,8 @@ function auditImperativeNavigation(source, path, options = {}) {
     return {
       owned: domFormOwnedEventScopes.get(key) ?? null,
       kind: domScopedEventCurrentTargetKinds.get(key) ?? null,
+      owner: domFormOwnedEventScopeOwners.get(key) ?? null,
+      associationMode: domFormOwnedEventScopeAssociationModes.get(key) ?? null,
     };
   }
 
@@ -2575,6 +2626,106 @@ function auditImperativeNavigation(source, path, options = {}) {
     };
   }
 
+  function scopedBindingIdentity(identifier) {
+    if (!identifier || !ts.isIdentifier(identifier)) return null;
+    const scope = nearestFunctionScope(identifier);
+    return "form-binding:" + (scope?.pos ?? "root") + ":" + identifier.text;
+  }
+
+  function formOwnerIdentity(expression, env = new Map(), seen = new Set()) {
+    if (!expression) return null;
+
+    if (
+      ts.isAsExpression(expression)
+      || ts.isTypeAssertionExpression(expression)
+      || ts.isNonNullExpression(expression)
+      || ts.isParenthesizedExpression(expression)
+    ) {
+      return formOwnerIdentity(expression.expression, env, seen);
+    }
+
+    if (ts.isIdentifier(expression)) {
+      const envKey = "form-owner-env:" + expression.text;
+      if (env.has(expression.text) && !seen.has(envKey)) {
+        const nextSeen = new Set(seen);
+        nextSeen.add(envKey);
+        const envOwner = formOwnerIdentity(env.get(expression.text), env, nextSeen);
+        if (envOwner) return envOwner;
+      }
+
+      const constKey = "form-owner-const:" + expression.text;
+      if (constInitializers.has(expression.text) && !seen.has(constKey)) {
+        const nextSeen = new Set(seen);
+        nextSeen.add(constKey);
+        const initializerOwner = formOwnerIdentity(
+          constInitializers.get(expression.text),
+          env,
+          nextSeen,
+        );
+        if (initializerOwner) return initializerOwner;
+      }
+
+      if (domNavigationElementKind(expression, env) === "form") {
+        return scopedBindingIdentity(expression);
+      }
+      return null;
+    }
+
+    const resolved = resolveDataExpression(expression, env, seen);
+    if (!resolved) return null;
+    if (resolved !== expression) {
+      const resolvedOwner = formOwnerIdentity(resolved, env, seen);
+      if (resolvedOwner) return resolvedOwner;
+    }
+
+    if (!ts.isCallExpression(resolved)) {
+      return domNavigationElementKind(resolved, env) === "form"
+        ? "form-node:" + resolved.pos + ":" + resolved.end
+        : null;
+    }
+
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return domNavigationElementKind(resolved, env) === "form"
+        ? "form-node:" + resolved.pos + ":" + resolved.end
+        : null;
+    }
+
+    const method = propertyName(callee);
+    const owner = propertyOwner(callee);
+
+    if (isDocumentObject(owner, env) && method === "getElementById") {
+      const idExpression = resolveDataExpression(resolved.arguments[0], env);
+      if (
+        idExpression
+        && ts.isStringLiteralLike(idExpression)
+        && domFormOwnerIds.has(idExpression.text)
+      ) {
+        return "form-id:" + idExpression.text;
+      }
+    }
+
+    if (isDocumentObject(owner, env) && method === "querySelector") {
+      const selectorExpression = resolveDataExpression(resolved.arguments[0], env);
+      const id = selectorExpression && ts.isStringLiteralLike(selectorExpression)
+        ? simpleOwnedSelectorId(selectorExpression.text)
+        : null;
+      if (id && domFormOwnerIds.has(id)) return "form-id:" + id;
+    }
+
+    if (
+      method === "createElement"
+      && isDocumentObject(owner, env)
+      && domNavigationElementKind(resolved, env) === "form"
+    ) {
+      return "form-node:" + resolved.pos + ":" + resolved.end;
+    }
+
+    return domNavigationElementKind(resolved, env) === "form"
+      ? "form-node:" + resolved.pos + ":" + resolved.end
+      : null;
+  }
+
   function domFormOwnedLookupInfo(expression, env = new Map()) {
     if (!enforceFormOwnershipProvenancePolicy || !expression) return null;
     const resolved = resolveDataExpression(expression, env);
@@ -2593,7 +2744,12 @@ function auditImperativeNavigation(source, path, options = {}) {
       if (!idExpression || !ts.isStringLiteralLike(idExpression)) return null;
       const id = idExpression.text;
       if (domFormOwnedElementIds.get(id) !== true) return null;
-      return { owned: true, kind: domFormOwnedElementKinds.get(id) ?? null };
+      return {
+        owned: true,
+        kind: domFormOwnedElementKinds.get(id) ?? null,
+        owner: domFormOwnedElementOwners.get(id) ?? null,
+        associationMode: domFormOwnedElementAssociationModes.get(id) ?? null,
+      };
     }
 
     if (method !== "querySelector") return null;
@@ -2603,7 +2759,12 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     const ownedId = simpleOwnedSelectorId(selector);
     if (ownedId && domFormOwnedElementIds.get(ownedId) === true) {
-      return { owned: true, kind: domFormOwnedElementKinds.get(ownedId) ?? null };
+      return {
+        owned: true,
+        kind: domFormOwnedElementKinds.get(ownedId) ?? null,
+        owner: domFormOwnedElementOwners.get(ownedId) ?? null,
+        associationMode: domFormOwnedElementAssociationModes.get(ownedId) ?? null,
+      };
     }
 
     const explicitForm = explicitFormControlSelector(selector);
@@ -2612,7 +2773,12 @@ function auditImperativeNavigation(source, path, options = {}) {
       && explicitForm.formId
       && domFormOwnerIds.has(explicitForm.formId)
     ) {
-      return { owned: true, kind: explicitForm.kind };
+      return {
+        owned: true,
+        kind: explicitForm.kind,
+        owner: "form-id:" + explicitForm.formId,
+        associationMode: "explicit",
+      };
     }
 
     return null;
@@ -3917,6 +4083,14 @@ function auditImperativeNavigation(source, path, options = {}) {
     return null;
   }
 
+  function jsxFormOwnerIdentity(openingElement) {
+    if (!openingElement) return null;
+    const id = staticJsxString(jsxAttribute(openingElement, "id"));
+    return id
+      ? "form-id:" + id
+      : "jsx-form:" + openingElement.pos + ":" + openingElement.end;
+  }
+
   function jsxExpressionValue(attribute) {
     if (
       !attribute?.initializer
@@ -3943,14 +4117,30 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     const handlerOwnership = new Map();
     const handlerKinds = new Map();
+    const handlerOwners = new Map();
+    const handlerAssociationModes = new Map();
 
-    function recordHandler(attribute, associated, kind) {
+    function recordHandler(
+      attribute,
+      associated,
+      kind,
+      owner = null,
+      associationMode = null,
+    ) {
       const expression = jsxExpressionValue(attribute);
       if (!expression) return;
 
       if (ts.isIdentifier(expression)) {
         setStableOwnership(handlerOwnership, expression.text, associated);
         if (kind) setStableKind(handlerKinds, expression.text, kind);
+        if (associated && owner) setStableOwner(handlerOwners, expression.text, owner);
+        if (associated && associationMode) {
+          setStableAssociationMode(
+            handlerAssociationModes,
+            expression.text,
+            associationMode,
+          );
+        }
         return;
       }
 
@@ -3960,7 +4150,14 @@ function auditImperativeNavigation(source, path, options = {}) {
         && ts.isIdentifier(expression.parameters[0].name)
       ) {
         const parameterName = expression.parameters[0].name.text;
-        setScopedEventEvidence(expression, parameterName, associated, kind);
+        setScopedEventEvidence(
+          expression,
+          parameterName,
+          associated,
+          kind,
+          associated ? owner : null,
+          associated ? associationMode : null,
+        );
       }
     }
 
@@ -3969,24 +4166,49 @@ function auditImperativeNavigation(source, path, options = {}) {
         const tag = jsxIntrinsicTagName(node);
         const control = isFormParticipatingControlKind(tag);
         const explicitFormId = control ? staticJsxString(jsxAttribute(node, "form")) : null;
-        const associated = Boolean(
-          control
-          && (
-            nearestJsxForm(node)
-            || (explicitFormId && domFormOwnerIds.has(explicitFormId))
-          )
+        const nestedForm = control ? nearestJsxForm(node) : null;
+        const explicitOwner = (
+          explicitFormId && domFormOwnerIds.has(explicitFormId)
+            ? "form-id:" + explicitFormId
+            : null
         );
+        const nestedOwner = nestedForm ? jsxFormOwnerIdentity(nestedForm) : null;
+        const owner = explicitOwner ?? nestedOwner;
+        const associationMode = explicitOwner
+          ? "explicit"
+          : nestedOwner
+            ? "ancestor"
+            : null;
+        const associated = Boolean(control && owner);
 
         if (control) {
           const id = staticJsxString(jsxAttribute(node, "id"));
           if (id) {
             setStableOwnership(domFormOwnedElementIds, id, associated);
             setStableKind(domFormOwnedElementKinds, id, tag);
+            if (associated && owner) setStableOwner(domFormOwnedElementOwners, id, owner);
+            if (associated && associationMode) {
+              setStableAssociationMode(
+                domFormOwnedElementAssociationModes,
+                id,
+                associationMode,
+              );
+            }
           }
 
           const refExpression = jsxExpressionValue(jsxAttribute(node, "ref"));
           if (refExpression && ts.isIdentifier(refExpression)) {
             setStableOwnership(domFormOwnedRefs, refExpression.text, associated);
+            if (associated && owner) {
+              setStableOwner(domFormOwnedRefOwners, refExpression.text, owner);
+            }
+            if (associated && associationMode) {
+              setStableAssociationMode(
+                domFormOwnedRefAssociationModes,
+                refExpression.text,
+                associationMode,
+              );
+            }
           }
         }
 
@@ -3994,7 +4216,13 @@ function auditImperativeNavigation(source, path, options = {}) {
           if (!ts.isJsxAttribute(property)) continue;
           const name = property.name.getText(sourceFile);
           if (!/^on[A-Z]/.test(name)) continue;
-          recordHandler(property, associated, control ? tag : null);
+          recordHandler(
+            property,
+            associated,
+            control ? tag : null,
+            associated ? owner : null,
+            associated ? associationMode : null,
+          );
         }
       }
       ts.forEachChild(node, collectOwnership);
@@ -4018,7 +4246,10 @@ function auditImperativeNavigation(source, path, options = {}) {
         && ts.isIdentifier(propertyOwner(node.left))
         && domFormOwnedRefs.has(propertyOwner(node.left).text)
       ) {
-        setStableOwnership(domFormOwnedRefs, propertyOwner(node.left).text, false);
+        const refName = propertyOwner(node.left).text;
+        setStableOwnership(domFormOwnedRefs, refName, false);
+        domFormOwnedRefOwners.set(refName, null);
+        domFormOwnedRefAssociationModes.set(refName, "unknown");
       }
 
       ts.forEachChild(node, invalidateManualHandlerCalls);
@@ -4035,6 +4266,8 @@ function auditImperativeNavigation(source, path, options = {}) {
         parameter.name.text,
         owned,
         handlerKinds.get(handlerName) ?? null,
+        owned ? (handlerOwners.get(handlerName) ?? null) : null,
+        owned ? (handlerAssociationModes.get(handlerName) ?? null) : null,
       );
     }
   }
@@ -4062,8 +4295,21 @@ function auditImperativeNavigation(source, path, options = {}) {
     return domNavigationElementKind(propertyOwner(resolved), env) === "form";
   }
 
-  function isCurrentFormOwnershipProof(expression, env = new Map(), seen = new Set()) {
-    if (!expression || !enforceFormOwnershipLifecyclePolicy) return false;
+  function formElementsOwnerIdentity(expression, env = new Map()) {
+    if (!expression) return null;
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "elements"
+    ) return null;
+    return formOwnerIdentity(propertyOwner(resolved), env);
+  }
+
+  function currentFormOwnershipInfo(expression, env = new Map(), seen = new Set()) {
+    if (!expression || !enforceFormOwnershipLifecyclePolicy) {
+      return { owned: false, owner: null, associationMode: null };
+    }
 
     if (
       ts.isAsExpression(expression)
@@ -4071,49 +4317,85 @@ function auditImperativeNavigation(source, path, options = {}) {
       || ts.isNonNullExpression(expression)
       || ts.isParenthesizedExpression(expression)
     ) {
-      return isCurrentFormOwnershipProof(expression.expression, env, seen);
+      return currentFormOwnershipInfo(expression.expression, env, seen);
     }
 
     if (
       (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
       && propertyName(expression) === "current"
       && ts.isIdentifier(propertyOwner(expression))
-      && domFormOwnedRefs.get(propertyOwner(expression).text) === true
     ) {
-      return true;
+      const refName = propertyOwner(expression).text;
+      if (domFormOwnedRefs.get(refName) === true) {
+        return {
+          owned: true,
+          owner: domFormOwnedRefOwners.get(refName) ?? null,
+          associationMode: domFormOwnedRefAssociationModes.get(refName) ?? "unknown",
+        };
+      }
     }
 
-    if (scopedEventTargetInfo(expression)?.owned === true) return true;
+    const scopedEvent = scopedEventTargetInfo(expression);
+    if (scopedEvent?.owned === true) {
+      return {
+        owned: true,
+        owner: scopedEvent.owner ?? null,
+        associationMode: scopedEvent.associationMode ?? "unknown",
+      };
+    }
 
     const resolved = resolveDataExpression(expression, env, seen);
-    if (!resolved) return false;
+    if (!resolved) return { owned: false, owner: null, associationMode: null };
     if (resolved !== expression) {
-      return isCurrentFormOwnershipProof(resolved, env, seen);
+      return currentFormOwnershipInfo(resolved, env, seen);
     }
 
     if (
       ts.isIdentifier(resolved)
       && domFormLifecycleOwnedControls.has(resolved.text)
     ) {
-      return true;
+      return {
+        owned: true,
+        owner: domFormLifecycleControlOwners.get(resolved.text) ?? null,
+        associationMode: (
+          domFormLifecycleControlAssociationModes.get(resolved.text) ?? "unknown"
+        ),
+      };
     }
 
-    if (domFormOwnedLookupInfo(resolved, env)?.owned === true) return true;
+    const lookup = domFormOwnedLookupInfo(resolved, env);
+    if (lookup?.owned === true) {
+      return {
+        owned: true,
+        owner: lookup.owner ?? null,
+        associationMode: lookup.associationMode ?? "unknown",
+      };
+    }
 
     if (ts.isElementAccessExpression(resolved)) {
-      return isFormElementsExpression(resolved.expression, env);
+      const owner = formElementsOwnerIdentity(resolved.expression, env);
+      if (owner) return { owned: true, owner, associationMode: "unknown" };
     }
 
-    if (!ts.isCallExpression(resolved)) return false;
+    if (!ts.isCallExpression(resolved)) {
+      return { owned: false, owner: null, associationMode: null };
+    }
     const callee = resolved.expression;
     if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
-      return false;
+      return { owned: false, owner: null, associationMode: null };
     }
     const method = propertyName(callee);
-    return (
-      (method === "item" || method === "namedItem")
-      && isFormElementsExpression(propertyOwner(callee), env)
-    );
+    if (method !== "item" && method !== "namedItem") {
+      return { owned: false, owner: null, associationMode: null };
+    }
+    const owner = formElementsOwnerIdentity(propertyOwner(callee), env);
+    return owner
+      ? { owned: true, owner, associationMode: "unknown" }
+      : { owned: false, owner: null, associationMode: null };
+  }
+
+  function isCurrentFormOwnershipProof(expression, env = new Map(), seen = new Set()) {
+    return currentFormOwnershipInfo(expression, env, seen).owned === true;
   }
 
   function discoverFormLifecycleOwnedControls(node) {
@@ -4125,7 +4407,18 @@ function auditImperativeNavigation(source, path, options = {}) {
       && isFormParticipatingControlKind(domNavigationElementKind(node.name))
       && isCurrentFormOwnershipProof(node.initializer)
     ) {
+      const info = currentFormOwnershipInfo(node.initializer);
       changed = addBinding(domFormLifecycleOwnedControls, node.name.text) || changed;
+      if (info.owner) {
+        setStableOwner(domFormLifecycleControlOwners, node.name.text, info.owner);
+      }
+      if (info.associationMode) {
+        setStableAssociationMode(
+          domFormLifecycleControlAssociationModes,
+          node.name.text,
+          info.associationMode,
+        );
+      }
     }
 
     ts.forEachChild(node, (child) => {
@@ -4799,6 +5092,142 @@ function auditImperativeNavigation(source, path, options = {}) {
       || propertyName(resolved) !== "setCustomValidity"
     ) return false;
     return Boolean(nativeDomPrototypeKind(propertyOwner(resolved), env));
+  }
+
+  function relocationDestinationInfo(expression, env = new Map()) {
+    if (!expression) return { owner: null, kind: null };
+    const kind = domNavigationElementKind(expression, env);
+    if (kind === "form") {
+      return { owner: formOwnerIdentity(expression, env), kind };
+    }
+
+    if (kind === "fieldset") {
+      const info = currentFormOwnershipInfo(expression, env);
+      if (info.owned && info.owner) return { owner: info.owner, kind };
+    }
+
+    return { owner: null, kind };
+  }
+
+  function reportProgrammaticFormOwnershipRelocation(
+    node,
+    targetExpression,
+    destinationExpression,
+    method,
+    env = new Map(),
+  ) {
+    if (!enforceFormOwnershipRelocationPolicy) return false;
+    const source = currentFormOwnershipInfo(targetExpression, env);
+    if (!source.owned) return false;
+
+    if (source.associationMode === "explicit") {
+      return true;
+    }
+
+    const destination = relocationDestinationInfo(destinationExpression, env);
+    if (source.owner && destination.owner && source.owner === destination.owner) {
+      return true;
+    }
+
+    if (source.associationMode === "unknown") {
+      report(node, "programmatic-ownership-relocation-dynamic", [method]);
+      return true;
+    }
+
+    if (destination.owner) {
+      report(node, "programmatic-ownership-reassociate", [method]);
+      return true;
+    }
+
+    report(node, "programmatic-ownership-escape", [method]);
+    return true;
+  }
+
+  function relocationTargetsForMethod(method, callExpression) {
+    if (!callExpression || !ts.isCallExpression(callExpression)) return [];
+    if (method === "append" || method === "prepend" || method === "replaceChildren") {
+      return [...callExpression.arguments];
+    }
+    if (method === "appendChild" || method === "insertBefore") {
+      return callExpression.arguments[0] ? [callExpression.arguments[0]] : [];
+    }
+    if (method === "replaceChild") {
+      return callExpression.arguments[0] ? [callExpression.arguments[0]] : [];
+    }
+    return [];
+  }
+
+  function reportDirectFormOwnershipRelocation(callExpression, env = new Map()) {
+    if (!enforceFormOwnershipRelocationPolicy || !ts.isCallExpression(callExpression)) {
+      return false;
+    }
+    const callee = resolveDataExpression(callExpression.expression, env);
+    if (
+      !callee
+      || !(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+    ) return false;
+
+    const method = propertyName(callee);
+    if (
+      !["append", "appendChild", "prepend", "insertBefore", "replaceChildren", "replaceChild"]
+        .includes(method)
+    ) return false;
+
+    const destination = propertyOwner(callee);
+    let handled = false;
+    for (const target of relocationTargetsForMethod(method, callExpression)) {
+      handled = (
+        reportProgrammaticFormOwnershipRelocation(
+          callExpression,
+          target,
+          destination,
+          method,
+          env,
+        )
+        || handled
+      );
+    }
+    return handled;
+  }
+
+  function nativeDomOwnershipRelocationInfo(expression, env = new Map()) {
+    if (!enforceFormOwnershipRelocationPolicy) return null;
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+    ) return null;
+
+    const method = propertyName(resolved);
+    const owner = propertyOwner(resolved);
+    if (!owner) return null;
+    const ownerText = owner.getText(sourceFile);
+    const elementPrototype = (
+      ownerText === "Element.prototype"
+      || ownerText === "globalThis.Element.prototype"
+      || ownerText === "HTMLElement.prototype"
+      || ownerText === "globalThis.HTMLElement.prototype"
+      || Boolean(nativeDomPrototypeKind(owner, env))
+    );
+    const nodePrototype = (
+      ownerText === "Node.prototype"
+      || ownerText === "globalThis.Node.prototype"
+      || elementPrototype
+    );
+
+    if (
+      ["append", "prepend", "replaceChildren"].includes(method)
+      && elementPrototype
+    ) {
+      return { method, targetIndexes: "all" };
+    }
+    if (
+      ["appendChild", "insertBefore", "replaceChild"].includes(method)
+      && nodePrototype
+    ) {
+      return { method, targetIndexes: [0] };
+    }
+    return null;
   }
 
   function nativeDomOwnershipLifecycleInfo(expression, env = new Map()) {
@@ -5505,6 +5934,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       const firstArg = node.arguments[0];
 
       reportDirectFormOwnershipLifecycle(node, env);
+      reportDirectFormOwnershipRelocation(node, env);
 
       if (isEvalReference(expression, env)) {
         report(node, "dynamic-code-eval");
@@ -5607,6 +6037,10 @@ function auditImperativeNavigation(source, path, options = {}) {
           indirectTarget,
           env,
         );
+        const ownershipRelocationCapability = nativeDomOwnershipRelocationInfo(
+          indirectTarget,
+          env,
+        );
 
         const indirectRecognized = Boolean(
           nativeSetter
@@ -5618,6 +6052,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           || setCustomValidityCapability
           || activationCapability
           || ownershipLifecycleCapability
+          || ownershipRelocationCapability
           || isDocumentHtmlWriteReference(indirectTarget, env)
           || isInsertAdjacentHtmlReference(indirectTarget, env)
           || isRouterTraversalReference(indirectTarget, env)
@@ -5637,6 +6072,23 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (indirectInvocation.dynamic && indirectRecognized) {
           report(node, "native-invoke-dynamic-arguments");
         } else if (!indirectInvocation.dynamic) {
+          if (ownershipRelocationCapability) {
+            const targetIndexes = ownershipRelocationCapability.targetIndexes === "all"
+              ? indirectArgs.map((_, index) => index)
+              : ownershipRelocationCapability.targetIndexes;
+            for (const index of targetIndexes) {
+              const target = indirectArgs[index];
+              if (!target) continue;
+              reportProgrammaticFormOwnershipRelocation(
+                node,
+                target,
+                indirectInvocation.thisArg,
+                ownershipRelocationCapability.method,
+                env,
+              );
+            }
+          }
+
           if (ownershipLifecycleCapability) {
             const lifecycleTarget = (
               ownershipLifecycleCapability.targetMode === "this"
@@ -8052,6 +8504,70 @@ function auditImperativeNavigation(source, path, options = {}) {
 {
   const selfTest = [
     'import { useRef } from "react";',
+    'const ownedRef = useRef<HTMLInputElement | null>(null);',
+    'const explicitRef = useRef<HTMLInputElement | null>(null);',
+    'const fieldsetRef = useRef<HTMLFieldSetElement | null>(null);',
+    'const Fixture = () => (<>',
+    '  <form id="form-a"><fieldset ref={fieldsetRef}><input id="owned" ref={ownedRef} /></fieldset></form>',
+    '  <form id="form-b"></form>',
+    '  <input id="explicit" ref={explicitRef} form="form-a" />',
+    '</>);',
+    'const formA = document.getElementById("form-a") as HTMLFormElement;',
+    'const formB = document.getElementById("form-b") as HTMLFormElement;',
+    'const outside = document.createElement("div");',
+    'formA.append(ownedRef.current!);',
+    'formA.appendChild(document.getElementById("owned")!);',
+    'fieldsetRef.current!.prepend(ownedRef.current!);',
+    'formA.insertBefore(ownedRef.current!, null);',
+    'formA.replaceChildren(ownedRef.current!);',
+    'formB.append(ownedRef.current!);',
+    'formB.appendChild(document.getElementById("owned")!);',
+    'formB.prepend(ownedRef.current!);',
+    'formB.insertBefore(ownedRef.current!, null);',
+    'formB.replaceChildren(ownedRef.current!);',
+    'outside.append(ownedRef.current!);',
+    'outside.appendChild(document.getElementById("owned")!);',
+    'outside.prepend(ownedRef.current!);',
+    'outside.insertBefore(ownedRef.current!, null);',
+    'outside.replaceChildren(ownedRef.current!);',
+    'outside.append(explicitRef.current!);',
+    'formB.append(explicitRef.current!);',
+    'const unknown = formA.elements.namedItem("email") as HTMLInputElement;',
+    'outside.append(unknown);',
+    'Element.prototype.append.call(formB, ownedRef.current!);',
+    'Node.prototype.appendChild.call(formB, ownedRef.current!);',
+    'Reflect.apply(Element.prototype.prepend, outside, [ownedRef.current!]);',
+    'Reflect.apply(Node.prototype.insertBefore, outside, [ownedRef.current!, null]);',
+    'const boundReplaceChildren = Element.prototype.replaceChildren.bind(formB, ownedRef.current!);',
+    'boundReplaceChildren();',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "form-ownership-relocation.self-test.tsx",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 16
+    || counts["programmatic-ownership-reassociate"] !== 8
+    || counts["programmatic-ownership-escape"] !== 7
+    || counts["programmatic-ownership-relocation-dynamic"] !== 1
+  ) {
+    throw new Error("Form ownership relocation authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'import { useRef } from "react";',
     'const inputRef = useRef<HTMLInputElement | null>(null);',
     'const detachedRef = useRef<HTMLInputElement | null>(null);',
     'const Fixture = () => (<>',
@@ -8900,6 +9416,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       formControlParticipationPolicy: true,
       formOwnershipProvenancePolicy: true,
       formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
     },
   ));
 
@@ -8946,8 +9463,30 @@ if (nativeInvocationViolations.length > 0) {
   );
 }
 
+const programmaticFormOwnershipRelocationViolations = allImperativeNavigationViolations
+  .filter((violation) =>
+    violation.kind === "programmatic-ownership-reassociate"
+    || violation.kind === "programmatic-ownership-escape"
+    || violation.kind === "programmatic-ownership-relocation-dynamic"
+  );
+if (programmaticFormOwnershipRelocationViolations.length > 0) {
+  throw new Error(
+    "Programmatic form ownership relocation authority failed:\n"
+    + programmaticFormOwnershipRelocationViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
+      )
+      .join("\n"),
+  );
+}
+
 const programmaticFormOwnershipLifecycleViolations = allImperativeNavigationViolations
-  .filter((violation) => violation.kind.startsWith("programmatic-ownership-"));
+  .filter((violation) =>
+    violation.kind === "programmatic-ownership-detach"
+    || violation.kind === "programmatic-ownership-replace"
+  );
 if (programmaticFormOwnershipLifecycleViolations.length > 0) {
   throw new Error(
     "Programmatic form ownership lifecycle authority failed:\n"
