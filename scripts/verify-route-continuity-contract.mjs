@@ -2763,8 +2763,6 @@ function auditImperativeNavigation(source, path, options = {}) {
         || normalized === "maxlength"
         || normalized === "step"
         || normalized === "type"
-        || normalized === "disabled"
-        || normalized === "readonly"
       ) return normalized;
     }
 
@@ -2773,13 +2771,11 @@ function auditImperativeNavigation(source, path, options = {}) {
         normalized === "required"
         || normalized === "minlength"
         || normalized === "maxlength"
-        || normalized === "disabled"
-        || normalized === "readonly"
       ) return normalized;
     }
 
     if (kind === "select") {
-      if (normalized === "required" || normalized === "disabled") return normalized;
+      if (normalized === "required") return normalized;
     }
 
     if (kind === "fieldset" && normalized === "disabled") return normalized;
@@ -7071,8 +7067,8 @@ function auditImperativeNavigation(source, path, options = {}) {
     return acc;
   }, {});
   if (
-    violations.length !== 28
-    || counts["programmatic-constraint-weaken"] !== 16
+    violations.length !== 20
+    || counts["programmatic-constraint-weaken"] !== 8
     || counts["programmatic-constraint-dynamic"] !== 1
     || counts["programmatic-constraint-mutation"] !== 11
   ) {
