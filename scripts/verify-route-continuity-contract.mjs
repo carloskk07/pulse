@@ -1855,6 +1855,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceFormConstraintIntegrityPolicy = (
     options.formConstraintIntegrityPolicy === true
   );
+  const enforceFormControlParticipationPolicy = (
+    options.formControlParticipationPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1935,8 +1938,11 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domToggleAttributeBindings = new Map();
   const domRemoveAttributeBindings = new Map();
   const domRemoveAttributeNSBindings = new Map();
+  const domSetCustomValidityBindings = new Map();
+  const domMethodBindingOwners = new Map();
   const domActivationMethodBindings = new Map();
   const domVerifiedReplayForms = new Set();
+  const domFormAssociatedControls = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -1981,6 +1987,14 @@ function auditImperativeNavigation(source, path, options = {}) {
   function addKindBinding(map, value, kind) {
     if (!value || !kind || map.get(value) === kind) return false;
     map.set(value, kind);
+    return true;
+  }
+
+  function setMethodBindingOwner(name, method, owner) {
+    if (!name || !method || !owner) return false;
+    const existing = domMethodBindingOwners.get(name);
+    if (existing && existing.method === method && existing.owner === owner) return false;
+    domMethodBindingOwners.set(name, { method, owner });
     return true;
   }
 
@@ -2681,6 +2695,40 @@ function auditImperativeNavigation(source, path, options = {}) {
     return Boolean(domRemoveAttributeNSElementKind(expression, env));
   }
 
+  function domSetCustomValidityElementKind(expression, env = new Map()) {
+    return domAttributeMethodElementKind(
+      expression,
+      "setCustomValidity",
+      domSetCustomValidityBindings,
+      env,
+    );
+  }
+
+  function isDomSetCustomValidityReference(expression, env = new Map()) {
+    return Boolean(domSetCustomValidityElementKind(expression, env));
+  }
+
+  function domMethodTargetExpression(expression, methodName, env = new Map()) {
+    if (!expression) return null;
+    if (ts.isIdentifier(expression) && domMethodBindingOwners.has(expression.text)) {
+      const binding = domMethodBindingOwners.get(expression.text);
+      if (binding?.method === methodName) return binding.owner;
+    }
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isIdentifier(resolved) && domMethodBindingOwners.has(resolved.text)) {
+      const binding = domMethodBindingOwners.get(resolved.text);
+      if (binding?.method === methodName) return binding.owner;
+    }
+    if (
+      (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      && propertyName(resolved) === methodName
+    ) {
+      return propertyOwner(resolved);
+    }
+    return null;
+  }
+
   function domNavigationPropertyForKind(kind, property) {
     const normalized = property?.toLowerCase();
     if ((kind === "a" || kind === "area" || kind === "base") && normalized === "href") {
@@ -2747,6 +2795,95 @@ function auditImperativeNavigation(source, path, options = {}) {
       && normalized === "formnovalidate"
     ) return "formnovalidate";
     return null;
+  }
+
+  function domParticipationPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if (!normalized) return null;
+
+    if (kind === "input" || kind === "textarea") {
+      if (
+        normalized === "disabled"
+        || normalized === "readonly"
+        || normalized === "name"
+        || normalized === "form"
+      ) return normalized;
+    }
+    if (kind === "select" || kind === "button") {
+      if (
+        normalized === "disabled"
+        || normalized === "name"
+        || normalized === "form"
+      ) return normalized;
+    }
+    if (kind === "fieldset" && normalized === "form") return normalized;
+    return null;
+  }
+
+  function literalStaticString(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    return resolved && ts.isStringLiteralLike(resolved) ? resolved.text : null;
+  }
+
+  function reportProgrammaticFormParticipationMutation(
+    node,
+    targetExpression,
+    kind,
+    property,
+    value,
+    env = new Map(),
+    mode = "property",
+  ) {
+    if (!enforceFormControlParticipationPolicy) return false;
+    if (!isProvenFormAssociatedControl(targetExpression, env)) return false;
+    const participationProperty = domParticipationPropertyForKind(kind, property);
+    if (!participationProperty) return false;
+
+    if (participationProperty === "name") {
+      report(node, "programmatic-participation-identity", ["name"]);
+      return true;
+    }
+    if (participationProperty === "form") {
+      report(node, "programmatic-participation-association", ["form"]);
+      return true;
+    }
+    if (mode === "set-attribute") {
+      report(node, "programmatic-participation-weaken", [participationProperty]);
+      return true;
+    }
+    if (mode === "remove-attribute") return true;
+
+    const state = literalValidationBoolean(value, env);
+    if (state === null) {
+      report(node, "programmatic-participation-dynamic", [participationProperty]);
+      return true;
+    }
+    if (state === true) {
+      report(node, "programmatic-participation-weaken", [participationProperty]);
+    }
+    return true;
+  }
+
+  function reportProgrammaticCustomValidityMutation(
+    node,
+    targetExpression,
+    kind,
+    value,
+    env = new Map(),
+  ) {
+    if (!enforceFormControlParticipationPolicy) return false;
+    if (
+      !["input", "textarea", "select", "button", "fieldset"].includes(kind)
+      || !isProvenFormAssociatedControl(targetExpression, env)
+    ) return false;
+
+    const literal = literalStaticString(value, env);
+    if (literal === null) {
+      report(node, "programmatic-participation-dynamic", ["custom-validity"]);
+    } else if (literal.length === 0) {
+      report(node, "programmatic-participation-validity-clear", ["custom-validity"]);
+    }
+    return true;
   }
 
   function domConstraintPropertyForKind(kind, property) {
@@ -3331,6 +3468,15 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (domOwnerKind && method === "removeAttributeNS") {
           changed = addKindBinding(domRemoveAttributeNSBindings, local, domOwnerKind) || changed;
         }
+        if (domOwnerKind && method === "setCustomValidity") {
+          changed = addKindBinding(domSetCustomValidityBindings, local, domOwnerKind) || changed;
+        }
+        if (
+          domOwnerKind
+          && ["setAttribute", "setAttributeNS", "toggleAttribute", "removeAttribute", "removeAttributeNS", "setCustomValidity"].includes(method)
+        ) {
+          changed = setMethodBindingOwner(local, method, owner) || changed;
+        }
         const activationMethod = domActivationMethodForKind(domOwnerKind, method);
         if (activationMethod) {
           const existing = domActivationMethodBindings.get(local);
@@ -3419,6 +3565,17 @@ function auditImperativeNavigation(source, path, options = {}) {
             local,
             domRemoveAttributeNSBindings.get(initializer.text),
           ) || changed;
+        }
+        if (domSetCustomValidityBindings.has(initializer.text)) {
+          changed = addKindBinding(
+            domSetCustomValidityBindings,
+            local,
+            domSetCustomValidityBindings.get(initializer.text),
+          ) || changed;
+        }
+        if (domMethodBindingOwners.has(initializer.text)) {
+          const binding = domMethodBindingOwners.get(initializer.text);
+          changed = setMethodBindingOwner(local, binding.method, binding.owner) || changed;
         }
         if (domVerifiedReplayForms.has(initializer.text)) {
           changed = addBinding(domVerifiedReplayForms, local) || changed;
@@ -3526,6 +3683,19 @@ function auditImperativeNavigation(source, path, options = {}) {
             domNavigationElementKind(initializer),
           ) || changed;
         }
+        if (fromDomNavigationElement && sourceName === "setCustomValidity") {
+          changed = addKindBinding(
+            domSetCustomValidityBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
+        }
+        if (
+          fromDomNavigationElement
+          && ["setAttribute", "setAttributeNS", "toggleAttribute", "removeAttribute", "removeAttributeNS", "setCustomValidity"].includes(sourceName)
+        ) {
+          changed = setMethodBindingOwner(localName, sourceName, initializer) || changed;
+        }
         if (fromDomNavigationElement) {
           const kind = domNavigationElementKind(initializer);
           const activationMethod = domActivationMethodForKind(kind, sourceName);
@@ -3552,6 +3722,110 @@ function auditImperativeNavigation(source, path, options = {}) {
     for (const declaration of declarations) {
       changed = discoverDeclaration(declaration) || changed;
     }
+    if (!changed) break;
+  }
+
+  function isFormParticipatingControlKind(kind) {
+    return ["input", "textarea", "select", "button", "fieldset"].includes(kind);
+  }
+
+  function isFormElementsExpression(expression, env = new Map()) {
+    if (!expression) return false;
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "elements"
+    ) return false;
+    return domNavigationElementKind(propertyOwner(resolved), env) === "form";
+  }
+
+  function isProvenFormAssociatedControl(expression, env = new Map(), seen = new Set()) {
+    if (!expression) return false;
+    if (ts.isIdentifier(expression) && domFormAssociatedControls.has(expression.text)) return true;
+
+    if (
+      ts.isAsExpression(expression)
+      || ts.isTypeAssertionExpression(expression)
+      || ts.isNonNullExpression(expression)
+      || ts.isParenthesizedExpression(expression)
+    ) {
+      return isProvenFormAssociatedControl(expression.expression, env, seen);
+    }
+
+    const resolved = resolveDataExpression(expression, env, seen);
+    if (!resolved) return false;
+    if (resolved !== expression) return isProvenFormAssociatedControl(resolved, env, seen);
+    if (ts.isIdentifier(resolved)) return domFormAssociatedControls.has(resolved.text);
+
+    if (ts.isElementAccessExpression(resolved)) {
+      return isFormElementsExpression(resolved.expression, env);
+    }
+
+    if (!ts.isCallExpression(resolved)) return false;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) return false;
+    const method = propertyName(callee);
+    return (
+      (method === "item" || method === "namedItem")
+      && isFormElementsExpression(propertyOwner(callee), env)
+    );
+  }
+
+  function markFormAssociatedExpression(expression, env = new Map()) {
+    if (!expression) return false;
+    let target = expression;
+    while (
+      target
+      && (
+        ts.isAsExpression(target)
+        || ts.isTypeAssertionExpression(target)
+        || ts.isNonNullExpression(target)
+        || ts.isParenthesizedExpression(target)
+      )
+    ) target = target.expression;
+    if (!ts.isIdentifier(target)) return false;
+    if (!isFormParticipatingControlKind(domNavigationElementKind(target, env))) return false;
+    return addBinding(domFormAssociatedControls, target.text);
+  }
+
+  function discoverFormControlAssociations(node) {
+    let changed = false;
+
+    if (
+      ts.isVariableDeclaration(node)
+      && ts.isIdentifier(node.name)
+      && node.initializer
+      && isFormParticipatingControlKind(domNavigationElementKind(node.name))
+      && isProvenFormAssociatedControl(node.initializer)
+    ) {
+      changed = addBinding(domFormAssociatedControls, node.name.text) || changed;
+    }
+
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
+        const method = propertyName(callee);
+        const owner = propertyOwner(callee);
+        if (
+          domNavigationElementKind(owner) === "form"
+          && ["append", "appendChild", "prepend", "insertBefore", "replaceChildren"].includes(method)
+        ) {
+          for (const argument of node.arguments) {
+            changed = markFormAssociatedExpression(argument) || changed;
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, (child) => {
+      changed = discoverFormControlAssociations(child) || changed;
+    });
+    return changed;
+  }
+
+  for (let pass = 0; pass < declarations.length + 2; pass += 1) {
+    const changed = discoverFormControlAssociations(sourceFile);
     if (!changed) break;
   }
 
@@ -4018,12 +4292,14 @@ function auditImperativeNavigation(source, path, options = {}) {
     const submissionTransportProperty = domSubmissionTransportPropertyForKind(kind, propertyText);
     const validationBypassProperty = domValidationBypassPropertyForKind(kind, propertyText);
     const constraintProperty = domConstraintPropertyForKind(kind, propertyText);
+    const participationProperty = domParticipationPropertyForKind(kind, propertyText);
     return kind && (
       navigationProperty
       || targetContextProperty
       || submissionTransportProperty
       || validationBypassProperty
       || constraintProperty
+      || participationProperty
     )
       ? {
           kind,
@@ -4033,11 +4309,13 @@ function auditImperativeNavigation(source, path, options = {}) {
             ?? submissionTransportProperty
             ?? validationBypassProperty
             ?? constraintProperty
+            ?? participationProperty
           ),
           targetContext: Boolean(targetContextProperty),
           submissionTransport: Boolean(submissionTransportProperty),
           validationBypass: Boolean(validationBypassProperty),
           constraintIntegrity: Boolean(constraintProperty),
+          participationIntegrity: Boolean(participationProperty),
         }
       : null;
   }
@@ -4086,6 +4364,16 @@ function auditImperativeNavigation(source, path, options = {}) {
     return isNativeDomAttributeMethodReference(expression, "removeAttributeNS", env);
   }
 
+  function isNativeDomSetCustomValidityReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (
+      !resolved
+      || !(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
+      || propertyName(resolved) !== "setCustomValidity"
+    ) return false;
+    return Boolean(nativeDomPrototypeKind(propertyOwner(resolved), env));
+  }
+
   function isBoundNavigationCapability(expression, env = new Map()) {
     const bound = boundCallableInfo(expression, env);
     if (!bound?.target) return false;
@@ -4102,6 +4390,8 @@ function auditImperativeNavigation(source, path, options = {}) {
       || isNativeDomRemoveAttributeReference(target, env)
       || isDomRemoveAttributeNSReference(target, env)
       || isNativeDomRemoveAttributeNSReference(target, env)
+      || isDomSetCustomValidityReference(target, env)
+      || isNativeDomSetCustomValidityReference(target, env)
       || domActivationBinding(target, env)
       || nativeDomActivationInfo(target, env)
       || isDocumentHtmlWriteReference(target, env)
@@ -4152,6 +4442,8 @@ function auditImperativeNavigation(source, path, options = {}) {
       || isNativeDomRemoveAttributeReference(resolved, env)
       || isDomRemoveAttributeNSReference(resolved, env)
       || isNativeDomRemoveAttributeNSReference(resolved, env)
+      || isDomSetCustomValidityReference(resolved, env)
+      || isNativeDomSetCustomValidityReference(resolved, env)
       || domActivationBinding(resolved, env)
       || nativeDomActivationInfo(resolved, env)
       || nativeDomSetterInfo(resolved, env)
@@ -4527,7 +4819,26 @@ function auditImperativeNavigation(source, path, options = {}) {
     return propertyAssignmentByName(resolved, "value");
   }
 
-  function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
+  function reportReflectiveDomProperty(
+    node,
+    targetExpression,
+    kind,
+    propertyNameText,
+    value,
+    env,
+    callStack,
+  ) {
+    if (
+      reportProgrammaticFormParticipationMutation(
+        node,
+        targetExpression,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
     if (
       reportProgrammaticFormConstraintMutation(
         node,
@@ -5362,6 +5673,7 @@ function auditImperativeNavigation(source, path, options = {}) {
               }
               reportReflectiveDomProperty(
                 node,
+                node.arguments[0],
                 reflectiveTargetKind,
                 propertyNameText,
                 value,
@@ -5382,6 +5694,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           } else {
             reportReflectiveDomProperty(
               node,
+              node.arguments[0],
               reflectiveTargetKind,
               propertyNameText,
               node.arguments[2],
@@ -5401,6 +5714,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           } else {
             reportReflectiveDomProperty(
               node,
+              node.arguments[0],
               reflectiveTargetKind,
               propertyNameText,
               descriptorNavigationValue(node.arguments[2], env),
@@ -5428,6 +5742,7 @@ function auditImperativeNavigation(source, path, options = {}) {
               }
               reportReflectiveDomProperty(
                 node,
+                node.arguments[0],
                 reflectiveTargetKind,
                 propertyNameText,
                 descriptorNavigationValue(descriptor, env),
