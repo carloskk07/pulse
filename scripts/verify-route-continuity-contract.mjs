@@ -1566,6 +1566,108 @@ function auditFormSubmissionTransport(source, path) {
   }
 }
 
+function auditFormValidationBypass(source, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const violations = [];
+
+  function report(node, kind) {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+    violations.push({
+      kind,
+      path,
+      line: position.line + 1,
+      column: position.character + 1,
+    });
+  }
+
+  function booleanAttributeState(attribute) {
+    if (!attribute) return "absent";
+    if (!attribute.initializer) return "enabled";
+    if (ts.isStringLiteral(attribute.initializer)) return "enabled";
+    if (
+      !ts.isJsxExpression(attribute.initializer)
+      || !attribute.initializer.expression
+    ) return "dynamic";
+
+    const expression = attribute.initializer.expression;
+    if (expression.kind === ts.SyntaxKind.FalseKeyword) return "disabled";
+    if (expression.kind === ts.SyntaxKind.TrueKeyword) return "enabled";
+    return "dynamic";
+  }
+
+  function validateBypass(node, attribute, baseKind) {
+    const state = booleanAttributeState(attribute);
+    if (state === "enabled") {
+      report(node, baseKind + "-bypass");
+    } else if (state === "dynamic") {
+      report(node, baseKind + "-dynamic");
+    }
+  }
+
+  function visit(node) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tag = node.tagName.getText(sourceFile).toLowerCase();
+      if (tag === "form") {
+        validateBypass(
+          node,
+          jsxAttribute(node, "noValidate") ?? jsxAttribute(node, "novalidate"),
+          "form-validation",
+        );
+      } else if (tag === "button" || tag === "input") {
+        validateBypass(
+          node,
+          jsxAttribute(node, "formNoValidate") ?? jsxAttribute(node, "formnovalidate"),
+          "submitter-validation",
+        );
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return violations;
+}
+
+{
+  const selfTest = [
+    'const dynamicValidation = chooseValidationMode();',
+    'const Fixture = () => (<>',
+    '  <form noValidate />',
+    '  <form noValidate={false} />',
+    '  <form noValidate={true} />',
+    '  <form noValidate={dynamicValidation} />',
+    '  <form novalidate="false" />',
+    '  <button formNoValidate />',
+    '  <button formNoValidate={false} />',
+    '  <input formNoValidate={true} />',
+    '  <input formNoValidate={dynamicValidation} />',
+    '</>);',
+  ].join("\n");
+  const violations = auditFormValidationBypass(
+    selfTest,
+    "form-validation-bypass.self-test.tsx",
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["form-validation-bypass"] !== 3
+    || counts["form-validation-dynamic"] !== 1
+    || counts["submitter-validation-bypass"] !== 2
+    || counts["submitter-validation-dynamic"] !== 1
+  ) {
+    throw new Error("Form validation bypass authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
 function auditVerifiedReplayForms(source, path) {
   const sourceFile = ts.createSourceFile(
     path,
@@ -1746,6 +1848,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   );
   const enforceFormSubmissionTransportPolicy = (
     options.formSubmissionTransportPolicy === true
+  );
+  const enforceFormValidationBypassPolicy = (
+    options.formValidationBypassPolicy === true
   );
   const sourceFile = ts.createSourceFile(
     path,
@@ -2555,6 +2660,51 @@ function auditImperativeNavigation(source, path, options = {}) {
       return "enctype";
     }
     return null;
+  }
+
+  function domValidationBypassPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if (kind === "form" && normalized === "novalidate") return "novalidate";
+    if (
+      (kind === "button" || kind === "input")
+      && normalized === "formnovalidate"
+    ) return "formnovalidate";
+    return null;
+  }
+
+  function literalValidationBoolean(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (resolved.kind === ts.SyntaxKind.FalseKeyword) return false;
+    if (resolved.kind === ts.SyntaxKind.TrueKeyword) return true;
+    return null;
+  }
+
+  function reportProgrammaticFormValidationBypass(
+    node,
+    kind,
+    property,
+    value,
+    env = new Map(),
+    attributePresence = false,
+  ) {
+    if (!enforceFormValidationBypassPolicy) return false;
+    const validationProperty = domValidationBypassPropertyForKind(kind, property);
+    if (!validationProperty) return false;
+
+    if (attributePresence) {
+      report(node, "programmatic-validation-bypass", [validationProperty]);
+      return true;
+    }
+
+    const state = literalValidationBoolean(value, env);
+    if (state === false) return true;
+    if (state === true) {
+      report(node, "programmatic-validation-bypass", [validationProperty]);
+    } else {
+      report(node, "programmatic-validation-dynamic", [validationProperty]);
+    }
+    return true;
   }
 
   function literalSubmissionTransport(expression, env = new Map()) {
@@ -3586,12 +3736,24 @@ function auditImperativeNavigation(source, path, options = {}) {
     const navigationProperty = domNavigationPropertyForKind(kind, propertyText);
     const targetContextProperty = domTargetContextPropertyForKind(kind, propertyText);
     const submissionTransportProperty = domSubmissionTransportPropertyForKind(kind, propertyText);
-    return kind && (navigationProperty || targetContextProperty || submissionTransportProperty)
+    const validationBypassProperty = domValidationBypassPropertyForKind(kind, propertyText);
+    return kind && (
+      navigationProperty
+      || targetContextProperty
+      || submissionTransportProperty
+      || validationBypassProperty
+    )
       ? {
           kind,
-          property: navigationProperty ?? targetContextProperty ?? submissionTransportProperty,
+          property: (
+            navigationProperty
+            ?? targetContextProperty
+            ?? submissionTransportProperty
+            ?? validationBypassProperty
+          ),
           targetContext: Boolean(targetContextProperty),
           submissionTransport: Boolean(submissionTransportProperty),
+          validationBypass: Boolean(validationBypassProperty),
         }
       : null;
   }
@@ -4043,6 +4205,16 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
     if (
+      reportProgrammaticFormValidationBypass(
+        node,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
+    if (
       reportProgrammaticDomSubmissionTransport(
         node,
         kind,
@@ -4280,11 +4452,28 @@ function auditImperativeNavigation(source, path, options = {}) {
                 report(node, "native-invoke-dom-dynamic-target");
               }
             } else if (
-              (method === "submit" || method === "requestSubmit")
+              method === "submit"
               && actualKind === "form"
               && (!expectedKind || expectedKind === "form")
             ) {
-              report(node, "native-invoke-dom-activation");
+              if (enforceFormValidationBypassPolicy) {
+                report(node, "programmatic-validation-submit");
+              } else {
+                report(node, "native-invoke-dom-activation");
+              }
+            } else if (
+              method === "requestSubmit"
+              && actualKind === "form"
+              && (!expectedKind || expectedKind === "form")
+            ) {
+              if (
+                enforceFormValidationBypassPolicy
+                && indirectArgs.length > 0
+              ) {
+                report(node, "programmatic-validation-submitter");
+              } else {
+                report(node, "native-invoke-dom-activation");
+              }
             } else if (
               method === "click"
               && validClickKinds.includes(actualKind)
@@ -4299,6 +4488,17 @@ function auditImperativeNavigation(source, path, options = {}) {
               report(node, "native-invoke-dom-dynamic-target");
             } else if (indirectThisKind === nativeSetter.kind) {
               if (
+                nativeSetter.validationBypass
+                && reportProgrammaticFormValidationBypass(
+                  node,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Form validation bypass policy handled above.
+              } else if (
                 nativeSetter.submissionTransport
                 && reportProgrammaticDomSubmissionTransport(
                   node,
@@ -4353,6 +4553,10 @@ function auditImperativeNavigation(source, path, options = {}) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
+                const validationBypassProperty = domValidationBypassPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const submissionTransportProperty = domSubmissionTransportPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
@@ -4366,6 +4570,18 @@ function auditImperativeNavigation(source, path, options = {}) {
                   attributeName.text,
                 );
                 if (
+                  validationBypassProperty
+                  && reportProgrammaticFormValidationBypass(
+                    node,
+                    indirectThisKind,
+                    validationBypassProperty,
+                    target,
+                    env,
+                    true,
+                  )
+                ) {
+                  // Boolean validation-bypass attributes are enabled by presence.
+                } else if (
                   submissionTransportProperty
                   && reportProgrammaticDomSubmissionTransport(
                     node,
@@ -4561,13 +4777,22 @@ function auditImperativeNavigation(source, path, options = {}) {
 
       const directActivation = domActivationBinding(expression, env);
       if (directActivation) {
-        if (directActivation.method === "submit" || directActivation.method === "requestSubmit") {
-          const verifiedReplay = (
-            directActivation.method === "requestSubmit"
-            && directActivation.verifiedReplay === true
-            && node.arguments.length === 0
-          );
-          if (!verifiedReplay) report(node, "dom-form-submit");
+        if (directActivation.method === "submit") {
+          if (enforceFormValidationBypassPolicy) {
+            report(node, "programmatic-validation-submit");
+          } else {
+            report(node, "dom-form-submit");
+          }
+        } else if (directActivation.method === "requestSubmit") {
+          if (enforceFormValidationBypassPolicy && node.arguments.length > 0) {
+            report(node, "programmatic-validation-submitter");
+          } else {
+            const verifiedReplay = (
+              directActivation.verifiedReplay === true
+              && node.arguments.length === 0
+            );
+            if (!verifiedReplay) report(node, "dom-form-submit");
+          }
         } else if (directActivation.method === "click") {
           report(node, "dom-click-activation");
         }
@@ -4699,6 +4924,10 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
+          const validationBypassProperty = domValidationBypassPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const submissionTransportProperty = domSubmissionTransportPropertyForKind(
             kind,
             attributeName.text,
@@ -4709,6 +4938,18 @@ function auditImperativeNavigation(source, path, options = {}) {
           );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (
+            validationBypassProperty
+            && reportProgrammaticFormValidationBypass(
+              node,
+              kind,
+              validationBypassProperty,
+              target,
+              env,
+              true,
+            )
+          ) {
+            // Boolean validation-bypass attributes are enabled by presence.
+          } else if (
             submissionTransportProperty
             && reportProgrammaticDomSubmissionTransport(
               node,
@@ -4989,6 +5230,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       const leftOwner = propertyOwner(node.left);
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
+      const validationBypassProperty = domValidationBypassPropertyForKind(
+        domKind,
+        leftProperty,
+      );
       const submissionTransportProperty = domSubmissionTransportPropertyForKind(
         domKind,
         leftProperty,
@@ -4997,6 +5242,17 @@ function auditImperativeNavigation(source, path, options = {}) {
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
 
       if (
+        validationBypassProperty
+        && reportProgrammaticFormValidationBypass(
+          node,
+          domKind,
+          validationBypassProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Form validation bypass policy handled above.
+      } else if (
         submissionTransportProperty
         && reportProgrammaticDomSubmissionTransport(
           node,
@@ -6070,6 +6326,51 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const dynamicValidation = chooseValidationMode();',
+    'const form = document.createElement("form");',
+    'form.noValidate = true;',
+    'form.noValidate = false;',
+    'form.noValidate = dynamicValidation;',
+    'form.setAttribute("novalidate", "false");',
+    'Object.assign(form, { noValidate: true });',
+    'Reflect.set(form, "noValidate", false);',
+    'Object.defineProperty(form, "noValidate", { value: true });',
+    'Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "noValidate").set.call(form, true);',
+    'Object.getOwnPropertyDescriptor(HTMLFormElement.prototype, "noValidate").set.call(form, false);',
+    'const button = document.createElement("button");',
+    'button.formNoValidate = true;',
+    'button.formNoValidate = false;',
+    'button.setAttribute("formnovalidate", "");',
+    'const input = document.createElement("input");',
+    'input.formNoValidate = dynamicValidation;',
+    'Reflect.set(input, "formNoValidate", true);',
+    'form.submit();',
+    'form.requestSubmit(button);',
+    'HTMLFormElement.prototype.submit.call(form);',
+    'Reflect.apply(HTMLFormElement.prototype.requestSubmit, form, [button]);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-form-validation-bypass.self-test.ts",
+    { formValidationBypassPolicy: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 14
+    || counts["programmatic-validation-bypass"] !== 8
+    || counts["programmatic-validation-dynamic"] !== 2
+    || counts["programmatic-validation-submit"] !== 2
+    || counts["programmatic-validation-submitter"] !== 2
+  ) {
+    throw new Error("Programmatic form validation bypass authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'import { getExternalNavigationHref } from "@/lib/route-semantics";',
     'const safeExternal = getExternalNavigationHref("https://example.com/safe");',
     'const dynamicTarget = chooseTarget();',
@@ -6594,6 +6895,21 @@ if (formSubmissionTransportViolations.length > 0) {
   );
 }
 
+const formValidationBypassViolations = SEMANTIC_LINK_ROOTS
+  .flatMap(collectTsxFiles)
+  .flatMap((path) => auditFormValidationBypass(read(path), path));
+if (formValidationBypassViolations.length > 0) {
+  throw new Error(
+    "Form validation bypass authority failed:\n"
+    + formValidationBypassViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+      )
+      .join("\n"),
+  );
+}
+
 const nativeAnchorViolations = SEMANTIC_LINK_ROOTS
   .flatMap(collectTsxFiles)
   .flatMap((path) => auditNativeAnchors(read(path), path));
@@ -6636,6 +6952,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
     {
       programmaticTargetContextPolicy: true,
       formSubmissionTransportPolicy: true,
+      formValidationBypassPolicy: true,
     },
   ));
 
@@ -6677,6 +6994,21 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormValidationBypassViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("programmatic-validation-"));
+if (programmaticFormValidationBypassViolations.length > 0) {
+  throw new Error(
+    "Programmatic form validation bypass authority failed:\n"
+    + programmaticFormValidationBypassViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
@@ -6746,6 +7078,7 @@ const imperativeNavigationViolations = allImperativeNavigationViolations
   .filter((violation) =>
     !violation.kind.startsWith("programmatic-target-")
     && !violation.kind.startsWith("programmatic-form-")
+    && !violation.kind.startsWith("programmatic-validation-")
     && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
