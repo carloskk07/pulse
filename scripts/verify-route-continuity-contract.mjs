@@ -1852,6 +1852,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceFormValidationBypassPolicy = (
     options.formValidationBypassPolicy === true
   );
+  const enforceFormConstraintIntegrityPolicy = (
+    options.formConstraintIntegrityPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1930,6 +1933,8 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domSetAttributeBindings = new Map();
   const domSetAttributeNSBindings = new Map();
   const domToggleAttributeBindings = new Map();
+  const domRemoveAttributeBindings = new Map();
+  const domRemoveAttributeNSBindings = new Map();
   const domActivationMethodBindings = new Map();
   const domVerifiedReplayForms = new Set();
   const declarations = [];
@@ -2000,6 +2005,9 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (normalized === "HTMLFormElement") return "form";
     if (normalized === "HTMLButtonElement") return "button";
     if (normalized === "HTMLInputElement") return "input";
+    if (normalized === "HTMLSelectElement") return "select";
+    if (normalized === "HTMLTextAreaElement") return "textarea";
+    if (normalized === "HTMLFieldSetElement") return "fieldset";
     if (normalized === "HTMLIFrameElement") return "iframe";
     if (normalized === "HTMLFrameElement") return "frame";
     if (normalized === "HTMLFencedFrameElement") return "fencedframe";
@@ -2397,7 +2405,7 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function domKindFromSelectorText(value) {
     if (typeof value !== "string") return null;
-    const match = value.match(/^\s*(a|area|base|form|button|input|iframe|frame|fencedframe|object|embed)(?=$|[.#:\[\s>+~])/i);
+    const match = value.match(/^\s*(a|area|base|form|button|input|select|textarea|fieldset|iframe|frame|fencedframe|object|embed)(?=$|[.#:\[\s>+~])/i);
     return match ? match[1].toLowerCase() : null;
   }
 
@@ -2453,7 +2461,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       const tag = resolveDataExpression(resolved.arguments[0], env);
       if (!tag || !ts.isStringLiteralLike(tag)) return null;
       const kind = tag.text.toLowerCase();
-      return ["a", "area", "base", "form", "button", "input", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
+      return ["a", "area", "base", "form", "button", "input", "select", "textarea", "fieldset", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
         ? kind
         : null;
     }
@@ -2582,7 +2590,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     const tag = resolveDataExpression(resolved.arguments[0], env);
     if (!tag || !ts.isStringLiteralLike(tag)) return null;
     const kind = tag.text.toLowerCase();
-    return ["a", "area", "base", "form", "button", "input", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
+    return ["a", "area", "base", "form", "button", "input", "select", "textarea", "fieldset", "iframe", "frame", "fencedframe", "object", "embed"].includes(kind)
       ? kind
       : null;
   }
@@ -2645,6 +2653,32 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function isDomToggleAttributeReference(expression, env = new Map()) {
     return Boolean(domToggleAttributeElementKind(expression, env));
+  }
+
+  function domRemoveAttributeElementKind(expression, env = new Map()) {
+    return domAttributeMethodElementKind(
+      expression,
+      "removeAttribute",
+      domRemoveAttributeBindings,
+      env,
+    );
+  }
+
+  function isDomRemoveAttributeReference(expression, env = new Map()) {
+    return Boolean(domRemoveAttributeElementKind(expression, env));
+  }
+
+  function domRemoveAttributeNSElementKind(expression, env = new Map()) {
+    return domAttributeMethodElementKind(
+      expression,
+      "removeAttributeNS",
+      domRemoveAttributeNSBindings,
+      env,
+    );
+  }
+
+  function isDomRemoveAttributeNSReference(expression, env = new Map()) {
+    return Boolean(domRemoveAttributeNSElementKind(expression, env));
   }
 
   function domNavigationPropertyForKind(kind, property) {
@@ -2715,12 +2749,117 @@ function auditImperativeNavigation(source, path, options = {}) {
     return null;
   }
 
+  function domConstraintPropertyForKind(kind, property) {
+    const normalized = property?.toLowerCase();
+    if (!normalized) return null;
+
+    if (kind === "input") {
+      if (
+        normalized === "required"
+        || normalized === "pattern"
+        || normalized === "min"
+        || normalized === "max"
+        || normalized === "minlength"
+        || normalized === "maxlength"
+        || normalized === "step"
+        || normalized === "type"
+        || normalized === "disabled"
+        || normalized === "readonly"
+      ) return normalized;
+    }
+
+    if (kind === "textarea") {
+      if (
+        normalized === "required"
+        || normalized === "minlength"
+        || normalized === "maxlength"
+        || normalized === "disabled"
+        || normalized === "readonly"
+      ) return normalized;
+    }
+
+    if (kind === "select") {
+      if (normalized === "required" || normalized === "disabled") return normalized;
+    }
+
+    if (kind === "fieldset" && normalized === "disabled") return normalized;
+    return null;
+  }
+
   function literalValidationBoolean(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return null;
     if (resolved.kind === ts.SyntaxKind.FalseKeyword) return false;
     if (resolved.kind === ts.SyntaxKind.TrueKeyword) return true;
     return null;
+  }
+
+  function reportProgrammaticFormConstraintMutation(
+    node,
+    kind,
+    property,
+    value,
+    env = new Map(),
+    mode = "property",
+  ) {
+    if (!enforceFormConstraintIntegrityPolicy) return false;
+    const constraintProperty = domConstraintPropertyForKind(kind, property);
+    if (!constraintProperty) return false;
+
+    const booleanConstraint = (
+      constraintProperty === "required"
+      || constraintProperty === "disabled"
+      || constraintProperty === "readonly"
+    );
+
+    if (!booleanConstraint) {
+      report(node, "programmatic-constraint-mutation", [constraintProperty]);
+      return true;
+    }
+
+    if (mode === "set-attribute") {
+      if (constraintProperty === "required") return true;
+      report(node, "programmatic-constraint-weaken", [constraintProperty]);
+      return true;
+    }
+
+    if (mode === "remove-attribute") {
+      if (constraintProperty === "disabled" || constraintProperty === "readonly") return true;
+      report(node, "programmatic-constraint-weaken", [constraintProperty]);
+      return true;
+    }
+
+    const state = literalValidationBoolean(value, env);
+    if (mode === "toggle-attribute") {
+      if (state === null) {
+        report(node, "programmatic-constraint-dynamic", [constraintProperty]);
+        return true;
+      }
+      const safe = (
+        (constraintProperty === "required" && state === true)
+        || (
+          (constraintProperty === "disabled" || constraintProperty === "readonly")
+          && state === false
+        )
+      );
+      if (!safe) report(node, "programmatic-constraint-weaken", [constraintProperty]);
+      return true;
+    }
+
+    if (state === null) {
+      report(node, "programmatic-constraint-dynamic", [constraintProperty]);
+      return true;
+    }
+
+    const safe = (
+      (constraintProperty === "required" && state === true)
+      || (
+        (constraintProperty === "disabled" || constraintProperty === "readonly")
+        && state === false
+      )
+    );
+    if (!safe) report(node, "programmatic-constraint-weaken", [constraintProperty]);
+    return true;
   }
 
   function reportProgrammaticFormValidationBypass(
@@ -3190,6 +3329,12 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (domOwnerKind && method === "toggleAttribute") {
           changed = addKindBinding(domToggleAttributeBindings, local, domOwnerKind) || changed;
         }
+        if (domOwnerKind && method === "removeAttribute") {
+          changed = addKindBinding(domRemoveAttributeBindings, local, domOwnerKind) || changed;
+        }
+        if (domOwnerKind && method === "removeAttributeNS") {
+          changed = addKindBinding(domRemoveAttributeNSBindings, local, domOwnerKind) || changed;
+        }
         const activationMethod = domActivationMethodForKind(domOwnerKind, method);
         if (activationMethod) {
           const existing = domActivationMethodBindings.get(local);
@@ -3263,6 +3408,20 @@ function auditImperativeNavigation(source, path, options = {}) {
             domToggleAttributeBindings,
             local,
             domToggleAttributeBindings.get(initializer.text),
+          ) || changed;
+        }
+        if (domRemoveAttributeBindings.has(initializer.text)) {
+          changed = addKindBinding(
+            domRemoveAttributeBindings,
+            local,
+            domRemoveAttributeBindings.get(initializer.text),
+          ) || changed;
+        }
+        if (domRemoveAttributeNSBindings.has(initializer.text)) {
+          changed = addKindBinding(
+            domRemoveAttributeNSBindings,
+            local,
+            domRemoveAttributeNSBindings.get(initializer.text),
           ) || changed;
         }
         if (domVerifiedReplayForms.has(initializer.text)) {
@@ -3353,6 +3512,20 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (fromDomNavigationElement && sourceName === "toggleAttribute") {
           changed = addKindBinding(
             domToggleAttributeBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
+        }
+        if (fromDomNavigationElement && sourceName === "removeAttribute") {
+          changed = addKindBinding(
+            domRemoveAttributeBindings,
+            localName,
+            domNavigationElementKind(initializer),
+          ) || changed;
+        }
+        if (fromDomNavigationElement && sourceName === "removeAttributeNS") {
+          changed = addKindBinding(
+            domRemoveAttributeNSBindings,
             localName,
             domNavigationElementKind(initializer),
           ) || changed;
@@ -3815,7 +3988,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return null;
     const text = resolved.getText(sourceFile);
-    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement|HTMLIFrameElement|HTMLFrameElement|HTMLFencedFrameElement|HTMLObjectElement|HTMLEmbedElement)\.prototype$/);
+    const match = text.match(/^(?:globalThis\.)?(HTMLAnchorElement|HTMLAreaElement|HTMLBaseElement|HTMLFormElement|HTMLButtonElement|HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|HTMLFieldSetElement|HTMLIFrameElement|HTMLFrameElement|HTMLFencedFrameElement|HTMLObjectElement|HTMLEmbedElement)\.prototype$/);
     return match ? domKindFromTypeNameText(match[1]) : null;
   }
 
@@ -3848,11 +4021,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     const targetContextProperty = domTargetContextPropertyForKind(kind, propertyText);
     const submissionTransportProperty = domSubmissionTransportPropertyForKind(kind, propertyText);
     const validationBypassProperty = domValidationBypassPropertyForKind(kind, propertyText);
+    const constraintProperty = domConstraintPropertyForKind(kind, propertyText);
     return kind && (
       navigationProperty
       || targetContextProperty
       || submissionTransportProperty
       || validationBypassProperty
+      || constraintProperty
     )
       ? {
           kind,
@@ -3861,10 +4036,12 @@ function auditImperativeNavigation(source, path, options = {}) {
             ?? targetContextProperty
             ?? submissionTransportProperty
             ?? validationBypassProperty
+            ?? constraintProperty
           ),
           targetContext: Boolean(targetContextProperty),
           submissionTransport: Boolean(submissionTransportProperty),
           validationBypass: Boolean(validationBypassProperty),
+          constraintIntegrity: Boolean(constraintProperty),
         }
       : null;
   }
@@ -3905,6 +4082,14 @@ function auditImperativeNavigation(source, path, options = {}) {
     return isNativeDomAttributeMethodReference(expression, "toggleAttribute", env);
   }
 
+  function isNativeDomRemoveAttributeReference(expression, env = new Map()) {
+    return isNativeDomAttributeMethodReference(expression, "removeAttribute", env);
+  }
+
+  function isNativeDomRemoveAttributeNSReference(expression, env = new Map()) {
+    return isNativeDomAttributeMethodReference(expression, "removeAttributeNS", env);
+  }
+
   function isBoundNavigationCapability(expression, env = new Map()) {
     const bound = boundCallableInfo(expression, env);
     if (!bound?.target) return false;
@@ -3917,6 +4102,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       || isNativeDomSetAttributeNSReference(target, env)
       || isDomToggleAttributeReference(target, env)
       || isNativeDomToggleAttributeReference(target, env)
+      || isDomRemoveAttributeReference(target, env)
+      || isNativeDomRemoveAttributeReference(target, env)
+      || isDomRemoveAttributeNSReference(target, env)
+      || isNativeDomRemoveAttributeNSReference(target, env)
       || domActivationBinding(target, env)
       || nativeDomActivationInfo(target, env)
       || isDocumentHtmlWriteReference(target, env)
@@ -3963,6 +4152,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       || isNativeDomSetAttributeNSReference(resolved, env)
       || isDomToggleAttributeReference(resolved, env)
       || isNativeDomToggleAttributeReference(resolved, env)
+      || isDomRemoveAttributeReference(resolved, env)
+      || isNativeDomRemoveAttributeReference(resolved, env)
+      || isDomRemoveAttributeNSReference(resolved, env)
+      || isNativeDomRemoveAttributeNSReference(resolved, env)
       || domActivationBinding(resolved, env)
       || nativeDomActivationInfo(resolved, env)
       || nativeDomSetterInfo(resolved, env)
@@ -4340,6 +4533,16 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function reportReflectiveDomProperty(node, kind, propertyNameText, value, env, callStack) {
     if (
+      reportProgrammaticFormConstraintMutation(
+        node,
+        kind,
+        propertyNameText,
+        value,
+        env,
+      )
+    ) return true;
+
+    if (
       reportProgrammaticFormValidationBypass(
         node,
         kind,
@@ -4556,6 +4759,14 @@ function auditImperativeNavigation(source, path, options = {}) {
           isDomToggleAttributeReference(indirectTarget, env)
           || isNativeDomToggleAttributeReference(indirectTarget, env)
         );
+        const removeAttributeCapability = (
+          isDomRemoveAttributeReference(indirectTarget, env)
+          || isNativeDomRemoveAttributeReference(indirectTarget, env)
+        );
+        const removeAttributeNSCapability = (
+          isDomRemoveAttributeNSReference(indirectTarget, env)
+          || isNativeDomRemoveAttributeNSReference(indirectTarget, env)
+        );
         const activationCapability = (
           domActivationBinding(indirectTarget, env)
           || nativeDomActivationInfo(indirectTarget, env)
@@ -4566,6 +4777,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           || setAttributeCapability
           || setAttributeNSCapability
           || toggleAttributeCapability
+          || removeAttributeCapability
+          || removeAttributeNSCapability
           || activationCapability
           || isDocumentHtmlWriteReference(indirectTarget, env)
           || isInsertAdjacentHtmlReference(indirectTarget, env)
@@ -4633,6 +4846,17 @@ function auditImperativeNavigation(source, path, options = {}) {
               report(node, "native-invoke-dom-dynamic-target");
             } else if (indirectThisKind === nativeSetter.kind) {
               if (
+                nativeSetter.constraintIntegrity
+                && reportProgrammaticFormConstraintMutation(
+                  node,
+                  nativeSetter.kind,
+                  nativeSetter.property,
+                  indirectFirstArg,
+                  env,
+                )
+              ) {
+                // Form constraint integrity policy handled above.
+              } else if (
                 nativeSetter.validationBypass
                 && reportProgrammaticFormValidationBypass(
                   node,
@@ -4704,11 +4928,27 @@ function auditImperativeNavigation(source, path, options = {}) {
               ) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else if (namespace === "standard") {
+                const constraintProperty = domConstraintPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const validationBypassProperty = domValidationBypassPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
                 );
                 if (
+                  constraintProperty
+                  && reportProgrammaticFormConstraintMutation(
+                    node,
+                    indirectThisKind,
+                    constraintProperty,
+                    target,
+                    env,
+                    "set-attribute",
+                  )
+                ) {
+                  // Standard-namespace form constraint mutation handled above.
+                } else if (
                   validationBypassProperty
                   && reportProgrammaticFormValidationBypass(
                     node,
@@ -4733,11 +4973,27 @@ function auditImperativeNavigation(source, path, options = {}) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
+                const constraintProperty = domConstraintPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const validationBypassProperty = domValidationBypassPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
                 );
                 if (
+                  constraintProperty
+                  && reportProgrammaticFormConstraintMutation(
+                    node,
+                    indirectThisKind,
+                    constraintProperty,
+                    indirectArgs[1],
+                    env,
+                    "toggle-attribute",
+                  )
+                ) {
+                  // Form constraint toggle handled above.
+                } else if (
                   validationBypassProperty
                   && reportProgrammaticFormValidationToggle(
                     node,
@@ -4753,6 +5009,52 @@ function auditImperativeNavigation(source, path, options = {}) {
             }
           }
 
+          if (removeAttributeNSCapability) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else {
+              const namespace = standardAttributeNamespace(indirectArgs[0], env);
+              const attributeName = resolveDataExpression(indirectArgs[1], env);
+              if (namespace === "dynamic") {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else if (
+                namespace === "standard"
+                && (!attributeName || !ts.isStringLiteralLike(attributeName))
+              ) {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else if (namespace === "standard") {
+                reportProgrammaticFormConstraintMutation(
+                  node,
+                  indirectThisKind,
+                  attributeName.text,
+                  null,
+                  env,
+                  "remove-attribute",
+                );
+              }
+            }
+          }
+
+          if (removeAttributeCapability) {
+            if (!indirectThisKind) {
+              report(node, "native-invoke-dom-dynamic-target");
+            } else {
+              const attributeName = resolveDataExpression(indirectArgs[0], env);
+              if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+                report(node, "native-invoke-dom-dynamic-attribute");
+              } else {
+                reportProgrammaticFormConstraintMutation(
+                  node,
+                  indirectThisKind,
+                  attributeName.text,
+                  null,
+                  env,
+                  "remove-attribute",
+                );
+              }
+            }
+          }
+
           if (setAttributeCapability) {
             if (!indirectThisKind) {
               report(node, "native-invoke-dom-dynamic-target");
@@ -4762,6 +5064,10 @@ function auditImperativeNavigation(source, path, options = {}) {
               if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
                 report(node, "native-invoke-dom-dynamic-attribute");
               } else {
+                const constraintProperty = domConstraintPropertyForKind(
+                  indirectThisKind,
+                  attributeName.text,
+                );
                 const validationBypassProperty = domValidationBypassPropertyForKind(
                   indirectThisKind,
                   attributeName.text,
@@ -4779,6 +5085,18 @@ function auditImperativeNavigation(source, path, options = {}) {
                   attributeName.text,
                 );
                 if (
+                  constraintProperty
+                  && reportProgrammaticFormConstraintMutation(
+                    node,
+                    indirectThisKind,
+                    constraintProperty,
+                    target,
+                    env,
+                    "set-attribute",
+                  )
+                ) {
+                  // Form constraint attribute mutation handled above.
+                } else if (
                   validationBypassProperty
                   && reportProgrammaticFormValidationBypass(
                     node,
@@ -5139,11 +5457,27 @@ function auditImperativeNavigation(source, path, options = {}) {
         ) {
           report(node, "dom-dynamic-attribute");
         } else if (namespace === "standard") {
+          const constraintProperty = domConstraintPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const validationBypassProperty = domValidationBypassPropertyForKind(
             kind,
             attributeName.text,
           );
           if (
+            constraintProperty
+            && reportProgrammaticFormConstraintMutation(
+              node,
+              kind,
+              constraintProperty,
+              target,
+              env,
+              "set-attribute",
+            )
+          ) {
+            // Standard-namespace form constraint mutation handled above.
+          } else if (
             validationBypassProperty
             && reportProgrammaticFormValidationBypass(
               node,
@@ -5165,11 +5499,27 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
+          const constraintProperty = domConstraintPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const validationBypassProperty = domValidationBypassPropertyForKind(
             kind,
             attributeName.text,
           );
           if (
+            constraintProperty
+            && reportProgrammaticFormConstraintMutation(
+              node,
+              kind,
+              constraintProperty,
+              node.arguments[1],
+              env,
+              "toggle-attribute",
+            )
+          ) {
+            // Form constraint toggle handled above.
+          } else if (
             validationBypassProperty
             && reportProgrammaticFormValidationToggle(
               node,
@@ -5184,6 +5534,47 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
       }
 
+      if (isDomRemoveAttributeNSReference(expression, env)) {
+        const kind = domRemoveAttributeNSElementKind(expression, env);
+        const namespace = standardAttributeNamespace(firstArg, env);
+        const attributeName = resolveDataExpression(node.arguments[1], env);
+
+        if (namespace === "dynamic") {
+          report(node, "dom-dynamic-attribute");
+        } else if (
+          namespace === "standard"
+          && (!attributeName || !ts.isStringLiteralLike(attributeName))
+        ) {
+          report(node, "dom-dynamic-attribute");
+        } else if (namespace === "standard") {
+          reportProgrammaticFormConstraintMutation(
+            node,
+            kind,
+            attributeName.text,
+            null,
+            env,
+            "remove-attribute",
+          );
+        }
+      }
+
+      if (isDomRemoveAttributeReference(expression, env)) {
+        const kind = domRemoveAttributeElementKind(expression, env);
+        const attributeName = resolveDataExpression(firstArg, env);
+        if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
+          report(node, "dom-dynamic-attribute");
+        } else {
+          reportProgrammaticFormConstraintMutation(
+            node,
+            kind,
+            attributeName.text,
+            null,
+            env,
+            "remove-attribute",
+          );
+        }
+      }
+
       if (isDomSetAttributeReference(expression, env)) {
         const kind = domSetAttributeElementKind(expression, env);
         const attributeName = resolveDataExpression(firstArg, env);
@@ -5192,6 +5583,10 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (!attributeName || !ts.isStringLiteralLike(attributeName)) {
           report(node, "dom-dynamic-attribute");
         } else {
+          const constraintProperty = domConstraintPropertyForKind(
+            kind,
+            attributeName.text,
+          );
           const validationBypassProperty = domValidationBypassPropertyForKind(
             kind,
             attributeName.text,
@@ -5206,6 +5601,18 @@ function auditImperativeNavigation(source, path, options = {}) {
           );
           const navProperty = domNavigationPropertyForKind(kind, attributeName.text);
           if (
+            constraintProperty
+            && reportProgrammaticFormConstraintMutation(
+              node,
+              kind,
+              constraintProperty,
+              target,
+              env,
+              "set-attribute",
+            )
+          ) {
+            // Form constraint attribute mutation handled above.
+          } else if (
             validationBypassProperty
             && reportProgrammaticFormValidationBypass(
               node,
@@ -5413,6 +5820,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           || isDomSetAttributeReference(argument, env)
           || isDomSetAttributeNSReference(argument, env)
           || isDomToggleAttributeReference(argument, env)
+          || isDomRemoveAttributeReference(argument, env)
+          || isDomRemoveAttributeNSReference(argument, env)
           || domActivationBinding(argument, env)
           || nativeDomActivationInfo(argument, env)
           || isBoundNavigationCapability(argument, env)
@@ -5500,6 +5909,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       const leftOwner = propertyOwner(node.left);
       const leftProperty = propertyName(node.left);
       const domKind = domNavigationElementKind(leftOwner, env);
+      const constraintProperty = domConstraintPropertyForKind(
+        domKind,
+        leftProperty,
+      );
       const validationBypassProperty = domValidationBypassPropertyForKind(
         domKind,
         leftProperty,
@@ -5512,6 +5925,17 @@ function auditImperativeNavigation(source, path, options = {}) {
       const domProperty = domNavigationPropertyForKind(domKind, leftProperty);
 
       if (
+        constraintProperty
+        && reportProgrammaticFormConstraintMutation(
+          node,
+          domKind,
+          constraintProperty,
+          node.right,
+          env,
+        )
+      ) {
+        // Form constraint integrity policy handled above.
+      } else if (
         validationBypassProperty
         && reportProgrammaticFormValidationBypass(
           node,
@@ -6596,6 +7020,68 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const dynamicConstraint = chooseConstraintMode();',
+    'const input = document.createElement("input");',
+    'input.required = false;',
+    'input.required = true;',
+    'input.required = dynamicConstraint;',
+    'input.disabled = true;',
+    'input.disabled = false;',
+    'input.readOnly = true;',
+    'input.readOnly = false;',
+    'input.pattern = ".*";',
+    'input.min = "0";',
+    'input.max = "999";',
+    'input.minLength = 0;',
+    'input.maxLength = 999;',
+    'input.step = "any";',
+    'input.type = "hidden";',
+    'input.setAttribute("required", "false");',
+    'input.setAttribute("disabled", "false");',
+    'input.removeAttribute("required");',
+    'input.removeAttribute("disabled");',
+    'input.toggleAttribute("required", false);',
+    'input.toggleAttribute("required", true);',
+    'input.toggleAttribute("disabled", true);',
+    'input.toggleAttribute("disabled", false);',
+    'const textarea = document.createElement("textarea");',
+    'textarea.readOnly = true;',
+    'textarea.maxLength = 5000;',
+    'const select = document.createElement("select");',
+    'select.required = false;',
+    'select.disabled = true;',
+    'const fieldset = document.createElement("fieldset");',
+    'fieldset.disabled = true;',
+    'Object.assign(input, { pattern: ".+" });',
+    'Reflect.set(input, "type", "text");',
+    'Object.defineProperty(input, "required", { value: false });',
+    'Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "disabled").set.call(input, true);',
+    'input.setAttributeNS(null, "readonly", "");',
+    'input.removeAttributeNS(null, "required");',
+    'Reflect.apply(Element.prototype.removeAttribute, input, ["pattern"]);',
+    'Reflect.apply(Element.prototype.toggleAttribute, input, ["required", false]);',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-form-constraint-integrity.self-test.ts",
+    { formConstraintIntegrityPolicy: true },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 25
+    || counts["programmatic-constraint-weaken"] !== 13
+    || counts["programmatic-constraint-dynamic"] !== 1
+    || counts["programmatic-constraint-mutation"] !== 11
+  ) {
+    throw new Error("Programmatic form constraint integrity authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'const dynamicValidation = chooseValidationMode();',
     'const form = document.createElement("form");',
     'form.noValidate = true;',
@@ -7229,6 +7715,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticTargetContextPolicy: true,
       formSubmissionTransportPolicy: true,
       formValidationBypassPolicy: true,
+      formConstraintIntegrityPolicy: true,
     },
   ));
 
@@ -7270,6 +7757,21 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormConstraintIntegrityViolations = allImperativeNavigationViolations
+  .filter((violation) => violation.kind.startsWith("programmatic-constraint-"));
+if (programmaticFormConstraintIntegrityViolations.length > 0) {
+  throw new Error(
+    "Programmatic form constraint integrity authority failed:\n"
+    + programmaticFormConstraintIntegrityViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
@@ -7355,6 +7857,7 @@ const imperativeNavigationViolations = allImperativeNavigationViolations
     !violation.kind.startsWith("programmatic-target-")
     && !violation.kind.startsWith("programmatic-form-")
     && !violation.kind.startsWith("programmatic-validation-")
+    && !violation.kind.startsWith("programmatic-constraint-")
     && !violation.kind.startsWith("embedded-runtime-")
     && !violation.kind.startsWith("dom-")
     && !violation.kind.startsWith("native-invoke-")
