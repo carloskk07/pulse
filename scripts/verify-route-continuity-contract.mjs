@@ -1858,6 +1858,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceFormControlParticipationPolicy = (
     options.formControlParticipationPolicy === true
   );
+  const enforceFormOwnershipProvenancePolicy = (
+    options.formOwnershipProvenancePolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1943,6 +1946,12 @@ function auditImperativeNavigation(source, path, options = {}) {
   const domActivationMethodBindings = new Map();
   const domVerifiedReplayForms = new Set();
   const domFormAssociatedControls = new Set();
+  const domFormOwnedElementIds = new Map();
+  const domFormOwnedElementKinds = new Map();
+  const domFormOwnedRefs = new Map();
+  const domFormOwnedEventScopes = new Map();
+  const domScopedEventCurrentTargetKinds = new Map();
+  const domFormOwnerIds = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -2101,6 +2110,55 @@ function auditImperativeNavigation(source, path, options = {}) {
       return;
     }
     if (map.get(name) !== kind) map.set(name, null);
+  }
+
+  function setStableOwnership(map, name, owned) {
+    if (!name || typeof owned !== "boolean") return;
+    if (!map.has(name)) {
+      map.set(name, owned);
+      return;
+    }
+    if (map.get(name) !== owned) map.set(name, null);
+  }
+
+  function eventScopeKey(functionNode, parameterName) {
+    return functionNode && parameterName
+      ? functionNode.pos + ":" + parameterName
+      : null;
+  }
+
+  function nearestFunctionScope(node) {
+    let current = node?.parent ?? null;
+    while (current) {
+      if (ts.isFunctionLike(current)) return current;
+      current = current.parent;
+    }
+    return null;
+  }
+
+  function setScopedEventEvidence(functionNode, parameterName, owned, kind = null) {
+    const key = eventScopeKey(functionNode, parameterName);
+    if (!key) return;
+    setStableOwnership(domFormOwnedEventScopes, key, owned);
+    if (kind) setStableKind(domScopedEventCurrentTargetKinds, key, kind);
+  }
+
+  function scopedEventTargetInfo(expression) {
+    if (
+      !enforceFormOwnershipProvenancePolicy
+      || !(ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      || propertyName(expression) !== "currentTarget"
+      || !ts.isIdentifier(propertyOwner(expression))
+    ) return null;
+
+    const owner = propertyOwner(expression);
+    const scope = nearestFunctionScope(expression);
+    const key = eventScopeKey(scope, owner.text);
+    if (!key) return null;
+    return {
+      owned: domFormOwnedEventScopes.get(key) ?? null,
+      kind: domScopedEventCurrentTargetKinds.get(key) ?? null,
+    };
   }
 
   function collectDeclarations(node) {
@@ -2495,6 +2553,67 @@ function auditImperativeNavigation(source, path, options = {}) {
     return domKindFromCallTypeArguments(resolved);
   }
 
+  function simpleOwnedSelectorId(value) {
+    if (typeof value !== "string") return null;
+    const match = value.match(/^\s*(?:[a-z][a-z0-9-]*)?#([A-Za-z_][A-Za-z0-9_:.-]*)\s*$/i);
+    return match ? match[1] : null;
+  }
+
+  function explicitFormControlSelector(value) {
+    if (typeof value !== "string") return null;
+    const match = value.match(
+      /^\s*(input|select|textarea|button|fieldset)\s*\[\s*form\s*=\s*(?:"([^"]+)"|'([^']+)'|([A-Za-z_][A-Za-z0-9_:.-]*))\s*\]\s*$/i,
+    );
+    if (!match) return null;
+    return {
+      kind: match[1].toLowerCase(),
+      formId: match[2] ?? match[3] ?? match[4] ?? null,
+    };
+  }
+
+  function domFormOwnedLookupInfo(expression, env = new Map()) {
+    if (!enforceFormOwnershipProvenancePolicy || !expression) return null;
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved || !ts.isCallExpression(resolved)) return null;
+    const callee = resolved.expression;
+    if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      return null;
+    }
+
+    const owner = propertyOwner(callee);
+    if (!isDocumentObject(owner, env)) return null;
+    const method = propertyName(callee);
+
+    if (method === "getElementById") {
+      const idExpression = resolveDataExpression(resolved.arguments[0], env);
+      if (!idExpression || !ts.isStringLiteralLike(idExpression)) return null;
+      const id = idExpression.text;
+      if (domFormOwnedElementIds.get(id) !== true) return null;
+      return { owned: true, kind: domFormOwnedElementKinds.get(id) ?? null };
+    }
+
+    if (method !== "querySelector") return null;
+    const selectorExpression = resolveDataExpression(resolved.arguments[0], env);
+    if (!selectorExpression || !ts.isStringLiteralLike(selectorExpression)) return null;
+    const selector = selectorExpression.text;
+
+    const ownedId = simpleOwnedSelectorId(selector);
+    if (ownedId && domFormOwnedElementIds.get(ownedId) === true) {
+      return { owned: true, kind: domFormOwnedElementKinds.get(ownedId) ?? null };
+    }
+
+    const explicitForm = explicitFormControlSelector(selector);
+    if (
+      explicitForm
+      && explicitForm.formId
+      && domFormOwnerIds.has(explicitForm.formId)
+    ) {
+      return { owned: true, kind: explicitForm.kind };
+    }
+
+    return null;
+  }
+
   function domNavigationElementKind(expression, env = new Map()) {
     if (!expression) return null;
 
@@ -2519,10 +2638,15 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (
       (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
       && propertyName(expression) === "currentTarget"
-      && ts.isIdentifier(propertyOwner(expression))
-      && domEventCurrentTargetKinds.has(propertyOwner(expression).text)
     ) {
-      return domEventCurrentTargetKinds.get(propertyOwner(expression).text);
+      const scopedEvent = scopedEventTargetInfo(expression);
+      if (scopedEvent?.kind) return scopedEvent.kind;
+      if (
+        ts.isIdentifier(propertyOwner(expression))
+        && domEventCurrentTargetKinds.has(propertyOwner(expression).text)
+      ) {
+        return domEventCurrentTargetKinds.get(propertyOwner(expression).text);
+      }
     }
 
     if (ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression)) {
@@ -2561,10 +2685,15 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (
       (ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))
       && propertyName(resolved) === "currentTarget"
-      && ts.isIdentifier(propertyOwner(resolved))
-      && domEventCurrentTargetKinds.has(propertyOwner(resolved).text)
     ) {
-      return domEventCurrentTargetKinds.get(propertyOwner(resolved).text);
+      const scopedEvent = scopedEventTargetInfo(resolved);
+      if (scopedEvent?.kind) return scopedEvent.kind;
+      if (
+        ts.isIdentifier(propertyOwner(resolved))
+        && domEventCurrentTargetKinds.has(propertyOwner(resolved).text)
+      ) {
+        return domEventCurrentTargetKinds.get(propertyOwner(resolved).text);
+      }
     }
 
     if (ts.isElementAccessExpression(resolved)) {
@@ -2578,6 +2707,9 @@ function auditImperativeNavigation(source, path, options = {}) {
       return null;
     }
     const method = propertyName(callee);
+
+    const ownedLookup = domFormOwnedLookupInfo(resolved, env);
+    if (ownedLookup?.kind) return ownedLookup.kind;
 
     if (method === "item") {
       const collectionKind = domCollectionElementKind(propertyOwner(callee), env);
@@ -3729,6 +3861,174 @@ function auditImperativeNavigation(source, path, options = {}) {
     return ["input", "textarea", "select", "button", "fieldset"].includes(kind);
   }
 
+  function staticJsxString(attribute) {
+    const literal = literalJsxAttributeValue(attribute);
+    if (literal !== null) return literal;
+    if (
+      attribute?.initializer
+      && ts.isJsxExpression(attribute.initializer)
+      && attribute.initializer.expression
+    ) {
+      const resolved = resolveDataExpression(attribute.initializer.expression);
+      return resolved && ts.isStringLiteralLike(resolved) ? resolved.text : null;
+    }
+    return null;
+  }
+
+  function jsxIntrinsicTagName(node) {
+    if (!(ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))) return null;
+    const value = node.tagName.getText(sourceFile);
+    return /^[a-z]/.test(value) ? value.toLowerCase() : null;
+  }
+
+  function nearestJsxForm(node) {
+    let current = node.parent;
+    while (current) {
+      if (
+        ts.isJsxElement(current)
+        && current.openingElement.tagName.getText(sourceFile).toLowerCase() === "form"
+      ) {
+        return current.openingElement;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  function jsxExpressionValue(attribute) {
+    if (
+      !attribute?.initializer
+      || !ts.isJsxExpression(attribute.initializer)
+      || !attribute.initializer.expression
+    ) return null;
+    return attribute.initializer.expression;
+  }
+
+  function collectFormOwnershipProvenance() {
+    if (!enforceFormOwnershipProvenancePolicy) return;
+
+    function collectFormIds(node) {
+      if (
+        (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+        && jsxIntrinsicTagName(node) === "form"
+      ) {
+        const id = staticJsxString(jsxAttribute(node, "id"));
+        if (id) domFormOwnerIds.add(id);
+      }
+      ts.forEachChild(node, collectFormIds);
+    }
+    collectFormIds(sourceFile);
+
+    const handlerOwnership = new Map();
+    const handlerKinds = new Map();
+
+    function recordHandler(attribute, associated, kind) {
+      const expression = jsxExpressionValue(attribute);
+      if (!expression) return;
+
+      if (ts.isIdentifier(expression)) {
+        setStableOwnership(handlerOwnership, expression.text, associated);
+        if (kind) setStableKind(handlerKinds, expression.text, kind);
+        return;
+      }
+
+      if (
+        (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression))
+        && expression.parameters.length > 0
+        && ts.isIdentifier(expression.parameters[0].name)
+      ) {
+        const parameterName = expression.parameters[0].name.text;
+        setScopedEventEvidence(expression, parameterName, associated, kind);
+      }
+    }
+
+    function collectOwnership(node) {
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        const tag = jsxIntrinsicTagName(node);
+        const control = isFormParticipatingControlKind(tag);
+        const explicitFormId = control ? staticJsxString(jsxAttribute(node, "form")) : null;
+        const associated = Boolean(
+          control
+          && (
+            nearestJsxForm(node)
+            || (explicitFormId && domFormOwnerIds.has(explicitFormId))
+          )
+        );
+
+        if (control) {
+          const id = staticJsxString(jsxAttribute(node, "id"));
+          if (id) {
+            setStableOwnership(domFormOwnedElementIds, id, associated);
+            setStableKind(domFormOwnedElementKinds, id, tag);
+          }
+
+          const refExpression = jsxExpressionValue(jsxAttribute(node, "ref"));
+          if (refExpression && ts.isIdentifier(refExpression)) {
+            setStableOwnership(domFormOwnedRefs, refExpression.text, associated);
+          }
+        }
+
+        for (const property of node.attributes.properties) {
+          if (!ts.isJsxAttribute(property)) continue;
+          const name = property.name.getText(sourceFile);
+          if (!/^on[A-Z]/.test(name)) continue;
+          recordHandler(property, associated, control ? tag : null);
+        }
+      }
+      ts.forEachChild(node, collectOwnership);
+    }
+    collectOwnership(sourceFile);
+
+    function invalidateManualHandlerCalls(node) {
+      if (
+        ts.isCallExpression(node)
+        && ts.isIdentifier(node.expression)
+        && handlerOwnership.has(node.expression.text)
+      ) {
+        setStableOwnership(handlerOwnership, node.expression.text, false);
+      }
+
+      if (
+        ts.isBinaryExpression(node)
+        && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        && (ts.isPropertyAccessExpression(node.left) || ts.isElementAccessExpression(node.left))
+        && propertyName(node.left) === "current"
+        && ts.isIdentifier(propertyOwner(node.left))
+        && domFormOwnedRefs.has(propertyOwner(node.left).text)
+      ) {
+        setStableOwnership(domFormOwnedRefs, propertyOwner(node.left).text, false);
+      }
+
+      ts.forEachChild(node, invalidateManualHandlerCalls);
+    }
+    invalidateManualHandlerCalls(sourceFile);
+
+    for (const [handlerName, owned] of handlerOwnership) {
+      if (typeof owned !== "boolean") continue;
+      const definition = localFunctions.get(handlerName);
+      const parameter = definition?.parameters?.[0];
+      if (!definition?.node || !parameter || !ts.isIdentifier(parameter.name)) continue;
+      setScopedEventEvidence(
+        definition.node,
+        parameter.name.text,
+        owned,
+        handlerKinds.get(handlerName) ?? null,
+      );
+    }
+  }
+
+  collectFormOwnershipProvenance();
+
+  if (enforceFormOwnershipProvenancePolicy) {
+    for (let pass = 0; pass < declarations.length + 1; pass += 1) {
+      let changed = false;
+      for (const declaration of declarations) {
+        changed = discoverDeclaration(declaration) || changed;
+      }
+      if (!changed) break;
+    }
+  }
+
   function isFormElementsExpression(expression, env = new Map()) {
     if (!expression) return false;
     const resolved = resolveDataExpression(expression, env);
@@ -3753,10 +4053,34 @@ function auditImperativeNavigation(source, path, options = {}) {
       return isProvenFormAssociatedControl(expression.expression, env, seen);
     }
 
+    if (
+      enforceFormOwnershipProvenancePolicy
+      && (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression))
+      && propertyName(expression) === "current"
+      && ts.isIdentifier(propertyOwner(expression))
+      && domFormOwnedRefs.get(propertyOwner(expression).text) === true
+    ) {
+      return true;
+    }
+
+    if (
+      enforceFormOwnershipProvenancePolicy
+      && scopedEventTargetInfo(expression)?.owned === true
+    ) {
+      return true;
+    }
+
     const resolved = resolveDataExpression(expression, env, seen);
     if (!resolved) return false;
     if (resolved !== expression) return isProvenFormAssociatedControl(resolved, env, seen);
     if (ts.isIdentifier(resolved)) return domFormAssociatedControls.has(resolved.text);
+
+    if (
+      enforceFormOwnershipProvenancePolicy
+      && domFormOwnedLookupInfo(resolved, env)?.owned === true
+    ) {
+      return true;
+    }
 
     if (ts.isElementAccessExpression(resolved)) {
       return isFormElementsExpression(resolved.expression, env);
@@ -7512,6 +7836,50 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'import { useRef } from "react";',
+    'const FORM_ID = "profile-form";',
+    'const inputRef = useRef<HTMLInputElement | null>(null);',
+    'const detachedRef = useRef<HTMLInputElement | null>(null);',
+    'function onEmail(event: React.ChangeEvent<HTMLInputElement>) { event.currentTarget.name = "renamed"; }',
+    'function onDetached(event: React.ChangeEvent<HTMLInputElement>) { event.currentTarget.readOnly = true; }',
+    'const Fixture = () => (<>',
+    '  <form id={FORM_ID}>',
+    '    <input id="email" ref={inputRef} onChange={onEmail} onInput={(event: React.FormEvent<HTMLInputElement>) => { event.currentTarget.disabled = true; }} />',
+    '  </form>',
+    '  <input id="external" form={FORM_ID} />',
+    '  <input id="detached" ref={detachedRef} onChange={onDetached} />',
+    '</>);',
+    'inputRef.current!.readOnly = true;',
+    'document.getElementById("email")!.disabled = true;',
+    'document.querySelector("#email")!.readOnly = true;',
+    'document.querySelector(\'input[form="profile-form"]\')!.disabled = true;',
+    'document.getElementById("external")!.name = "external-renamed";',
+    '(document.getElementById("detached") as HTMLInputElement).disabled = true;',
+    'detachedRef.current!.readOnly = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "form-ownership-provenance.self-test.tsx",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 7
+    || counts["programmatic-participation-weaken"] !== 5
+    || counts["programmatic-participation-identity"] !== 2
+  ) {
+    throw new Error("Form ownership provenance authority self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
     'const dynamicValidity = chooseValidityMessage();',
     'const form = document.createElement("form");',
     'const input = document.createElement("input");',
@@ -8265,6 +8633,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       formValidationBypassPolicy: true,
       formConstraintIntegrityPolicy: true,
       formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
     },
   ));
 
