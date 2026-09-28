@@ -7071,8 +7071,8 @@ function auditImperativeNavigation(source, path, options = {}) {
     return acc;
   }, {});
   if (
-    violations.length !== 25
-    || counts["programmatic-constraint-weaken"] !== 13
+    violations.length !== 28
+    || counts["programmatic-constraint-weaken"] !== 16
     || counts["programmatic-constraint-dynamic"] !== 1
     || counts["programmatic-constraint-mutation"] !== 11
   ) {
