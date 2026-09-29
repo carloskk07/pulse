@@ -1876,6 +1876,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipExecutionScopePolicy = (
     options.programmaticFormOwnershipExecutionScopePolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackSchedulingPolicy = (
+    options.programmaticFormOwnershipCallbackSchedulingPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1981,6 +1984,7 @@ function auditImperativeNavigation(source, path, options = {}) {
   const programmaticOwnershipStates = new Map();
   const programmaticOwnershipKinds = new Map();
   let programmaticOwnershipExecutionSuppressionDepth = 0;
+  let programmaticOwnershipScheduledCallbackDepth = 0;
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -3195,7 +3199,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (!participationProperty) return false;
 
     if (
-      reportProgrammaticOwnershipControlFlowUncertainty(
+      reportProgrammaticOwnershipSchedulingUncertainty(
+        node,
+        targetExpression,
+        participationProperty,
+        env,
+      )
+      || reportProgrammaticOwnershipControlFlowUncertainty(
         node,
         targetExpression,
         participationProperty,
@@ -3239,7 +3249,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (!isCurrentFormOwnershipProof(targetExpression, env)) return false;
     if (lifecycleKind !== "detach" && lifecycleKind !== "replace") return false;
     if (
-      reportProgrammaticOwnershipControlFlowUncertainty(
+      reportProgrammaticOwnershipSchedulingUncertainty(
+        node,
+        targetExpression,
+        method ?? lifecycleKind,
+        env,
+      )
+      || reportProgrammaticOwnershipControlFlowUncertainty(
         node,
         targetExpression,
         method ?? lifecycleKind,
@@ -3268,7 +3284,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     ) return false;
 
     if (
-      reportProgrammaticOwnershipControlFlowUncertainty(
+      reportProgrammaticOwnershipSchedulingUncertainty(
+        node,
+        targetExpression,
+        "custom-validity",
+        env,
+      )
+      || reportProgrammaticOwnershipControlFlowUncertainty(
         node,
         targetExpression,
         "custom-validity",
@@ -4569,13 +4591,52 @@ function auditImperativeNavigation(source, path, options = {}) {
     return true;
   }
 
+  function markProgrammaticOwnershipStatesScheduled() {
+    if (!enforceProgrammaticFormOwnershipCallbackSchedulingPolicy) return false;
+    for (const [identity, state] of programmaticOwnershipStates) {
+      programmaticOwnershipStates.set(identity, {
+        ...state,
+        owned: true,
+        owner: null,
+        associationMode: "scheduled",
+        uncertain: true,
+      });
+    }
+    return true;
+  }
+
+  function reportProgrammaticOwnershipSchedulingUncertainty(
+    node,
+    targetExpression,
+    operation,
+    env = new Map(),
+  ) {
+    if (
+      !enforceProgrammaticFormOwnershipCallbackSchedulingPolicy
+      || programmaticOwnershipScheduledCallbackDepth === 0
+    ) return false;
+    const state = programmaticOwnershipStateInfo(targetExpression, env);
+    if (!state.known || state.uncertain !== true || state.owned !== true) {
+      return false;
+    }
+    report(
+      node,
+      "programmatic-ownership-scheduled-dynamic",
+      operation ? [operation] : [],
+    );
+    return true;
+  }
+
   function reportProgrammaticOwnershipControlFlowUncertainty(
     node,
     targetExpression,
     operation,
     env = new Map(),
   ) {
-    if (!enforceProgrammaticFormOwnershipControlFlowPolicy) return false;
+    if (
+      !enforceProgrammaticFormOwnershipControlFlowPolicy
+      || programmaticOwnershipScheduledCallbackDepth > 0
+    ) return false;
     const state = programmaticOwnershipStateInfo(targetExpression, env);
     if (!state.known || state.uncertain !== true || state.owned !== true) {
       return false;
@@ -4937,6 +4998,148 @@ function auditImperativeNavigation(source, path, options = {}) {
       env.set(parameter.name.text, resolveDataExpression(argument, parentEnv));
     }
     return env;
+  }
+
+  function isGlobalCallbackSchedulerReference(expression, name, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (ts.isIdentifier(resolved)) return resolved.text === name;
+    if (!(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))) {
+      return false;
+    }
+    if (propertyName(resolved) !== name) return false;
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    return ownerText === "window" || ownerText === "globalThis";
+  }
+
+  function isPromiseSchedulingOwner(expression, env = new Map(), seen = new Set()) {
+    if (!expression) return false;
+    const resolved = resolveDataExpression(expression, env, seen);
+    if (!resolved) return false;
+
+    if (ts.isNewExpression(resolved)) {
+      const constructor = resolveDataExpression(resolved.expression, env);
+      return Boolean(
+        constructor
+        && ts.isIdentifier(constructor)
+        && constructor.text === "Promise"
+      );
+    }
+
+    if (!ts.isCallExpression(resolved)) return false;
+    const callee = resolveDataExpression(resolved.expression, env);
+    if (!(callee && (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)))) {
+      return false;
+    }
+
+    const method = propertyName(callee);
+    const owner = propertyOwner(callee);
+    const ownerText = owner?.getText(sourceFile);
+    if (
+      ownerText === "Promise"
+      || ownerText === "globalThis.Promise"
+    ) {
+      return ["resolve", "reject", "all", "allSettled", "race", "any"].includes(method);
+    }
+
+    if (
+      ["then", "catch", "finally"].includes(method)
+      && owner
+    ) {
+      const key = owner.pos + ":" + owner.end;
+      if (seen.has(key)) return false;
+      const nextSeen = new Set(seen);
+      nextSeen.add(key);
+      return isPromiseSchedulingOwner(owner, env, nextSeen);
+    }
+
+    return false;
+  }
+
+  function ownershipScheduledCallbackInfo(callExpression, env = new Map()) {
+    if (
+      !enforceProgrammaticFormOwnershipCallbackSchedulingPolicy
+      || !ts.isCallExpression(callExpression)
+    ) return null;
+
+    const callee = resolveDataExpression(callExpression.expression, env);
+    if (!callee) return null;
+
+    const timerKind = dynamicCodeTimerKind(callee, env);
+    if (timerKind) {
+      return {
+        kind: timerKind === "setInterval" ? "timer-repeat" : "timer",
+        callbackIndexes: [0],
+      };
+    }
+
+    for (const name of [
+      "queueMicrotask",
+      "requestAnimationFrame",
+      "requestIdleCallback",
+    ]) {
+      if (isGlobalCallbackSchedulerReference(callee, name, env)) {
+        return { kind: name, callbackIndexes: [0] };
+      }
+    }
+
+    if (
+      (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+      && propertyName(callee) === "addEventListener"
+    ) {
+      return { kind: "event-listener", callbackIndexes: [1] };
+    }
+
+    if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
+      const method = propertyName(callee);
+      const owner = propertyOwner(callee);
+      if (
+        owner
+        && ["then", "catch", "finally"].includes(method)
+        && isPromiseSchedulingOwner(owner, env)
+      ) {
+        return {
+          kind: "promise-" + method,
+          callbackIndexes: method === "then" ? [0, 1] : [0],
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function visitScheduledOwnershipCallbacks(
+    callExpression,
+    env,
+    callStack,
+    visitChild,
+  ) {
+    const scheduled = ownershipScheduledCallbackInfo(callExpression, env);
+    if (!scheduled) return false;
+
+    let analyzed = false;
+    for (const index of scheduled.callbackIndexes) {
+      const callbackExpression = callExpression.arguments[index];
+      if (!callbackExpression) continue;
+      const definition = localFunctionFromCallee(callbackExpression, env);
+      if (!definition || callStack.has(definition.key)) continue;
+
+      const snapshot = cloneProgrammaticOwnershipStates();
+      const nextStack = new Set(callStack);
+      nextStack.add(definition.key);
+      const childEnv = new Map(env);
+
+      markProgrammaticOwnershipStatesScheduled();
+      programmaticOwnershipScheduledCallbackDepth += 1;
+      try {
+        visitChild(definition.body, childEnv, nextStack);
+      } finally {
+        programmaticOwnershipScheduledCallbackDepth -= 1;
+        restoreProgrammaticOwnershipStates(snapshot);
+      }
+      analyzed = true;
+    }
+    return analyzed;
   }
 
   function staticHrefCandidatesResolved(expression, env = new Map(), callStack = new Set(), seen = new Set()) {
@@ -5684,7 +5887,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (!source.owned) return false;
 
     if (
-      reportProgrammaticOwnershipControlFlowUncertainty(
+      reportProgrammaticOwnershipSchedulingUncertainty(
+        node,
+        targetExpression,
+        method,
+        env,
+      )
+      || reportProgrammaticOwnershipControlFlowUncertainty(
         node,
         targetExpression,
         method,
@@ -8180,6 +8389,12 @@ function auditImperativeNavigation(source, path, options = {}) {
     );
 
     if (ts.isCallExpression(node)) {
+      visitScheduledOwnershipCallbacks(
+        node,
+        env,
+        callStack,
+        visit,
+      );
       applyProgrammaticOwnershipCallTransition(node, env);
     }
   }
@@ -9198,6 +9413,56 @@ function auditImperativeNavigation(source, path, options = {}) {
     || counts["programmatic-form-transport-dynamic"] !== 1
   ) {
     throw new Error("Programmatic form submission transport policy self-test failed: " + JSON.stringify(violations));
+  }
+}
+
+{
+  const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'setTimeout(() => outside.append(input), 0);',
+    'input.disabled = true;',
+    'queueMicrotask(() => { input.name = "later"; });',
+    'Promise.resolve().then(() => { formA.append(input); input.readOnly = true; });',
+    'window.addEventListener("click", () => outside.append(input));',
+    'const later = () => { formA.append(input); input.name = "event"; };',
+    'setInterval(later, 1000);',
+    'input.disabled = true;',
+    'function run(callback: () => void) { callback(); }',
+    'run(() => outside.append(input));',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-scheduling.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 10
+    || counts["programmatic-ownership-scheduled-dynamic"] !== 5
+    || counts["programmatic-participation-weaken"] !== 3
+    || counts["programmatic-participation-identity"] !== 1
+    || counts["programmatic-ownership-escape"] !== 1
+  ) {
+    throw new Error(
+      "Programmatic ownership callback scheduling authority self-test failed: "
+      + JSON.stringify(violations),
+    );
   }
 }
 
@@ -10282,6 +10547,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipStatePolicy: true,
       programmaticFormOwnershipControlFlowPolicy: true,
       programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
     },
   ));
 
@@ -10323,6 +10589,24 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormOwnershipCallbackSchedulingViolations = allImperativeNavigationViolations
+  .filter(
+    (violation) =>
+      violation.kind === "programmatic-ownership-scheduled-dynamic",
+  );
+if (programmaticFormOwnershipCallbackSchedulingViolations.length > 0) {
+  throw new Error(
+    "Programmatic form ownership callback scheduling authority failed:\n"
+    + programmaticFormOwnershipCallbackSchedulingViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
