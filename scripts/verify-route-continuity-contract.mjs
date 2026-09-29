@@ -1879,6 +1879,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackSchedulingPolicy = (
     options.programmaticFormOwnershipCallbackSchedulingPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackLifetimePolicy = (
+    options.programmaticFormOwnershipCallbackLifetimePolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1985,6 +1988,8 @@ function auditImperativeNavigation(source, path, options = {}) {
   const programmaticOwnershipKinds = new Map();
   let programmaticOwnershipExecutionSuppressionDepth = 0;
   let programmaticOwnershipScheduledCallbackDepth = 0;
+  const programmaticOwnershipScheduledMultiplicity = [];
+  const programmaticOwnershipCancelledScheduledCalls = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -4619,9 +4624,16 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (!state.known || state.uncertain !== true || state.owned !== true) {
       return false;
     }
+    const multiplicity = (
+      programmaticOwnershipScheduledMultiplicity[
+        programmaticOwnershipScheduledMultiplicity.length - 1
+      ] ?? "one-shot"
+    );
     report(
       node,
-      "programmatic-ownership-scheduled-dynamic",
+      multiplicity === "repeat"
+        ? "programmatic-ownership-scheduled-repeat-dynamic"
+        : "programmatic-ownership-scheduled-dynamic",
       operation ? [operation] : [],
     );
     return true;
@@ -5056,6 +5068,204 @@ function auditImperativeNavigation(source, path, options = {}) {
     return false;
   }
 
+  function eventListenerOptionsInfo(expression, env = new Map()) {
+    if (!expression) {
+      return { capture: false, once: false, signalController: null };
+    }
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) {
+      return { capture: null, once: null, signalController: null };
+    }
+
+    if (
+      resolved.kind === ts.SyntaxKind.TrueKeyword
+      || resolved.kind === ts.SyntaxKind.FalseKeyword
+    ) {
+      return {
+        capture: resolved.kind === ts.SyntaxKind.TrueKeyword,
+        once: false,
+        signalController: null,
+      };
+    }
+
+    if (!ts.isObjectLiteralExpression(resolved)) {
+      return { capture: null, once: null, signalController: null };
+    }
+
+    const captureExpression = propertyAssignmentByName(resolved, "capture");
+    const onceExpression = propertyAssignmentByName(resolved, "once");
+    const signalExpression = resolveDataExpression(
+      propertyAssignmentByName(resolved, "signal"),
+      env,
+    );
+
+    const capture = captureExpression
+      ? literalValidationBoolean(captureExpression, env)
+      : false;
+    const once = onceExpression
+      ? literalValidationBoolean(onceExpression, env)
+      : false;
+
+    let signalController = null;
+    if (
+      signalExpression
+      && (
+        ts.isPropertyAccessExpression(signalExpression)
+        || ts.isElementAccessExpression(signalExpression)
+      )
+      && propertyName(signalExpression) === "signal"
+      && ts.isIdentifier(propertyOwner(signalExpression))
+    ) {
+      signalController = propertyOwner(signalExpression).text;
+    }
+
+    return { capture, once, signalController };
+  }
+
+  function eventListenerCallInfo(callExpression, env = new Map()) {
+    if (!ts.isCallExpression(callExpression)) return null;
+    const callee = resolveDataExpression(callExpression.expression, env);
+    if (
+      !callee
+      || !(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+    ) return null;
+
+    const method = propertyName(callee);
+    if (method !== "addEventListener" && method !== "removeEventListener") {
+      return null;
+    }
+
+    const eventType = resolveDataExpression(callExpression.arguments[0], env);
+    const callback = callExpression.arguments[1];
+    if (!eventType || !ts.isStringLiteralLike(eventType) || !callback) return null;
+
+    const options = eventListenerOptionsInfo(callExpression.arguments[2], env);
+    return {
+      method,
+      targetText: propertyOwner(callee)?.getText(sourceFile) ?? null,
+      eventType: eventType.text,
+      callbackText: callback.getText(sourceFile),
+      capture: options.capture,
+      once: options.once,
+      signalController: options.signalController,
+    };
+  }
+
+  function timerScheduledDeclarationInfo(statement, env = new Map()) {
+    if (
+      !ts.isVariableStatement(statement)
+      || statement.declarationList.declarations.length !== 1
+    ) return null;
+    const declaration = statement.declarationList.declarations[0];
+    if (
+      !ts.isIdentifier(declaration.name)
+      || !declaration.initializer
+      || !ts.isCallExpression(declaration.initializer)
+    ) return null;
+
+    const kind = dynamicCodeTimerKind(declaration.initializer.expression, env);
+    if (kind !== "setTimeout" && kind !== "setInterval") return null;
+    return {
+      handle: declaration.name.text,
+      kind,
+      call: declaration.initializer,
+    };
+  }
+
+  function directCallStatement(statement) {
+    return (
+      ts.isExpressionStatement(statement)
+      && ts.isCallExpression(statement.expression)
+    )
+      ? statement.expression
+      : null;
+  }
+
+  function isTimerCancellationFor(callExpression, timerInfo, env = new Map()) {
+    if (!callExpression || !timerInfo) return false;
+    const callee = resolveDataExpression(callExpression.expression, env);
+    const required = timerInfo.kind === "setInterval" ? "clearInterval" : "clearTimeout";
+    if (!isGlobalCallbackSchedulerReference(callee, required, env)) return false;
+    const handle = callExpression.arguments[0];
+    return Boolean(
+      handle
+      && ts.isIdentifier(handle)
+      && handle.text === timerInfo.handle
+    );
+  }
+
+  function eventListenerRemovalMatches(addInfo, removeInfo) {
+    if (!addInfo || !removeInfo) return false;
+    if (addInfo.method !== "addEventListener" || removeInfo.method !== "removeEventListener") {
+      return false;
+    }
+    if (
+      addInfo.capture === null
+      || removeInfo.capture === null
+    ) return false;
+    return (
+      addInfo.targetText === removeInfo.targetText
+      && addInfo.eventType === removeInfo.eventType
+      && addInfo.callbackText === removeInfo.callbackText
+      && addInfo.capture === removeInfo.capture
+    );
+  }
+
+  function isAbortCallForController(callExpression, controllerName, env = new Map()) {
+    if (!callExpression || !controllerName) return false;
+    const callee = resolveDataExpression(callExpression.expression, env);
+    if (
+      !callee
+      || !(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+      || propertyName(callee) !== "abort"
+    ) return false;
+    const owner = propertyOwner(callee);
+    return Boolean(ts.isIdentifier(owner) && owner.text === controllerName);
+  }
+
+  function collectDefinitelyCancelledScheduledCallbacks(node) {
+    if (!enforceProgrammaticFormOwnershipCallbackLifetimePolicy || !node) return;
+
+    const statements = (
+      ts.isSourceFile(node) || ts.isBlock(node)
+    )
+      ? [...node.statements]
+      : null;
+
+    if (statements) {
+      for (let index = 0; index < statements.length - 1; index += 1) {
+        const statement = statements[index];
+        const nextStatement = statements[index + 1];
+        const nextCall = directCallStatement(nextStatement);
+
+        const timer = timerScheduledDeclarationInfo(statement);
+        if (
+          timer
+          && nextCall
+          && isTimerCancellationFor(nextCall, timer)
+        ) {
+          programmaticOwnershipCancelledScheduledCalls.add(timer.call.pos);
+        }
+
+        const addCall = directCallStatement(statement);
+        const addInfo = addCall ? eventListenerCallInfo(addCall) : null;
+        if (addCall && addInfo?.method === "addEventListener" && nextCall) {
+          const removeInfo = eventListenerCallInfo(nextCall);
+          if (eventListenerRemovalMatches(addInfo, removeInfo)) {
+            programmaticOwnershipCancelledScheduledCalls.add(addCall.pos);
+          } else if (
+            addInfo.signalController
+            && isAbortCallForController(nextCall, addInfo.signalController)
+          ) {
+            programmaticOwnershipCancelledScheduledCalls.add(addCall.pos);
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, collectDefinitelyCancelledScheduledCallbacks);
+  }
+
   function ownershipScheduledCallbackInfo(callExpression, env = new Map()) {
     if (
       !enforceProgrammaticFormOwnershipCallbackSchedulingPolicy
@@ -5070,6 +5280,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       return {
         kind: timerKind === "setInterval" ? "timer-repeat" : "timer",
         callbackIndexes: [0],
+        multiplicity: timerKind === "setInterval" ? "repeat" : "one-shot",
       };
     }
 
@@ -5079,7 +5290,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       "requestIdleCallback",
     ]) {
       if (isGlobalCallbackSchedulerReference(callee, name, env)) {
-        return { kind: name, callbackIndexes: [0] };
+        return { kind: name, callbackIndexes: [0], multiplicity: "one-shot" };
       }
     }
 
@@ -5087,7 +5298,12 @@ function auditImperativeNavigation(source, path, options = {}) {
       (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
       && propertyName(callee) === "addEventListener"
     ) {
-      return { kind: "event-listener", callbackIndexes: [1] };
+      const options = eventListenerOptionsInfo(callExpression.arguments[2], env);
+      return {
+        kind: "event-listener",
+        callbackIndexes: [1],
+        multiplicity: options.once === true ? "one-shot" : "repeat",
+      };
     }
 
     if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
@@ -5101,6 +5317,7 @@ function auditImperativeNavigation(source, path, options = {}) {
         return {
           kind: "promise-" + method,
           callbackIndexes: method === "then" ? [0, 1] : [0],
+          multiplicity: "one-shot",
         };
       }
     }
@@ -5116,6 +5333,12 @@ function auditImperativeNavigation(source, path, options = {}) {
   ) {
     const scheduled = ownershipScheduledCallbackInfo(callExpression, env);
     if (!scheduled) return false;
+    if (
+      enforceProgrammaticFormOwnershipCallbackLifetimePolicy
+      && programmaticOwnershipCancelledScheduledCalls.has(callExpression.pos)
+    ) {
+      return true;
+    }
 
     let analyzed = false;
     for (const index of scheduled.callbackIndexes) {
@@ -5131,9 +5354,15 @@ function auditImperativeNavigation(source, path, options = {}) {
 
       markProgrammaticOwnershipStatesScheduled();
       programmaticOwnershipScheduledCallbackDepth += 1;
+      programmaticOwnershipScheduledMultiplicity.push(
+        enforceProgrammaticFormOwnershipCallbackLifetimePolicy
+          ? (scheduled.multiplicity ?? "one-shot")
+          : "one-shot",
+      );
       try {
         visitChild(definition.body, childEnv, nextStack);
       } finally {
+        programmaticOwnershipScheduledMultiplicity.pop();
         programmaticOwnershipScheduledCallbackDepth -= 1;
         restoreProgrammaticOwnershipStates(snapshot);
       }
@@ -5141,6 +5370,8 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
     return analyzed;
   }
+
+  collectDefinitelyCancelledScheduledCallbacks(sourceFile);
 
   function staticHrefCandidatesResolved(expression, env = new Map(), callStack = new Set(), seen = new Set()) {
     if (!expression) return [];
@@ -9422,6 +9653,60 @@ function auditImperativeNavigation(source, path, options = {}) {
     'const outside = document.createElement("div");',
     'const input = document.createElement("input");',
     'formA.append(input);',
+    'const cancelledTimeout = setTimeout(() => outside.append(input), 0);',
+    'clearTimeout(cancelledTimeout);',
+    'const cancelledInterval = setInterval(() => outside.append(input), 1000);',
+    'clearInterval(cancelledInterval);',
+    'const listener = () => outside.append(input);',
+    'window.addEventListener("click", listener);',
+    'window.removeEventListener("click", listener);',
+    'const controller = new AbortController();',
+    'window.addEventListener("focus", () => outside.append(input), { signal: controller.signal });',
+    'controller.abort();',
+    'window.addEventListener("change", () => outside.append(input), { once: true });',
+    'setTimeout(() => outside.append(input), 0);',
+    'setInterval(() => outside.append(input), 1000);',
+    'window.addEventListener("input", () => outside.append(input));',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-lifetime.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["programmatic-ownership-scheduled-dynamic"] !== 2
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== 2
+    || counts["programmatic-participation-weaken"] !== 1
+  ) {
+    throw new Error(
+      "Programmatic ownership callback lifetime authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
     'setTimeout(() => outside.append(input), 0);',
     'input.disabled = true;',
     'queueMicrotask(() => { input.name = "later"; });',
@@ -10548,6 +10833,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipControlFlowPolicy: true,
       programmaticFormOwnershipExecutionScopePolicy: true,
       programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
     },
   ));
 
@@ -10589,6 +10875,24 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormOwnershipCallbackLifetimeViolations = allImperativeNavigationViolations
+  .filter(
+    (violation) =>
+      violation.kind === "programmatic-ownership-scheduled-repeat-dynamic",
+  );
+if (programmaticFormOwnershipCallbackLifetimeViolations.length > 0) {
+  throw new Error(
+    "Programmatic form ownership callback lifetime authority failed:\n"
+    + programmaticFormOwnershipCallbackLifetimeViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
