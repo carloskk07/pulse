@@ -5355,7 +5355,9 @@ function auditImperativeNavigation(source, path, options = {}) {
       markProgrammaticOwnershipStatesScheduled();
       programmaticOwnershipScheduledCallbackDepth += 1;
       programmaticOwnershipScheduledMultiplicity.push(
-        scheduled.multiplicity ?? "one-shot",
+        enforceProgrammaticFormOwnershipCallbackLifetimePolicy
+          ? (scheduled.multiplicity ?? "one-shot")
+          : "one-shot",
       );
       try {
         visitChild(definition.body, childEnv, nextStack);
