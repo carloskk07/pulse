@@ -5304,6 +5304,27 @@ function auditImperativeNavigation(source, path, options = {}) {
     return Boolean(ts.isIdentifier(owner) && owner.text === controllerName);
   }
 
+  function isKnownTeardownOnlyCall(callExpression, env = new Map()) {
+    if (!callExpression || !ts.isCallExpression(callExpression)) return false;
+    const callee = resolveDataExpression(callExpression.expression, env);
+    for (const name of [
+      "clearTimeout",
+      "clearInterval",
+      "cancelAnimationFrame",
+      "cancelIdleCallback",
+    ]) {
+      if (isGlobalCallbackSchedulerReference(callee, name, env)) return true;
+    }
+    if (
+      callee
+      && (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+    ) {
+      const method = propertyName(callee);
+      return method === "removeEventListener" || method === "abort";
+    }
+    return false;
+  }
+
   function functionBodyUnconditionallyCancelsScheduledHandle(
     definition,
     scheduledInfo,
@@ -5322,6 +5343,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       if (call && isScheduledHandleCancellationFor(call, scheduledInfo, aliases, env)) {
         return true;
       }
+      if (call && isKnownTeardownOnlyCall(call, env)) continue;
       if (ts.isFunctionDeclaration(statement) || ts.isEmptyStatement(statement)) continue;
       return false;
     }
@@ -5343,6 +5365,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           addInfo?.signalController
           && isAbortCallForController(call, addInfo.signalController, env)
         ) return true;
+        if (isKnownTeardownOnlyCall(call, env)) continue;
       }
       if (ts.isFunctionDeclaration(statement) || ts.isEmptyStatement(statement)) continue;
       return false;
