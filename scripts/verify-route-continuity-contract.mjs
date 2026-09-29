@@ -2194,6 +2194,18 @@ function auditImperativeNavigation(source, path, options = {}) {
     return Boolean(key && programmaticOwnershipBindingCounts.get(key) === 1);
   }
 
+  function programmaticReferenceBindingKey(identifier) {
+    if (!identifier || !ts.isIdentifier(identifier)) return null;
+    let scope = nearestFunctionScope(identifier);
+    while (scope) {
+      const key = "function:" + scope.pos + ":" + identifier.text;
+      if (programmaticOwnershipBindingCounts.has(key)) return key;
+      scope = nearestFunctionScope(scope);
+    }
+    const rootKey = "root:" + identifier.text;
+    return programmaticOwnershipBindingCounts.has(rootKey) ? rootKey : null;
+  }
+
   function programmaticOwnershipExecutionActive() {
     return (
       !enforceProgrammaticFormOwnershipExecutionScopePolicy
@@ -4417,7 +4429,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       if (fromEnv) return fromEnv;
     }
 
-    const bindingKey = programmaticBindingKey(expression);
+    const bindingKey = programmaticReferenceBindingKey(expression);
     if (!bindingKey || programmaticOwnershipBindingCounts.get(bindingKey) !== 1) {
       return null;
     }
