@@ -449,6 +449,7 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "function nativeDomOwnershipRelocationInfo",
   "function programmaticBindingKey",
   "function programmaticBindingIsUnambiguous",
+  "function programmaticReferenceBindingKey",
   "function programmaticFormControlCreationKind",
   "function programmaticOwnershipIdentity",
   "function programmaticOwnershipStateInfo",
