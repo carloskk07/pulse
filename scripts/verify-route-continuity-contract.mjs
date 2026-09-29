@@ -1882,6 +1882,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackLifetimePolicy = (
     options.programmaticFormOwnershipCallbackLifetimePolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownPathPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1989,7 +1992,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   let programmaticOwnershipExecutionSuppressionDepth = 0;
   let programmaticOwnershipScheduledCallbackDepth = 0;
   const programmaticOwnershipScheduledMultiplicity = [];
+  const programmaticOwnershipScheduledTeardown = [];
   const programmaticOwnershipCancelledScheduledCalls = new Set();
+  const programmaticOwnershipBoundedScheduledCalls = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -4629,11 +4634,19 @@ function auditImperativeNavigation(source, path, options = {}) {
         programmaticOwnershipScheduledMultiplicity.length - 1
       ] ?? "one-shot"
     );
+    const teardown = (
+      programmaticOwnershipScheduledTeardown[
+        programmaticOwnershipScheduledTeardown.length - 1
+      ] ?? null
+    );
     report(
       node,
-      multiplicity === "repeat"
-        ? "programmatic-ownership-scheduled-repeat-dynamic"
-        : "programmatic-ownership-scheduled-dynamic",
+      enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
+        && teardown === "bounded"
+        ? "programmatic-ownership-scheduled-bounded-dynamic"
+        : multiplicity === "repeat"
+          ? "programmatic-ownership-scheduled-repeat-dynamic"
+          : "programmatic-ownership-scheduled-dynamic",
       operation ? [operation] : [],
     );
     return true;
@@ -5151,6 +5164,20 @@ function auditImperativeNavigation(source, path, options = {}) {
     };
   }
 
+  function scheduledHandleCallKind(callExpression, env = new Map()) {
+    if (!callExpression || !ts.isCallExpression(callExpression)) return null;
+    const timerKind = dynamicCodeTimerKind(callExpression.expression, env);
+    if (timerKind === "setTimeout" || timerKind === "setInterval") return timerKind;
+
+    if (!enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy) return null;
+    for (const name of ["requestAnimationFrame", "requestIdleCallback"]) {
+      if (isGlobalCallbackSchedulerReference(callExpression.expression, name, env)) {
+        return name;
+      }
+    }
+    return null;
+  }
+
   function timerScheduledDeclarationInfo(statement, env = new Map()) {
     if (
       !ts.isVariableStatement(statement)
@@ -5163,8 +5190,8 @@ function auditImperativeNavigation(source, path, options = {}) {
       || !ts.isCallExpression(declaration.initializer)
     ) return null;
 
-    const kind = dynamicCodeTimerKind(declaration.initializer.expression, env);
-    if (kind !== "setTimeout" && kind !== "setInterval") return null;
+    const kind = scheduledHandleCallKind(declaration.initializer, env);
+    if (!kind) return null;
     return {
       handle: declaration.name.text,
       kind,
@@ -5191,6 +5218,60 @@ function auditImperativeNavigation(source, path, options = {}) {
       handle
       && ts.isIdentifier(handle)
       && handle.text === timerInfo.handle
+    );
+  }
+
+  function directIdentifierAlias(statement) {
+    if (
+      !ts.isVariableStatement(statement)
+      || statement.declarationList.declarations.length !== 1
+    ) return null;
+    const declaration = statement.declarationList.declarations[0];
+    if (
+      !ts.isIdentifier(declaration.name)
+      || !declaration.initializer
+      || !ts.isIdentifier(declaration.initializer)
+    ) return null;
+    return {
+      local: declaration.name.text,
+      source: declaration.initializer.text,
+    };
+  }
+
+  function resolveScheduledAlias(name, aliases) {
+    let current = name;
+    const seen = new Set();
+    while (aliases.has(current) && !seen.has(current)) {
+      seen.add(current);
+      current = aliases.get(current);
+    }
+    return current;
+  }
+
+  function scheduledCancellationName(kind) {
+    if (kind === "setTimeout") return "clearTimeout";
+    if (kind === "setInterval") return "clearInterval";
+    if (kind === "requestAnimationFrame") return "cancelAnimationFrame";
+    if (kind === "requestIdleCallback") return "cancelIdleCallback";
+    return null;
+  }
+
+  function isScheduledHandleCancellationFor(
+    callExpression,
+    scheduledInfo,
+    aliases = new Map(),
+    env = new Map(),
+  ) {
+    if (!callExpression || !scheduledInfo) return false;
+    const cancellation = scheduledCancellationName(scheduledInfo.kind);
+    if (!cancellation) return false;
+    const callee = resolveDataExpression(callExpression.expression, env);
+    if (!isGlobalCallbackSchedulerReference(callee, cancellation, env)) return false;
+    const handle = callExpression.arguments[0];
+    return Boolean(
+      handle
+      && ts.isIdentifier(handle)
+      && resolveScheduledAlias(handle.text, aliases) === scheduledInfo.handle
     );
   }
 
@@ -5221,6 +5302,291 @@ function auditImperativeNavigation(source, path, options = {}) {
     ) return false;
     const owner = propertyOwner(callee);
     return Boolean(ts.isIdentifier(owner) && owner.text === controllerName);
+  }
+
+  function isKnownTeardownOnlyCall(callExpression, env = new Map()) {
+    if (!callExpression || !ts.isCallExpression(callExpression)) return false;
+    const callee = resolveDataExpression(callExpression.expression, env);
+    for (const name of [
+      "clearTimeout",
+      "clearInterval",
+      "cancelAnimationFrame",
+      "cancelIdleCallback",
+    ]) {
+      if (isGlobalCallbackSchedulerReference(callee, name, env)) return true;
+    }
+    if (
+      callee
+      && (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))
+    ) {
+      const method = propertyName(callee);
+      return method === "removeEventListener" || method === "abort";
+    }
+    return false;
+  }
+
+  function functionBodyUnconditionallyCancelsScheduledHandle(
+    definition,
+    scheduledInfo,
+    inheritedAliases = new Map(),
+    env = new Map(),
+  ) {
+    if (!definition?.body || !ts.isBlock(definition.body)) return false;
+    const aliases = new Map(inheritedAliases);
+    for (const statement of definition.body.statements) {
+      const alias = directIdentifierAlias(statement);
+      if (alias) {
+        aliases.set(alias.local, resolveScheduledAlias(alias.source, aliases));
+        continue;
+      }
+      const call = directCallStatement(statement);
+      if (call && isScheduledHandleCancellationFor(call, scheduledInfo, aliases, env)) {
+        return true;
+      }
+      if (call && isKnownTeardownOnlyCall(call, env)) continue;
+      if (ts.isFunctionDeclaration(statement) || ts.isEmptyStatement(statement)) continue;
+      return false;
+    }
+    return false;
+  }
+
+  function functionBodyUnconditionallyRemovesListener(
+    definition,
+    addInfo,
+    env = new Map(),
+  ) {
+    if (!definition?.body || !ts.isBlock(definition.body)) return false;
+    for (const statement of definition.body.statements) {
+      const call = directCallStatement(statement);
+      if (call) {
+        const removeInfo = eventListenerCallInfo(call, env);
+        if (eventListenerRemovalMatches(addInfo, removeInfo)) return true;
+        if (
+          addInfo?.signalController
+          && isAbortCallForController(call, addInfo.signalController, env)
+        ) return true;
+        if (isKnownTeardownOnlyCall(call, env)) continue;
+      }
+      if (ts.isFunctionDeclaration(statement) || ts.isEmptyStatement(statement)) continue;
+      return false;
+    }
+    return false;
+  }
+
+  function containsTeardownAsyncBoundary(node) {
+    let found = false;
+    function scan(current) {
+      if (found || !current) return;
+      if (
+        ts.isAwaitExpression(current)
+        || ts.isYieldExpression(current)
+      ) {
+        found = true;
+        return;
+      }
+      if (current !== node && ts.isFunctionLike(current)) return;
+      ts.forEachChild(current, scan);
+    }
+    scan(node);
+    return found;
+  }
+
+  function finallyUnconditionallyCancelsScheduledHandle(
+    tryStatement,
+    scheduledInfo,
+    aliases = new Map(),
+    env = new Map(),
+  ) {
+    if (
+      !ts.isTryStatement(tryStatement)
+      || !tryStatement.finallyBlock
+      || containsTeardownAsyncBoundary(tryStatement.tryBlock)
+    ) return false;
+    const synthetic = {
+      body: tryStatement.finallyBlock,
+    };
+    return functionBodyUnconditionallyCancelsScheduledHandle(
+      synthetic,
+      scheduledInfo,
+      aliases,
+      env,
+    );
+  }
+
+  function isTransparentTeardownStatement(statement) {
+    if (
+      ts.isFunctionDeclaration(statement)
+      || ts.isEmptyStatement(statement)
+    ) return true;
+    const alias = directIdentifierAlias(statement);
+    return Boolean(alias);
+  }
+
+  function collectTeardownPathCancellations(node) {
+    if (!enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy || !node) return;
+
+    const statements = (
+      ts.isSourceFile(node) || ts.isBlock(node)
+    )
+      ? [...node.statements]
+      : null;
+
+    if (statements) {
+      for (let index = 0; index < statements.length; index += 1) {
+        const scheduledInfo = timerScheduledDeclarationInfo(statements[index]);
+        if (scheduledInfo) {
+          const aliases = new Map();
+          for (let cursor = index + 1; cursor < statements.length; cursor += 1) {
+            const statement = statements[cursor];
+            const alias = directIdentifierAlias(statement);
+            if (alias) {
+              aliases.set(alias.local, resolveScheduledAlias(alias.source, aliases));
+              continue;
+            }
+
+            if (
+              ts.isTryStatement(statement)
+              && finallyUnconditionallyCancelsScheduledHandle(
+                statement,
+                scheduledInfo,
+                aliases,
+              )
+            ) {
+              programmaticOwnershipCancelledScheduledCalls.add(scheduledInfo.call.pos);
+              break;
+            }
+
+            const call = directCallStatement(statement);
+            if (call) {
+              if (isScheduledHandleCancellationFor(call, scheduledInfo, aliases)) {
+                programmaticOwnershipCancelledScheduledCalls.add(scheduledInfo.call.pos);
+                break;
+              }
+              const definition = localFunctionFromCallee(call.expression);
+              if (
+                definition
+                && functionBodyUnconditionallyCancelsScheduledHandle(
+                  definition,
+                  scheduledInfo,
+                  aliases,
+                )
+              ) {
+                programmaticOwnershipCancelledScheduledCalls.add(scheduledInfo.call.pos);
+                break;
+              }
+              break;
+            }
+
+            if (!isTransparentTeardownStatement(statement)) break;
+          }
+        }
+
+        const addCall = directCallStatement(statements[index]);
+        const addInfo = addCall ? eventListenerCallInfo(addCall) : null;
+        if (addCall && addInfo?.method === "addEventListener") {
+          for (let cursor = index + 1; cursor < statements.length; cursor += 1) {
+            const statement = statements[cursor];
+            if (ts.isFunctionDeclaration(statement) || ts.isEmptyStatement(statement)) continue;
+            const call = directCallStatement(statement);
+            if (!call) break;
+
+            const removeInfo = eventListenerCallInfo(call);
+            if (
+              eventListenerRemovalMatches(addInfo, removeInfo)
+              || (
+                addInfo.signalController
+                && isAbortCallForController(call, addInfo.signalController)
+              )
+            ) {
+              programmaticOwnershipCancelledScheduledCalls.add(addCall.pos);
+              break;
+            }
+
+            const definition = localFunctionFromCallee(call.expression);
+            if (
+              definition
+              && functionBodyUnconditionallyRemovesListener(definition, addInfo)
+            ) {
+              programmaticOwnershipCancelledScheduledCalls.add(addCall.pos);
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, collectTeardownPathCancellations);
+  }
+
+  function isReactEffectReference(expression, env = new Map()) {
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return false;
+    if (
+      ts.isIdentifier(resolved)
+      && (resolved.text === "useEffect" || resolved.text === "useLayoutEffect")
+    ) return true;
+    if (!(ts.isPropertyAccessExpression(resolved) || ts.isElementAccessExpression(resolved))) {
+      return false;
+    }
+    const name = propertyName(resolved);
+    if (name !== "useEffect" && name !== "useLayoutEffect") return false;
+    const ownerText = propertyOwner(resolved)?.getText(sourceFile);
+    return ownerText === "React";
+  }
+
+  function reactEffectMultiplicity(callExpression, env = new Map()) {
+    const dependencies = resolveDataExpression(callExpression.arguments[1], env);
+    if (
+      dependencies
+      && ts.isArrayLiteralExpression(dependencies)
+      && dependencies.elements.length === 0
+    ) return "one-shot";
+    return "repeat";
+  }
+
+  function effectCleanupDefinition(effectDefinition, env = new Map()) {
+    const returns = functionReturnExpressions(effectDefinition);
+    if (returns.length !== 1) return null;
+    return localFunctionFromCallee(returns[0], env);
+  }
+
+  function collectEffectBoundedScheduledCallbacks(node) {
+    if (!enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy || !node) return;
+
+    if (ts.isCallExpression(node) && isReactEffectReference(node.expression)) {
+      const effectDefinition = localFunctionFromCallee(node.arguments[0]);
+      const cleanupDefinition = effectCleanupDefinition(effectDefinition);
+      if (
+        effectDefinition?.body
+        && ts.isBlock(effectDefinition.body)
+        && cleanupDefinition
+      ) {
+        for (const statement of effectDefinition.body.statements) {
+          const scheduledInfo = timerScheduledDeclarationInfo(statement);
+          if (
+            scheduledInfo
+            && functionBodyUnconditionallyCancelsScheduledHandle(
+              cleanupDefinition,
+              scheduledInfo,
+            )
+          ) {
+            programmaticOwnershipBoundedScheduledCalls.add(scheduledInfo.call.pos);
+          }
+
+          const addCall = directCallStatement(statement);
+          const addInfo = addCall ? eventListenerCallInfo(addCall) : null;
+          if (
+            addCall
+            && addInfo?.method === "addEventListener"
+            && functionBodyUnconditionallyRemovesListener(cleanupDefinition, addInfo)
+          ) {
+            programmaticOwnershipBoundedScheduledCalls.add(addCall.pos);
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, collectEffectBoundedScheduledCallbacks);
   }
 
   function collectDefinitelyCancelledScheduledCallbacks(node) {
@@ -5274,6 +5640,17 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     const callee = resolveDataExpression(callExpression.expression, env);
     if (!callee) return null;
+
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
+      && isReactEffectReference(callee, env)
+    ) {
+      return {
+        kind: propertyName(callee) ?? (ts.isIdentifier(callee) ? callee.text : "react-effect"),
+        callbackIndexes: [0],
+        multiplicity: reactEffectMultiplicity(callExpression, env),
+      };
+    }
 
     const timerKind = dynamicCodeTimerKind(callee, env);
     if (timerKind) {
@@ -5359,9 +5736,16 @@ function auditImperativeNavigation(source, path, options = {}) {
           ? (scheduled.multiplicity ?? "one-shot")
           : "one-shot",
       );
+      programmaticOwnershipScheduledTeardown.push(
+        enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
+          && programmaticOwnershipBoundedScheduledCalls.has(callExpression.pos)
+          ? "bounded"
+          : null,
+      );
       try {
         visitChild(definition.body, childEnv, nextStack);
       } finally {
+        programmaticOwnershipScheduledTeardown.pop();
         programmaticOwnershipScheduledMultiplicity.pop();
         programmaticOwnershipScheduledCallbackDepth -= 1;
         restoreProgrammaticOwnershipStates(snapshot);
@@ -5372,6 +5756,8 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   collectDefinitelyCancelledScheduledCallbacks(sourceFile);
+  collectTeardownPathCancellations(sourceFile);
+  collectEffectBoundedScheduledCallbacks(sourceFile);
 
   function staticHrefCandidatesResolved(expression, env = new Map(), callStack = new Set(), seen = new Set()) {
     if (!expression) return [];
@@ -9649,6 +10035,69 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'import { useEffect } from "react";',
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const aliasedTimer = setTimeout(() => outside.append(input), 0);',
+    'const aliasedHandle = aliasedTimer;',
+    'clearTimeout(aliasedHandle);',
+    'const functionTimer = setInterval(() => outside.append(input), 1000);',
+    'function stopFunctionTimer() { clearInterval(functionTimer); }',
+    'stopFunctionTimer();',
+    'const finalTimer = setTimeout(() => outside.append(input), 0);',
+    'try { const marker = 1; } finally { clearTimeout(finalTimer); }',
+    'const conditionalTimer = setTimeout(() => outside.append(input), 0);',
+    'if (flag) { clearTimeout(conditionalTimer); }',
+    'useEffect(() => {',
+    '  const effectTimer = setTimeout(() => outside.append(input), 0);',
+    '  const effectInterval = setInterval(() => outside.append(input), 1000);',
+    '  const effectListener = () => outside.append(input);',
+    '  window.addEventListener("change", effectListener);',
+    '  return () => {',
+    '    clearTimeout(effectTimer);',
+    '    clearInterval(effectInterval);',
+    '    window.removeEventListener("change", effectListener);',
+    '  };',
+    '}, []);',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-path.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["programmatic-ownership-scheduled-dynamic"] !== 1
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== 3
+    || counts["programmatic-participation-weaken"] !== 1
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown path authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
     'const input = document.createElement("input");',
@@ -10834,6 +11283,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipExecutionScopePolicy: true,
       programmaticFormOwnershipCallbackSchedulingPolicy: true,
       programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
     },
   ));
 
@@ -10875,6 +11325,24 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormOwnershipCallbackTeardownPathViolations = allImperativeNavigationViolations
+  .filter(
+    (violation) =>
+      violation.kind === "programmatic-ownership-scheduled-bounded-dynamic",
+  );
+if (programmaticFormOwnershipCallbackTeardownPathViolations.length > 0) {
+  throw new Error(
+    "Programmatic form ownership callback teardown path authority failed:\n"
+    + programmaticFormOwnershipCallbackTeardownPathViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
