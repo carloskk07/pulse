@@ -395,6 +395,7 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "function isScheduledHandleCancellationFor",
   "function eventListenerRemovalMatches",
   "function isAbortCallForController",
+  "function isKnownTeardownOnlyCall",
   "function functionBodyUnconditionallyCancelsScheduledHandle",
   "function functionBodyUnconditionallyRemovesListener",
   "function containsTeardownAsyncBoundary",
