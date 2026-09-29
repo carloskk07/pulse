@@ -1873,6 +1873,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipControlFlowPolicy = (
     options.programmaticFormOwnershipControlFlowPolicy === true
   );
+  const enforceProgrammaticFormOwnershipExecutionScopePolicy = (
+    options.programmaticFormOwnershipExecutionScopePolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1977,6 +1980,7 @@ function auditImperativeNavigation(source, path, options = {}) {
   const programmaticOwnershipBindingIdentities = new Map();
   const programmaticOwnershipStates = new Map();
   const programmaticOwnershipKinds = new Map();
+  let programmaticOwnershipExecutionSuppressionDepth = 0;
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -2188,6 +2192,13 @@ function auditImperativeNavigation(source, path, options = {}) {
   function programmaticBindingIsUnambiguous(identifier) {
     const key = programmaticBindingKey(identifier);
     return Boolean(key && programmaticOwnershipBindingCounts.get(key) === 1);
+  }
+
+  function programmaticOwnershipExecutionActive() {
+    return (
+      !enforceProgrammaticFormOwnershipExecutionScopePolicy
+      || programmaticOwnershipExecutionSuppressionDepth === 0
+    );
   }
 
   function setScopedEventEvidence(
@@ -4415,6 +4426,24 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function programmaticOwnershipStateInfo(expression, env = new Map()) {
     const identity = programmaticOwnershipIdentity(expression, env);
+    if (
+      enforceProgrammaticFormOwnershipExecutionScopePolicy
+      && !programmaticOwnershipExecutionActive()
+      && (
+        identity
+        || Boolean(programmaticFormControlCreationKind(expression, env))
+      )
+    ) {
+      return {
+        known: true,
+        identity: identity ?? null,
+        owned: false,
+        owner: null,
+        associationMode: "execution-suppressed",
+        uncertain: false,
+        executionSuppressed: true,
+      };
+    }
     if (!identity || !programmaticOwnershipStates.has(identity)) {
       return {
         known: false,
@@ -4436,7 +4465,11 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function setProgrammaticOwnershipState(identity, state) {
-    if (!identity || !enforceProgrammaticFormOwnershipStatePolicy) return false;
+    if (
+      !identity
+      || !enforceProgrammaticFormOwnershipStatePolicy
+      || !programmaticOwnershipExecutionActive()
+    ) return false;
     programmaticOwnershipStates.set(identity, {
       owned: state.owned === true,
       owner: state.owner ?? null,
@@ -4546,6 +4579,7 @@ function auditImperativeNavigation(source, path, options = {}) {
   function registerProgrammaticOwnershipDeclaration(node, env = new Map()) {
     if (
       !enforceProgrammaticFormOwnershipStatePolicy
+      || !programmaticOwnershipExecutionActive()
       || !ts.isVariableDeclaration(node)
       || !ts.isIdentifier(node.name)
       || !node.initializer
@@ -4854,6 +4888,13 @@ function auditImperativeNavigation(source, path, options = {}) {
       for (const definition of localFunctions.values()) {
         if (definition?.node === callee) return definition;
       }
+      return {
+        key: "inline-function@" + callee.pos,
+        name: callee.name?.text ?? null,
+        node: callee,
+        parameters: callee.parameters ?? [],
+        body: callee.body,
+      };
     }
     return null;
   }
@@ -5433,6 +5474,7 @@ function auditImperativeNavigation(source, path, options = {}) {
   ) {
     if (
       !enforceProgrammaticFormOwnershipStatePolicy
+      || !programmaticOwnershipExecutionActive()
       || method !== "replaceChildren"
     ) return false;
 
@@ -5459,6 +5501,7 @@ function auditImperativeNavigation(source, path, options = {}) {
   function applyProgrammaticOwnershipCallTransition(callExpression, env = new Map()) {
     if (
       !enforceProgrammaticFormOwnershipStatePolicy
+      || !programmaticOwnershipExecutionActive()
       || !ts.isCallExpression(callExpression)
     ) return false;
 
@@ -6451,6 +6494,21 @@ function auditImperativeNavigation(source, path, options = {}) {
     callStack,
     visitChild,
   ) {
+    if (
+      enforceProgrammaticFormOwnershipExecutionScopePolicy
+      && ts.isFunctionLike(node)
+    ) {
+      const snapshot = cloneProgrammaticOwnershipStates();
+      programmaticOwnershipExecutionSuppressionDepth += 1;
+      try {
+        ts.forEachChild(node, (child) => visitChild(child, env, callStack));
+      } finally {
+        programmaticOwnershipExecutionSuppressionDepth -= 1;
+        restoreProgrammaticOwnershipStates(snapshot);
+      }
+      return;
+    }
+
     if (!enforceProgrammaticFormOwnershipControlFlowPolicy) {
       ts.forEachChild(node, (child) => visitChild(child, env, callStack));
       return;
@@ -9134,6 +9192,57 @@ function auditImperativeNavigation(source, path, options = {}) {
 {
   const selfTest = [
     'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'function dormant() { outside.append(input); }',
+    'input.disabled = true;',
+    'dormant();',
+    'input.disabled = true;',
+    'function attach() { formA.append(input); }',
+    'attach();',
+    'input.name = "called-attach";',
+    'const dormantArrow = () => outside.append(input);',
+    'input.readOnly = true;',
+    'function run(callback: () => void) { callback(); }',
+    'run(() => outside.append(input));',
+    'input.disabled = true;',
+    '(() => formA.append(input))();',
+    'input.readOnly = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-execution-scope.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 6
+    || counts["programmatic-participation-weaken"] !== 3
+    || counts["programmatic-participation-identity"] !== 1
+    || counts["programmatic-ownership-escape"] !== 2
+  ) {
+    throw new Error(
+      "Programmatic ownership execution scope authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
+    'const formA = document.createElement("form");',
     'const formB = document.createElement("form");',
     'const outside = document.createElement("div");',
     'const input = document.createElement("input");',
@@ -10160,6 +10269,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       formOwnershipRelocationPolicy: true,
       programmaticFormOwnershipStatePolicy: true,
       programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
     },
   ));
 
