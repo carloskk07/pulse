@@ -443,6 +443,8 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "let programmaticOwnershipExecutionSuppressionDepth = 0;",
   "let programmaticOwnershipScheduledCallbackDepth = 0;",
   "const programmaticOwnershipScheduledMultiplicity = [];",
+  "programmaticFormOwnershipCallbackLifetimePolicy",
+  "enforceProgrammaticFormOwnershipCallbackLifetimePolicy",
   "const programmaticOwnershipCancelledScheduledCalls = new Set();",
   "function programmaticOwnershipExecutionActive",
   "function markProgrammaticOwnershipStatesScheduled",
