@@ -431,6 +431,8 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "partial-teardown",
   "loop-partial-teardown",
   "function teardownControlFlowStatus",
+  "function teardownLocalFunctionMayEscape",
+  "safe-no-teardown",
   "function scheduledHandleTeardownControlFlowStatus",
   "function listenerTeardownControlFlowStatus",
   "function functionBodyUnconditionallyCancelsScheduledHandle",
