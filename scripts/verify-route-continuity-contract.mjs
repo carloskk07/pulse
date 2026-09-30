@@ -1888,6 +1888,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy = (
     options.programmaticFormOwnershipCallbackTeardownControlFlowPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownLoopPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1999,6 +2002,7 @@ function auditImperativeNavigation(source, path, options = {}) {
   const programmaticOwnershipCancelledScheduledCalls = new Set();
   const programmaticOwnershipBoundedScheduledCalls = new Set();
   const programmaticOwnershipPartialTeardownScheduledCalls = new Set();
+  const programmaticOwnershipLoopPartialTeardownScheduledCalls = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -4645,15 +4649,18 @@ function auditImperativeNavigation(source, path, options = {}) {
     );
     report(
       node,
-      enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
-        && teardown === "partial"
-        ? "programmatic-ownership-scheduled-teardown-path-dynamic"
-        : enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
-          && teardown === "bounded"
-          ? "programmatic-ownership-scheduled-bounded-dynamic"
-          : multiplicity === "repeat"
-            ? "programmatic-ownership-scheduled-repeat-dynamic"
-            : "programmatic-ownership-scheduled-dynamic",
+      enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
+        && teardown === "loop-partial"
+        ? "programmatic-ownership-scheduled-teardown-loop-dynamic"
+        : enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
+          && teardown === "partial"
+          ? "programmatic-ownership-scheduled-teardown-path-dynamic"
+          : enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
+            && teardown === "bounded"
+            ? "programmatic-ownership-scheduled-bounded-dynamic"
+            : multiplicity === "repeat"
+              ? "programmatic-ownership-scheduled-repeat-dynamic"
+              : "programmatic-ownership-scheduled-dynamic",
       operation ? [operation] : [],
     );
     return true;
@@ -5341,8 +5348,11 @@ function auditImperativeNavigation(source, path, options = {}) {
 
   function teardownFlowMerge(...results) {
     return {
-      continuing: results.flatMap((result) => result.continuing),
-      exits: results.flatMap((result) => result.exits),
+      continuing: results.flatMap((result) => result.continuing ?? []),
+      exits: results.flatMap((result) => result.exits ?? []),
+      breaks: results.flatMap((result) => result.breaks ?? []),
+      continues: results.flatMap((result) => result.continues ?? []),
+      loopUncertainty: results.some((result) => result.loopUncertainty === true),
     };
   }
 
@@ -5350,6 +5360,9 @@ function auditImperativeNavigation(source, path, options = {}) {
     return {
       continuing: [...states],
       exits: states.filter((status) => status !== true),
+      breaks: [],
+      continues: [],
+      loopUncertainty: false,
     };
   }
 
@@ -5362,6 +5375,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   ) {
     let continuing = [...states];
     const exits = [];
+    const breaks = [];
+    const continues = [];
+    let loopUncertainty = false;
 
     for (const statement of statements) {
       if (continuing.length === 0) break;
@@ -5372,11 +5388,158 @@ function auditImperativeNavigation(source, path, options = {}) {
         env,
         callStack,
       );
-      continuing = result.continuing;
-      exits.push(...result.exits);
+      continuing = result.continuing ?? [];
+      exits.push(...(result.exits ?? []));
+      breaks.push(...(result.breaks ?? []));
+      continues.push(...(result.continues ?? []));
+      loopUncertainty ||= result.loopUncertainty === true;
     }
 
-    return { continuing, exits };
+    return { continuing, exits, breaks, continues, loopUncertainty };
+  }
+
+  function teardownStaticBoolean(expression, env = new Map()) {
+    if (!expression) return null;
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (resolved.kind === ts.SyntaxKind.TrueKeyword) return true;
+    if (resolved.kind === ts.SyntaxKind.FalseKeyword) return false;
+    if (ts.isParenthesizedExpression(resolved)) {
+      return teardownStaticBoolean(resolved.expression, env);
+    }
+    if (
+      ts.isPrefixUnaryExpression(resolved)
+      && resolved.operator === ts.SyntaxKind.ExclamationToken
+    ) {
+      const value = teardownStaticBoolean(resolved.operand, env);
+      return value === null ? null : !value;
+    }
+    return null;
+  }
+
+  function teardownLoopIterationClass(statement, env = new Map()) {
+    if (ts.isDoStatement(statement)) {
+      const condition = teardownStaticBoolean(statement.expression, env);
+      return condition === true ? "one-or-more-indefinite" : "one-or-more";
+    }
+
+    if (ts.isWhileStatement(statement)) {
+      const condition = teardownStaticBoolean(statement.expression, env);
+      if (condition === false) return "zero-only";
+      if (condition === true) return "one-or-more-indefinite";
+      return "zero-or-more";
+    }
+
+    if (ts.isForStatement(statement)) {
+      if (!statement.condition) return "one-or-more-indefinite";
+      const condition = teardownStaticBoolean(statement.condition, env);
+      if (condition === false) return "zero-only";
+      if (condition === true) return "one-or-more-indefinite";
+      return "zero-or-more";
+    }
+
+    if (ts.isForOfStatement(statement)) {
+      const iterable = resolveDataExpression(statement.expression, env);
+      if (iterable && ts.isArrayLiteralExpression(iterable)) {
+        if (iterable.elements.length === 0) return "zero-only";
+        if (
+          iterable.elements.some((element) =>
+            !ts.isSpreadElement(element) && !ts.isOmittedExpression(element)
+          )
+        ) return "one-or-more";
+      }
+      if (
+        iterable
+        && (ts.isStringLiteral(iterable) || ts.isNoSubstitutionTemplateLiteral(iterable))
+      ) {
+        return iterable.text.length > 0 ? "one-or-more" : "zero-only";
+      }
+      return "zero-or-more";
+    }
+
+    if (ts.isForInStatement(statement)) {
+      const object = resolveDataExpression(statement.expression, env);
+      if (object && ts.isObjectLiteralExpression(object) && object.properties.length === 0) {
+        return "zero-only";
+      }
+      return "zero-or-more";
+    }
+
+    return "zero-or-more";
+  }
+
+  function teardownFlowLoop(
+    statement,
+    states,
+    matchCall,
+    env,
+    callStack,
+  ) {
+    const iterationClass = teardownLoopIterationClass(statement, env);
+    if (iterationClass === "zero-only") {
+      return {
+        continuing: [...states],
+        exits: [],
+        breaks: [],
+        continues: [],
+        loopUncertainty: false,
+      };
+    }
+
+    const bodyResult = teardownFlowStatement(
+      statement.statement,
+      states,
+      matchCall,
+      env,
+      callStack,
+    );
+    const bodyStatuses = [
+      ...(bodyResult.continuing ?? []),
+      ...(bodyResult.exits ?? []),
+      ...(bodyResult.breaks ?? []),
+      ...(bodyResult.continues ?? []),
+    ];
+    const bodyCanTeardown = bodyStatuses.some((status) => status === true);
+    const zeroIterationUncertainty = (
+      iterationClass === "zero-or-more"
+      && states.some((status) => status !== true)
+      && bodyCanTeardown
+    );
+
+    const continuing = [...(bodyResult.breaks ?? [])];
+    const exits = [...(bodyResult.exits ?? [])];
+
+    if (iterationClass === "zero-or-more") {
+      continuing.unshift(...states);
+      continuing.push(
+        ...(bodyResult.continuing ?? []),
+        ...(bodyResult.continues ?? []),
+      );
+    } else if (iterationClass === "one-or-more") {
+      continuing.push(
+        ...(bodyResult.continuing ?? []),
+        ...(bodyResult.continues ?? []),
+      );
+    } else {
+      // while(true), for(;;) and do...while(true) cannot fall through
+      // without a break. Keep non-terminating paths terminal for proof
+      // purposes so later teardown cannot falsely cover them.
+      exits.push(
+        ...(bodyResult.continuing ?? []),
+        ...(bodyResult.continues ?? []),
+      );
+    }
+
+    return {
+      continuing,
+      exits,
+      breaks: [],
+      continues: [],
+      loopUncertainty: (
+        bodyResult.loopUncertainty === true
+        || zeroIterationUncertainty
+      ),
+    };
   }
 
   function teardownFlowSwitch(
@@ -5387,23 +5550,63 @@ function auditImperativeNavigation(source, path, options = {}) {
     callStack,
   ) {
     const clauses = statement.caseBlock.clauses;
-    const hasDefault = clauses.some((clause) => ts.isDefaultClause(clause));
-    const results = [];
 
-    if (!hasDefault) {
-      results.push({ continuing: [...states], exits: [] });
+    if (!enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy) {
+      const hasDefault = clauses.some((clause) => ts.isDefaultClause(clause));
+      const results = [];
+
+      if (!hasDefault) {
+        results.push({ continuing: [...states], exits: [] });
+      }
+
+      for (const clause of clauses) {
+        results.push(
+          teardownFlowSequence(
+            clause.statements,
+            states,
+            matchCall,
+            env,
+            callStack,
+          ),
+        );
+      }
+
+      return teardownFlowMerge(...results);
     }
 
-    for (const clause of clauses) {
-      results.push(
-        teardownFlowSequence(
-          clause.statements,
-          states,
-          matchCall,
-          env,
-          callStack,
-        ),
+    const hasDefault = clauses.some((clause) => ts.isDefaultClause(clause));
+    const results = [];
+    if (!hasDefault) {
+      results.push({
+        continuing: [...states],
+        exits: [],
+        breaks: [],
+        continues: [],
+        loopUncertainty: false,
+      });
+    }
+
+    for (let index = 0; index < clauses.length; index += 1) {
+      const statements = clauses
+        .slice(index)
+        .flatMap((clause) => [...clause.statements]);
+      const clauseResult = teardownFlowSequence(
+        statements,
+        states,
+        matchCall,
+        env,
+        callStack,
       );
+      results.push({
+        continuing: [
+          ...(clauseResult.continuing ?? []),
+          ...(clauseResult.breaks ?? []),
+        ],
+        exits: [...(clauseResult.exits ?? [])],
+        breaks: [],
+        continues: [...(clauseResult.continues ?? [])],
+        loopUncertainty: clauseResult.loopUncertainty === true,
+      });
     }
 
     return teardownFlowMerge(...results);
@@ -5416,6 +5619,57 @@ function auditImperativeNavigation(source, path, options = {}) {
     env,
     callStack,
   ) {
+    if (!enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy) {
+      const tryResult = teardownFlowSequence(
+        statement.tryBlock.statements,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
+
+      const preFinallyStatuses = [
+        ...tryResult.continuing,
+        ...tryResult.exits,
+      ];
+
+      if (statement.catchClause) {
+        const catchResult = teardownFlowSequence(
+          statement.catchClause.block.statements,
+          states,
+          matchCall,
+          env,
+          callStack,
+        );
+        preFinallyStatuses.push(
+          ...catchResult.continuing,
+          ...catchResult.exits,
+        );
+      } else {
+        preFinallyStatuses.push(
+          ...states.filter((status) => status !== true),
+        );
+      }
+
+      if (!statement.finallyBlock) {
+        return {
+          continuing: preFinallyStatuses,
+          exits: [],
+          breaks: [],
+          continues: [],
+          loopUncertainty: false,
+        };
+      }
+
+      return teardownFlowSequence(
+        statement.finallyBlock.statements,
+        preFinallyStatuses,
+        matchCall,
+        env,
+        callStack,
+      );
+    }
+
     const tryResult = teardownFlowSequence(
       statement.tryBlock.statements,
       states,
@@ -5423,45 +5677,58 @@ function auditImperativeNavigation(source, path, options = {}) {
       env,
       callStack,
     );
-
-    const preFinallyStatuses = [
-      ...tryResult.continuing,
-      ...tryResult.exits,
-    ];
+    const results = [tryResult];
 
     if (statement.catchClause) {
-      const catchResult = teardownFlowSequence(
-        statement.catchClause.block.statements,
-        states,
+      results.push(
+        teardownFlowSequence(
+          statement.catchClause.block.statements,
+          states,
+          matchCall,
+          env,
+          callStack,
+        ),
+      );
+    } else {
+      results.push({
+        continuing: [],
+        exits: states.filter((status) => status !== true),
+        breaks: [],
+        continues: [],
+        loopUncertainty: false,
+      });
+    }
+
+    const merged = teardownFlowMerge(...results);
+    if (!statement.finallyBlock) return merged;
+
+    const finalResults = [];
+    for (const [kind, statuses] of [
+      ["continuing", merged.continuing],
+      ["exits", merged.exits],
+      ["breaks", merged.breaks],
+      ["continues", merged.continues],
+    ]) {
+      if (!statuses.length) continue;
+      const finalResult = teardownFlowSequence(
+        statement.finallyBlock.statements,
+        statuses,
         matchCall,
         env,
         callStack,
       );
-      preFinallyStatuses.push(
-        ...catchResult.continuing,
-        ...catchResult.exits,
-      );
-    } else {
-      // A throw before teardown remains a reachable uncancelled path.
-      preFinallyStatuses.push(
-        ...states.filter((status) => status !== true),
-      );
-    }
-
-    if (!statement.finallyBlock) {
-      return {
-        continuing: preFinallyStatuses,
-        exits: [],
+      const resumed = {
+        continuing: [],
+        exits: [...(finalResult.exits ?? [])],
+        breaks: [...(finalResult.breaks ?? [])],
+        continues: [...(finalResult.continues ?? [])],
+        loopUncertainty: finalResult.loopUncertainty === true,
       };
+      resumed[kind].push(...(finalResult.continuing ?? []));
+      finalResults.push(resumed);
     }
 
-    return teardownFlowSequence(
-      statement.finallyBlock.statements,
-      preFinallyStatuses,
-      matchCall,
-      env,
-      callStack,
-    );
+    return teardownFlowMerge(...finalResults);
   }
 
   function teardownFlowStatement(
@@ -5497,8 +5764,33 @@ function auditImperativeNavigation(source, path, options = {}) {
           env,
           callStack,
         )
-        : { continuing: [...states], exits: [] };
+        : {
+          continuing: [...states],
+          exits: [],
+          breaks: [],
+          continues: [],
+          loopUncertainty: false,
+        };
       return teardownFlowMerge(thenResult, elseResult);
+    }
+
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
+      && (
+        ts.isDoStatement(statement)
+        || ts.isWhileStatement(statement)
+        || ts.isForStatement(statement)
+        || ts.isForOfStatement(statement)
+        || ts.isForInStatement(statement)
+      )
+    ) {
+      return teardownFlowLoop(
+        statement,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
     }
 
     if (ts.isSwitchStatement(statement)) {
@@ -5521,13 +5813,58 @@ function auditImperativeNavigation(source, path, options = {}) {
       );
     }
 
-    if (
-      ts.isReturnStatement(statement)
-      || ts.isThrowStatement(statement)
-      || ts.isBreakStatement(statement)
-      || ts.isContinueStatement(statement)
-    ) {
-      return { continuing: [], exits: [...states] };
+    if (ts.isReturnStatement(statement) || ts.isThrowStatement(statement)) {
+      return {
+        continuing: [],
+        exits: [...states],
+        breaks: [],
+        continues: [],
+        loopUncertainty: false,
+      };
+    }
+
+    if (ts.isBreakStatement(statement)) {
+      if (
+        enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
+        && !statement.label
+      ) {
+        return {
+          continuing: [],
+          exits: [],
+          breaks: [...states],
+          continues: [],
+          loopUncertainty: false,
+        };
+      }
+      return {
+        continuing: [],
+        exits: [...states],
+        breaks: [],
+        continues: [],
+        loopUncertainty: false,
+      };
+    }
+
+    if (ts.isContinueStatement(statement)) {
+      if (
+        enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
+        && !statement.label
+      ) {
+        return {
+          continuing: [],
+          exits: [],
+          breaks: [],
+          continues: [...states],
+          loopUncertainty: false,
+        };
+      }
+      return {
+        continuing: [],
+        exits: [...states],
+        breaks: [],
+        continues: [],
+        loopUncertainty: false,
+      };
     }
 
     const call = directCallStatement(statement);
@@ -5537,6 +5874,20 @@ function auditImperativeNavigation(source, path, options = {}) {
         return {
           continuing: states.map(() => true),
           exits: [],
+          breaks: [],
+          continues: [],
+          loopUncertainty: false,
+        };
+      }
+      if (matched === "loop-partial-teardown") {
+        return {
+          continuing: states.flatMap((status) =>
+            status === true ? [true] : [true, false]
+          ),
+          exits: [],
+          breaks: [],
+          continues: [],
+          loopUncertainty: true,
         };
       }
       if (matched === "partial-teardown") {
@@ -5545,10 +5896,19 @@ function auditImperativeNavigation(source, path, options = {}) {
             status === true ? [true] : [true, false]
           ),
           exits: [],
+          breaks: [],
+          continues: [],
+          loopUncertainty: false,
         };
       }
       if (matched === "safe-teardown") {
-        return { continuing: [...states], exits: [] };
+        return {
+          continuing: [...states],
+          exits: [],
+          breaks: [],
+          continues: [],
+          loopUncertainty: false,
+        };
       }
       return teardownFlowUnknownStatement(states);
     }
@@ -5559,7 +5919,13 @@ function auditImperativeNavigation(source, path, options = {}) {
       || ts.isEmptyStatement(statement)
       || ts.isVariableStatement(statement)
     ) {
-      return { continuing: [...states], exits: [] };
+      return {
+        continuing: [...states],
+        exits: [],
+        breaks: [],
+        continues: [],
+        loopUncertainty: false,
+      };
     }
 
     return teardownFlowUnknownStatement(states);
@@ -5581,10 +5947,18 @@ function auditImperativeNavigation(source, path, options = {}) {
       env,
       callStack,
     );
-    return teardownFlowClassify([
+    const status = teardownFlowClassify([
       ...result.continuing,
       ...result.exits,
+      ...(result.breaks ?? []),
+      ...(result.continues ?? []),
     ]);
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
+      && status === "partial"
+      && result.loopUncertainty === true
+    ) return "loop-partial";
+    return status;
   }
 
   function scheduledHandleTeardownControlFlowStatus(
@@ -5619,6 +5993,7 @@ function auditImperativeNavigation(source, path, options = {}) {
         nextStack,
       );
       if (status === "guaranteed") return true;
+      if (status === "loop-partial") return "loop-partial-teardown";
       if (status === "partial") return "partial-teardown";
       return false;
     };
@@ -5661,6 +6036,7 @@ function auditImperativeNavigation(source, path, options = {}) {
         nextStack,
       );
       if (status === "guaranteed") return true;
+      if (status === "loop-partial") return "loop-partial-teardown";
       if (status === "partial") return "partial-teardown";
       return false;
     };
@@ -5893,6 +6269,10 @@ function auditImperativeNavigation(source, path, options = {}) {
             programmaticOwnershipCancelledScheduledCalls.add(
               scheduledInfo.call.pos,
             );
+          } else if (status === "loop-partial") {
+            programmaticOwnershipLoopPartialTeardownScheduledCalls.add(
+              scheduledInfo.call.pos,
+            );
           } else if (status === "partial") {
             programmaticOwnershipPartialTeardownScheduledCalls.add(
               scheduledInfo.call.pos,
@@ -5912,6 +6292,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           );
           if (status === "guaranteed") {
             programmaticOwnershipCancelledScheduledCalls.add(addCall.pos);
+          } else if (status === "loop-partial") {
+            programmaticOwnershipLoopPartialTeardownScheduledCalls.add(addCall.pos);
           } else if (status === "partial") {
             programmaticOwnershipPartialTeardownScheduledCalls.add(addCall.pos);
           }
@@ -5979,6 +6361,10 @@ function auditImperativeNavigation(source, path, options = {}) {
               programmaticOwnershipBoundedScheduledCalls.add(
                 scheduledInfo.call.pos,
               );
+            } else if (status === "loop-partial") {
+              programmaticOwnershipLoopPartialTeardownScheduledCalls.add(
+                scheduledInfo.call.pos,
+              );
             } else if (status === "partial") {
               programmaticOwnershipPartialTeardownScheduledCalls.add(
                 scheduledInfo.call.pos,
@@ -5995,6 +6381,8 @@ function auditImperativeNavigation(source, path, options = {}) {
             );
             if (status === "guaranteed") {
               programmaticOwnershipBoundedScheduledCalls.add(addCall.pos);
+            } else if (status === "loop-partial") {
+              programmaticOwnershipLoopPartialTeardownScheduledCalls.add(addCall.pos);
             } else if (status === "partial") {
               programmaticOwnershipPartialTeardownScheduledCalls.add(
                 addCall.pos,
@@ -6195,17 +6583,22 @@ function auditImperativeNavigation(source, path, options = {}) {
           : "one-shot",
       );
       programmaticOwnershipScheduledTeardown.push(
-        enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
-          && programmaticOwnershipPartialTeardownScheduledCalls.has(
+        enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
+          && programmaticOwnershipLoopPartialTeardownScheduledCalls.has(
             callExpression.pos,
           )
-          ? "partial"
-          : enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
-            && programmaticOwnershipBoundedScheduledCalls.has(
+          ? "loop-partial"
+          : enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
+            && programmaticOwnershipPartialTeardownScheduledCalls.has(
               callExpression.pos,
             )
-            ? "bounded"
-            : null,
+            ? "partial"
+            : enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
+              && programmaticOwnershipBoundedScheduledCalls.has(
+                callExpression.pos,
+              )
+              ? "bounded"
+              : null,
       );
       try {
         visitChild(definition.body, childEnv, nextStack);
@@ -10588,6 +10981,78 @@ function auditImperativeNavigation(source, path, options = {}) {
     'const outside = document.createElement("div");',
     'const input = document.createElement("input");',
     'formA.append(input);',
+    'const maybeWhile = setTimeout(() => outside.append(input), 0);',
+    'while (flag) { clearTimeout(maybeWhile); }',
+    'const maybeForOf = setTimeout(() => outside.append(input), 0);',
+    'for (const item of items) { clearTimeout(maybeForOf); }',
+    'const zeroOnly = setTimeout(() => outside.append(input), 0);',
+    'while (false) { clearTimeout(zeroOnly); }',
+    'const doAll = setTimeout(() => outside.append(input), 0);',
+    'do { clearTimeout(doAll); } while (flag);',
+    'const literalForOf = setTimeout(() => outside.append(input), 0);',
+    'for (const item of [1]) { clearTimeout(literalForOf); }',
+    'const breakCovered = setTimeout(() => outside.append(input), 0);',
+    'do { if (flag) { break; } clearTimeout(breakCovered); } while (false);',
+    'clearTimeout(breakCovered);',
+    'const continueCovered = setTimeout(() => outside.append(input), 0);',
+    'do { if (flag) { continue; } clearTimeout(continueCovered); } while (false);',
+    'clearTimeout(continueCovered);',
+    'const nestedAll = setTimeout(() => outside.append(input), 0);',
+    'do {',
+    '  do { clearTimeout(nestedAll); break; } while (true);',
+    '  break;',
+    '} while (true);',
+    'useEffect(() => {',
+    '  const effectLoop = setTimeout(() => outside.append(input), 0);',
+    '  return () => { while (flag) { clearTimeout(effectLoop); } };',
+    '}, []);',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-loop.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 5
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== 3
+    || counts["programmatic-ownership-scheduled-dynamic"] !== 1
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown loop authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
+    'import { useEffect } from "react";',
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
     'const aliasedTimer = setTimeout(() => outside.append(input), 0);',
     'const aliasedHandle = aliasedTimer;',
     'clearTimeout(aliasedHandle);',
@@ -11833,6 +12298,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackLifetimePolicy: true,
       programmaticFormOwnershipCallbackTeardownPathPolicy: true,
       programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
     },
   ));
 
@@ -11874,6 +12340,24 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormOwnershipCallbackTeardownLoopViolations = allImperativeNavigationViolations
+  .filter(
+    (violation) =>
+      violation.kind === "programmatic-ownership-scheduled-teardown-loop-dynamic",
+  );
+if (programmaticFormOwnershipCallbackTeardownLoopViolations.length > 0) {
+  throw new Error(
+    "Programmatic form ownership callback teardown loop authority failed:\n"
+    + programmaticFormOwnershipCallbackTeardownLoopViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
