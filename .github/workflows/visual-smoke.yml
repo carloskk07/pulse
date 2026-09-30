@@ -18,6 +18,7 @@ on:
       - "scripts/verify-dense-state-runtime.mjs"
       - "scripts/verify-product-interaction-runtime.mjs"
       - "scripts/verify-route-continuity-runtime.mjs"
+      - "scripts/capture-route-transition-frames.mjs"
       - "scripts/capture-public-full-page.mjs"
       - "scripts/capture-viewport.mjs"
   push:
@@ -36,6 +37,7 @@ on:
       - "scripts/verify-dense-state-runtime.mjs"
       - "scripts/verify-product-interaction-runtime.mjs"
       - "scripts/verify-route-continuity-runtime.mjs"
+      - "scripts/capture-route-transition-frames.mjs"
       - "scripts/capture-public-full-page.mjs"
       - "scripts/capture-viewport.mjs"
 
@@ -277,6 +279,12 @@ jobs:
           ROUTE_CONTINUITY_BASE_URL: http://127.0.0.1:3100
         run: node scripts/verify-route-continuity-runtime.mjs
 
+      - name: Capture semantic route transition frames
+        shell: bash
+        env:
+          ROUTE_TRANSITION_CAPTURE_BASE_URL: http://127.0.0.1:3100
+        run: node scripts/capture-route-transition-frames.mjs visual-smoke/local-preview/route-transition
+
       - name: Finalize pull-request visual evidence
         if: github.event_name == 'pull_request'
         shell: bash
@@ -286,8 +294,9 @@ jobs:
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count pull-request visual screenshots."
           # 40 canonical local-preview PNGs + 6 claim-reveal PNGs
-          # + 10 dense-state PNGs + 2 authoritative system-event PNGs.
-          test "$count" -eq 58
+          # + 10 dense-state PNGs + 2 authoritative system-event PNGs
+          # + 8 deterministic semantic transition frames.
+          test "$count" -eq 66
           echo "Pull-request Visual Smoke PASS: local browser evidence is complete." | tee -a visual-smoke/manifest.txt
 
       - name: Resolve canonical production release authority
@@ -622,9 +631,10 @@ jobs:
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots."
           # 40 canonical local-preview PNGs + 6 claim-reveal PNGs + 10 dense-state PNGs
-          # + 2 authoritative system-event PNGs + 36 production PNGs.
+          # + 2 authoritative system-event PNGs + 8 deterministic semantic transition frames
+          # + 36 production PNGs.
           # Dense fixtures cover Rewards / Earn / Balance / Progress / Referrals on desktop and mobile.
-          test "$count" -eq 94
+          test "$count" -eq 102
 
       - name: Capture full-page public evidence
         if: github.ref == 'refs/heads/main'
@@ -639,9 +649,9 @@ jobs:
           find visual-smoke -type f -name '*.png' -print0 | sort -z | xargs -0 sha256sum > visual-smoke/SHA256SUMS.txt
           count="$(find visual-smoke -type f -name '*.png' | wc -l)"
           echo "Captured $count screenshots after targeted full-page evidence."
-          # Existing 94 viewport/fixture screenshots + 12 full-page public screenshots:
+          # Existing 102 viewport/fixture screenshots + 12 full-page public screenshots:
           # Home, Faucet, Proof, Auth, Business and Ads × desktop/mobile.
-          test "$count" -eq 106
+          test "$count" -eq 114
 
       - name: Stop local preview
         if: always()
