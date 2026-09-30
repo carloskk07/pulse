@@ -1885,6 +1885,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy = (
     options.programmaticFormOwnershipCallbackTeardownPathPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownControlFlowPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -1995,6 +1998,7 @@ function auditImperativeNavigation(source, path, options = {}) {
   const programmaticOwnershipScheduledTeardown = [];
   const programmaticOwnershipCancelledScheduledCalls = new Set();
   const programmaticOwnershipBoundedScheduledCalls = new Set();
+  const programmaticOwnershipPartialTeardownScheduledCalls = new Set();
   const declarations = [];
   const constInitializers = new Map();
   const localFunctions = new Map();
@@ -4641,12 +4645,15 @@ function auditImperativeNavigation(source, path, options = {}) {
     );
     report(
       node,
-      enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
-        && teardown === "bounded"
-        ? "programmatic-ownership-scheduled-bounded-dynamic"
-        : multiplicity === "repeat"
-          ? "programmatic-ownership-scheduled-repeat-dynamic"
-          : "programmatic-ownership-scheduled-dynamic",
+      enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
+        && teardown === "partial"
+        ? "programmatic-ownership-scheduled-teardown-path-dynamic"
+        : enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
+          && teardown === "bounded"
+          ? "programmatic-ownership-scheduled-bounded-dynamic"
+          : multiplicity === "repeat"
+            ? "programmatic-ownership-scheduled-repeat-dynamic"
+            : "programmatic-ownership-scheduled-dynamic",
       operation ? [operation] : [],
     );
     return true;
@@ -5325,6 +5332,347 @@ function auditImperativeNavigation(source, path, options = {}) {
     return false;
   }
 
+  function teardownFlowClassify(statuses) {
+    if (!statuses.length) return "none";
+    if (statuses.every((status) => status === true)) return "guaranteed";
+    if (statuses.some((status) => status === true)) return "partial";
+    return "none";
+  }
+
+  function teardownFlowMerge(...results) {
+    return {
+      continuing: results.flatMap((result) => result.continuing),
+      exits: results.flatMap((result) => result.exits),
+    };
+  }
+
+  function teardownFlowUnknownStatement(states) {
+    return {
+      continuing: [...states],
+      exits: states.filter((status) => status !== true),
+    };
+  }
+
+  function teardownFlowSequence(
+    statements,
+    states,
+    matchCall,
+    env = new Map(),
+    callStack = new Set(),
+  ) {
+    let continuing = [...states];
+    const exits = [];
+
+    for (const statement of statements) {
+      if (continuing.length === 0) break;
+      const result = teardownFlowStatement(
+        statement,
+        continuing,
+        matchCall,
+        env,
+        callStack,
+      );
+      continuing = result.continuing;
+      exits.push(...result.exits);
+    }
+
+    return { continuing, exits };
+  }
+
+  function teardownFlowSwitch(
+    statement,
+    states,
+    matchCall,
+    env,
+    callStack,
+  ) {
+    const clauses = statement.caseBlock.clauses;
+    const hasDefault = clauses.some((clause) => ts.isDefaultClause(clause));
+    const results = [];
+
+    if (!hasDefault) {
+      results.push({ continuing: [...states], exits: [] });
+    }
+
+    for (const clause of clauses) {
+      results.push(
+        teardownFlowSequence(
+          clause.statements,
+          states,
+          matchCall,
+          env,
+          callStack,
+        ),
+      );
+    }
+
+    return teardownFlowMerge(...results);
+  }
+
+  function teardownFlowTry(
+    statement,
+    states,
+    matchCall,
+    env,
+    callStack,
+  ) {
+    const tryResult = teardownFlowSequence(
+      statement.tryBlock.statements,
+      states,
+      matchCall,
+      env,
+      callStack,
+    );
+
+    const preFinallyStatuses = [
+      ...tryResult.continuing,
+      ...tryResult.exits,
+    ];
+
+    if (statement.catchClause) {
+      const catchResult = teardownFlowSequence(
+        statement.catchClause.block.statements,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
+      preFinallyStatuses.push(
+        ...catchResult.continuing,
+        ...catchResult.exits,
+      );
+    } else {
+      // A throw before teardown remains a reachable uncancelled path.
+      preFinallyStatuses.push(
+        ...states.filter((status) => status !== true),
+      );
+    }
+
+    if (!statement.finallyBlock) {
+      return {
+        continuing: preFinallyStatuses,
+        exits: [],
+      };
+    }
+
+    return teardownFlowSequence(
+      statement.finallyBlock.statements,
+      preFinallyStatuses,
+      matchCall,
+      env,
+      callStack,
+    );
+  }
+
+  function teardownFlowStatement(
+    statement,
+    states,
+    matchCall,
+    env = new Map(),
+    callStack = new Set(),
+  ) {
+    if (ts.isBlock(statement)) {
+      return teardownFlowSequence(
+        statement.statements,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
+    }
+
+    if (ts.isIfStatement(statement)) {
+      const thenResult = teardownFlowStatement(
+        statement.thenStatement,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
+      const elseResult = statement.elseStatement
+        ? teardownFlowStatement(
+          statement.elseStatement,
+          states,
+          matchCall,
+          env,
+          callStack,
+        )
+        : { continuing: [...states], exits: [] };
+      return teardownFlowMerge(thenResult, elseResult);
+    }
+
+    if (ts.isSwitchStatement(statement)) {
+      return teardownFlowSwitch(
+        statement,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
+    }
+
+    if (ts.isTryStatement(statement)) {
+      return teardownFlowTry(
+        statement,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
+    }
+
+    if (
+      ts.isReturnStatement(statement)
+      || ts.isThrowStatement(statement)
+      || ts.isBreakStatement(statement)
+      || ts.isContinueStatement(statement)
+    ) {
+      return { continuing: [], exits: [...states] };
+    }
+
+    const call = directCallStatement(statement);
+    if (call) {
+      const matched = matchCall(call, env, callStack);
+      if (matched === true) {
+        return {
+          continuing: states.map(() => true),
+          exits: [],
+        };
+      }
+      if (matched === "partial-teardown") {
+        return {
+          continuing: states.flatMap((status) =>
+            status === true ? [true] : [true, false]
+          ),
+          exits: [],
+        };
+      }
+      if (matched === "safe-teardown") {
+        return { continuing: [...states], exits: [] };
+      }
+      return teardownFlowUnknownStatement(states);
+    }
+
+    if (
+      directIdentifierAlias(statement)
+      || ts.isFunctionDeclaration(statement)
+      || ts.isEmptyStatement(statement)
+      || ts.isVariableStatement(statement)
+    ) {
+      return { continuing: [...states], exits: [] };
+    }
+
+    return teardownFlowUnknownStatement(states);
+  }
+
+  function teardownControlFlowStatus(
+    definitionOrBlock,
+    matchCall,
+    env = new Map(),
+    callStack = new Set(),
+  ) {
+    if (!definitionOrBlock) return "none";
+    const body = definitionOrBlock.body ?? definitionOrBlock;
+    if (!body || !ts.isBlock(body)) return "none";
+    const result = teardownFlowSequence(
+      body.statements,
+      [false],
+      matchCall,
+      env,
+      callStack,
+    );
+    return teardownFlowClassify([
+      ...result.continuing,
+      ...result.exits,
+    ]);
+  }
+
+  function scheduledHandleTeardownControlFlowStatus(
+    definitionOrBlock,
+    scheduledInfo,
+    env = new Map(),
+    callStack = new Set(),
+  ) {
+    const matchCall = (call, callEnv, stack) => {
+      if (
+        isScheduledHandleCancellationFor(
+          call,
+          scheduledInfo,
+          new Map(),
+          callEnv,
+        )
+      ) return true;
+
+      if (isKnownTeardownOnlyCall(call, callEnv)) {
+        return "safe-teardown";
+      }
+
+      const definition = localFunctionFromCallee(call.expression, callEnv);
+      if (!definition || stack.has(definition.key)) return false;
+      const nextStack = new Set(stack);
+      nextStack.add(definition.key);
+      const childEnv = functionEnvironment(definition, call, callEnv);
+      const status = scheduledHandleTeardownControlFlowStatus(
+        definition,
+        scheduledInfo,
+        childEnv,
+        nextStack,
+      );
+      if (status === "guaranteed") return true;
+      if (status === "partial") return "partial-teardown";
+      return false;
+    };
+
+    return teardownControlFlowStatus(
+      definitionOrBlock,
+      matchCall,
+      env,
+      callStack,
+    );
+  }
+
+  function listenerTeardownControlFlowStatus(
+    definitionOrBlock,
+    addInfo,
+    env = new Map(),
+    callStack = new Set(),
+  ) {
+    const matchCall = (call, callEnv, stack) => {
+      const removeInfo = eventListenerCallInfo(call, callEnv);
+      if (eventListenerRemovalMatches(addInfo, removeInfo)) return true;
+      if (
+        addInfo?.signalController
+        && isAbortCallForController(call, addInfo.signalController, callEnv)
+      ) return true;
+
+      if (isKnownTeardownOnlyCall(call, callEnv)) {
+        return "safe-teardown";
+      }
+
+      const definition = localFunctionFromCallee(call.expression, callEnv);
+      if (!definition || stack.has(definition.key)) return false;
+      const nextStack = new Set(stack);
+      nextStack.add(definition.key);
+      const childEnv = functionEnvironment(definition, call, callEnv);
+      const status = listenerTeardownControlFlowStatus(
+        definition,
+        addInfo,
+        childEnv,
+        nextStack,
+      );
+      if (status === "guaranteed") return true;
+      if (status === "partial") return "partial-teardown";
+      return false;
+    };
+
+    return teardownControlFlowStatus(
+      definitionOrBlock,
+      matchCall,
+      env,
+      callStack,
+    );
+  }
+
   function functionBodyUnconditionallyCancelsScheduledHandle(
     definition,
     scheduledInfo,
@@ -5518,6 +5866,62 @@ function auditImperativeNavigation(source, path, options = {}) {
     ts.forEachChild(node, collectTeardownPathCancellations);
   }
 
+  function collectTeardownControlFlowCancellations(node) {
+    if (
+      !enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
+      || !node
+    ) return;
+
+    const statements = (
+      ts.isSourceFile(node) || ts.isBlock(node)
+    )
+      ? [...node.statements]
+      : null;
+
+    if (statements) {
+      for (let index = 0; index < statements.length; index += 1) {
+        const scheduledInfo = timerScheduledDeclarationInfo(statements[index]);
+        if (scheduledInfo) {
+          const synthetic = {
+            body: ts.factory.createBlock(statements.slice(index + 1), true),
+          };
+          const status = scheduledHandleTeardownControlFlowStatus(
+            synthetic,
+            scheduledInfo,
+          );
+          if (status === "guaranteed") {
+            programmaticOwnershipCancelledScheduledCalls.add(
+              scheduledInfo.call.pos,
+            );
+          } else if (status === "partial") {
+            programmaticOwnershipPartialTeardownScheduledCalls.add(
+              scheduledInfo.call.pos,
+            );
+          }
+        }
+
+        const addCall = directCallStatement(statements[index]);
+        const addInfo = addCall ? eventListenerCallInfo(addCall) : null;
+        if (addCall && addInfo?.method === "addEventListener") {
+          const synthetic = {
+            body: ts.factory.createBlock(statements.slice(index + 1), true),
+          };
+          const status = listenerTeardownControlFlowStatus(
+            synthetic,
+            addInfo,
+          );
+          if (status === "guaranteed") {
+            programmaticOwnershipCancelledScheduledCalls.add(addCall.pos);
+          } else if (status === "partial") {
+            programmaticOwnershipPartialTeardownScheduledCalls.add(addCall.pos);
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, collectTeardownControlFlowCancellations);
+  }
+
   function isReactEffectReference(expression, env = new Map()) {
     const resolved = resolveDataExpression(expression, env);
     if (!resolved) return false;
@@ -5548,6 +5952,60 @@ function auditImperativeNavigation(source, path, options = {}) {
     const returns = functionReturnExpressions(effectDefinition);
     if (returns.length !== 1) return null;
     return localFunctionFromCallee(returns[0], env);
+  }
+
+  function collectEffectTeardownControlFlowScheduledCallbacks(node) {
+    if (
+      !enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
+      || !node
+    ) return;
+
+    if (ts.isCallExpression(node) && isReactEffectReference(node.expression)) {
+      const effectDefinition = localFunctionFromCallee(node.arguments[0]);
+      const cleanupDefinition = effectCleanupDefinition(effectDefinition);
+      if (
+        effectDefinition?.body
+        && ts.isBlock(effectDefinition.body)
+        && cleanupDefinition
+      ) {
+        for (const statement of effectDefinition.body.statements) {
+          const scheduledInfo = timerScheduledDeclarationInfo(statement);
+          if (scheduledInfo) {
+            const status = scheduledHandleTeardownControlFlowStatus(
+              cleanupDefinition,
+              scheduledInfo,
+            );
+            if (status === "guaranteed") {
+              programmaticOwnershipBoundedScheduledCalls.add(
+                scheduledInfo.call.pos,
+              );
+            } else if (status === "partial") {
+              programmaticOwnershipPartialTeardownScheduledCalls.add(
+                scheduledInfo.call.pos,
+              );
+            }
+          }
+
+          const addCall = directCallStatement(statement);
+          const addInfo = addCall ? eventListenerCallInfo(addCall) : null;
+          if (addCall && addInfo?.method === "addEventListener") {
+            const status = listenerTeardownControlFlowStatus(
+              cleanupDefinition,
+              addInfo,
+            );
+            if (status === "guaranteed") {
+              programmaticOwnershipBoundedScheduledCalls.add(addCall.pos);
+            } else if (status === "partial") {
+              programmaticOwnershipPartialTeardownScheduledCalls.add(
+                addCall.pos,
+              );
+            }
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, collectEffectTeardownControlFlowScheduledCallbacks);
   }
 
   function collectEffectBoundedScheduledCallbacks(node) {
@@ -5737,10 +6195,17 @@ function auditImperativeNavigation(source, path, options = {}) {
           : "one-shot",
       );
       programmaticOwnershipScheduledTeardown.push(
-        enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
-          && programmaticOwnershipBoundedScheduledCalls.has(callExpression.pos)
-          ? "bounded"
-          : null,
+        enforceProgrammaticFormOwnershipCallbackTeardownControlFlowPolicy
+          && programmaticOwnershipPartialTeardownScheduledCalls.has(
+            callExpression.pos,
+          )
+          ? "partial"
+          : enforceProgrammaticFormOwnershipCallbackTeardownPathPolicy
+            && programmaticOwnershipBoundedScheduledCalls.has(
+              callExpression.pos,
+            )
+            ? "bounded"
+            : null,
       );
       try {
         visitChild(definition.body, childEnv, nextStack);
@@ -5758,6 +6223,8 @@ function auditImperativeNavigation(source, path, options = {}) {
   collectDefinitelyCancelledScheduledCallbacks(sourceFile);
   collectTeardownPathCancellations(sourceFile);
   collectEffectBoundedScheduledCallbacks(sourceFile);
+  collectTeardownControlFlowCancellations(sourceFile);
+  collectEffectTeardownControlFlowScheduledCallbacks(sourceFile);
 
   function staticHrefCandidatesResolved(expression, env = new Map(), callStack = new Set(), seen = new Set()) {
     if (!expression) return [];
@@ -10040,6 +10507,87 @@ function auditImperativeNavigation(source, path, options = {}) {
     'const outside = document.createElement("div");',
     'const input = document.createElement("input");',
     'formA.append(input);',
+    'const allIf = setTimeout(() => outside.append(input), 0);',
+    'if (flag) { clearTimeout(allIf); } else { clearTimeout(allIf); }',
+    'const partialIf = setTimeout(() => outside.append(input), 0);',
+    'if (flag) { clearTimeout(partialIf); }',
+    'const allSwitch = setInterval(() => outside.append(input), 1000);',
+    'switch (mode) {',
+    '  case "a": clearInterval(allSwitch); break;',
+    '  default: clearInterval(allSwitch); break;',
+    '}',
+    'const partialSwitch = setTimeout(() => outside.append(input), 0);',
+    'switch (mode) { case "a": clearTimeout(partialSwitch); break; }',
+    'const finalAll = setTimeout(() => outside.append(input), 0);',
+    'try { if (flag) { const marker = 1; } } finally { clearTimeout(finalAll); }',
+    'const functionAll = setTimeout(() => outside.append(input), 0);',
+    'function stopFunctionAll() {',
+    '  if (flag) { clearTimeout(functionAll); return; }',
+    '  clearTimeout(functionAll);',
+    '}',
+    'stopFunctionAll();',
+    'const functionPartial = setTimeout(() => outside.append(input), 0);',
+    'function stopFunctionPartial() {',
+    '  if (flag) { clearTimeout(functionPartial); return; }',
+    '  return;',
+    '}',
+    'stopFunctionPartial();',
+    'useEffect(() => {',
+    '  const effectAll = setTimeout(() => outside.append(input), 0);',
+    '  return () => {',
+    '    if (flag) { clearTimeout(effectAll); return; }',
+    '    clearTimeout(effectAll);',
+    '  };',
+    '}, []);',
+    'useEffect(() => {',
+    '  const effectPartial = setTimeout(() => outside.append(input), 0);',
+    '  return () => { if (flag) { clearTimeout(effectPartial); } };',
+    '}, []);',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-control-flow.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 6
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 4
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== 1
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown control-flow authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
+    'import { useEffect } from "react";',
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
     'const aliasedTimer = setTimeout(() => outside.append(input), 0);',
     'const aliasedHandle = aliasedTimer;',
     'clearTimeout(aliasedHandle);',
@@ -11284,6 +11832,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackSchedulingPolicy: true,
       programmaticFormOwnershipCallbackLifetimePolicy: true,
       programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
     },
   ));
 
@@ -11325,6 +11874,24 @@ if (nativeInvocationViolations.length > 0) {
         "- " + violation.path + ":" + violation.line + ":" + violation.column
         + " -> " + violation.kind
         + (violation.targets.length ? " targets " + violation.targets.join(", ") : "")
+      )
+      .join("\n"),
+  );
+}
+
+const programmaticFormOwnershipCallbackTeardownControlFlowViolations = allImperativeNavigationViolations
+  .filter(
+    (violation) =>
+      violation.kind === "programmatic-ownership-scheduled-teardown-path-dynamic",
+  );
+if (programmaticFormOwnershipCallbackTeardownControlFlowViolations.length > 0) {
+  throw new Error(
+    "Programmatic form ownership callback teardown control-flow authority failed:\n"
+    + programmaticFormOwnershipCallbackTeardownControlFlowViolations
+      .map((violation) =>
+        "- " + violation.path + ":" + violation.line + ":" + violation.column
+        + " -> " + violation.kind
+        + (violation.targets.length ? " [" + violation.targets.join(", ") + "]" : "")
       )
       .join("\n"),
   );
