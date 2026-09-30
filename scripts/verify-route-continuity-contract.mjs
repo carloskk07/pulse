@@ -5539,6 +5539,14 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
         };
       }
+      if (matched === "partial-teardown") {
+        return {
+          continuing: states.flatMap((status) =>
+            status === true ? [true] : [true, false]
+          ),
+          exits: [],
+        };
+      }
       if (matched === "safe-teardown") {
         return { continuing: [...states], exits: [] };
       }
@@ -5611,7 +5619,7 @@ function auditImperativeNavigation(source, path, options = {}) {
         nextStack,
       );
       if (status === "guaranteed") return true;
-      if (status === "partial") return false;
+      if (status === "partial") return "partial-teardown";
       return false;
     };
 
@@ -5653,6 +5661,7 @@ function auditImperativeNavigation(source, path, options = {}) {
         nextStack,
       );
       if (status === "guaranteed") return true;
+      if (status === "partial") return "partial-teardown";
       return false;
     };
 
