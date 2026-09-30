@@ -405,6 +405,7 @@ requireText("scripts/verify-route-continuity-contract.mjs", [
   "function teardownFlowSwitch",
   "function teardownFlowTry",
   "function teardownFlowStatement",
+  "partial-teardown",
   "function teardownControlFlowStatus",
   "function scheduledHandleTeardownControlFlowStatus",
   "function listenerTeardownControlFlowStatus",
