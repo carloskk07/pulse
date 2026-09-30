@@ -13,7 +13,15 @@ import {
 import { SceneTelemetry } from "@/components/scene-telemetry";
 import { ValueFlow } from "@/components/value-flow";
 import { Check, Shield, Spark, Users, Wallet } from "@/components/icons";
-import type { ProductExperience, ProductJourney } from "@/lib/product-experience";
+import {
+  getEarningExperience,
+  getNetworkExperience,
+  getProgressExperience,
+  getWalletExperience,
+  type ProductExperience,
+} from "@/lib/product-experience";
+import { getCircuitProgress } from "@/lib/circuit-progress";
+import { formatUsdFromCredits, type RewardSnapshot } from "@/lib/reward-state";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dense visual fixture" };
@@ -23,76 +31,90 @@ type Props = { searchParams: Promise<{ scene?: string; event?: string }> };
 
 const sceneSet = new Set<Scene>(["reward", "earn", "wallet", "progress", "invite"]);
 
-function journey(
-  stage: ProductJourney["stage"],
-  balance: string,
-  payoutProgress: number,
-  payoutState: ProductJourney["payoutState"],
-  payoutLabel: string,
-): ProductJourney {
-  return { stage, balance, payoutProgress, payoutState, payoutLabel };
-}
-
-const denseWallet = {
-  availableCredits: 50_000,
-  payoutCredits: 50_000,
-  payoutProgress: 100,
-  payoutState: "ready" as const,
-  status: "Ready",
-  balanceLabel: "$50.000",
-  targetLabel: "$50.000 · USDT",
+const densePayoutCredits = 30_000;
+const denseWalletPayoutCredits = 50_000;
+const denseNetwork = {
+  active: 128,
+  waiting: 37,
+  rewardsCredits: 184_275,
 };
 
+const denseRewardSnapshot: RewardSnapshot = {
+  preview: false,
+  signedIn: true,
+  observedAt: "2026-09-26T00:00:00.000Z",
+  userLabel: "Dense member",
+  trustLevel: 3,
+  availableCredits: 24_875,
+  pendingCredits: 0,
+  streakDays: 23,
+  claimReady: true,
+  claimRewardCredits: 50,
+  claimRewardVariable: true,
+  claimRewardMinCredits: 1,
+  claimRewardMaxCredits: 50,
+  claimIntervalMinutes: 60,
+  nextClaimAt: null,
+  lastClaimAt: "2026-09-26T00:00:00.000Z",
+  pulseFundingReady: true,
+  hourlyClaimCount: 187,
+};
+
+const denseWalletSnapshot: RewardSnapshot = {
+  ...denseRewardSnapshot,
+  availableCredits: 50_000,
+  claimReady: false,
+};
+
+const denseProgress = getCircuitProgress({
+  hourlyClaimCount: denseRewardSnapshot.hourlyClaimCount,
+  streakDays: denseRewardSnapshot.streakDays,
+  trustLevel: denseRewardSnapshot.trustLevel,
+});
+const rankPath = ["Spark", "Flow", "Rhythm", "Circuit", "Resonance"] as const;
+const denseRankIndex = rankPath.indexOf(denseProgress.stage);
+const denseNextRank = rankPath[denseRankIndex + 1] ?? null;
+
 const experiences: Record<Scene, ProductExperience> = {
-  reward: {
+  reward: getEarningExperience({
     surface: "reward",
-    phase: "ready",
-    event: "none",
-    residue: "balance-funded",
-    residueDimension: "value",
-    residueStrength: 83,
-    journey: journey("earn", "$24.875", 83, "building", "83% to target"),
-  },
-  earn: {
+    snapshot: denseRewardSnapshot,
+    payoutCredits: densePayoutCredits,
+  }),
+  earn: getEarningExperience({
     surface: "earn",
-    phase: "live",
-    event: "none",
-    residue: "balance-funded",
-    residueDimension: "value",
-    residueStrength: 83,
-    journey: journey("earn", "$24.875", 83, "building", "83% to target"),
-  },
-  wallet: {
-    surface: "payout",
-    phase: "ready",
-    event: "none",
-    residue: "payout-ready",
-    residueDimension: "value",
-    residueStrength: 100,
-    journey: journey(
-      "payout",
-      denseWallet.balanceLabel,
-      denseWallet.payoutProgress,
-      denseWallet.payoutState,
-      denseWallet.status,
-    ),
-  },
-  progress: {
-    surface: "progress",
-    phase: "live",
-    event: "none",
-    residue: "rank-circuit",
-    residueDimension: "signal",
-    residueStrength: 94,
-  },
-  invite: {
-    surface: "network",
-    phase: "live",
-    event: "none",
-    residue: "network-active",
-    residueDimension: "network",
-    residueStrength: 100,
-  },
+    snapshot: denseRewardSnapshot,
+    payoutCredits: densePayoutCredits,
+  }),
+  wallet: getWalletExperience({
+    snapshot: denseWalletSnapshot,
+    payoutCredits: denseWalletPayoutCredits,
+    canWithdraw: true,
+    hasActiveWithdrawal: false,
+    paid: false,
+  }),
+  progress: getProgressExperience(denseRewardSnapshot),
+  invite: getNetworkExperience({
+    signedIn: true,
+    active: denseNetwork.active,
+    waiting: denseNetwork.waiting,
+  }),
+};
+
+const denseBalanceLabel = formatUsdFromCredits(denseRewardSnapshot.availableCredits);
+const densePayoutRemainingLabel = formatUsdFromCredits(
+  Math.max(0, densePayoutCredits - denseRewardSnapshot.availableCredits),
+);
+const denseNetworkRewardLabel = formatUsdFromCredits(denseNetwork.rewardsCredits);
+const denseWalletJourney = experiences.wallet.journey!;
+const denseWallet = {
+  availableCredits: denseWalletSnapshot.availableCredits,
+  payoutCredits: denseWalletPayoutCredits,
+  payoutProgress: denseWalletJourney.payoutProgress,
+  payoutState: denseWalletJourney.payoutState,
+  status: denseWalletJourney.payoutLabel,
+  balanceLabel: denseWalletJourney.balance,
+  targetLabel: `${formatUsdFromCredits(denseWalletPayoutCredits)} · USDT`,
 };
 
 function FixtureNote({ children }: { children: ReactNode }) {
@@ -101,7 +123,15 @@ function FixtureNote({ children }: { children: ReactNode }) {
 
 function RewardScene() {
   return (
-    <div className="pc-v9-dashboard pc-dense-fixture" data-dense-scene="reward">
+    <div
+      className="pc-v9-dashboard pc-dense-fixture"
+      data-dense-scene="reward"
+      data-activity-claims={denseRewardSnapshot.hourlyClaimCount}
+      data-activity-streak-days={denseRewardSnapshot.streakDays}
+      data-activity-trust-level={denseRewardSnapshot.trustLevel}
+      data-activity-signal={denseProgress.signal}
+      data-activity-stage={denseProgress.stage}
+    >
       <div className="app-page-head pulse-page-head pc-luxe-dashboard-head pc-v9-head">
         <div className="pc-v9-head-copy">
           <div className="pulse-line">Your rewards</div>
@@ -113,14 +143,14 @@ function RewardScene() {
           status="Ready"
           items={[
             { label: "Reward", value: "$0.001–$0.050", meta: "Variable reward" },
-            { label: "Balance", value: "$24.875", meta: "$5.125 to payout" },
-            { label: "Signal", value: "82/100", meta: "Circuit" },
+            { label: "Balance", value: denseBalanceLabel, meta: `${densePayoutRemainingLabel} to payout` },
+            { label: "Signal", value: `${denseProgress.signal}/100`, meta: denseProgress.stage },
           ]}
         />
       </div>
 
       <ValueFlow journey={experiences.reward.journey!} />
-      <FixtureNote>Dense signed-in state · 187 claims · 19-day streak · payout building</FixtureNote>
+      <FixtureNote>Dense signed-in state · {denseRewardSnapshot.hourlyClaimCount} claims · {denseRewardSnapshot.streakDays}-day streak · payout building</FixtureNote>
 
       <section className="dashboard-hero hourly-pulse-stage pc-luxe-pulse-stage pc-v9-stage" aria-label="Dense reward state">
         <div className="daily-pulse-card hourly-pulse-card pc-luxe-pulse-chamber pc-v9-chamber state-ready">
@@ -140,8 +170,8 @@ function RewardScene() {
               <span className="pulse-core-word">READY</span>
             </PulseCoreVisual>
             <div className="pulse-core-meta">
-              <div className="pulse-trust-mini"><Shield /><span>Circuit</span><b>Signal 82/100</b></div>
-              <small className="pulse-rhythm-label">19-day return streak · 187 verified claims</small>
+              <div className="pulse-trust-mini"><Shield /><span>{denseProgress.stage}</span><b>Signal {denseProgress.signal}/100</b></div>
+              <small className="pulse-rhythm-label">{denseRewardSnapshot.streakDays}-day return streak · {denseRewardSnapshot.hourlyClaimCount} verified claims</small>
             </div>
           </div>
 
@@ -158,21 +188,21 @@ function RewardScene() {
         <div className="pc-v9-progress-deck">
           <article className="pc-v9-progress-card signal-card">
             <span className="app-eyebrow">Progress</span>
-            <div className="pc-v9-progress-value"><strong>82</strong><span>/100</span></div>
-            <h3>Circuit</h3>
-            <p>19-day return streak · 187 verified claims</p>
+            <div className="pc-v9-progress-value"><strong>{denseProgress.signal}</strong><span>/100</span></div>
+            <h3>{denseProgress.stage}</h3>
+            <p>{denseRewardSnapshot.streakDays}-day return streak · {denseRewardSnapshot.hourlyClaimCount} verified claims</p>
           </article>
           <article className="pc-v9-progress-card vault-card">
             <span className="app-eyebrow">Balance</span>
-            <div className="pc-v9-progress-value"><strong>83%</strong></div>
-            <h3>$24.875</h3>
-            <p>$5.125 remains to the current payout target.</p>
+            <div className="pc-v9-progress-value"><strong>{experiences.reward.journey!.payoutProgress}%</strong></div>
+            <h3>{denseBalanceLabel}</h3>
+            <p>{densePayoutRemainingLabel} remains to the current payout target.</p>
           </article>
           <article className="pc-v9-progress-card unlock-card">
             <span className="app-eyebrow">Referrals</span>
-            <div className="pc-v9-progress-value"><strong>128</strong></div>
+            <div className="pc-v9-progress-value"><strong>{denseNetwork.active}</strong></div>
             <h3>Active network</h3>
-            <p>37 referrals are waiting for first eligible activity.</p>
+            <p>{denseNetwork.waiting} referrals are waiting for first eligible activity.</p>
           </article>
         </div>
       </section>
@@ -194,7 +224,7 @@ function EarnScene() {
           variant="earn"
           status="Best option"
           items={[
-            { label: "Balance", value: "$24.875", meta: "Available value" },
+            { label: "Balance", value: denseBalanceLabel, meta: "Available value" },
             { label: "Options", value: "18", meta: "Ranked now" },
             { label: "Best time", value: "~4 min", meta: "Strong evidence" },
           ]}
@@ -334,7 +364,15 @@ function WalletScene() {
 
 function ProgressScene() {
   return (
-    <div className="pc-dense-fixture" data-dense-scene="progress">
+    <div
+      className="pc-dense-fixture"
+      data-dense-scene="progress"
+      data-activity-claims={denseRewardSnapshot.hourlyClaimCount}
+      data-activity-streak-days={denseRewardSnapshot.streakDays}
+      data-activity-trust-level={denseRewardSnapshot.trustLevel}
+      data-activity-signal={denseProgress.signal}
+      data-activity-stage={denseProgress.stage}
+    >
       <div className="app-page-head pc-progress-head pc-luxe-momentum-head">
         <div>
           <span className="app-eyebrow">Progress</span>
@@ -343,11 +381,11 @@ function ProgressScene() {
         </div>
         <SceneTelemetry
           variant="progress"
-          status="Circuit"
+          status={denseProgress.stage}
           items={[
-            { label: "Signal", value: "94/100", meta: "Circuit" },
-            { label: "Streak", value: "23d", meta: "Return rhythm" },
-            { label: "Claims", value: "187", meta: "Verified" },
+            { label: "Signal", value: `${denseProgress.signal}/100`, meta: denseProgress.stage },
+            { label: "Streak", value: `${denseRewardSnapshot.streakDays}d`, meta: "Return rhythm" },
+            { label: "Claims", value: String(denseRewardSnapshot.hourlyClaimCount), meta: "Verified" },
           ]}
         />
         <button className="button pc-v5-primary" type="button">Share progress</button>
@@ -356,33 +394,37 @@ function ProgressScene() {
       <FixtureNote>Dense signed-in state · advanced rank · achievement-rich history</FixtureNote>
 
       <section className="pc-progress-hero pc-luxe-momentum-hero">
-        <article className="pc-identity-card pc-luxe-prestige-card pc-v3-prestige-card is-live" style={{ "--pc-signal": "94%" } as CSSProperties}>
+        <article className="pc-identity-card pc-luxe-prestige-card pc-v3-prestige-card is-live" style={{ "--pc-signal": `${denseProgress.signal}%` } as CSSProperties}>
           <div className="pc-luxe-prestige-halo" aria-hidden="true" />
           <span className="pc-live-signal-trace" aria-hidden="true"><i /></span>
           <div className="pc-v3-progress-orbit" aria-hidden="true"><ProgressOrbitArtwork /></div>
-          <div className="pc-identity-top"><span><Spark /> Current rank</span><b>Circuit</b></div>
-          <div className="pc-luxe-rank-name">Circuit</div>
-          <div className="pc-identity-score"><strong>94</strong><span>/100</span></div>
+          <div className="pc-identity-top"><span><Spark /> Current rank</span><b>{denseProgress.stage}</b></div>
+          <div className="pc-luxe-rank-name">{denseProgress.stage}</div>
+          <div className="pc-identity-score"><strong>{denseProgress.signal}</strong><span>/100</span></div>
           <div className="pc-identity-meta">
-            <span><small>Return streak</small><strong>23d</strong></span>
-            <span><small>Claims</small><strong>187</strong></span>
-            <span><small>Next mark</small><strong>Resonance</strong></span>
+            <span><small>Return streak</small><strong>{denseRewardSnapshot.streakDays}d</strong></span>
+            <span><small>Claims</small><strong>{denseRewardSnapshot.hourlyClaimCount}</strong></span>
+            <span><small>Next mark</small><strong>{denseNextRank ?? "Current peak"}</strong></span>
           </div>
         </article>
 
         <aside className="pc-visual-story pc-momentum-story">
           <div className="pc-visual-story-copy">
-            <span className="app-eyebrow">Next circuit</span>
-            <h2>Resonance is within reach.</h2>
-            <p>Six more signal points complete the current rank path while the 23-day rhythm remains visible.</p>
+            <span className="app-eyebrow">{denseNextRank ? "Next circuit" : "Current circuit"}</span>
+            <h2>{denseNextRank ? `${denseNextRank} is within reach.` : `${denseProgress.stage} is active.`}</h2>
+            <p>
+              {denseNextRank && denseProgress.nextStageAt !== null
+                ? `${denseProgress.nextStageAt - denseProgress.signal} more signal points complete the current rank path while the ${denseRewardSnapshot.streakDays}-day rhythm remains visible.`
+                : `The current signal has reached the highest rank path while the ${denseRewardSnapshot.streakDays}-day rhythm remains visible.`}
+            </p>
             <div className="pc-v10-rank-preview" aria-label="Rank path">
-              {["Spark", "Flow", "Rhythm", "Circuit", "Resonance"].map((rank, index) => (
-                <span className={index <= 3 ? "reached" : ""} key={rank}><i>{index + 1}</i><strong>{rank}</strong></span>
+              {rankPath.map((rank, index) => (
+                <span className={index <= denseRankIndex ? "reached" : ""} key={rank}><i>{index + 1}</i><strong>{rank}</strong></span>
               ))}
             </div>
           </div>
           <div className="pc-visual-story-flow" aria-hidden="true">
-            <span>187 claims</span><i /><span>23d streak</span><i /><span>94 signal</span>
+            <span>{denseRewardSnapshot.hourlyClaimCount} claims</span><i /><span>{denseRewardSnapshot.streakDays}d streak</span><i /><span>{denseProgress.signal} signal</span>
           </div>
         </aside>
       </section>
@@ -390,7 +432,7 @@ function ProgressScene() {
       <section className="pc-progress-cta pc-luxe-momentum-cta">
         <div>
           <span className="app-eyebrow">Share progress</span>
-          <h2>Your current Circuit story is ready.</h2>
+          <h2>Your current {denseProgress.stage} story is ready.</h2>
           <p>Shareable cards expose progress, never balance.</p>
         </div>
         <button className="button button-lg pc-v5-primary" type="button">Create progress card</button>
@@ -410,11 +452,11 @@ function InviteScene() {
         </div>
         <SceneTelemetry
           variant="invite"
-          status="Growing"
+          status={experiences.invite.phase === "live" ? "Active" : "Idle"}
           items={[
-            { label: "Active", value: "128", meta: "Confirmed" },
-            { label: "Waiting", value: "37", meta: "First activity" },
-            { label: "Rewards", value: "$184.275", meta: "Net value" },
+            { label: "Active", value: String(denseNetwork.active), meta: "Confirmed" },
+            { label: "Waiting", value: String(denseNetwork.waiting), meta: "First activity" },
+            { label: "Rewards", value: denseNetworkRewardLabel, meta: "Net value" },
           ]}
         />
       </div>
@@ -430,18 +472,18 @@ function InviteScene() {
           <p>After the first eligible activity is verified, the active referral rule determines the reward.</p>
         </div>
         <div className="pc-invite-visual-stage" aria-hidden="true">
-          <ReferralNetworkArtwork active={128} waiting={37} />
+          <ReferralNetworkArtwork active={denseNetwork.active} waiting={denseNetwork.waiting} />
         </div>
       </section>
 
       <section className="pc-luxe-share-stats">
-        <article><small>Active</small><strong>128</strong><span>confirmed referrals</span></article>
-        <article><small>Waiting</small><strong>37</strong><span>first activity pending</span></article>
-        <article><small>Rewards</small><strong>$184.275</strong><span>net referral value</span></article>
+        <article><small>Active</small><strong>{denseNetwork.active}</strong><span>confirmed referrals</span></article>
+        <article><small>Waiting</small><strong>{denseNetwork.waiting}</strong><span>first activity pending</span></article>
+        <article><small>Rewards</small><strong>{denseNetworkRewardLabel}</strong><span>net referral value</span></article>
       </section>
 
       <section className="pc-dense-network-depth">
-        <article><small>Level 1</small><strong>128</strong><span>directly active</span></article>
+        <article><small>Level 1</small><strong>{denseNetwork.active}</strong><span>directly active</span></article>
         <article><small>Level 2</small><strong>46</strong><span>network activity</span></article>
         <article><small>Milestones</small><strong>4 / 4</strong><span>verified</span></article>
       </section>
@@ -483,9 +525,9 @@ export default async function DenseStateVisualFixture({ searchParams }: Props) {
       kind: "reward-settled" as const,
       kicker: "Verified reward",
       title: "Reward settled",
-      value: "+$0.050",
+      value: formatUsdFromCredits(denseRewardSnapshot.claimRewardMaxCredits, true),
       detail: "Local visual fixture for the authoritative event field.",
-      markers: ["Balance $24.875", "Signal 82/100"],
+      markers: [`Balance ${denseBalanceLabel}`, `Signal ${denseProgress.signal}/100`],
     }
     : null;
 
