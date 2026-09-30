@@ -6527,7 +6527,9 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (ts.isForOfStatement(statement)) {
-      const iterable = resolveDataExpression(statement.expression, env);
+      const iterable = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
+        ? teardownResolveStructuredExpression(statement.expression, env)
+        : resolveDataExpression(statement.expression, env);
       if (iterable && ts.isArrayLiteralExpression(iterable)) {
         const guaranteedElements = iterable.elements.filter((element) =>
           !ts.isSpreadElement(element) && !ts.isOmittedExpression(element)
@@ -6550,7 +6552,9 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (ts.isForInStatement(statement)) {
-      const object = resolveDataExpression(statement.expression, env);
+      const object = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
+        ? teardownResolveStructuredExpression(statement.expression, env)
+        : resolveDataExpression(statement.expression, env);
       if (object && ts.isObjectLiteralExpression(object)) {
         const guaranteedProperties = object.properties.filter((property) =>
           !ts.isSpreadAssignment(property)
