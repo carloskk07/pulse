@@ -10567,10 +10567,12 @@ function auditImperativeNavigation(source, path, options = {}) {
     return acc;
   }, {});
   if (
-    violations.length !== 5
-    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 3
+    violations.length !== 6
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 4
     || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== 1
     || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
   ) {
     throw new Error(
       "Programmatic ownership callback teardown control-flow authority self-test failed: "
