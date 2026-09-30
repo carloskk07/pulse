@@ -1897,6 +1897,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownFixedPointPolicy = (
     options.programmaticFormOwnershipCallbackTeardownFixedPointPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownConcreteIterablePolicy = (
+    options.programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -5932,6 +5935,188 @@ function auditImperativeNavigation(source, path, options = {}) {
     return result;
   }
 
+  function teardownForOfBindingName(initializer) {
+    if (ts.isVariableDeclarationList(initializer)) {
+      if (initializer.declarations.length !== 1) return null;
+      const declaration = initializer.declarations[0];
+      return ts.isIdentifier(declaration.name) ? declaration.name.text : null;
+    }
+    return ts.isIdentifier(initializer) ? initializer.text : null;
+  }
+
+  function teardownConcreteIterableValue(expression, env = new Map()) {
+    if (!expression) return null;
+    let resolved = resolveDataExpression(expression, env);
+    while (
+      resolved
+      && (
+        ts.isParenthesizedExpression(resolved)
+        || ts.isAsExpression(resolved)
+        || ts.isTypeAssertionExpression(resolved)
+        || ts.isNonNullExpression(resolved)
+      )
+    ) {
+      resolved = resolveDataExpression(resolved.expression, env);
+    }
+    if (!resolved) return null;
+    if (
+      ts.isNumericLiteral(resolved)
+      || ts.isStringLiteral(resolved)
+      || ts.isNoSubstitutionTemplateLiteral(resolved)
+      || resolved.kind === ts.SyntaxKind.TrueKeyword
+      || resolved.kind === ts.SyntaxKind.FalseKeyword
+    ) return resolved;
+    return null;
+  }
+
+  function teardownConcreteForOfPlan(
+    statement,
+    env = new Map(),
+    maxIterations = 12,
+  ) {
+    if (!ts.isForOfStatement(statement) || statement.awaitModifier) return null;
+    const variableName = teardownForOfBindingName(statement.initializer);
+    if (!variableName) return null;
+    if (teardownNodeWritesIdentifier(statement.statement, variableName)) {
+      return null;
+    }
+
+    let iterable = resolveDataExpression(statement.expression, env);
+    while (
+      iterable
+      && (
+        ts.isParenthesizedExpression(iterable)
+        || ts.isAsExpression(iterable)
+        || ts.isTypeAssertionExpression(iterable)
+        || ts.isNonNullExpression(iterable)
+      )
+    ) {
+      iterable = resolveDataExpression(iterable.expression, env);
+    }
+    if (!iterable) return null;
+
+    let allValues = [];
+    if (ts.isArrayLiteralExpression(iterable)) {
+      if (
+        iterable.elements.some((element) =>
+          ts.isSpreadElement(element) || ts.isOmittedExpression(element)
+        )
+      ) return null;
+      for (const element of iterable.elements) {
+        const value = teardownConcreteIterableValue(element, env);
+        if (!value) return null;
+        allValues.push(value);
+      }
+    } else if (
+      ts.isStringLiteral(iterable)
+      || ts.isNoSubstitutionTemplateLiteral(iterable)
+    ) {
+      allValues = [...iterable.text].map((character) =>
+        ts.factory.createStringLiteral(character)
+      );
+    } else {
+      return null;
+    }
+
+    return {
+      variableName,
+      values: allValues.slice(0, maxIterations),
+      complete: allValues.length <= maxIterations,
+    };
+  }
+
+  function teardownFlowConcreteForOf(
+    statement,
+    states,
+    matchCall,
+    env,
+    callStack,
+    labelNames = [],
+  ) {
+    const plan = teardownConcreteForOfPlan(statement, env);
+    if (!plan) return null;
+    if (plan.values.length === 0) {
+      return {
+        continuing: [...states],
+        exits: [],
+        breaks: [],
+        continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
+        loopUncertainty: false,
+      };
+    }
+
+    let active = [...states];
+    const result = teardownFlowEmptyResult();
+    const afterLoop = [];
+
+    for (const value of plan.values) {
+      if (active.length === 0) break;
+      const iterationEnv = new Map(env);
+      iterationEnv.set(plan.variableName, value);
+      const bodyResult = teardownFlowStatement(
+        statement.statement,
+        active,
+        matchCall,
+        iterationEnv,
+        callStack,
+      );
+
+      const ownBreaks = teardownFlowTransferMapWithout(
+        bodyResult.labeledBreaks,
+        labelNames,
+      );
+      const ownContinues = teardownFlowTransferMapWithout(
+        bodyResult.labeledContinues,
+        labelNames,
+      );
+
+      afterLoop.push(
+        ...(bodyResult.breaks ?? []),
+        ...ownBreaks.removed,
+      );
+      result.exits.push(...(bodyResult.exits ?? []));
+      result.labeledBreaks = teardownFlowTransferMapMerge(
+        result.labeledBreaks,
+        ownBreaks.remaining,
+      );
+      result.labeledContinues = teardownFlowTransferMapMerge(
+        result.labeledContinues,
+        ownContinues.remaining,
+      );
+      result.loopUncertainty ||= bodyResult.loopUncertainty === true;
+
+      active = [
+        ...(bodyResult.continuing ?? []),
+        ...(bodyResult.continues ?? []),
+        ...ownContinues.removed,
+      ];
+
+      if (!plan.complete) {
+        const prefixResult = {
+          ...result,
+          continuing: [...afterLoop, ...active],
+        };
+        if (teardownFlowResultGuaranteed(prefixResult)) {
+          return {
+            ...prefixResult,
+            breaks: [],
+            continues: [],
+            loopUncertainty: false,
+          };
+        }
+      }
+    }
+
+    if (!plan.complete) return null;
+
+    result.continuing = [...afterLoop, ...active];
+    result.breaks = [];
+    result.continues = [];
+    return result;
+  }
+
   function teardownLoopIterationClass(statement, env = new Map()) {
     if (ts.isDoStatement(statement)) {
       const condition = teardownStaticBoolean(statement.expression, env);
@@ -6027,6 +6212,21 @@ function auditImperativeNavigation(source, path, options = {}) {
         labelNames,
       );
       if (fixedPointResult) return fixedPointResult;
+    }
+
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownConcreteIterablePolicy
+      && ts.isForOfStatement(statement)
+    ) {
+      const concreteIterableResult = teardownFlowConcreteForOf(
+        statement,
+        states,
+        matchCall,
+        env,
+        callStack,
+        labelNames,
+      );
+      if (concreteIterableResult) return concreteIterableResult;
     }
 
     const iterationClass = teardownLoopIterationClass(statement, env);
@@ -12061,6 +12261,77 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const numericArray = setTimeout(() => outside.append(input), 0);',
+    'for (const item of [0, 1, 2]) { if (item === 2) { clearTimeout(numericArray); } }',
+    'const states = ["idle", "ready"];',
+    'const helperArray = setTimeout(() => outside.append(input), 0);',
+    'function stopState(state) { if (state === "ready") { clearTimeout(helperArray); } }',
+    'for (const state of states) { stopState(state); }',
+    'const stringIteration = setTimeout(() => outside.append(input), 0);',
+    'for (const char of "abc") { if (char === "c") { clearTimeout(stringIteration); } }',
+    'const continueBreak = setTimeout(() => outside.append(input), 0);',
+    'for (const item of [0, 1, 2, 3]) {',
+    '  if (item < 2) { continue; }',
+    '  clearTimeout(continueBreak);',
+    '  break;',
+    '}',
+    'const largeConverged = setTimeout(() => outside.append(input), 0);',
+    'for (const item of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]) {',
+    '  if (item === 2) { clearTimeout(largeConverged); }',
+    '}',
+    'const spreadUnknown = setTimeout(() => outside.append(input), 0);',
+    'for (const item of [0, ...items, 2]) { if (item === 2) { clearTimeout(spreadUnknown); } }',
+    'const emptyIterable = setTimeout(() => outside.append(input), 0);',
+    'for (const item of []) { clearTimeout(emptyIterable); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-concrete-iterable.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 3
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== 1
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown concrete iterable authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -13314,6 +13585,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
       programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
       programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
     },
   ));
 
