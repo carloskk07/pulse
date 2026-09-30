@@ -1891,6 +1891,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy = (
     options.programmaticFormOwnershipCallbackTeardownLoopPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy === true
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -5346,13 +5349,59 @@ function auditImperativeNavigation(source, path, options = {}) {
     return "none";
   }
 
+  function teardownFlowTransferMapMerge(...maps) {
+    const merged = new Map();
+    for (const map of maps) {
+      if (!(map instanceof Map)) continue;
+      for (const [label, statuses] of map) {
+        const existing = merged.get(label) ?? [];
+        existing.push(...statuses);
+        merged.set(label, existing);
+      }
+    }
+    return merged;
+  }
+
+  function teardownFlowTransferMapWithout(map, labels) {
+    const removed = [];
+    const remaining = new Map();
+    const consumed = new Set(labels);
+    if (!(map instanceof Map)) return { removed, remaining };
+    for (const [label, statuses] of map) {
+      if (consumed.has(label)) {
+        removed.push(...statuses);
+      } else {
+        remaining.set(label, [...statuses]);
+      }
+    }
+    return { removed, remaining };
+  }
+
   function teardownFlowMerge(...results) {
     return {
       continuing: results.flatMap((result) => result.continuing ?? []),
       exits: results.flatMap((result) => result.exits ?? []),
       breaks: results.flatMap((result) => result.breaks ?? []),
       continues: results.flatMap((result) => result.continues ?? []),
+      labeledBreaks: teardownFlowTransferMapMerge(
+        ...results.map((result) => result.labeledBreaks),
+      ),
+      labeledContinues: teardownFlowTransferMapMerge(
+        ...results.map((result) => result.labeledContinues),
+      ),
       loopUncertainty: results.some((result) => result.loopUncertainty === true),
+    };
+  }
+
+  function teardownFlowEmptyResult() {
+    return {
+      continuing: [],
+      exits: [],
+      breaks: [],
+      continues: [],
+      labeledBreaks: new Map(),
+      labeledContinues: new Map(),
+      loopUncertainty: false,
     };
   }
 
@@ -5362,6 +5411,8 @@ function auditImperativeNavigation(source, path, options = {}) {
       exits: states.filter((status) => status !== true),
       breaks: [],
       continues: [],
+      labeledBreaks: new Map(),
+      labeledContinues: new Map(),
       loopUncertainty: false,
     };
   }
@@ -5374,10 +5425,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     callStack = new Set(),
   ) {
     let continuing = [...states];
-    const exits = [];
-    const breaks = [];
-    const continues = [];
-    let loopUncertainty = false;
+    const accumulated = teardownFlowEmptyResult();
 
     for (const statement of statements) {
       if (continuing.length === 0) break;
@@ -5389,13 +5437,22 @@ function auditImperativeNavigation(source, path, options = {}) {
         callStack,
       );
       continuing = result.continuing ?? [];
-      exits.push(...(result.exits ?? []));
-      breaks.push(...(result.breaks ?? []));
-      continues.push(...(result.continues ?? []));
-      loopUncertainty ||= result.loopUncertainty === true;
+      accumulated.exits.push(...(result.exits ?? []));
+      accumulated.breaks.push(...(result.breaks ?? []));
+      accumulated.continues.push(...(result.continues ?? []));
+      accumulated.labeledBreaks = teardownFlowTransferMapMerge(
+        accumulated.labeledBreaks,
+        result.labeledBreaks,
+      );
+      accumulated.labeledContinues = teardownFlowTransferMapMerge(
+        accumulated.labeledContinues,
+        result.labeledContinues,
+      );
+      accumulated.loopUncertainty ||= result.loopUncertainty === true;
     }
 
-    return { continuing, exits, breaks, continues, loopUncertainty };
+    accumulated.continuing = continuing;
+    return accumulated;
   }
 
   function teardownStaticBoolean(expression, env = new Map()) {
@@ -5417,17 +5474,196 @@ function auditImperativeNavigation(source, path, options = {}) {
     return null;
   }
 
+  function teardownStaticNumber(expression, env = new Map()) {
+    if (!expression) return null;
+    const resolved = resolveDataExpression(expression, env);
+    if (!resolved) return null;
+    if (ts.isNumericLiteral(resolved)) {
+      const value = Number(resolved.text);
+      return Number.isFinite(value) ? value : null;
+    }
+    if (
+      ts.isPrefixUnaryExpression(resolved)
+      && (
+        resolved.operator === ts.SyntaxKind.PlusToken
+        || resolved.operator === ts.SyntaxKind.MinusToken
+      )
+    ) {
+      const operand = teardownStaticNumber(resolved.operand, env);
+      if (operand === null) return null;
+      return resolved.operator === ts.SyntaxKind.MinusToken ? -operand : operand;
+    }
+    if (ts.isParenthesizedExpression(resolved)) {
+      return teardownStaticNumber(resolved.expression, env);
+    }
+    return null;
+  }
+
+  function teardownForInitializerInfo(initializer, env = new Map()) {
+    if (!initializer) return null;
+    if (ts.isVariableDeclarationList(initializer)) {
+      if (initializer.declarations.length !== 1) return null;
+      const declaration = initializer.declarations[0];
+      if (!ts.isIdentifier(declaration.name)) return null;
+      const value = teardownStaticNumber(declaration.initializer, env);
+      return value === null
+        ? null
+        : { name: declaration.name.text, value };
+    }
+    if (
+      ts.isBinaryExpression(initializer)
+      && initializer.operatorToken.kind === ts.SyntaxKind.EqualsToken
+      && ts.isIdentifier(initializer.left)
+    ) {
+      const value = teardownStaticNumber(initializer.right, env);
+      return value === null
+        ? null
+        : { name: initializer.left.text, value };
+    }
+    return null;
+  }
+
+  function teardownForConditionInfo(condition, variableName, env = new Map()) {
+    if (!condition || !ts.isBinaryExpression(condition)) return null;
+    const supported = new Set([
+      ts.SyntaxKind.LessThanToken,
+      ts.SyntaxKind.LessThanEqualsToken,
+      ts.SyntaxKind.GreaterThanToken,
+      ts.SyntaxKind.GreaterThanEqualsToken,
+    ]);
+    if (!supported.has(condition.operatorToken.kind)) return null;
+
+    if (ts.isIdentifier(condition.left) && condition.left.text === variableName) {
+      const bound = teardownStaticNumber(condition.right, env);
+      return bound === null
+        ? null
+        : { operator: condition.operatorToken.kind, bound };
+    }
+
+    if (ts.isIdentifier(condition.right) && condition.right.text === variableName) {
+      const bound = teardownStaticNumber(condition.left, env);
+      if (bound === null) return null;
+      const inverse = new Map([
+        [ts.SyntaxKind.LessThanToken, ts.SyntaxKind.GreaterThanToken],
+        [ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanEqualsToken],
+        [ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.LessThanToken],
+        [ts.SyntaxKind.GreaterThanEqualsToken, ts.SyntaxKind.LessThanEqualsToken],
+      ]);
+      return { operator: inverse.get(condition.operatorToken.kind), bound };
+    }
+
+    return null;
+  }
+
+  function teardownForStepInfo(incrementor, variableName, env = new Map()) {
+    if (!incrementor) return null;
+    if (
+      (ts.isPostfixUnaryExpression(incrementor) || ts.isPrefixUnaryExpression(incrementor))
+      && ts.isIdentifier(incrementor.operand)
+      && incrementor.operand.text === variableName
+    ) {
+      if (incrementor.operator === ts.SyntaxKind.PlusPlusToken) return 1;
+      if (incrementor.operator === ts.SyntaxKind.MinusMinusToken) return -1;
+    }
+
+    if (
+      ts.isBinaryExpression(incrementor)
+      && ts.isIdentifier(incrementor.left)
+      && incrementor.left.text === variableName
+    ) {
+      if (
+        incrementor.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
+        || incrementor.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+      ) {
+        const amount = teardownStaticNumber(incrementor.right, env);
+        if (amount === null) return null;
+        return incrementor.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+          ? -amount
+          : amount;
+      }
+
+      if (
+        incrementor.operatorToken.kind === ts.SyntaxKind.EqualsToken
+        && ts.isBinaryExpression(incrementor.right)
+        && ts.isIdentifier(incrementor.right.left)
+        && incrementor.right.left.text === variableName
+      ) {
+        const amount = teardownStaticNumber(incrementor.right.right, env);
+        if (amount === null) return null;
+        if (incrementor.right.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+          return amount;
+        }
+        if (incrementor.right.operatorToken.kind === ts.SyntaxKind.MinusToken) {
+          return -amount;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function teardownNumericConditionHolds(value, condition) {
+    if (!condition) return null;
+    if (condition.operator === ts.SyntaxKind.LessThanToken) {
+      return value < condition.bound;
+    }
+    if (condition.operator === ts.SyntaxKind.LessThanEqualsToken) {
+      return value <= condition.bound;
+    }
+    if (condition.operator === ts.SyntaxKind.GreaterThanToken) {
+      return value > condition.bound;
+    }
+    if (condition.operator === ts.SyntaxKind.GreaterThanEqualsToken) {
+      return value >= condition.bound;
+    }
+    return null;
+  }
+
+  function teardownStaticForIterationClass(statement, env = new Map()) {
+    const initializer = teardownForInitializerInfo(statement.initializer, env);
+    if (!initializer) return null;
+    const condition = teardownForConditionInfo(
+      statement.condition,
+      initializer.name,
+      env,
+    );
+    if (!condition) return null;
+
+    const enters = teardownNumericConditionHolds(initializer.value, condition);
+    if (enters === false) return "zero-only";
+    if (enters !== true) return null;
+
+    const step = teardownForStepInfo(statement.incrementor, initializer.name, env);
+    if (step === null || step === 0) return "one-or-more-indefinite";
+
+    const movesTowardExit = (
+      (
+        condition.operator === ts.SyntaxKind.LessThanToken
+        || condition.operator === ts.SyntaxKind.LessThanEqualsToken
+      )
+        ? step > 0
+        : step < 0
+    );
+    return movesTowardExit ? "one-or-more" : "one-or-more-indefinite";
+  }
+
   function teardownLoopIterationClass(statement, env = new Map()) {
     if (ts.isDoStatement(statement)) {
       const condition = teardownStaticBoolean(statement.expression, env);
-      return condition === true ? "one-or-more-indefinite" : "one-or-more";
+      if (condition === true) return "one-or-more-indefinite";
+      if (condition === false) return "one-or-more";
+      return enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+        ? "one-or-more-unknown"
+        : "one-or-more";
     }
 
     if (ts.isWhileStatement(statement)) {
       const condition = teardownStaticBoolean(statement.expression, env);
       if (condition === false) return "zero-only";
       if (condition === true) return "one-or-more-indefinite";
-      return "zero-or-more";
+      return enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+        ? "zero-or-more-unknown"
+        : "zero-or-more";
     }
 
     if (ts.isForStatement(statement)) {
@@ -5435,18 +5671,25 @@ function auditImperativeNavigation(source, path, options = {}) {
       const condition = teardownStaticBoolean(statement.condition, env);
       if (condition === false) return "zero-only";
       if (condition === true) return "one-or-more-indefinite";
+      if (enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy) {
+        const staticClass = teardownStaticForIterationClass(statement, env);
+        if (staticClass) return staticClass;
+        return "zero-or-more-unknown";
+      }
       return "zero-or-more";
     }
 
     if (ts.isForOfStatement(statement)) {
       const iterable = resolveDataExpression(statement.expression, env);
       if (iterable && ts.isArrayLiteralExpression(iterable)) {
+        const guaranteedElements = iterable.elements.filter((element) =>
+          !ts.isSpreadElement(element) && !ts.isOmittedExpression(element)
+        );
         if (iterable.elements.length === 0) return "zero-only";
-        if (
-          iterable.elements.some((element) =>
-            !ts.isSpreadElement(element) && !ts.isOmittedExpression(element)
-          )
-        ) return "one-or-more";
+        if (guaranteedElements.length > 0) return "one-or-more";
+        return enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+          ? "zero-or-more-unknown"
+          : "zero-or-more";
       }
       if (
         iterable
@@ -5454,18 +5697,28 @@ function auditImperativeNavigation(source, path, options = {}) {
       ) {
         return iterable.text.length > 0 ? "one-or-more" : "zero-only";
       }
-      return "zero-or-more";
+      return enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+        ? "zero-or-more-unknown"
+        : "zero-or-more";
     }
 
     if (ts.isForInStatement(statement)) {
       const object = resolveDataExpression(statement.expression, env);
-      if (object && ts.isObjectLiteralExpression(object) && object.properties.length === 0) {
-        return "zero-only";
+      if (object && ts.isObjectLiteralExpression(object)) {
+        const guaranteedProperties = object.properties.filter((property) =>
+          !ts.isSpreadAssignment(property)
+        );
+        if (object.properties.length === 0) return "zero-only";
+        if (guaranteedProperties.length > 0) return "one-or-more";
       }
-      return "zero-or-more";
+      return enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+        ? "zero-or-more-unknown"
+        : "zero-or-more";
     }
 
-    return "zero-or-more";
+    return enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+      ? "zero-or-more-unknown"
+      : "zero-or-more";
   }
 
   function teardownFlowLoop(
@@ -5474,6 +5727,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     matchCall,
     env,
     callStack,
+    labelNames = [],
   ) {
     const iterationClass = teardownLoopIterationClass(statement, env);
     if (iterationClass === "zero-only") {
@@ -5482,6 +5736,8 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: [],
         breaks: [],
         continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
         loopUncertainty: false,
       };
     }
@@ -5493,40 +5749,80 @@ function auditImperativeNavigation(source, path, options = {}) {
       env,
       callStack,
     );
+    const ownBreaks = teardownFlowTransferMapWithout(
+      bodyResult.labeledBreaks,
+      labelNames,
+    );
+    const ownContinues = teardownFlowTransferMapWithout(
+      bodyResult.labeledContinues,
+      labelNames,
+    );
+    const loopBreaks = [
+      ...(bodyResult.breaks ?? []),
+      ...ownBreaks.removed,
+    ];
+    const loopContinues = [
+      ...(bodyResult.continues ?? []),
+      ...ownContinues.removed,
+    ];
     const bodyStatuses = [
       ...(bodyResult.continuing ?? []),
       ...(bodyResult.exits ?? []),
-      ...(bodyResult.breaks ?? []),
-      ...(bodyResult.continues ?? []),
+      ...loopBreaks,
+      ...loopContinues,
+      ...[...ownBreaks.remaining.values()].flat(),
+      ...[...ownContinues.remaining.values()].flat(),
     ];
     const bodyCanTeardown = bodyStatuses.some((status) => status === true);
-    const zeroIterationUncertainty = (
+    const maySkip = (
       iterationClass === "zero-or-more"
+      || iterationClass === "zero-or-more-unknown"
+    );
+    const zeroIterationUncertainty = (
+      maySkip
       && states.some((status) => status !== true)
       && bodyCanTeardown
     );
 
-    const continuing = [...(bodyResult.breaks ?? [])];
+    const continuing = [...loopBreaks];
     const exits = [...(bodyResult.exits ?? [])];
+    let terminationUncertainty = false;
 
-    if (iterationClass === "zero-or-more") {
+    if (
+      iterationClass === "zero-or-more"
+      || iterationClass === "zero-or-more-unknown"
+    ) {
       continuing.unshift(...states);
       continuing.push(
         ...(bodyResult.continuing ?? []),
-        ...(bodyResult.continues ?? []),
+        ...loopContinues,
       );
+      if (iterationClass === "zero-or-more-unknown") {
+        exits.push(
+          ...(bodyResult.continuing ?? []),
+          ...loopContinues,
+        );
+        terminationUncertainty = true;
+      }
     } else if (iterationClass === "one-or-more") {
       continuing.push(
         ...(bodyResult.continuing ?? []),
-        ...(bodyResult.continues ?? []),
+        ...loopContinues,
       );
-    } else {
-      // while(true), for(;;) and do...while(true) cannot fall through
-      // without a break. Keep non-terminating paths terminal for proof
-      // purposes so later teardown cannot falsely cover them.
+    } else if (iterationClass === "one-or-more-unknown") {
+      continuing.push(
+        ...(bodyResult.continuing ?? []),
+        ...loopContinues,
+      );
       exits.push(
         ...(bodyResult.continuing ?? []),
-        ...(bodyResult.continues ?? []),
+        ...loopContinues,
+      );
+      terminationUncertainty = true;
+    } else {
+      exits.push(
+        ...(bodyResult.continuing ?? []),
+        ...loopContinues,
       );
     }
 
@@ -5535,10 +5831,65 @@ function auditImperativeNavigation(source, path, options = {}) {
       exits,
       breaks: [],
       continues: [],
+      labeledBreaks: ownBreaks.remaining,
+      labeledContinues: ownContinues.remaining,
       loopUncertainty: (
         bodyResult.loopUncertainty === true
         || zeroIterationUncertainty
+        || terminationUncertainty
       ),
+    };
+  }
+
+  function teardownFlowLabeledStatement(
+    statement,
+    states,
+    matchCall,
+    env,
+    callStack,
+  ) {
+    const labels = [];
+    let target = statement;
+    while (ts.isLabeledStatement(target)) {
+      labels.push(target.label.text);
+      target = target.statement;
+    }
+
+    if (
+      ts.isDoStatement(target)
+      || ts.isWhileStatement(target)
+      || ts.isForStatement(target)
+      || ts.isForOfStatement(target)
+      || ts.isForInStatement(target)
+    ) {
+      return teardownFlowLoop(
+        target,
+        states,
+        matchCall,
+        env,
+        callStack,
+        labels,
+      );
+    }
+
+    const result = teardownFlowStatement(
+      target,
+      states,
+      matchCall,
+      env,
+      callStack,
+    );
+    const capturedBreaks = teardownFlowTransferMapWithout(
+      result.labeledBreaks,
+      labels,
+    );
+    return {
+      ...result,
+      continuing: [
+        ...(result.continuing ?? []),
+        ...capturedBreaks.removed,
+      ],
+      labeledBreaks: capturedBreaks.remaining,
     };
   }
 
@@ -5582,6 +5933,8 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: [],
         breaks: [],
         continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
         loopUncertainty: false,
       });
     }
@@ -5605,11 +5958,43 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: [...(clauseResult.exits ?? [])],
         breaks: [],
         continues: [...(clauseResult.continues ?? [])],
+        labeledBreaks: clauseResult.labeledBreaks ?? new Map(),
+        labeledContinues: clauseResult.labeledContinues ?? new Map(),
         loopUncertainty: clauseResult.loopUncertainty === true,
       });
     }
 
     return teardownFlowMerge(...results);
+  }
+
+  function teardownFlowResumeFinallyResult(finalResult, channel, label = null) {
+    const resumed = {
+      continuing: [],
+      exits: [...(finalResult.exits ?? [])],
+      breaks: [...(finalResult.breaks ?? [])],
+      continues: [...(finalResult.continues ?? [])],
+      labeledBreaks: teardownFlowTransferMapMerge(finalResult.labeledBreaks),
+      labeledContinues: teardownFlowTransferMapMerge(finalResult.labeledContinues),
+      loopUncertainty: finalResult.loopUncertainty === true,
+    };
+    const statuses = finalResult.continuing ?? [];
+    if (channel === "continuing") resumed.continuing.push(...statuses);
+    if (channel === "exits") resumed.exits.push(...statuses);
+    if (channel === "breaks") resumed.breaks.push(...statuses);
+    if (channel === "continues") resumed.continues.push(...statuses);
+    if (channel === "labeledBreaks" && label) {
+      resumed.labeledBreaks = teardownFlowTransferMapMerge(
+        resumed.labeledBreaks,
+        new Map([[label, statuses]]),
+      );
+    }
+    if (channel === "labeledContinues" && label) {
+      resumed.labeledContinues = teardownFlowTransferMapMerge(
+        resumed.labeledContinues,
+        new Map([[label, statuses]]),
+      );
+    }
+    return resumed;
   }
 
   function teardownFlowTry(
@@ -5657,6 +6042,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [],
           continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: false,
         };
       }
@@ -5695,6 +6082,8 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: states.filter((status) => status !== true),
         breaks: [],
         continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
         loopUncertainty: false,
       });
     }
@@ -5703,7 +6092,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (!statement.finallyBlock) return merged;
 
     const finalResults = [];
-    for (const [kind, statuses] of [
+    for (const [channel, statuses] of [
       ["continuing", merged.continuing],
       ["exits", merged.exits],
       ["breaks", merged.breaks],
@@ -5717,15 +6106,36 @@ function auditImperativeNavigation(source, path, options = {}) {
         env,
         callStack,
       );
-      const resumed = {
-        continuing: [],
-        exits: [...(finalResult.exits ?? [])],
-        breaks: [...(finalResult.breaks ?? [])],
-        continues: [...(finalResult.continues ?? [])],
-        loopUncertainty: finalResult.loopUncertainty === true,
-      };
-      resumed[kind].push(...(finalResult.continuing ?? []));
-      finalResults.push(resumed);
+      finalResults.push(
+        teardownFlowResumeFinallyResult(finalResult, channel),
+      );
+    }
+
+    for (const [label, statuses] of merged.labeledBreaks ?? []) {
+      if (!statuses.length) continue;
+      const finalResult = teardownFlowSequence(
+        statement.finallyBlock.statements,
+        statuses,
+        matchCall,
+        env,
+        callStack,
+      );
+      finalResults.push(
+        teardownFlowResumeFinallyResult(finalResult, "labeledBreaks", label),
+      );
+    }
+    for (const [label, statuses] of merged.labeledContinues ?? []) {
+      if (!statuses.length) continue;
+      const finalResult = teardownFlowSequence(
+        statement.finallyBlock.statements,
+        statuses,
+        matchCall,
+        env,
+        callStack,
+      );
+      finalResults.push(
+        teardownFlowResumeFinallyResult(finalResult, "labeledContinues", label),
+      );
     }
 
     return teardownFlowMerge(...finalResults);
@@ -5741,6 +6151,19 @@ function auditImperativeNavigation(source, path, options = {}) {
     if (ts.isBlock(statement)) {
       return teardownFlowSequence(
         statement.statements,
+        states,
+        matchCall,
+        env,
+        callStack,
+      );
+    }
+
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+      && ts.isLabeledStatement(statement)
+    ) {
+      return teardownFlowLabeledStatement(
+        statement,
         states,
         matchCall,
         env,
@@ -5769,6 +6192,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [],
           continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: false,
         };
       return teardownFlowMerge(thenResult, elseResult);
@@ -5819,11 +6244,27 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: [...states],
         breaks: [],
         continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
         loopUncertainty: false,
       };
     }
 
     if (ts.isBreakStatement(statement)) {
+      if (
+        enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+        && statement.label
+      ) {
+        return {
+          continuing: [],
+          exits: [],
+          breaks: [],
+          continues: [],
+          labeledBreaks: new Map([[statement.label.text, [...states]]]),
+          labeledContinues: new Map(),
+          loopUncertainty: false,
+        };
+      }
       if (
         enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
         && !statement.label
@@ -5833,6 +6274,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [...states],
           continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: false,
         };
       }
@@ -5841,11 +6284,27 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: [...states],
         breaks: [],
         continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
         loopUncertainty: false,
       };
     }
 
     if (ts.isContinueStatement(statement)) {
+      if (
+        enforceProgrammaticFormOwnershipCallbackTeardownLabeledIterationPolicy
+        && statement.label
+      ) {
+        return {
+          continuing: [],
+          exits: [],
+          breaks: [],
+          continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map([[statement.label.text, [...states]]]),
+          loopUncertainty: false,
+        };
+      }
       if (
         enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
         && !statement.label
@@ -5855,6 +6314,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [],
           continues: [...states],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: false,
         };
       }
@@ -5863,6 +6324,8 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: [...states],
         breaks: [],
         continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
         loopUncertainty: false,
       };
     }
@@ -5876,6 +6339,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [],
           continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: false,
         };
       }
@@ -5887,6 +6352,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [],
           continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: true,
         };
       }
@@ -5898,6 +6365,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [],
           continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: false,
         };
       }
@@ -5907,6 +6376,8 @@ function auditImperativeNavigation(source, path, options = {}) {
           exits: [],
           breaks: [],
           continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
           loopUncertainty: false,
         };
       }
@@ -5924,6 +6395,8 @@ function auditImperativeNavigation(source, path, options = {}) {
         exits: [],
         breaks: [],
         continues: [],
+        labeledBreaks: new Map(),
+        labeledContinues: new Map(),
         loopUncertainty: false,
       };
     }
@@ -5952,6 +6425,8 @@ function auditImperativeNavigation(source, path, options = {}) {
       ...result.exits,
       ...(result.breaks ?? []),
       ...(result.continues ?? []),
+      ...[...(result.labeledBreaks ?? new Map()).values()].flat(),
+      ...[...(result.labeledContinues ?? new Map()).values()].flat(),
     ]);
     if (
       enforceProgrammaticFormOwnershipCallbackTeardownLoopPolicy
@@ -11048,6 +11523,83 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const finiteAscending = setTimeout(() => outside.append(input), 0);',
+    'for (let i = 0; i < 3; i++) { const marker = i; }',
+    'clearTimeout(finiteAscending);',
+    'const finiteDescending = setTimeout(() => outside.append(input), 0);',
+    'for (let i = 3; i > 0; i--) { const marker = i; }',
+    'clearTimeout(finiteDescending);',
+    'const staticZero = setTimeout(() => outside.append(input), 0);',
+    'for (let i = 3; i < 3; i++) { clearTimeout(staticZero); }',
+    'const unknownTermination = setTimeout(() => outside.append(input), 0);',
+    'while (flag) { const marker = 1; }',
+    'clearTimeout(unknownTermination);',
+    'const labeledBreakCovered = setTimeout(() => outside.append(input), 0);',
+    'outerBreak: do {',
+    '  if (flag) { break outerBreak; }',
+    '  clearTimeout(labeledBreakCovered);',
+    '} while (false);',
+    'clearTimeout(labeledBreakCovered);',
+    'const labeledContinueCovered = setTimeout(() => outside.append(input), 0);',
+    'outerContinue: do {',
+    '  do { if (flag) { continue outerContinue; } break; } while (false);',
+    '  clearTimeout(labeledContinueCovered);',
+    '} while (false);',
+    'clearTimeout(labeledContinueCovered);',
+    'const chainedLabels = setTimeout(() => outside.append(input), 0);',
+    'outerChain: innerChain: do { clearTimeout(chainedLabels); break outerChain; } while (true);',
+    'const partialLabel = setTimeout(() => outside.append(input), 0);',
+    'partialExit: do {',
+    '  if (flag) { break partialExit; }',
+    '  clearTimeout(partialLabel);',
+    '} while (false);',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-labeled-iteration.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 4
+    || counts["programmatic-ownership-scheduled-dynamic"] !== 1
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== 1
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 1
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown labeled iteration authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -12299,6 +12851,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownPathPolicy: true,
       programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
       programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
     },
   ));
 
