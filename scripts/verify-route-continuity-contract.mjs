@@ -5578,12 +5578,25 @@ function auditImperativeNavigation(source, path, options = {}) {
     const resolved = teardownUnwrapStructuredExpression(expression, env);
     if (!resolved) return resolved;
 
+    const nodeKey = (
+      typeof resolved.pos === "number"
+      && typeof resolved.end === "number"
+      && resolved.pos >= 0
+      && resolved.end >= resolved.pos
+    )
+      ? "structured-node:" + resolved.pos + ":" + resolved.end
+      : null;
+    if (nodeKey && seen.has(nodeKey)) return resolved;
+    const nodeSeen = nodeKey
+      ? new Set([...seen, nodeKey])
+      : seen;
+
     if (ts.isIdentifier(resolved)) {
       const key = "structured:" + resolved.text;
-      if (seen.has(key)) return resolved;
+      if (nodeSeen.has(key)) return resolved;
       const next = resolveDataExpression(resolved, env);
       if (next !== resolved) {
-        const nextSeen = new Set(seen);
+        const nextSeen = new Set(nodeSeen);
         nextSeen.add(key);
         return teardownResolveStructuredExpression(next, env, nextSeen);
       }
@@ -5595,7 +5608,7 @@ function auditImperativeNavigation(source, path, options = {}) {
         resolved.expression,
         resolved.name.text,
         env,
-        seen,
+        nodeSeen,
       ) ?? resolved;
     }
 
@@ -5603,7 +5616,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       const argument = teardownResolveStructuredExpression(
         resolved.argumentExpression,
         env,
-        seen,
+        nodeSeen,
       );
       const key = (
         argument
@@ -5618,7 +5631,7 @@ function auditImperativeNavigation(source, path, options = {}) {
             resolved.expression,
             key,
             env,
-            seen,
+            nodeSeen,
           ) ?? resolved
         );
     }
