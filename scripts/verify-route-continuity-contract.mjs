@@ -6702,7 +6702,10 @@ function auditImperativeNavigation(source, path, options = {}) {
           loopUncertainty: false,
         };
       }
-      if (matched === "safe-teardown") {
+      if (
+        matched === "safe-teardown"
+        || matched === "safe-no-teardown"
+      ) {
         return {
           continuing: [...states],
           exits: [],
@@ -6768,6 +6771,54 @@ function auditImperativeNavigation(source, path, options = {}) {
     return status;
   }
 
+  function teardownLocalFunctionMayEscape(
+    definition,
+    env = new Map(),
+    callStack = new Set(),
+  ) {
+    if (!definition?.body) return true;
+    let escaped = false;
+
+    function scan(current) {
+      if (escaped || !current) return;
+      if (current !== definition.body && ts.isFunctionLike(current)) return;
+
+      if (ts.isThrowStatement(current) || ts.isNewExpression(current)) {
+        escaped = true;
+        return;
+      }
+
+      if (ts.isCallExpression(current)) {
+        if (isKnownTeardownOnlyCall(current, env)) {
+          for (const argument of current.arguments) scan(argument);
+          return;
+        }
+
+        const childDefinition = localFunctionFromCallee(current.expression, env);
+        if (!childDefinition || callStack.has(childDefinition.key)) {
+          escaped = true;
+          return;
+        }
+
+        const nextStack = new Set(callStack);
+        nextStack.add(childDefinition.key);
+        const childEnv = functionEnvironment(childDefinition, current, env);
+        if (teardownLocalFunctionMayEscape(childDefinition, childEnv, nextStack)) {
+          escaped = true;
+          return;
+        }
+
+        for (const argument of current.arguments) scan(argument);
+        return;
+      }
+
+      ts.forEachChild(current, scan);
+    }
+
+    scan(definition.body);
+    return escaped;
+  }
+
   function scheduledHandleTeardownControlFlowStatus(
     definitionOrBlock,
     scheduledInfo,
@@ -6802,6 +6853,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       if (status === "guaranteed") return true;
       if (status === "loop-partial") return "loop-partial-teardown";
       if (status === "partial") return "partial-teardown";
+      if (
+        status === "none"
+        && !teardownLocalFunctionMayEscape(definition, childEnv, nextStack)
+      ) return "safe-no-teardown";
       return false;
     };
 
@@ -6845,6 +6900,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       if (status === "guaranteed") return true;
       if (status === "loop-partial") return "loop-partial-teardown";
       if (status === "partial") return "partial-teardown";
+      if (
+        status === "none"
+        && !teardownLocalFunctionMayEscape(definition, childEnv, nextStack)
+      ) return "safe-no-teardown";
       return false;
     };
 
