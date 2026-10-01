@@ -1909,6 +1909,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy = (
     options.programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy === true
+  );
   const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
   const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
   const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
@@ -5620,11 +5623,42 @@ function auditImperativeNavigation(source, path, options = {}) {
     return roots;
   }
 
+  function teardownNumericInterval(min, max) {
+    if (
+      typeof min !== "number"
+      || typeof max !== "number"
+      || Number.isNaN(min)
+      || Number.isNaN(max)
+      || min > max
+    ) return null;
+    return {
+      __teardownNumericInterval: true,
+      min,
+      max,
+    };
+  }
+
+  function teardownIsNumericInterval(value) {
+    return Boolean(
+      value
+      && typeof value === "object"
+      && value.__teardownNumericInterval === true
+      && typeof value.min === "number"
+      && typeof value.max === "number"
+      && !Number.isNaN(value.min)
+      && !Number.isNaN(value.max)
+      && value.min <= value.max
+    );
+  }
+
   function teardownHeapValueFingerprint(value) {
     if (value === null) return "<unknown>";
     if (value === undefined) return "<absent>";
     if (typeof value !== "object") return typeof value + ":" + String(value);
     if (value === teardownHeapUnknownExpression) return "<unknown-expression>";
+    if (teardownIsNumericInterval(value)) {
+      return "interval:" + String(value.min) + ":" + String(value.max);
+    }
     if (
       ts.isStringLiteralLike(value)
       || ts.isNumericLiteral(value)
@@ -5767,9 +5801,28 @@ function auditImperativeNavigation(source, path, options = {}) {
 
       for (const key of keys) {
         if (key === teardownHeapUnknownKey(root)) continue;
-        const values = branchEnvs.map((env) =>
-          env.has(key) ? env.get(key) : undefined
-        );
+        const parsed = teardownHeapParsedValueKey(key);
+        const values = branchEnvs.map((env) => {
+          if (parsed) {
+            const read = teardownHeapReadPath(parsed.root, parsed.path, env);
+            return read.found ? read.value : undefined;
+          }
+          return env.has(key) ? env.get(key) : undefined;
+        });
+
+        if (
+          enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+          && values.every((value) => value !== undefined && value !== null)
+        ) {
+          const ranges = values.map((value) => teardownNumericRange(value, new Map()));
+          if (ranges.every(Boolean)) {
+            const min = Math.min(...ranges.map((range) => range.min));
+            const max = Math.max(...ranges.map((range) => range.max));
+            parentEnv.set(key, teardownNumericInterval(min, max));
+            continue;
+          }
+        }
+
         const fingerprints = values.map(teardownHeapValueFingerprint);
         const first = fingerprints[0];
         if (fingerprints.every((value) => value === first)) {
