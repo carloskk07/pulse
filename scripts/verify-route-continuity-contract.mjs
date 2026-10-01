@@ -5934,6 +5934,22 @@ function auditImperativeNavigation(source, path, options = {}) {
     return safe;
   }
 
+  function teardownHeapPropagateLocalCall(
+    definition,
+    call,
+    parentEnv,
+    childEnv,
+  ) {
+    if (!enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      return;
+    }
+    if (teardownHeapPropagationSafeFunction(definition, childEnv)) {
+      teardownHeapCommit(parentEnv, childEnv);
+      return;
+    }
+    teardownHeapInvalidateCallReferences(call, parentEnv);
+  }
+
   function teardownUnwrapStructuredExpression(
     expression,
     env = new Map(),
@@ -7524,6 +7540,18 @@ function auditImperativeNavigation(source, path, options = {}) {
     callStack = new Set(),
   ) {
     if (ts.isBlock(statement)) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const blockEnv = new Map(env);
+        const result = teardownFlowSequence(
+          statement.statements,
+          states,
+          matchCall,
+          blockEnv,
+          callStack,
+        );
+        teardownHeapCommit(env, blockEnv);
+        return result;
+      }
       return teardownFlowSequence(
         statement.statements,
         states,
@@ -7579,6 +7607,41 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
       }
 
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const thenEnv = new Map(env);
+        const elseEnv = new Map(env);
+        const thenResult = teardownFlowStatement(
+          statement.thenStatement,
+          states,
+          matchCall,
+          thenEnv,
+          callStack,
+        );
+        const elseResult = statement.elseStatement
+          ? teardownFlowStatement(
+            statement.elseStatement,
+            states,
+            matchCall,
+            elseEnv,
+            callStack,
+          )
+          : {
+            continuing: [...states],
+            exits: [],
+            breaks: [],
+            continues: [],
+            labeledBreaks: new Map(),
+            labeledContinues: new Map(),
+            loopUncertainty: false,
+          };
+
+        const continuingEnvs = [];
+        if ((thenResult.continuing ?? []).length > 0) continuingEnvs.push(thenEnv);
+        if ((elseResult.continuing ?? []).length > 0) continuingEnvs.push(elseEnv);
+        teardownHeapMerge(env, continuingEnvs);
+        return teardownFlowMerge(thenResult, elseResult);
+      }
+
       const thenResult = teardownFlowStatement(
         statement.thenStatement,
         states,
@@ -7626,6 +7689,19 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (ts.isSwitchStatement(statement)) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const beforeEnv = new Map(env);
+        const switchEnv = new Map(env);
+        const result = teardownFlowSwitch(
+          statement,
+          states,
+          matchCall,
+          switchEnv,
+          callStack,
+        );
+        teardownHeapInvalidateChangedRoots(env, beforeEnv, switchEnv);
+        return result;
+      }
       return teardownFlowSwitch(
         statement,
         states,
@@ -7636,6 +7712,19 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (ts.isTryStatement(statement)) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const beforeEnv = new Map(env);
+        const tryEnv = new Map(env);
+        const result = teardownFlowTry(
+          statement,
+          states,
+          matchCall,
+          tryEnv,
+          callStack,
+        );
+        teardownHeapInvalidateChangedRoots(env, beforeEnv, tryEnv);
+        return result;
+      }
       return teardownFlowTry(
         statement,
         states,
@@ -7737,6 +7826,35 @@ function auditImperativeNavigation(source, path, options = {}) {
       };
     }
 
+    if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      const assignment = teardownApplyHeapAssignmentStatement(statement, env);
+      if (assignment?.handled) {
+        return assignment.safe
+          ? {
+            continuing: [...states],
+            exits: [],
+            breaks: [],
+            continues: [],
+            labeledBreaks: new Map(),
+            labeledContinues: new Map(),
+            loopUncertainty: false,
+          }
+          : teardownFlowUnknownStatement(states);
+      }
+
+      if (teardownApplyHeapVariableStatement(statement, env)) {
+        return {
+          continuing: [...states],
+          exits: [],
+          breaks: [],
+          continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
+          loopUncertainty: false,
+        };
+      }
+    }
+
     const call = directCallStatement(statement);
     if (call) {
       const matched = matchCall(call, env, callStack);
@@ -7790,6 +7908,9 @@ function auditImperativeNavigation(source, path, options = {}) {
           labeledContinues: new Map(),
           loopUncertainty: false,
         };
+      }
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        teardownHeapInvalidateCallReferences(call, env);
       }
       return teardownFlowUnknownStatement(states);
     }
