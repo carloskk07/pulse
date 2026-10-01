@@ -5043,18 +5043,50 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function functionEnvironment(definition, callExpression, parentEnv) {
-    const env = new Map();
+    const env = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      ? new Map(parentEnv)
+      : new Map();
     for (let index = 0; index < definition.parameters.length; index += 1) {
       const parameter = definition.parameters[index];
       if (!ts.isIdentifier(parameter.name)) continue;
       const argument = callExpression.arguments[index];
       if (!argument) continue;
-      env.set(
-        parameter.name.text,
-        enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
-          ? teardownResolveStructuredExpression(argument, parentEnv)
-          : resolveDataExpression(argument, parentEnv),
-      );
+
+      const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
+        ? teardownResolveStructuredExpression(argument, parentEnv)
+        : resolveDataExpression(argument, parentEnv);
+      env.set(parameter.name.text, resolved);
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const reference = teardownHeapReferenceForExpression(argument, parentEnv);
+        if (reference) {
+          env.set(teardownHeapRootKey(parameter.name.text), reference);
+        } else {
+          env.delete(teardownHeapRootKey(parameter.name.text));
+          const concrete = teardownConcreteStructuredValue(argument, parentEnv);
+          if (
+            concrete
+            && (
+              ts.isObjectLiteralExpression(concrete)
+              || ts.isArrayLiteralExpression(concrete)
+            )
+          ) {
+            const root = (
+              "param:"
+              + definition.key
+              + ":"
+              + parameter.name.text
+              + "@"
+              + callExpression.pos
+            );
+            env.set(
+              teardownHeapRootKey(parameter.name.text),
+              { root, path: [] },
+            );
+            teardownHeapWritePath(root, [], concrete, env);
+          }
+        }
+      }
     }
     return env;
   }
@@ -5941,6 +5973,22 @@ function auditImperativeNavigation(source, path, options = {}) {
     env = new Map(),
     seen = new Set(),
   ) {
+    if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      const reference = teardownHeapReferenceForExpression(ownerExpression, env);
+      if (reference) {
+        const overlay = teardownHeapReadPath(
+          reference.root,
+          [...reference.path, String(key)],
+          env,
+        );
+        if (overlay.found) {
+          return overlay.value === null
+            ? teardownHeapUnknownExpression
+            : overlay.value;
+        }
+      }
+    }
+
     const owner = teardownResolveStructuredExpression(ownerExpression, env, seen);
     if (!owner || key === null || key === undefined) return null;
     const keyText = String(key);
