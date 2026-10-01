@@ -5869,6 +5869,166 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
   }
 
+  function teardownHeapReferenceEquals(left, right) {
+    return Boolean(
+      left
+      && right
+      && left.root === right.root
+      && left.path.length === right.path.length
+      && left.path.every((part, index) => part === right.path[index])
+    );
+  }
+
+  function teardownHeapLoopMutationDirection(
+    node,
+    targetReference,
+    env = new Map(),
+  ) {
+    const directions = [];
+    let unsupported = false;
+
+    function record(direction) {
+      if (direction === "neutral") return;
+      directions.push(direction);
+    }
+
+    function scan(current) {
+      if (unsupported || !current) return;
+      if (current !== node && ts.isFunctionLike(current)) return;
+
+      if (
+        (ts.isPrefixUnaryExpression(current) || ts.isPostfixUnaryExpression(current))
+        && (
+          current.operator === ts.SyntaxKind.PlusPlusToken
+          || current.operator === ts.SyntaxKind.MinusMinusToken
+        )
+      ) {
+        const reference = teardownHeapReferenceForExpression(current.operand, env);
+        if (teardownHeapReferenceEquals(reference, targetReference)) {
+          record(
+            current.operator === ts.SyntaxKind.PlusPlusToken
+              ? "increasing"
+              : "decreasing",
+          );
+        }
+        return;
+      }
+
+      if (ts.isBinaryExpression(current)) {
+        const reference = teardownHeapReferenceForExpression(current.left, env);
+        if (teardownHeapReferenceEquals(reference, targetReference)) {
+          if (
+            current.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
+            || current.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+          ) {
+            const operand = teardownNumericRange(current.right, env);
+            if (!operand) {
+              unsupported = true;
+              return;
+            }
+            if (operand.min === 0 && operand.max === 0) {
+              record("neutral");
+              return;
+            }
+            const plus = current.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken;
+            if (operand.min >= 0) {
+              record(plus ? "increasing" : "decreasing");
+              return;
+            }
+            if (operand.max <= 0) {
+              record(plus ? "decreasing" : "increasing");
+              return;
+            }
+          }
+          unsupported = true;
+          return;
+        }
+      }
+
+      ts.forEachChild(current, scan);
+    }
+
+    scan(node);
+    if (unsupported || directions.length === 0) return "unknown";
+    if (directions.every((direction) => direction === "increasing")) {
+      return "increasing";
+    }
+    if (directions.every((direction) => direction === "decreasing")) {
+      return "decreasing";
+    }
+    return "unknown";
+  }
+
+  function teardownHeapWidenLoopState(
+    targetEnv,
+    beforeEnv,
+    afterEnv,
+    loopBody,
+  ) {
+    const roots = teardownHeapReachableRoots(targetEnv);
+
+    for (const root of roots) {
+      if (afterEnv.get(teardownHeapUnknownKey(root)) === true) {
+        teardownHeapInvalidateRoot(root, targetEnv);
+        continue;
+      }
+
+      const keys = new Set();
+      for (const env of [beforeEnv, afterEnv]) {
+        for (const key of env.keys()) {
+          if (teardownHeapRootFromSpecialKey(key) === root) keys.add(key);
+        }
+      }
+
+      let invalidateRoot = false;
+      for (const key of keys) {
+        const parsed = teardownHeapParsedValueKey(key);
+        if (!parsed || parsed.path.length === 0) continue;
+
+        const beforeRead = teardownHeapReadPath(root, parsed.path, beforeEnv);
+        const afterRead = teardownHeapReadPath(root, parsed.path, afterEnv);
+        const beforeValue = beforeRead.found ? beforeRead.value : undefined;
+        const afterValue = afterRead.found ? afterRead.value : undefined;
+
+        if (
+          teardownHeapValueFingerprint(beforeValue)
+          === teardownHeapValueFingerprint(afterValue)
+        ) continue;
+
+        const beforeRange = teardownNumericRange(beforeValue, beforeEnv);
+        const afterRange = teardownNumericRange(afterValue, afterEnv);
+        if (!beforeRange || !afterRange) {
+          invalidateRoot = true;
+          break;
+        }
+
+        const reference = { root, path: parsed.path };
+        const direction = teardownHeapLoopMutationDirection(
+          loopBody,
+          reference,
+          beforeEnv,
+        );
+        let widened = null;
+        if (direction === "increasing") {
+          widened = teardownNumericInterval(
+            Math.min(beforeRange.min, afterRange.min),
+            Infinity,
+          );
+        } else if (direction === "decreasing") {
+          widened = teardownNumericInterval(
+            -Infinity,
+            Math.max(beforeRange.max, afterRange.max),
+          );
+        } else {
+          widened = teardownNumericInterval(-Infinity, Infinity);
+        }
+        teardownHeapWriteRange(reference, widened, targetEnv);
+      }
+
+      if (invalidateRoot) teardownHeapInvalidateRoot(root, targetEnv);
+    }
+  }
+
   function teardownHeapInitializeDeclaration(
     declaration,
     env = new Map(),
@@ -7793,7 +7953,16 @@ function auditImperativeNavigation(source, path, options = {}) {
       enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
       && loopEntryEnv
     ) {
-      teardownHeapInvalidateChangedRoots(env, loopEntryEnv, loopBodyEnv);
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        teardownHeapWidenLoopState(
+          env,
+          loopEntryEnv,
+          loopBodyEnv,
+          statement.statement,
+        );
+      } else {
+        teardownHeapInvalidateChangedRoots(env, loopEntryEnv, loopBodyEnv);
+      }
     }
     const ownBreaks = teardownFlowTransferMapWithout(
       bodyResult.labeledBreaks,
