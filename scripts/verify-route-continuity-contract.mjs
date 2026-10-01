@@ -15206,6 +15206,109 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const assignmentTimer = setTimeout(() => outside.append(input), 0);',
+    'let assignmentState = { processed: 0, total: 0 };',
+    'if (flag) { assignmentState.total = 3; } else { assignmentState.total = 8; }',
+    'assignmentState.processed = assignmentState.total - 1;',
+    'if (assignmentState.processed <= assignmentState.total) { clearTimeout(assignmentTimer); }',
+    'const shiftTimer = setTimeout(() => outside.append(input), 0);',
+    'let shiftState = { processed: 0, total: 0 };',
+    'if (flag) { shiftState.total = 4; } else { shiftState.total = 9; }',
+    'shiftState.processed = shiftState.total - 1;',
+    'shiftState.processed += 2;',
+    'shiftState.total += 2;',
+    'if (shiftState.processed <= shiftState.total) { clearTimeout(shiftTimer); }',
+    'const refinementTimer = setTimeout(() => outside.append(input), 0);',
+    'let refinementState = { left: 0, right: 0 };',
+    'if (flag) { refinementState.left = 2; refinementState.right = 5; }',
+    'else { refinementState.left = 7; refinementState.right = 3; }',
+    'if (refinementState.left <= refinementState.right) {',
+    '  if (refinementState.left <= refinementState.right) { clearTimeout(refinementTimer); }',
+    '} else {',
+    '  if (refinementState.left >= refinementState.right) { clearTimeout(refinementTimer); }',
+    '}',
+    'const branchMergeTimer = setTimeout(() => outside.append(input), 0);',
+    'let mergeState = { processed: 0, total: 0 };',
+    'if (flag) { mergeState.total = 3; mergeState.processed = mergeState.total - 1; }',
+    'else { mergeState.total = 8; mergeState.processed = mergeState.total - 1; }',
+    'if (mergeState.processed <= mergeState.total) { clearTimeout(branchMergeTimer); }',
+    'const affineTimer = setTimeout(() => outside.append(input), 0);',
+    'let affineState = { earned: 0, withdrawn: 0, balance: 0 };',
+    'if (flag) { affineState.earned = 10; affineState.withdrawn = 3; }',
+    'else { affineState.earned = 20; affineState.withdrawn = 8; }',
+    'affineState.balance = affineState.earned - affineState.withdrawn;',
+    'if (affineState.balance === affineState.earned - affineState.withdrawn) { clearTimeout(affineTimer); }',
+    'const nonlinearTimer = setTimeout(() => outside.append(input), 0);',
+    'let nonlinearState = { processed: 0, total: 0 };',
+    'if (flag) { nonlinearState.total = 3; } else { nonlinearState.total = 8; }',
+    'nonlinearState.processed = nonlinearState.total - 1;',
+    'nonlinearState.processed *= 2;',
+    'if (nonlinearState.processed <= nonlinearState.total) { clearTimeout(nonlinearTimer); }',
+    'const externalTimer = setTimeout(() => outside.append(input), 0);',
+    'let externalState = { processed: 0, total: 0 };',
+    'if (flag) { externalState.total = 3; } else { externalState.total = 8; }',
+    'externalState.processed = externalState.total - 1;',
+    'mutateExternally(externalState);',
+    'if (externalState.processed <= externalState.total) { clearTimeout(externalTimer); }',
+    'const divergentTimer = setTimeout(() => outside.append(input), 0);',
+    'let divergentState = { processed: 0, total: 5 };',
+    'if (flag) { divergentState.processed = divergentState.total - 1; }',
+    'else { divergentState.processed = divergentState.total + 1; }',
+    'if (divergentState.processed <= divergentState.total) { clearTimeout(divergentTimer); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-correlated-heap.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+      programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
+      programmaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 4
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 3
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown correlated heap authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -16464,6 +16567,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
       programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
       programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
+      programmaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy: true,
     },
   ));
 
