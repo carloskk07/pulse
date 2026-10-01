@@ -13723,6 +13723,100 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const compoundTimer = setTimeout(() => outside.append(input), 0);',
+    'let compoundState = { count: 0 };',
+    'compoundState.count += 1;',
+    'compoundState.count += 2;',
+    'if (compoundState.count >= 3) { clearTimeout(compoundTimer); }',
+    'const unaryTimer = setTimeout(() => outside.append(input), 0);',
+    'let unaryState = { count: 1 };',
+    'unaryState.count++;',
+    '++unaryState.count;',
+    'if (unaryState.count === 3) { clearTimeout(unaryTimer); }',
+    'const expressionTimer = setTimeout(() => outside.append(input), 0);',
+    'let expressionState = { count: 1 };',
+    'expressionState.count = expressionState.count * 2 + 1;',
+    'if (expressionState.count === 3) { clearTimeout(expressionTimer); }',
+    'const relationalTimer = setTimeout(() => outside.append(input), 0);',
+    'let relationalState = { count: 1, limit: 3 };',
+    'relationalState.count += 2;',
+    'if (relationalState.count >= relationalState.limit) { clearTimeout(relationalTimer); }',
+    'const loopTimer = setTimeout(() => outside.append(input), 0);',
+    'let loopState = { count: 0 };',
+    'for (const item of [1, 1, 1] as const) {',
+    '  loopState.count += item;',
+    '  if (loopState.count >= 3) { clearTimeout(loopTimer); }',
+    '}',
+    'const helperTimer = setTimeout(() => outside.append(input), 0);',
+    'let helperState = { count: 0 };',
+    'function addTwo(target) { target.count += 2; }',
+    'addTwo(helperState);',
+    'helperState.count++;',
+    'if (helperState.count >= 3) { clearTimeout(helperTimer); }',
+    'const branchUnknown = setTimeout(() => outside.append(input), 0);',
+    'let branchState = { count: 1 };',
+    'if (flag) { branchState.count += 2; }',
+    'if (branchState.count >= 3) { clearTimeout(branchUnknown); }',
+    'const operandUnknown = setTimeout(() => outside.append(input), 0);',
+    'let operandState = { count: 1 };',
+    'operandState.count += delta;',
+    'if (operandState.count >= 3) { clearTimeout(operandUnknown); }',
+    'const divisionUnknown = setTimeout(() => outside.append(input), 0);',
+    'let divisionState = { count: 4 };',
+    'divisionState.count /= 0;',
+    'if (divisionState.count >= 2) { clearTimeout(divisionUnknown); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-heap-arithmetic.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 4
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 3
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown heap arithmetic authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -14979,6 +15073,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
     },
   ));
 
