@@ -1906,6 +1906,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy = (
     options.programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy === true
+  );
   const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
   const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
   const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
@@ -5866,6 +5869,85 @@ function auditImperativeNavigation(source, path, options = {}) {
     return true;
   }
 
+  function teardownFiniteNumericNode(value) {
+    return Number.isFinite(value)
+      ? ts.factory.createNumericLiteral(String(value))
+      : null;
+  }
+
+  function teardownHeapNumericUpdateValue(
+    operator,
+    current,
+    operand,
+  ) {
+    if (!Number.isFinite(current) || !Number.isFinite(operand)) return null;
+    let next = null;
+    if (operator === ts.SyntaxKind.PlusEqualsToken) next = current + operand;
+    if (operator === ts.SyntaxKind.MinusEqualsToken) next = current - operand;
+    if (operator === ts.SyntaxKind.AsteriskEqualsToken) next = current * operand;
+    if (
+      operator === ts.SyntaxKind.SlashEqualsToken
+      && operand !== 0
+    ) next = current / operand;
+    if (
+      operator === ts.SyntaxKind.PercentEqualsToken
+      && operand !== 0
+    ) next = current % operand;
+    if (operator === ts.SyntaxKind.AsteriskAsteriskEqualsToken) {
+      next = current ** operand;
+    }
+    return Number.isFinite(next) ? next : null;
+  }
+
+  function teardownHeapReadNumber(reference, env = new Map()) {
+    if (!reference) return null;
+    const overlay = teardownHeapReadPath(reference.root, reference.path, env);
+    if (!overlay.found || overlay.value === null) return null;
+    return teardownStaticNumber(overlay.value, env);
+  }
+
+  function teardownHeapWriteNumber(reference, value, env = new Map()) {
+    const node = teardownFiniteNumericNode(value);
+    if (!node) {
+      teardownHeapWritePath(reference.root, reference.path, null, env);
+      return false;
+    }
+    teardownHeapWritePath(reference.root, reference.path, node, env);
+    return true;
+  }
+
+  function teardownApplyHeapUnaryMutationStatement(
+    statement,
+    env = new Map(),
+  ) {
+    if (!ts.isExpressionStatement(statement)) return null;
+    const expression = statement.expression;
+    if (
+      !(
+        ts.isPrefixUnaryExpression(expression)
+        || ts.isPostfixUnaryExpression(expression)
+      )
+      || !(
+        expression.operator === ts.SyntaxKind.PlusPlusToken
+        || expression.operator === ts.SyntaxKind.MinusMinusToken
+      )
+    ) return null;
+
+    const reference = teardownHeapReferenceForExpression(expression.operand, env);
+    if (!reference) return null;
+    const current = teardownHeapReadNumber(reference, env);
+    if (current === null) {
+      teardownHeapWritePath(reference.root, reference.path, null, env);
+      return { handled: true, safe: false };
+    }
+
+    const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
+    return {
+      handled: true,
+      safe: teardownHeapWriteNumber(reference, current + delta, env),
+    };
+  }
+
   function teardownApplyHeapAssignmentStatement(
     statement,
     env = new Map(),
@@ -5879,9 +5961,44 @@ function auditImperativeNavigation(source, path, options = {}) {
     const reference = teardownHeapReferenceForExpression(expression.left, env);
     if (!reference) return null;
 
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
+      && expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
+    ) {
+      const current = teardownHeapReadNumber(reference, env);
+      const operand = teardownStaticNumber(expression.right, env);
+      if (current === null || operand === null) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
+      }
+      const next = teardownHeapNumericUpdateValue(
+        expression.operatorToken.kind,
+        current,
+        operand,
+      );
+      if (next === null) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
+      }
+      return {
+        handled: true,
+        safe: teardownHeapWriteNumber(reference, next, env),
+      };
+    }
+
     if (expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
       teardownHeapInvalidateRoot(reference.root, env);
       return { handled: true, safe: false };
+    }
+
+    if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
+      const numeric = teardownStaticNumber(expression.right, env);
+      if (numeric !== null) {
+        return {
+          handled: true,
+          safe: teardownHeapWriteNumber(reference, numeric, env),
+        };
+      }
     }
 
     const concrete = teardownConcreteStructuredValue(expression.right, env);
@@ -6385,7 +6502,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
       ? teardownResolveStructuredExpression(expression, env)
       : resolveDataExpression(expression, env);
-    if (!resolved) return null;
+    if (!resolved || resolved === teardownHeapUnknownExpression) return null;
     if (ts.isNumericLiteral(resolved)) {
       const value = Number(resolved.text);
       return Number.isFinite(value) ? value : null;
@@ -6399,7 +6516,39 @@ function auditImperativeNavigation(source, path, options = {}) {
     ) {
       const operand = teardownStaticNumber(resolved.operand, env);
       if (operand === null) return null;
-      return resolved.operator === ts.SyntaxKind.MinusToken ? -operand : operand;
+      const value = resolved.operator === ts.SyntaxKind.MinusToken
+        ? -operand
+        : operand;
+      return Number.isFinite(value) ? value : null;
+    }
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
+      && ts.isBinaryExpression(resolved)
+    ) {
+      const left = teardownStaticNumber(resolved.left, env);
+      const right = teardownStaticNumber(resolved.right, env);
+      if (left === null || right === null) return null;
+      let value = null;
+      if (resolved.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+        value = left + right;
+      } else if (resolved.operatorToken.kind === ts.SyntaxKind.MinusToken) {
+        value = left - right;
+      } else if (resolved.operatorToken.kind === ts.SyntaxKind.AsteriskToken) {
+        value = left * right;
+      } else if (
+        resolved.operatorToken.kind === ts.SyntaxKind.SlashToken
+        && right !== 0
+      ) {
+        value = left / right;
+      } else if (
+        resolved.operatorToken.kind === ts.SyntaxKind.PercentToken
+        && right !== 0
+      ) {
+        value = left % right;
+      } else if (resolved.operatorToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
+        value = left ** right;
+      }
+      return Number.isFinite(value) ? value : null;
     }
     if (ts.isParenthesizedExpression(resolved)) {
       return teardownStaticNumber(resolved.expression, env);
@@ -7884,6 +8033,23 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
+        const unaryMutation = teardownApplyHeapUnaryMutationStatement(statement, env);
+        if (unaryMutation?.handled) {
+          return unaryMutation.safe
+            ? {
+              continuing: [...states],
+              exits: [],
+              breaks: [],
+              continues: [],
+              labeledBreaks: new Map(),
+              labeledContinues: new Map(),
+              loopUncertainty: false,
+            }
+            : teardownFlowUnknownStatement(states);
+        }
+      }
+
       const assignment = teardownApplyHeapAssignmentStatement(statement, env);
       if (assignment?.handled) {
         return assignment.safe
@@ -13557,6 +13723,100 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const compoundTimer = setTimeout(() => outside.append(input), 0);',
+    'let compoundState = { count: 0 };',
+    'compoundState.count += 1;',
+    'compoundState.count += 2;',
+    'if (compoundState.count >= 3) { clearTimeout(compoundTimer); }',
+    'const unaryTimer = setTimeout(() => outside.append(input), 0);',
+    'let unaryState = { count: 1 };',
+    'unaryState.count++;',
+    '++unaryState.count;',
+    'if (unaryState.count === 3) { clearTimeout(unaryTimer); }',
+    'const expressionTimer = setTimeout(() => outside.append(input), 0);',
+    'let expressionState = { count: 1 };',
+    'expressionState.count = expressionState.count * 2 + 1;',
+    'if (expressionState.count === 3) { clearTimeout(expressionTimer); }',
+    'const relationalTimer = setTimeout(() => outside.append(input), 0);',
+    'let relationalState = { count: 1, limit: 3 };',
+    'relationalState.count += 2;',
+    'if (relationalState.count >= relationalState.limit) { clearTimeout(relationalTimer); }',
+    'const loopTimer = setTimeout(() => outside.append(input), 0);',
+    'let loopState = { count: 0 };',
+    'for (const item of [1, 1, 1] as const) {',
+    '  loopState.count += item;',
+    '  if (loopState.count >= 3) { clearTimeout(loopTimer); }',
+    '}',
+    'const helperTimer = setTimeout(() => outside.append(input), 0);',
+    'let helperState = { count: 0 };',
+    'function addTwo(target) { target.count += 2; }',
+    'addTwo(helperState);',
+    'helperState.count++;',
+    'if (helperState.count >= 3) { clearTimeout(helperTimer); }',
+    'const branchUnknown = setTimeout(() => outside.append(input), 0);',
+    'let branchState = { count: 1 };',
+    'if (flag) { branchState.count += 2; }',
+    'if (branchState.count >= 3) { clearTimeout(branchUnknown); }',
+    'const operandUnknown = setTimeout(() => outside.append(input), 0);',
+    'let operandState = { count: 1 };',
+    'operandState.count += delta;',
+    'if (operandState.count >= 3) { clearTimeout(operandUnknown); }',
+    'const divisionUnknown = setTimeout(() => outside.append(input), 0);',
+    'let divisionState = { count: 4 };',
+    'divisionState.count /= 0;',
+    'if (divisionState.count >= 2) { clearTimeout(divisionUnknown); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-heap-arithmetic.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 4
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 3
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown heap arithmetic authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -14813,6 +15073,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
     },
   ));
 
