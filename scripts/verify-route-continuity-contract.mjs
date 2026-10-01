@@ -6703,6 +6703,9 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     for (const value of plan.values) {
       if (active.length === 0) break;
+      const beforeIterationEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+        ? new Map(env)
+        : null;
       const iterationEnv = new Map(env);
       iterationEnv.set(
         plan.variableName,
@@ -6715,6 +6718,26 @@ function auditImperativeNavigation(source, path, options = {}) {
         iterationEnv,
         callStack,
       );
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const hasAbruptHeapTransfer = (
+          (bodyResult.exits ?? []).length > 0
+          || (bodyResult.breaks ?? []).length > 0
+          || (bodyResult.continues ?? []).length > 0
+          || [...(bodyResult.labeledBreaks ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+          || [...(bodyResult.labeledContinues ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+        );
+        teardownHeapCommit(env, iterationEnv);
+        if (hasAbruptHeapTransfer && beforeIterationEnv) {
+          teardownHeapInvalidateChangedRoots(
+            env,
+            beforeIterationEnv,
+            iterationEnv,
+          );
+        }
+      }
 
       const ownBreaks = teardownFlowTransferMapWithout(
         bodyResult.labeledBreaks,
@@ -6928,6 +6951,9 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     for (const value of plan.values) {
       if (active.length === 0) break;
+      const beforeIterationEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+        ? new Map(env)
+        : null;
       const iterationEnv = new Map(env);
       if (
         enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
@@ -6949,6 +6975,26 @@ function auditImperativeNavigation(source, path, options = {}) {
         iterationEnv,
         callStack,
       );
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const hasAbruptHeapTransfer = (
+          (bodyResult.exits ?? []).length > 0
+          || (bodyResult.breaks ?? []).length > 0
+          || (bodyResult.continues ?? []).length > 0
+          || [...(bodyResult.labeledBreaks ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+          || [...(bodyResult.labeledContinues ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+        );
+        teardownHeapCommit(env, iterationEnv);
+        if (hasAbruptHeapTransfer && beforeIterationEnv) {
+          teardownHeapInvalidateChangedRoots(
+            env,
+            beforeIterationEnv,
+            iterationEnv,
+          );
+        }
+      }
 
       const ownBreaks = teardownFlowTransferMapWithout(
         bodyResult.labeledBreaks,
@@ -7133,13 +7179,25 @@ function auditImperativeNavigation(source, path, options = {}) {
       };
     }
 
+    const loopBodyEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      ? new Map(env)
+      : env;
+    const loopEntryEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      ? new Map(env)
+      : null;
     const bodyResult = teardownFlowStatement(
       statement.statement,
       states,
       matchCall,
-      env,
+      loopBodyEnv,
       callStack,
     );
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      && loopEntryEnv
+    ) {
+      teardownHeapInvalidateChangedRoots(env, loopEntryEnv, loopBodyEnv);
+    }
     const ownBreaks = teardownFlowTransferMapWithout(
       bodyResult.labeledBreaks,
       labelNames,
@@ -8046,6 +8104,12 @@ function auditImperativeNavigation(source, path, options = {}) {
         childEnv,
         nextStack,
       );
+      teardownHeapPropagateLocalCall(
+        definition,
+        call,
+        callEnv,
+        childEnv,
+      );
       if (status === "guaranteed") return true;
       if (status === "loop-partial") return "loop-partial-teardown";
       if (status === "partial") return "partial-teardown";
@@ -8092,6 +8156,12 @@ function auditImperativeNavigation(source, path, options = {}) {
         addInfo,
         childEnv,
         nextStack,
+      );
+      teardownHeapPropagateLocalCall(
+        definition,
+        call,
+        callEnv,
+        childEnv,
       );
       if (status === "guaranteed") return true;
       if (status === "loop-partial") return "loop-partial-teardown";
