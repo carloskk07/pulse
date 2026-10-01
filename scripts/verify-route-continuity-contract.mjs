@@ -5964,6 +5964,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     beforeEnv,
     afterEnv,
     loopBody,
+    iterationClass,
   ) {
     const roots = teardownHeapReachableRoots(targetEnv);
 
@@ -6009,15 +6010,24 @@ function auditImperativeNavigation(source, path, options = {}) {
           beforeEnv,
         );
         let widened = null;
+        const guaranteedIteration = (
+          iterationClass === "one-or-more"
+          || iterationClass === "one-or-more-unknown"
+          || iterationClass === "one-or-more-indefinite"
+        );
         if (direction === "increasing") {
           widened = teardownNumericInterval(
-            Math.min(beforeRange.min, afterRange.min),
+            guaranteedIteration
+              ? afterRange.min
+              : Math.min(beforeRange.min, afterRange.min),
             Infinity,
           );
         } else if (direction === "decreasing") {
           widened = teardownNumericInterval(
             -Infinity,
-            Math.max(beforeRange.max, afterRange.max),
+            guaranteedIteration
+              ? afterRange.max
+              : Math.max(beforeRange.max, afterRange.max),
           );
         } else {
           widened = teardownNumericInterval(-Infinity, Infinity);
@@ -7959,6 +7969,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           loopEntryEnv,
           loopBodyEnv,
           statement.statement,
+          iterationClass,
         );
       } else {
         teardownHeapInvalidateChangedRoots(env, loopEntryEnv, loopBodyEnv);
