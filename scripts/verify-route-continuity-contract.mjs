@@ -5862,11 +5862,6 @@ function auditImperativeNavigation(source, path, options = {}) {
       };
     }
 
-    const exact = teardownStaticNumber(expression, env);
-    if (exact !== null) {
-      return { terms: [], constant: exact };
-    }
-
     let resolved = expression;
     while (
       resolved
@@ -5937,7 +5932,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       };
     }
 
-    return null;
+    const exact = teardownStaticNumber(resolved, env);
+    return exact === null
+      ? null
+      : { terms: [], constant: exact };
   }
 
   function teardownCorrelationRecordAssignment(
