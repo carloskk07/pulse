@@ -1912,9 +1912,14 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy = (
     options.programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy === true
+  );
   const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
   const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
   const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
+  const TEARDOWN_HEAP_RELATION_PREFIX = "@@teardown-heap-relation:";
+  const TEARDOWN_HEAP_AFFINE_PREFIX = "@@teardown-heap-affine:";
   const teardownHeapUnknownExpression = ts.factory.createIdentifier(
     "__teardown_heap_unknown__",
   );
@@ -5621,6 +5626,503 @@ function auditImperativeNavigation(source, path, options = {}) {
       roots.add(value.root);
     }
     return roots;
+  }
+
+  function teardownHeapReferenceId(reference) {
+    return reference
+      ? JSON.stringify([reference.root, reference.path.map((part) => String(part))])
+      : null;
+  }
+
+  function teardownHeapReferenceFromId(id) {
+    if (typeof id !== "string") return null;
+    try {
+      const [root, path] = JSON.parse(id);
+      return (
+        typeof root === "string"
+        && Array.isArray(path)
+      )
+        ? { root, path: path.map((part) => String(part)) }
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function teardownCorrelationRelationKey(left, right) {
+    const leftId = teardownHeapReferenceId(left);
+    const rightId = teardownHeapReferenceId(right);
+    if (!leftId || !rightId || leftId === rightId) return null;
+    return TEARDOWN_HEAP_RELATION_PREFIX + JSON.stringify([leftId, rightId]);
+  }
+
+  function teardownCorrelationParseRelationKey(key) {
+    if (
+      typeof key !== "string"
+      || !key.startsWith(TEARDOWN_HEAP_RELATION_PREFIX)
+    ) return null;
+    try {
+      const [leftId, rightId] = JSON.parse(
+        key.slice(TEARDOWN_HEAP_RELATION_PREFIX.length),
+      );
+      const left = teardownHeapReferenceFromId(leftId);
+      const right = teardownHeapReferenceFromId(rightId);
+      return left && right ? { left, right, leftId, rightId } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function teardownCorrelationAffineKey(target) {
+    const targetId = teardownHeapReferenceId(target);
+    return targetId ? TEARDOWN_HEAP_AFFINE_PREFIX + targetId : null;
+  }
+
+  function teardownCorrelationParseAffineKey(key) {
+    if (
+      typeof key !== "string"
+      || !key.startsWith(TEARDOWN_HEAP_AFFINE_PREFIX)
+    ) return null;
+    const targetId = key.slice(TEARDOWN_HEAP_AFFINE_PREFIX.length);
+    const target = teardownHeapReferenceFromId(targetId);
+    return target ? { target, targetId } : null;
+  }
+
+  function teardownCorrelationIsSpecialKey(key) {
+    return Boolean(
+      typeof key === "string"
+      && (
+        key.startsWith(TEARDOWN_HEAP_RELATION_PREFIX)
+        || key.startsWith(TEARDOWN_HEAP_AFFINE_PREFIX)
+      )
+    );
+  }
+
+  function teardownHeapReferencesOverlap(left, right) {
+    if (!left || !right || left.root !== right.root) return false;
+    return (
+      teardownHeapPathStartsWith(left.path, right.path)
+      || teardownHeapPathStartsWith(right.path, left.path)
+    );
+  }
+
+  function teardownCorrelationReadDifference(left, right, env = new Map()) {
+    if (!left || !right) return null;
+    if (teardownHeapReferenceEquals(left, right)) {
+      return teardownNumericInterval(0, 0);
+    }
+
+    const directKey = teardownCorrelationRelationKey(left, right);
+    const direct = directKey ? env.get(directKey) : null;
+    if (teardownIsNumericInterval(direct)) return direct;
+
+    const reverseKey = teardownCorrelationRelationKey(right, left);
+    const reverse = reverseKey ? env.get(reverseKey) : null;
+    if (teardownIsNumericInterval(reverse)) {
+      return teardownNumericInterval(-reverse.max, -reverse.min);
+    }
+
+    return null;
+  }
+
+  function teardownCorrelationWriteDifference(
+    left,
+    right,
+    interval,
+    env = new Map(),
+  ) {
+    if (!left || !right || !interval) return true;
+    if (teardownHeapReferenceEquals(left, right)) {
+      return interval.min <= 0 && interval.max >= 0;
+    }
+    const key = teardownCorrelationRelationKey(left, right);
+    if (!key) return true;
+
+    const existing = teardownCorrelationReadDifference(left, right, env);
+    const min = existing ? Math.max(existing.min, interval.min) : interval.min;
+    const max = existing ? Math.min(existing.max, interval.max) : interval.max;
+    if (min > max) return false;
+
+    env.set(key, teardownNumericInterval(min, max));
+    const reverseKey = teardownCorrelationRelationKey(right, left);
+    if (reverseKey) env.delete(reverseKey);
+    return true;
+  }
+
+  function teardownCorrelationInvalidateReference(reference, env = new Map()) {
+    if (!reference) return;
+    for (const key of [...env.keys()]) {
+      const relation = teardownCorrelationParseRelationKey(key);
+      if (
+        relation
+        && (
+          teardownHeapReferencesOverlap(reference, relation.left)
+          || teardownHeapReferencesOverlap(reference, relation.right)
+        )
+      ) {
+        env.delete(key);
+        continue;
+      }
+      const affine = teardownCorrelationParseAffineKey(key);
+      if (!affine) continue;
+      const record = env.get(key);
+      if (
+        teardownHeapReferencesOverlap(reference, affine.target)
+        || (
+          record
+          && Array.isArray(record.terms)
+          && record.terms.some((term) =>
+            teardownHeapReferencesOverlap(reference, term.reference)
+          )
+        )
+      ) {
+        env.delete(key);
+      }
+    }
+  }
+
+  function teardownCorrelationInvalidateRoot(root, env = new Map()) {
+    if (typeof root !== "string") return;
+    for (const key of [...env.keys()]) {
+      const relation = teardownCorrelationParseRelationKey(key);
+      if (relation && (relation.left.root === root || relation.right.root === root)) {
+        env.delete(key);
+        continue;
+      }
+      const affine = teardownCorrelationParseAffineKey(key);
+      if (!affine) continue;
+      const record = env.get(key);
+      if (
+        affine.target.root === root
+        || (
+          record
+          && Array.isArray(record.terms)
+          && record.terms.some((term) => term.reference.root === root)
+        )
+      ) {
+        env.delete(key);
+      }
+    }
+  }
+
+  function teardownCorrelationShiftReference(
+    reference,
+    delta,
+    env = new Map(),
+  ) {
+    if (!reference || !Number.isFinite(delta)) {
+      teardownCorrelationInvalidateReference(reference, env);
+      return;
+    }
+
+    for (const [key, value] of [...env.entries()]) {
+      const relation = teardownCorrelationParseRelationKey(key);
+      if (relation && teardownIsNumericInterval(value)) {
+        const leftHit = teardownHeapReferenceEquals(reference, relation.left);
+        const rightHit = teardownHeapReferenceEquals(reference, relation.right);
+        if (leftHit && rightHit) continue;
+        if (leftHit || rightHit) {
+          const shift = leftHit ? delta : -delta;
+          env.set(
+            key,
+            teardownNumericInterval(value.min + shift, value.max + shift),
+          );
+        }
+        continue;
+      }
+
+      const affine = teardownCorrelationParseAffineKey(key);
+      if (!affine) continue;
+      const record = value;
+      if (!record || !Array.isArray(record.terms)) continue;
+
+      let constant = record.constant;
+      if (teardownHeapReferenceEquals(reference, affine.target)) {
+        constant += delta;
+      }
+      for (const term of record.terms) {
+        if (teardownHeapReferenceEquals(reference, term.reference)) {
+          constant -= term.coefficient * delta;
+        }
+      }
+      if (constant !== record.constant) {
+        env.set(key, { ...record, constant });
+      }
+    }
+  }
+
+  function teardownAffineExpression(expression, env = new Map()) {
+    if (!expression) return null;
+
+    const reference = teardownHeapReferenceForExpression(expression, env);
+    if (reference) {
+      return {
+        terms: [{ reference, coefficient: 1 }],
+        constant: 0,
+      };
+    }
+
+    const exact = teardownStaticNumber(expression, env);
+    if (exact !== null) {
+      return { terms: [], constant: exact };
+    }
+
+    let resolved = expression;
+    while (
+      resolved
+      && (
+        ts.isParenthesizedExpression(resolved)
+        || ts.isAsExpression(resolved)
+        || ts.isTypeAssertionExpression(resolved)
+        || ts.isNonNullExpression(resolved)
+      )
+    ) {
+      resolved = resolved.expression;
+    }
+    if (!resolved) return null;
+
+    if (
+      ts.isPrefixUnaryExpression(resolved)
+      && (
+        resolved.operator === ts.SyntaxKind.PlusToken
+        || resolved.operator === ts.SyntaxKind.MinusToken
+      )
+    ) {
+      const inner = teardownAffineExpression(resolved.operand, env);
+      if (!inner) return null;
+      if (resolved.operator === ts.SyntaxKind.PlusToken) return inner;
+      return {
+        terms: inner.terms.map((term) => ({
+          reference: term.reference,
+          coefficient: -term.coefficient,
+        })),
+        constant: -inner.constant,
+      };
+    }
+
+    if (
+      ts.isBinaryExpression(resolved)
+      && (
+        resolved.operatorToken.kind === ts.SyntaxKind.PlusToken
+        || resolved.operatorToken.kind === ts.SyntaxKind.MinusToken
+      )
+    ) {
+      const left = teardownAffineExpression(resolved.left, env);
+      const right = teardownAffineExpression(resolved.right, env);
+      if (!left || !right) return null;
+      const sign = resolved.operatorToken.kind === ts.SyntaxKind.MinusToken ? -1 : 1;
+      const combined = new Map();
+      for (const term of left.terms) {
+        const id = teardownHeapReferenceId(term.reference);
+        combined.set(id, {
+          reference: term.reference,
+          coefficient: (combined.get(id)?.coefficient ?? 0) + term.coefficient,
+        });
+      }
+      for (const term of right.terms) {
+        const id = teardownHeapReferenceId(term.reference);
+        combined.set(id, {
+          reference: term.reference,
+          coefficient: (combined.get(id)?.coefficient ?? 0) + sign * term.coefficient,
+        });
+      }
+      const terms = [...combined.values()].filter((term) => term.coefficient !== 0);
+      if (
+        terms.length > 3
+        || terms.some((term) => ![-1, 1].includes(term.coefficient))
+      ) return null;
+      return {
+        terms,
+        constant: left.constant + sign * right.constant,
+      };
+    }
+
+    return null;
+  }
+
+  function teardownCorrelationRecordAssignment(
+    target,
+    rightExpression,
+    affine,
+    env = new Map(),
+  ) {
+    if (!target || !affine) return;
+
+    if (
+      affine.terms.length === 1
+      && affine.terms[0].coefficient === 1
+    ) {
+      teardownCorrelationWriteDifference(
+        target,
+        affine.terms[0].reference,
+        teardownNumericInterval(affine.constant, affine.constant),
+        env,
+      );
+    }
+
+    const key = teardownCorrelationAffineKey(target);
+    if (key && affine.terms.length > 0) {
+      env.set(key, {
+        __teardownAffineEquality: true,
+        terms: affine.terms.map((term) => ({
+          reference: term.reference,
+          coefficient: term.coefficient,
+        })),
+        constant: affine.constant,
+      });
+    }
+  }
+
+  function teardownCorrelationAffineMatches(
+    target,
+    expression,
+    env = new Map(),
+  ) {
+    if (!target || !expression) return false;
+    const key = teardownCorrelationAffineKey(target);
+    const record = key ? env.get(key) : null;
+    if (!record || record.__teardownAffineEquality !== true) return false;
+
+    const candidate = teardownAffineExpression(expression, env);
+    if (!candidate) return false;
+    if (candidate.constant !== record.constant) return false;
+
+    const normalize = (terms) => terms
+      .map((term) => ({
+        id: teardownHeapReferenceId(term.reference),
+        coefficient: term.coefficient,
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id));
+
+    const left = normalize(record.terms);
+    const right = normalize(candidate.terms);
+    return (
+      left.length === right.length
+      && left.every((term, index) =>
+        term.id === right[index].id
+        && term.coefficient === right[index].coefficient
+      )
+    );
+  }
+
+  function teardownCorrelationDifferenceForOperator(operator) {
+    if (
+      operator === ts.SyntaxKind.LessThanToken
+      || operator === ts.SyntaxKind.LessThanEqualsToken
+    ) {
+      return teardownNumericInterval(-Infinity, 0);
+    }
+    if (
+      operator === ts.SyntaxKind.GreaterThanToken
+      || operator === ts.SyntaxKind.GreaterThanEqualsToken
+    ) {
+      return teardownNumericInterval(0, Infinity);
+    }
+    if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      return teardownNumericInterval(0, 0);
+    }
+    return null;
+  }
+
+  function teardownCorrelationComparison(
+    operator,
+    left,
+    right,
+    env = new Map(),
+  ) {
+    const difference = teardownCorrelationReadDifference(left, right, env);
+    if (!difference) return null;
+
+    if (operator === ts.SyntaxKind.LessThanToken) {
+      if (difference.max < 0) return true;
+      if (difference.min >= 0) return false;
+    } else if (operator === ts.SyntaxKind.LessThanEqualsToken) {
+      if (difference.max <= 0) return true;
+      if (difference.min > 0) return false;
+    } else if (operator === ts.SyntaxKind.GreaterThanToken) {
+      if (difference.min > 0) return true;
+      if (difference.max <= 0) return false;
+    } else if (operator === ts.SyntaxKind.GreaterThanEqualsToken) {
+      if (difference.min >= 0) return true;
+      if (difference.max < 0) return false;
+    } else if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      if (difference.min === 0 && difference.max === 0) return true;
+      if (difference.max < 0 || difference.min > 0) return false;
+    } else if (
+      operator === ts.SyntaxKind.ExclamationEqualsEqualsToken
+      || operator === ts.SyntaxKind.ExclamationEqualsToken
+    ) {
+      const equal = teardownCorrelationComparison(
+        ts.SyntaxKind.EqualsEqualsEqualsToken,
+        left,
+        right,
+        env,
+      );
+      return equal === null ? null : !equal;
+    }
+
+    return null;
+  }
+
+  function teardownCorrelationMerge(parentEnv, branchEnvs) {
+    for (const key of [...parentEnv.keys()]) {
+      if (teardownCorrelationIsSpecialKey(key)) parentEnv.delete(key);
+    }
+    if (!branchEnvs.length) return;
+
+    const relationKeys = new Set();
+    const affineKeys = new Set();
+    for (const env of branchEnvs) {
+      for (const key of env.keys()) {
+        if (key.startsWith?.(TEARDOWN_HEAP_RELATION_PREFIX)) relationKeys.add(key);
+        if (key.startsWith?.(TEARDOWN_HEAP_AFFINE_PREFIX)) affineKeys.add(key);
+      }
+    }
+
+    for (const key of relationKeys) {
+      const values = branchEnvs.map((env) => env.get(key));
+      if (!values.every(teardownIsNumericInterval)) continue;
+      parentEnv.set(
+        key,
+        teardownNumericInterval(
+          Math.min(...values.map((value) => value.min)),
+          Math.max(...values.map((value) => value.max)),
+        ),
+      );
+    }
+
+    for (const key of affineKeys) {
+      const values = branchEnvs.map((env) => env.get(key));
+      if (values.some((value) => !value)) continue;
+      const fingerprint = (value) => JSON.stringify({
+        constant: value.constant,
+        terms: value.terms
+          .map((term) => [
+            teardownHeapReferenceId(term.reference),
+            term.coefficient,
+          ])
+          .sort(([left], [right]) => left.localeCompare(right)),
+      });
+      const first = fingerprint(values[0]);
+      if (values.every((value) => fingerprint(value) === first)) {
+        parentEnv.set(key, values[0]);
+      }
+    }
+  }
+
+  function teardownCorrelationCommit(parentEnv, childEnv) {
+    for (const key of [...parentEnv.keys()]) {
+      if (teardownCorrelationIsSpecialKey(key)) parentEnv.delete(key);
+    }
+    for (const [key, value] of childEnv) {
+      if (teardownCorrelationIsSpecialKey(key)) parentEnv.set(key, value);
+    }
   }
 
   function teardownNumericInterval(min, max) {
