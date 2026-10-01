@@ -8265,30 +8265,46 @@ function auditImperativeNavigation(source, path, options = {}) {
       if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
         const thenEnv = new Map(env);
         const elseEnv = new Map(env);
-        const thenResult = teardownFlowStatement(
-          statement.thenStatement,
-          states,
-          matchCall,
-          thenEnv,
-          callStack,
+        const thenPossible = (
+          !enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+          || teardownRefineNumericCondition(statement.expression, true, thenEnv)
         );
-        const elseResult = statement.elseStatement
+        const elsePossible = (
+          !enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+          || teardownRefineNumericCondition(statement.expression, false, elseEnv)
+        );
+
+        const thenResult = thenPossible
           ? teardownFlowStatement(
-            statement.elseStatement,
+            statement.thenStatement,
             states,
             matchCall,
-            elseEnv,
+            thenEnv,
             callStack,
           )
-          : {
-            continuing: [...states],
-            exits: [],
-            breaks: [],
-            continues: [],
-            labeledBreaks: new Map(),
-            labeledContinues: new Map(),
-            loopUncertainty: false,
-          };
+          : teardownFlowEmptyResult();
+
+        const elseResult = elsePossible
+          ? (
+            statement.elseStatement
+              ? teardownFlowStatement(
+                statement.elseStatement,
+                states,
+                matchCall,
+                elseEnv,
+                callStack,
+              )
+              : {
+                continuing: [...states],
+                exits: [],
+                breaks: [],
+                continues: [],
+                labeledBreaks: new Map(),
+                labeledContinues: new Map(),
+                loopUncertainty: false,
+              }
+          )
+          : teardownFlowEmptyResult();
 
         const continuingEnvs = [];
         if ((thenResult.continuing ?? []).length > 0) continuingEnvs.push(thenEnv);
