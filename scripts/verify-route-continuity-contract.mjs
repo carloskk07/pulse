@@ -6608,6 +6608,232 @@ function auditImperativeNavigation(source, path, options = {}) {
     return false;
   }
 
+  function teardownNumericRange(expression, env = new Map()) {
+    if (!expression) return null;
+    if (teardownIsNumericInterval(expression)) return expression;
+
+    const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
+      ? teardownResolveStructuredExpression(expression, env)
+      : resolveDataExpression(expression, env);
+    if (!resolved || resolved === teardownHeapUnknownExpression) return null;
+    if (teardownIsNumericInterval(resolved)) return resolved;
+
+    if (ts.isNumericLiteral(resolved)) {
+      const value = Number(resolved.text);
+      return Number.isFinite(value)
+        ? teardownNumericInterval(value, value)
+        : null;
+    }
+
+    if (
+      ts.isPrefixUnaryExpression(resolved)
+      && (
+        resolved.operator === ts.SyntaxKind.PlusToken
+        || resolved.operator === ts.SyntaxKind.MinusToken
+      )
+    ) {
+      const operand = teardownNumericRange(resolved.operand, env);
+      if (!operand) return null;
+      return resolved.operator === ts.SyntaxKind.MinusToken
+        ? teardownNumericInterval(-operand.max, -operand.min)
+        : operand;
+    }
+
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
+      && ts.isBinaryExpression(resolved)
+    ) {
+      const left = teardownNumericRange(resolved.left, env);
+      const right = teardownNumericRange(resolved.right, env);
+      return teardownNumericRangeBinary(
+        resolved.operatorToken.kind,
+        left,
+        right,
+      );
+    }
+
+    if (ts.isParenthesizedExpression(resolved)) {
+      return teardownNumericRange(resolved.expression, env);
+    }
+
+    return null;
+  }
+
+  function teardownNumericComparison(operator, left, right) {
+    if (!left || !right) return null;
+    if (operator === ts.SyntaxKind.LessThanToken) {
+      if (left.max < right.min) return true;
+      if (left.min >= right.max) return false;
+      return null;
+    }
+    if (operator === ts.SyntaxKind.LessThanEqualsToken) {
+      if (left.max <= right.min) return true;
+      if (left.min > right.max) return false;
+      return null;
+    }
+    if (operator === ts.SyntaxKind.GreaterThanToken) {
+      if (left.min > right.max) return true;
+      if (left.max <= right.min) return false;
+      return null;
+    }
+    if (operator === ts.SyntaxKind.GreaterThanEqualsToken) {
+      if (left.min >= right.max) return true;
+      if (left.max < right.min) return false;
+      return null;
+    }
+    if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      if (
+        left.min === left.max
+        && right.min === right.max
+        && left.min === right.min
+      ) return true;
+      if (left.max < right.min || right.max < left.min) return false;
+      return null;
+    }
+    if (
+      operator === ts.SyntaxKind.ExclamationEqualsEqualsToken
+      || operator === ts.SyntaxKind.ExclamationEqualsToken
+    ) {
+      const equal = teardownNumericComparison(
+        ts.SyntaxKind.EqualsEqualsEqualsToken,
+        left,
+        right,
+      );
+      return equal === null ? null : !equal;
+    }
+    return null;
+  }
+
+  function teardownInvertComparisonOperator(operator) {
+    const inverse = new Map([
+      [ts.SyntaxKind.LessThanToken, ts.SyntaxKind.GreaterThanEqualsToken],
+      [ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanToken],
+      [ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.LessThanEqualsToken],
+      [ts.SyntaxKind.GreaterThanEqualsToken, ts.SyntaxKind.LessThanToken],
+      [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken],
+      [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.EqualsEqualsToken],
+    ]);
+    return inverse.get(operator) ?? null;
+  }
+
+  function teardownSwapComparisonOperator(operator) {
+    const swapped = new Map([
+      [ts.SyntaxKind.LessThanToken, ts.SyntaxKind.GreaterThanToken],
+      [ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanEqualsToken],
+      [ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.LessThanToken],
+      [ts.SyntaxKind.GreaterThanEqualsToken, ts.SyntaxKind.LessThanEqualsToken],
+      [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken],
+      [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.ExclamationEqualsToken],
+    ]);
+    return swapped.get(operator) ?? null;
+  }
+
+  function teardownRefineNumericReference(
+    reference,
+    operator,
+    bound,
+    env = new Map(),
+  ) {
+    if (!reference || !bound || bound.min !== bound.max) return true;
+    const current = teardownHeapReadRange(reference, env);
+    if (!current) return true;
+
+    const threshold = bound.min;
+    let min = current.min;
+    let max = current.max;
+
+    if (
+      operator === ts.SyntaxKind.GreaterThanToken
+      || operator === ts.SyntaxKind.GreaterThanEqualsToken
+    ) {
+      min = Math.max(min, threshold);
+    } else if (
+      operator === ts.SyntaxKind.LessThanToken
+      || operator === ts.SyntaxKind.LessThanEqualsToken
+    ) {
+      max = Math.min(max, threshold);
+    } else if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      min = Math.max(min, threshold);
+      max = Math.min(max, threshold);
+    } else {
+      return true;
+    }
+
+    if (min > max) return false;
+    teardownHeapWriteRange(
+      reference,
+      teardownNumericInterval(min, max),
+      env,
+    );
+    return true;
+  }
+
+  function teardownRefineNumericCondition(
+    expression,
+    truthy,
+    env = new Map(),
+  ) {
+    if (!expression) return true;
+
+    if (
+      ts.isParenthesizedExpression(expression)
+      || ts.isAsExpression(expression)
+      || ts.isTypeAssertionExpression(expression)
+      || ts.isNonNullExpression(expression)
+    ) {
+      return teardownRefineNumericCondition(expression.expression, truthy, env);
+    }
+
+    if (
+      ts.isPrefixUnaryExpression(expression)
+      && expression.operator === ts.SyntaxKind.ExclamationToken
+    ) {
+      return teardownRefineNumericCondition(expression.operand, !truthy, env);
+    }
+
+    if (!ts.isBinaryExpression(expression)) return true;
+    let operator = expression.operatorToken.kind;
+    if (!truthy) {
+      operator = teardownInvertComparisonOperator(operator);
+      if (operator === null) return true;
+    }
+
+    const leftReference = teardownHeapReferenceForExpression(expression.left, env);
+    const rightReference = teardownHeapReferenceForExpression(expression.right, env);
+
+    if (leftReference && !rightReference) {
+      return teardownRefineNumericReference(
+        leftReference,
+        operator,
+        teardownNumericRange(expression.right, env),
+        env,
+      );
+    }
+
+    if (rightReference && !leftReference) {
+      const swapped = teardownSwapComparisonOperator(operator);
+      if (swapped === null) return true;
+      return teardownRefineNumericReference(
+        rightReference,
+        swapped,
+        teardownNumericRange(expression.left, env),
+        env,
+      );
+    }
+
+    return true;
+  }
+
   function teardownStaticBoolean(expression, env = new Map()) {
     if (!expression) return null;
     const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
@@ -6642,6 +6868,17 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (left === true) return true;
         if (left === false) return teardownStaticBoolean(resolved.right, env);
         return null;
+      }
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        const leftRange = teardownNumericRange(resolved.left, env);
+        const rightRange = teardownNumericRange(resolved.right, env);
+        const ranged = teardownNumericComparison(
+          resolved.operatorToken.kind,
+          leftRange,
+          rightRange,
+        );
+        if (ranged !== null) return ranged;
       }
 
       const leftNumber = teardownStaticNumber(resolved.left, env);
@@ -6707,6 +6944,14 @@ function auditImperativeNavigation(source, path, options = {}) {
       ? teardownResolveStructuredExpression(expression, env)
       : resolveDataExpression(expression, env);
     if (!resolved || resolved === teardownHeapUnknownExpression) return null;
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+      && teardownIsNumericInterval(resolved)
+    ) {
+      return resolved.min === resolved.max && Number.isFinite(resolved.min)
+        ? resolved.min
+        : null;
+    }
     if (ts.isNumericLiteral(resolved)) {
       const value = Number(resolved.text);
       return Number.isFinite(value) ? value : null;
