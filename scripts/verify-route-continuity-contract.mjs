@@ -8033,6 +8033,23 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
+        const unaryMutation = teardownApplyHeapUnaryMutationStatement(statement, env);
+        if (unaryMutation?.handled) {
+          return unaryMutation.safe
+            ? {
+              continuing: [...states],
+              exits: [],
+              breaks: [],
+              continues: [],
+              labeledBreaks: new Map(),
+              labeledContinues: new Map(),
+              loopUncertainty: false,
+            }
+            : teardownFlowUnknownStatement(states);
+        }
+      }
+
       const assignment = teardownApplyHeapAssignmentStatement(statement, env);
       if (assignment?.handled) {
         return assignment.safe
