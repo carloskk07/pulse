@@ -6240,6 +6240,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function teardownHeapInvalidateRoot(root, env = new Map()) {
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationInvalidateRoot(root, env);
+    }
     for (const key of [...env.keys()]) {
       const parsed = teardownHeapParsedValueKey(key);
       if (parsed?.root === root) env.delete(key);
@@ -6286,6 +6289,9 @@ function auditImperativeNavigation(source, path, options = {}) {
           parentEnv.set(key, value);
         }
       }
+    }
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationCommit(parentEnv, childEnv);
     }
   }
 
@@ -6342,6 +6348,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       } else {
         parentEnv.delete(teardownHeapUnknownKey(root));
       }
+    }
+
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationMerge(parentEnv, branchEnvs);
     }
   }
 
