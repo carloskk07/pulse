@@ -5959,6 +5959,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     return teardownStaticNumber(overlay.value, env);
   }
 
+  function teardownHeapReadRange(reference, env = new Map()) {
+    if (!reference) return null;
+    const overlay = teardownHeapReadPath(reference.root, reference.path, env);
+    if (!overlay.found || overlay.value === null) return null;
+    return teardownNumericRange(overlay.value, env);
+  }
+
   function teardownHeapWriteNumber(reference, value, env = new Map()) {
     const node = teardownFiniteNumericNode(value);
     if (!node) {
@@ -5967,6 +5974,99 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
     teardownHeapWritePath(reference.root, reference.path, node, env);
     return true;
+  }
+
+  function teardownHeapWriteRange(reference, range, env = new Map()) {
+    if (!range) {
+      teardownHeapWritePath(reference.root, reference.path, null, env);
+      return false;
+    }
+    if (
+      Number.isFinite(range.min)
+      && range.min === range.max
+    ) {
+      return teardownHeapWriteNumber(reference, range.min, env);
+    }
+    teardownHeapWritePath(
+      reference.root,
+      reference.path,
+      teardownNumericInterval(range.min, range.max),
+      env,
+    );
+    return true;
+  }
+
+  function teardownNumericRangeBinary(operator, left, right) {
+    if (!left || !right) return null;
+    if (operator === ts.SyntaxKind.PlusToken) {
+      return teardownNumericInterval(left.min + right.min, left.max + right.max);
+    }
+    if (operator === ts.SyntaxKind.MinusToken) {
+      return teardownNumericInterval(left.min - right.max, left.max - right.min);
+    }
+    if (operator === ts.SyntaxKind.AsteriskToken) {
+      const candidates = [
+        left.min * right.min,
+        left.min * right.max,
+        left.max * right.min,
+        left.max * right.max,
+      ];
+      if (candidates.some(Number.isNaN)) return null;
+      return teardownNumericInterval(
+        Math.min(...candidates),
+        Math.max(...candidates),
+      );
+    }
+    if (operator === ts.SyntaxKind.SlashToken) {
+      if (right.min <= 0 && right.max >= 0) return null;
+      const candidates = [
+        left.min / right.min,
+        left.min / right.max,
+        left.max / right.min,
+        left.max / right.max,
+      ];
+      if (candidates.some(Number.isNaN)) return null;
+      return teardownNumericInterval(
+        Math.min(...candidates),
+        Math.max(...candidates),
+      );
+    }
+    if (
+      left.min === left.max
+      && right.min === right.max
+    ) {
+      if (operator === ts.SyntaxKind.PercentToken && right.min !== 0) {
+        return teardownNumericInterval(
+          left.min % right.min,
+          left.min % right.min,
+        );
+      }
+      if (operator === ts.SyntaxKind.AsteriskAsteriskToken) {
+        const value = left.min ** right.min;
+        return Number.isFinite(value)
+          ? teardownNumericInterval(value, value)
+          : null;
+      }
+    }
+    return null;
+  }
+
+  function teardownHeapNumericUpdateRange(
+    operator,
+    current,
+    operand,
+  ) {
+    const binaryOperator = new Map([
+      [ts.SyntaxKind.PlusEqualsToken, ts.SyntaxKind.PlusToken],
+      [ts.SyntaxKind.MinusEqualsToken, ts.SyntaxKind.MinusToken],
+      [ts.SyntaxKind.AsteriskEqualsToken, ts.SyntaxKind.AsteriskToken],
+      [ts.SyntaxKind.SlashEqualsToken, ts.SyntaxKind.SlashToken],
+      [ts.SyntaxKind.PercentEqualsToken, ts.SyntaxKind.PercentToken],
+      [ts.SyntaxKind.AsteriskAsteriskEqualsToken, ts.SyntaxKind.AsteriskAsteriskToken],
+    ]).get(operator);
+    return binaryOperator === undefined
+      ? null
+      : teardownNumericRangeBinary(binaryOperator, current, operand);
   }
 
   function teardownApplyHeapUnaryMutationStatement(
@@ -5988,6 +6088,26 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     const reference = teardownHeapReferenceForExpression(expression.operand, env);
     if (!reference) return null;
+    if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+      const currentRange = teardownHeapReadRange(reference, env);
+      if (!currentRange) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
+      }
+      const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
+      return {
+        handled: true,
+        safe: teardownHeapWriteRange(
+          reference,
+          teardownNumericInterval(
+            currentRange.min + delta,
+            currentRange.max + delta,
+          ),
+          env,
+        ),
+      };
+    }
+
     const current = teardownHeapReadNumber(reference, env);
     if (current === null) {
       teardownHeapWritePath(reference.root, reference.path, null, env);
@@ -6018,6 +6138,28 @@ function auditImperativeNavigation(source, path, options = {}) {
       enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
       && expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
     ) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        const currentRange = teardownHeapReadRange(reference, env);
+        const operandRange = teardownNumericRange(expression.right, env);
+        if (!currentRange || !operandRange) {
+          teardownHeapWritePath(reference.root, reference.path, null, env);
+          return { handled: true, safe: false };
+        }
+        const nextRange = teardownHeapNumericUpdateRange(
+          expression.operatorToken.kind,
+          currentRange,
+          operandRange,
+        );
+        if (!nextRange) {
+          teardownHeapWritePath(reference.root, reference.path, null, env);
+          return { handled: true, safe: false };
+        }
+        return {
+          handled: true,
+          safe: teardownHeapWriteRange(reference, nextRange, env),
+        };
+      }
+
       const current = teardownHeapReadNumber(reference, env);
       const operand = teardownStaticNumber(expression.right, env);
       if (current === null || operand === null) {
@@ -6045,6 +6187,15 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        const range = teardownNumericRange(expression.right, env);
+        if (range) {
+          return {
+            handled: true,
+            safe: teardownHeapWriteRange(reference, range, env),
+          };
+        }
+      }
       const numeric = teardownStaticNumber(expression.right, env);
       if (numeric !== null) {
         return {
