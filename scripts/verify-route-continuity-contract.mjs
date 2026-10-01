@@ -1906,6 +1906,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy = (
     options.programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy === true
+  );
   const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
   const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
   const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
@@ -5866,6 +5869,85 @@ function auditImperativeNavigation(source, path, options = {}) {
     return true;
   }
 
+  function teardownFiniteNumericNode(value) {
+    return Number.isFinite(value)
+      ? ts.factory.createNumericLiteral(String(value))
+      : null;
+  }
+
+  function teardownHeapNumericUpdateValue(
+    operator,
+    current,
+    operand,
+  ) {
+    if (!Number.isFinite(current) || !Number.isFinite(operand)) return null;
+    let next = null;
+    if (operator === ts.SyntaxKind.PlusEqualsToken) next = current + operand;
+    if (operator === ts.SyntaxKind.MinusEqualsToken) next = current - operand;
+    if (operator === ts.SyntaxKind.AsteriskEqualsToken) next = current * operand;
+    if (
+      operator === ts.SyntaxKind.SlashEqualsToken
+      && operand !== 0
+    ) next = current / operand;
+    if (
+      operator === ts.SyntaxKind.PercentEqualsToken
+      && operand !== 0
+    ) next = current % operand;
+    if (operator === ts.SyntaxKind.AsteriskAsteriskEqualsToken) {
+      next = current ** operand;
+    }
+    return Number.isFinite(next) ? next : null;
+  }
+
+  function teardownHeapReadNumber(reference, env = new Map()) {
+    if (!reference) return null;
+    const overlay = teardownHeapReadPath(reference.root, reference.path, env);
+    if (!overlay.found || overlay.value === null) return null;
+    return teardownStaticNumber(overlay.value, env);
+  }
+
+  function teardownHeapWriteNumber(reference, value, env = new Map()) {
+    const node = teardownFiniteNumericNode(value);
+    if (!node) {
+      teardownHeapWritePath(reference.root, reference.path, null, env);
+      return false;
+    }
+    teardownHeapWritePath(reference.root, reference.path, node, env);
+    return true;
+  }
+
+  function teardownApplyHeapUnaryMutationStatement(
+    statement,
+    env = new Map(),
+  ) {
+    if (!ts.isExpressionStatement(statement)) return null;
+    const expression = statement.expression;
+    if (
+      !(
+        ts.isPrefixUnaryExpression(expression)
+        || ts.isPostfixUnaryExpression(expression)
+      )
+      || !(
+        expression.operator === ts.SyntaxKind.PlusPlusToken
+        || expression.operator === ts.SyntaxKind.MinusMinusToken
+      )
+    ) return null;
+
+    const reference = teardownHeapReferenceForExpression(expression.operand, env);
+    if (!reference) return null;
+    const current = teardownHeapReadNumber(reference, env);
+    if (current === null) {
+      teardownHeapWritePath(reference.root, reference.path, null, env);
+      return { handled: true, safe: false };
+    }
+
+    const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
+    return {
+      handled: true,
+      safe: teardownHeapWriteNumber(reference, current + delta, env),
+    };
+  }
+
   function teardownApplyHeapAssignmentStatement(
     statement,
     env = new Map(),
@@ -5879,9 +5961,44 @@ function auditImperativeNavigation(source, path, options = {}) {
     const reference = teardownHeapReferenceForExpression(expression.left, env);
     if (!reference) return null;
 
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
+      && expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
+    ) {
+      const current = teardownHeapReadNumber(reference, env);
+      const operand = teardownStaticNumber(expression.right, env);
+      if (current === null || operand === null) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
+      }
+      const next = teardownHeapNumericUpdateValue(
+        expression.operatorToken.kind,
+        current,
+        operand,
+      );
+      if (next === null) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
+      }
+      return {
+        handled: true,
+        safe: teardownHeapWriteNumber(reference, next, env),
+      };
+    }
+
     if (expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
       teardownHeapInvalidateRoot(reference.root, env);
       return { handled: true, safe: false };
+    }
+
+    if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
+      const numeric = teardownStaticNumber(expression.right, env);
+      if (numeric !== null) {
+        return {
+          handled: true,
+          safe: teardownHeapWriteNumber(reference, numeric, env),
+        };
+      }
     }
 
     const concrete = teardownConcreteStructuredValue(expression.right, env);
@@ -6385,7 +6502,7 @@ function auditImperativeNavigation(source, path, options = {}) {
     const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
       ? teardownResolveStructuredExpression(expression, env)
       : resolveDataExpression(expression, env);
-    if (!resolved) return null;
+    if (!resolved || resolved === teardownHeapUnknownExpression) return null;
     if (ts.isNumericLiteral(resolved)) {
       const value = Number(resolved.text);
       return Number.isFinite(value) ? value : null;
@@ -6399,7 +6516,39 @@ function auditImperativeNavigation(source, path, options = {}) {
     ) {
       const operand = teardownStaticNumber(resolved.operand, env);
       if (operand === null) return null;
-      return resolved.operator === ts.SyntaxKind.MinusToken ? -operand : operand;
+      const value = resolved.operator === ts.SyntaxKind.MinusToken
+        ? -operand
+        : operand;
+      return Number.isFinite(value) ? value : null;
+    }
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
+      && ts.isBinaryExpression(resolved)
+    ) {
+      const left = teardownStaticNumber(resolved.left, env);
+      const right = teardownStaticNumber(resolved.right, env);
+      if (left === null || right === null) return null;
+      let value = null;
+      if (resolved.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+        value = left + right;
+      } else if (resolved.operatorToken.kind === ts.SyntaxKind.MinusToken) {
+        value = left - right;
+      } else if (resolved.operatorToken.kind === ts.SyntaxKind.AsteriskToken) {
+        value = left * right;
+      } else if (
+        resolved.operatorToken.kind === ts.SyntaxKind.SlashToken
+        && right !== 0
+      ) {
+        value = left / right;
+      } else if (
+        resolved.operatorToken.kind === ts.SyntaxKind.PercentToken
+        && right !== 0
+      ) {
+        value = left % right;
+      } else if (resolved.operatorToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
+        value = left ** right;
+      }
+      return Number.isFinite(value) ? value : null;
     }
     if (ts.isParenthesizedExpression(resolved)) {
       return teardownStaticNumber(resolved.expression, env);
