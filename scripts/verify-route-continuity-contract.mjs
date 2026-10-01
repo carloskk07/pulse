@@ -13474,6 +13474,90 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const directMutation = setTimeout(() => outside.append(input), 0);',
+    'let directState = { stopped: false };',
+    'directState.stopped = true;',
+    'if (directState.stopped) { clearTimeout(directMutation); }',
+    'const aliasMutation = setTimeout(() => outside.append(input), 0);',
+    'let aliasState = { stopped: false };',
+    'const alias = aliasState;',
+    'alias.stopped = true;',
+    'if (aliasState.stopped) { clearTimeout(aliasMutation); }',
+    'const nestedMutation = setTimeout(() => outside.append(input), 0);',
+    'let nestedState = { meta: { stopped: false } };',
+    'nestedState.meta.stopped = true;',
+    'if (nestedState.meta.stopped) { clearTimeout(nestedMutation); }',
+    'const loopMutation = setTimeout(() => outside.append(input), 0);',
+    'let loopState = { stopped: false };',
+    'for (const item of [{ stop: false }, { stop: true }] as const) {',
+    '  if (item.stop) { loopState.stopped = true; }',
+    '  if (loopState.stopped) { clearTimeout(loopMutation); }',
+    '}',
+    'const helperMutation = setTimeout(() => outside.append(input), 0);',
+    'let helperState = { stopped: false };',
+    'function markStopped(target) { target.stopped = true; }',
+    'markStopped(helperState);',
+    'if (helperState.stopped) { clearTimeout(helperMutation); }',
+    'const branchUnknown = setTimeout(() => outside.append(input), 0);',
+    'let branchState = { stopped: false };',
+    'if (flag) { branchState.stopped = true; }',
+    'if (branchState.stopped) { clearTimeout(branchUnknown); }',
+    'const callUnknown = setTimeout(() => outside.append(input), 0);',
+    'let callState = { stopped: false };',
+    'callState.stopped = true;',
+    'mutateExternally(callState);',
+    'if (callState.stopped) { clearTimeout(callUnknown); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-structured-heap.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 3
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 2
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown structured heap authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -14729,6 +14813,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
       programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
     },
   ));
 
