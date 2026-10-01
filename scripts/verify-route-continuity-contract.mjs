@@ -7571,6 +7571,22 @@ function auditImperativeNavigation(source, path, options = {}) {
     const leftReference = teardownHeapReferenceForExpression(expression.left, env);
     const rightReference = teardownHeapReferenceForExpression(expression.right, env);
 
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      && leftReference
+      && rightReference
+    ) {
+      const difference = teardownCorrelationDifferenceForOperator(operator);
+      if (difference) {
+        return teardownCorrelationWriteDifference(
+          leftReference,
+          rightReference,
+          difference,
+          env,
+        );
+      }
+    }
+
     if (leftReference && !rightReference) {
       return teardownRefineNumericReference(
         leftReference,
@@ -7628,6 +7644,52 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (left === true) return true;
         if (left === false) return teardownStaticBoolean(resolved.right, env);
         return null;
+      }
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+        const leftReference = teardownHeapReferenceForExpression(resolved.left, env);
+        const rightReference = teardownHeapReferenceForExpression(resolved.right, env);
+
+        if (leftReference && rightReference) {
+          const correlated = teardownCorrelationComparison(
+            resolved.operatorToken.kind,
+            leftReference,
+            rightReference,
+            env,
+          );
+          if (correlated !== null) return correlated;
+        }
+
+        if (
+          resolved.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
+          || resolved.operatorToken.kind === ts.SyntaxKind.EqualsEqualsToken
+          || resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+          || resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsToken
+        ) {
+          let affineEqual = null;
+          if (leftReference) {
+            affineEqual = teardownCorrelationAffineMatches(
+              leftReference,
+              resolved.right,
+              env,
+            );
+          }
+          if (affineEqual !== true && rightReference) {
+            affineEqual = teardownCorrelationAffineMatches(
+              rightReference,
+              resolved.left,
+              env,
+            );
+          }
+          if (affineEqual === true) {
+            return (
+              resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+              || resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsToken
+            )
+              ? false
+              : true;
+          }
+        }
       }
 
       if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
