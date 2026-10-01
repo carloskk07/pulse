@@ -6499,6 +6499,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       }
 
       let invalidateRoot = false;
+      let rootChanged = false;
       for (const key of keys) {
         const parsed = teardownHeapParsedValueKey(key);
         if (!parsed || parsed.path.length === 0) continue;
@@ -6513,6 +6514,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           === teardownHeapValueFingerprint(afterValue)
         ) continue;
 
+        rootChanged = true;
         const beforeRange = teardownNumericRange(beforeValue, beforeEnv);
         const afterRange = teardownNumericRange(afterValue, afterEnv);
         if (!beforeRange || !afterRange) {
@@ -6552,7 +6554,14 @@ function auditImperativeNavigation(source, path, options = {}) {
         teardownHeapWriteRange(reference, widened, targetEnv);
       }
 
-      if (invalidateRoot) teardownHeapInvalidateRoot(root, targetEnv);
+      if (invalidateRoot) {
+        teardownHeapInvalidateRoot(root, targetEnv);
+      } else if (
+        rootChanged
+        && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      ) {
+        teardownCorrelationInvalidateRoot(root, targetEnv);
+      }
     }
   }
 
