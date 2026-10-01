@@ -6093,9 +6093,14 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function teardownFiniteNumericNode(value) {
-    return Number.isFinite(value)
-      ? ts.factory.createNumericLiteral(String(value))
-      : null;
+    if (!Number.isFinite(value)) return null;
+    if (value < 0) {
+      return ts.factory.createPrefixUnaryExpression(
+        ts.SyntaxKind.MinusToken,
+        ts.factory.createNumericLiteral(String(Math.abs(value))),
+      );
+    }
+    return ts.factory.createNumericLiteral(String(value));
   }
 
   function teardownHeapNumericUpdateValue(
