@@ -1909,6 +1909,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy = (
     options.programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy === true
+  );
   const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
   const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
   const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
@@ -5620,11 +5623,42 @@ function auditImperativeNavigation(source, path, options = {}) {
     return roots;
   }
 
+  function teardownNumericInterval(min, max) {
+    if (
+      typeof min !== "number"
+      || typeof max !== "number"
+      || Number.isNaN(min)
+      || Number.isNaN(max)
+      || min > max
+    ) return null;
+    return {
+      __teardownNumericInterval: true,
+      min,
+      max,
+    };
+  }
+
+  function teardownIsNumericInterval(value) {
+    return Boolean(
+      value
+      && typeof value === "object"
+      && value.__teardownNumericInterval === true
+      && typeof value.min === "number"
+      && typeof value.max === "number"
+      && !Number.isNaN(value.min)
+      && !Number.isNaN(value.max)
+      && value.min <= value.max
+    );
+  }
+
   function teardownHeapValueFingerprint(value) {
     if (value === null) return "<unknown>";
     if (value === undefined) return "<absent>";
     if (typeof value !== "object") return typeof value + ":" + String(value);
     if (value === teardownHeapUnknownExpression) return "<unknown-expression>";
+    if (teardownIsNumericInterval(value)) {
+      return "interval:" + String(value.min) + ":" + String(value.max);
+    }
     if (
       ts.isStringLiteralLike(value)
       || ts.isNumericLiteral(value)
@@ -5767,9 +5801,28 @@ function auditImperativeNavigation(source, path, options = {}) {
 
       for (const key of keys) {
         if (key === teardownHeapUnknownKey(root)) continue;
-        const values = branchEnvs.map((env) =>
-          env.has(key) ? env.get(key) : undefined
-        );
+        const parsed = teardownHeapParsedValueKey(key);
+        const values = branchEnvs.map((env) => {
+          if (parsed) {
+            const read = teardownHeapReadPath(parsed.root, parsed.path, env);
+            return read.found ? read.value : undefined;
+          }
+          return env.has(key) ? env.get(key) : undefined;
+        });
+
+        if (
+          enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+          && values.every((value) => value !== undefined && value !== null)
+        ) {
+          const ranges = values.map((value) => teardownNumericRange(value, new Map()));
+          if (ranges.every(Boolean)) {
+            const min = Math.min(...ranges.map((range) => range.min));
+            const max = Math.max(...ranges.map((range) => range.max));
+            parentEnv.set(key, teardownNumericInterval(min, max));
+            continue;
+          }
+        }
+
         const fingerprints = values.map(teardownHeapValueFingerprint);
         const first = fingerprints[0];
         if (fingerprints.every((value) => value === first)) {
@@ -5813,6 +5866,176 @@ function auditImperativeNavigation(source, path, options = {}) {
       ) {
         teardownHeapInvalidateRoot(root, targetEnv);
       }
+    }
+  }
+
+  function teardownHeapReferenceEquals(left, right) {
+    return Boolean(
+      left
+      && right
+      && left.root === right.root
+      && left.path.length === right.path.length
+      && left.path.every((part, index) => part === right.path[index])
+    );
+  }
+
+  function teardownHeapLoopMutationDirection(
+    node,
+    targetReference,
+    env = new Map(),
+  ) {
+    const directions = [];
+    let unsupported = false;
+
+    function record(direction) {
+      if (direction === "neutral") return;
+      directions.push(direction);
+    }
+
+    function scan(current) {
+      if (unsupported || !current) return;
+      if (current !== node && ts.isFunctionLike(current)) return;
+
+      if (
+        (ts.isPrefixUnaryExpression(current) || ts.isPostfixUnaryExpression(current))
+        && (
+          current.operator === ts.SyntaxKind.PlusPlusToken
+          || current.operator === ts.SyntaxKind.MinusMinusToken
+        )
+      ) {
+        const reference = teardownHeapReferenceForExpression(current.operand, env);
+        if (teardownHeapReferenceEquals(reference, targetReference)) {
+          record(
+            current.operator === ts.SyntaxKind.PlusPlusToken
+              ? "increasing"
+              : "decreasing",
+          );
+        }
+        return;
+      }
+
+      if (ts.isBinaryExpression(current)) {
+        const reference = teardownHeapReferenceForExpression(current.left, env);
+        if (teardownHeapReferenceEquals(reference, targetReference)) {
+          if (
+            current.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
+            || current.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+          ) {
+            const operand = teardownNumericRange(current.right, env);
+            if (!operand) {
+              unsupported = true;
+              return;
+            }
+            if (operand.min === 0 && operand.max === 0) {
+              record("neutral");
+              return;
+            }
+            const plus = current.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken;
+            if (operand.min >= 0) {
+              record(plus ? "increasing" : "decreasing");
+              return;
+            }
+            if (operand.max <= 0) {
+              record(plus ? "decreasing" : "increasing");
+              return;
+            }
+          }
+          unsupported = true;
+          return;
+        }
+      }
+
+      ts.forEachChild(current, scan);
+    }
+
+    scan(node);
+    if (unsupported || directions.length === 0) return "unknown";
+    if (directions.every((direction) => direction === "increasing")) {
+      return "increasing";
+    }
+    if (directions.every((direction) => direction === "decreasing")) {
+      return "decreasing";
+    }
+    return "unknown";
+  }
+
+  function teardownHeapWidenLoopState(
+    targetEnv,
+    beforeEnv,
+    afterEnv,
+    loopBody,
+    iterationClass,
+  ) {
+    const roots = teardownHeapReachableRoots(targetEnv);
+
+    for (const root of roots) {
+      if (afterEnv.get(teardownHeapUnknownKey(root)) === true) {
+        teardownHeapInvalidateRoot(root, targetEnv);
+        continue;
+      }
+
+      const keys = new Set();
+      for (const env of [beforeEnv, afterEnv]) {
+        for (const key of env.keys()) {
+          if (teardownHeapRootFromSpecialKey(key) === root) keys.add(key);
+        }
+      }
+
+      let invalidateRoot = false;
+      for (const key of keys) {
+        const parsed = teardownHeapParsedValueKey(key);
+        if (!parsed || parsed.path.length === 0) continue;
+
+        const beforeRead = teardownHeapReadPath(root, parsed.path, beforeEnv);
+        const afterRead = teardownHeapReadPath(root, parsed.path, afterEnv);
+        const beforeValue = beforeRead.found ? beforeRead.value : undefined;
+        const afterValue = afterRead.found ? afterRead.value : undefined;
+
+        if (
+          teardownHeapValueFingerprint(beforeValue)
+          === teardownHeapValueFingerprint(afterValue)
+        ) continue;
+
+        const beforeRange = teardownNumericRange(beforeValue, beforeEnv);
+        const afterRange = teardownNumericRange(afterValue, afterEnv);
+        if (!beforeRange || !afterRange) {
+          invalidateRoot = true;
+          break;
+        }
+
+        const reference = { root, path: parsed.path };
+        const direction = teardownHeapLoopMutationDirection(
+          loopBody,
+          reference,
+          beforeEnv,
+        );
+        let widened = null;
+        const guaranteedIteration = (
+          iterationClass === "one-or-more"
+          || iterationClass === "one-or-more-unknown"
+          || iterationClass === "one-or-more-indefinite"
+        );
+        if (direction === "increasing") {
+          widened = teardownNumericInterval(
+            guaranteedIteration
+              ? afterRange.min
+              : Math.min(beforeRange.min, afterRange.min),
+            Infinity,
+          );
+        } else if (direction === "decreasing") {
+          widened = teardownNumericInterval(
+            -Infinity,
+            guaranteedIteration
+              ? afterRange.max
+              : Math.max(beforeRange.max, afterRange.max),
+          );
+        } else {
+          widened = teardownNumericInterval(-Infinity, Infinity);
+        }
+        teardownHeapWriteRange(reference, widened, targetEnv);
+      }
+
+      if (invalidateRoot) teardownHeapInvalidateRoot(root, targetEnv);
     }
   }
 
@@ -5870,9 +6093,14 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function teardownFiniteNumericNode(value) {
-    return Number.isFinite(value)
-      ? ts.factory.createNumericLiteral(String(value))
-      : null;
+    if (!Number.isFinite(value)) return null;
+    if (value < 0) {
+      return ts.factory.createPrefixUnaryExpression(
+        ts.SyntaxKind.MinusToken,
+        ts.factory.createNumericLiteral(String(Math.abs(value))),
+      );
+    }
+    return ts.factory.createNumericLiteral(String(value));
   }
 
   function teardownHeapNumericUpdateValue(
@@ -5906,6 +6134,13 @@ function auditImperativeNavigation(source, path, options = {}) {
     return teardownStaticNumber(overlay.value, env);
   }
 
+  function teardownHeapReadRange(reference, env = new Map()) {
+    if (!reference) return null;
+    const overlay = teardownHeapReadPath(reference.root, reference.path, env);
+    if (!overlay.found || overlay.value === null) return null;
+    return teardownNumericRange(overlay.value, env);
+  }
+
   function teardownHeapWriteNumber(reference, value, env = new Map()) {
     const node = teardownFiniteNumericNode(value);
     if (!node) {
@@ -5914,6 +6149,99 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
     teardownHeapWritePath(reference.root, reference.path, node, env);
     return true;
+  }
+
+  function teardownHeapWriteRange(reference, range, env = new Map()) {
+    if (!range) {
+      teardownHeapWritePath(reference.root, reference.path, null, env);
+      return false;
+    }
+    if (
+      Number.isFinite(range.min)
+      && range.min === range.max
+    ) {
+      return teardownHeapWriteNumber(reference, range.min, env);
+    }
+    teardownHeapWritePath(
+      reference.root,
+      reference.path,
+      teardownNumericInterval(range.min, range.max),
+      env,
+    );
+    return true;
+  }
+
+  function teardownNumericRangeBinary(operator, left, right) {
+    if (!left || !right) return null;
+    if (operator === ts.SyntaxKind.PlusToken) {
+      return teardownNumericInterval(left.min + right.min, left.max + right.max);
+    }
+    if (operator === ts.SyntaxKind.MinusToken) {
+      return teardownNumericInterval(left.min - right.max, left.max - right.min);
+    }
+    if (operator === ts.SyntaxKind.AsteriskToken) {
+      const candidates = [
+        left.min * right.min,
+        left.min * right.max,
+        left.max * right.min,
+        left.max * right.max,
+      ];
+      if (candidates.some(Number.isNaN)) return null;
+      return teardownNumericInterval(
+        Math.min(...candidates),
+        Math.max(...candidates),
+      );
+    }
+    if (operator === ts.SyntaxKind.SlashToken) {
+      if (right.min <= 0 && right.max >= 0) return null;
+      const candidates = [
+        left.min / right.min,
+        left.min / right.max,
+        left.max / right.min,
+        left.max / right.max,
+      ];
+      if (candidates.some(Number.isNaN)) return null;
+      return teardownNumericInterval(
+        Math.min(...candidates),
+        Math.max(...candidates),
+      );
+    }
+    if (
+      left.min === left.max
+      && right.min === right.max
+    ) {
+      if (operator === ts.SyntaxKind.PercentToken && right.min !== 0) {
+        return teardownNumericInterval(
+          left.min % right.min,
+          left.min % right.min,
+        );
+      }
+      if (operator === ts.SyntaxKind.AsteriskAsteriskToken) {
+        const value = left.min ** right.min;
+        return Number.isFinite(value)
+          ? teardownNumericInterval(value, value)
+          : null;
+      }
+    }
+    return null;
+  }
+
+  function teardownHeapNumericUpdateRange(
+    operator,
+    current,
+    operand,
+  ) {
+    const binaryOperator = new Map([
+      [ts.SyntaxKind.PlusEqualsToken, ts.SyntaxKind.PlusToken],
+      [ts.SyntaxKind.MinusEqualsToken, ts.SyntaxKind.MinusToken],
+      [ts.SyntaxKind.AsteriskEqualsToken, ts.SyntaxKind.AsteriskToken],
+      [ts.SyntaxKind.SlashEqualsToken, ts.SyntaxKind.SlashToken],
+      [ts.SyntaxKind.PercentEqualsToken, ts.SyntaxKind.PercentToken],
+      [ts.SyntaxKind.AsteriskAsteriskEqualsToken, ts.SyntaxKind.AsteriskAsteriskToken],
+    ]).get(operator);
+    return binaryOperator === undefined
+      ? null
+      : teardownNumericRangeBinary(binaryOperator, current, operand);
   }
 
   function teardownApplyHeapUnaryMutationStatement(
@@ -5935,6 +6263,26 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     const reference = teardownHeapReferenceForExpression(expression.operand, env);
     if (!reference) return null;
+    if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+      const currentRange = teardownHeapReadRange(reference, env);
+      if (!currentRange) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
+      }
+      const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
+      return {
+        handled: true,
+        safe: teardownHeapWriteRange(
+          reference,
+          teardownNumericInterval(
+            currentRange.min + delta,
+            currentRange.max + delta,
+          ),
+          env,
+        ),
+      };
+    }
+
     const current = teardownHeapReadNumber(reference, env);
     if (current === null) {
       teardownHeapWritePath(reference.root, reference.path, null, env);
@@ -5965,6 +6313,28 @@ function auditImperativeNavigation(source, path, options = {}) {
       enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
       && expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
     ) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        const currentRange = teardownHeapReadRange(reference, env);
+        const operandRange = teardownNumericRange(expression.right, env);
+        if (!currentRange || !operandRange) {
+          teardownHeapWritePath(reference.root, reference.path, null, env);
+          return { handled: true, safe: false };
+        }
+        const nextRange = teardownHeapNumericUpdateRange(
+          expression.operatorToken.kind,
+          currentRange,
+          operandRange,
+        );
+        if (!nextRange) {
+          teardownHeapWritePath(reference.root, reference.path, null, env);
+          return { handled: true, safe: false };
+        }
+        return {
+          handled: true,
+          safe: teardownHeapWriteRange(reference, nextRange, env),
+        };
+      }
+
       const current = teardownHeapReadNumber(reference, env);
       const operand = teardownStaticNumber(expression.right, env);
       if (current === null || operand === null) {
@@ -5992,6 +6362,15 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        const range = teardownNumericRange(expression.right, env);
+        if (range) {
+          return {
+            handled: true,
+            safe: teardownHeapWriteRange(reference, range, env),
+          };
+        }
+      }
       const numeric = teardownStaticNumber(expression.right, env);
       if (numeric !== null) {
         return {
@@ -6404,6 +6783,232 @@ function auditImperativeNavigation(source, path, options = {}) {
     return false;
   }
 
+  function teardownNumericRange(expression, env = new Map()) {
+    if (!expression) return null;
+    if (teardownIsNumericInterval(expression)) return expression;
+
+    const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
+      ? teardownResolveStructuredExpression(expression, env)
+      : resolveDataExpression(expression, env);
+    if (!resolved || resolved === teardownHeapUnknownExpression) return null;
+    if (teardownIsNumericInterval(resolved)) return resolved;
+
+    if (ts.isNumericLiteral(resolved)) {
+      const value = Number(resolved.text);
+      return Number.isFinite(value)
+        ? teardownNumericInterval(value, value)
+        : null;
+    }
+
+    if (
+      ts.isPrefixUnaryExpression(resolved)
+      && (
+        resolved.operator === ts.SyntaxKind.PlusToken
+        || resolved.operator === ts.SyntaxKind.MinusToken
+      )
+    ) {
+      const operand = teardownNumericRange(resolved.operand, env);
+      if (!operand) return null;
+      return resolved.operator === ts.SyntaxKind.MinusToken
+        ? teardownNumericInterval(-operand.max, -operand.min)
+        : operand;
+    }
+
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
+      && ts.isBinaryExpression(resolved)
+    ) {
+      const left = teardownNumericRange(resolved.left, env);
+      const right = teardownNumericRange(resolved.right, env);
+      return teardownNumericRangeBinary(
+        resolved.operatorToken.kind,
+        left,
+        right,
+      );
+    }
+
+    if (ts.isParenthesizedExpression(resolved)) {
+      return teardownNumericRange(resolved.expression, env);
+    }
+
+    return null;
+  }
+
+  function teardownNumericComparison(operator, left, right) {
+    if (!left || !right) return null;
+    if (operator === ts.SyntaxKind.LessThanToken) {
+      if (left.max < right.min) return true;
+      if (left.min >= right.max) return false;
+      return null;
+    }
+    if (operator === ts.SyntaxKind.LessThanEqualsToken) {
+      if (left.max <= right.min) return true;
+      if (left.min > right.max) return false;
+      return null;
+    }
+    if (operator === ts.SyntaxKind.GreaterThanToken) {
+      if (left.min > right.max) return true;
+      if (left.max <= right.min) return false;
+      return null;
+    }
+    if (operator === ts.SyntaxKind.GreaterThanEqualsToken) {
+      if (left.min >= right.max) return true;
+      if (left.max < right.min) return false;
+      return null;
+    }
+    if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      if (
+        left.min === left.max
+        && right.min === right.max
+        && left.min === right.min
+      ) return true;
+      if (left.max < right.min || right.max < left.min) return false;
+      return null;
+    }
+    if (
+      operator === ts.SyntaxKind.ExclamationEqualsEqualsToken
+      || operator === ts.SyntaxKind.ExclamationEqualsToken
+    ) {
+      const equal = teardownNumericComparison(
+        ts.SyntaxKind.EqualsEqualsEqualsToken,
+        left,
+        right,
+      );
+      return equal === null ? null : !equal;
+    }
+    return null;
+  }
+
+  function teardownInvertComparisonOperator(operator) {
+    const inverse = new Map([
+      [ts.SyntaxKind.LessThanToken, ts.SyntaxKind.GreaterThanEqualsToken],
+      [ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanToken],
+      [ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.LessThanEqualsToken],
+      [ts.SyntaxKind.GreaterThanEqualsToken, ts.SyntaxKind.LessThanToken],
+      [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken],
+      [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.EqualsEqualsToken],
+    ]);
+    return inverse.get(operator) ?? null;
+  }
+
+  function teardownSwapComparisonOperator(operator) {
+    const swapped = new Map([
+      [ts.SyntaxKind.LessThanToken, ts.SyntaxKind.GreaterThanToken],
+      [ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanEqualsToken],
+      [ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.LessThanToken],
+      [ts.SyntaxKind.GreaterThanEqualsToken, ts.SyntaxKind.LessThanEqualsToken],
+      [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken],
+      [ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken],
+      [ts.SyntaxKind.ExclamationEqualsToken, ts.SyntaxKind.ExclamationEqualsToken],
+    ]);
+    return swapped.get(operator) ?? null;
+  }
+
+  function teardownRefineNumericReference(
+    reference,
+    operator,
+    bound,
+    env = new Map(),
+  ) {
+    if (!reference || !bound || bound.min !== bound.max) return true;
+    const current = teardownHeapReadRange(reference, env);
+    if (!current) return true;
+
+    const threshold = bound.min;
+    let min = current.min;
+    let max = current.max;
+
+    if (
+      operator === ts.SyntaxKind.GreaterThanToken
+      || operator === ts.SyntaxKind.GreaterThanEqualsToken
+    ) {
+      min = Math.max(min, threshold);
+    } else if (
+      operator === ts.SyntaxKind.LessThanToken
+      || operator === ts.SyntaxKind.LessThanEqualsToken
+    ) {
+      max = Math.min(max, threshold);
+    } else if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      min = Math.max(min, threshold);
+      max = Math.min(max, threshold);
+    } else {
+      return true;
+    }
+
+    if (min > max) return false;
+    teardownHeapWriteRange(
+      reference,
+      teardownNumericInterval(min, max),
+      env,
+    );
+    return true;
+  }
+
+  function teardownRefineNumericCondition(
+    expression,
+    truthy,
+    env = new Map(),
+  ) {
+    if (!expression) return true;
+
+    if (
+      ts.isParenthesizedExpression(expression)
+      || ts.isAsExpression(expression)
+      || ts.isTypeAssertionExpression(expression)
+      || ts.isNonNullExpression(expression)
+    ) {
+      return teardownRefineNumericCondition(expression.expression, truthy, env);
+    }
+
+    if (
+      ts.isPrefixUnaryExpression(expression)
+      && expression.operator === ts.SyntaxKind.ExclamationToken
+    ) {
+      return teardownRefineNumericCondition(expression.operand, !truthy, env);
+    }
+
+    if (!ts.isBinaryExpression(expression)) return true;
+    let operator = expression.operatorToken.kind;
+    if (!truthy) {
+      operator = teardownInvertComparisonOperator(operator);
+      if (operator === null) return true;
+    }
+
+    const leftReference = teardownHeapReferenceForExpression(expression.left, env);
+    const rightReference = teardownHeapReferenceForExpression(expression.right, env);
+
+    if (leftReference && !rightReference) {
+      return teardownRefineNumericReference(
+        leftReference,
+        operator,
+        teardownNumericRange(expression.right, env),
+        env,
+      );
+    }
+
+    if (rightReference && !leftReference) {
+      const swapped = teardownSwapComparisonOperator(operator);
+      if (swapped === null) return true;
+      return teardownRefineNumericReference(
+        rightReference,
+        swapped,
+        teardownNumericRange(expression.left, env),
+        env,
+      );
+    }
+
+    return true;
+  }
+
   function teardownStaticBoolean(expression, env = new Map()) {
     if (!expression) return null;
     const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
@@ -6438,6 +7043,17 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (left === true) return true;
         if (left === false) return teardownStaticBoolean(resolved.right, env);
         return null;
+      }
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        const leftRange = teardownNumericRange(resolved.left, env);
+        const rightRange = teardownNumericRange(resolved.right, env);
+        const ranged = teardownNumericComparison(
+          resolved.operatorToken.kind,
+          leftRange,
+          rightRange,
+        );
+        if (ranged !== null) return ranged;
       }
 
       const leftNumber = teardownStaticNumber(resolved.left, env);
@@ -6503,6 +7119,14 @@ function auditImperativeNavigation(source, path, options = {}) {
       ? teardownResolveStructuredExpression(expression, env)
       : resolveDataExpression(expression, env);
     if (!resolved || resolved === teardownHeapUnknownExpression) return null;
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+      && teardownIsNumericInterval(resolved)
+    ) {
+      return resolved.min === resolved.max && Number.isFinite(resolved.min)
+        ? resolved.min
+        : null;
+    }
     if (ts.isNumericLiteral(resolved)) {
       const value = Number(resolved.text);
       return Number.isFinite(value) ? value : null;
@@ -7344,7 +7968,17 @@ function auditImperativeNavigation(source, path, options = {}) {
       enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
       && loopEntryEnv
     ) {
-      teardownHeapInvalidateChangedRoots(env, loopEntryEnv, loopBodyEnv);
+      if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
+        teardownHeapWidenLoopState(
+          env,
+          loopEntryEnv,
+          loopBodyEnv,
+          statement.statement,
+          iterationClass,
+        );
+      } else {
+        teardownHeapInvalidateChangedRoots(env, loopEntryEnv, loopBodyEnv);
+      }
     }
     const ownBreaks = teardownFlowTransferMapWithout(
       bodyResult.labeledBreaks,
@@ -7816,30 +8450,46 @@ function auditImperativeNavigation(source, path, options = {}) {
       if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
         const thenEnv = new Map(env);
         const elseEnv = new Map(env);
-        const thenResult = teardownFlowStatement(
-          statement.thenStatement,
-          states,
-          matchCall,
-          thenEnv,
-          callStack,
+        const thenPossible = (
+          !enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+          || teardownRefineNumericCondition(statement.expression, true, thenEnv)
         );
-        const elseResult = statement.elseStatement
+        const elsePossible = (
+          !enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy
+          || teardownRefineNumericCondition(statement.expression, false, elseEnv)
+        );
+
+        const thenResult = thenPossible
           ? teardownFlowStatement(
-            statement.elseStatement,
+            statement.thenStatement,
             states,
             matchCall,
-            elseEnv,
+            thenEnv,
             callStack,
           )
-          : {
-            continuing: [...states],
-            exits: [],
-            breaks: [],
-            continues: [],
-            labeledBreaks: new Map(),
-            labeledContinues: new Map(),
-            loopUncertainty: false,
-          };
+          : teardownFlowEmptyResult();
+
+        const elseResult = elsePossible
+          ? (
+            statement.elseStatement
+              ? teardownFlowStatement(
+                statement.elseStatement,
+                states,
+                matchCall,
+                elseEnv,
+                callStack,
+              )
+              : {
+                continuing: [...states],
+                exits: [],
+                breaks: [],
+                continues: [],
+                labeledBreaks: new Map(),
+                labeledContinues: new Map(),
+                loopUncertainty: false,
+              }
+          )
+          : teardownFlowEmptyResult();
 
         const continuingEnvs = [];
         if ((thenResult.continuing ?? []).length > 0) continuingEnvs.push(thenEnv);
@@ -13817,6 +14467,89 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const mergedTimer = setTimeout(() => outside.append(input), 0);',
+    'let mergedState = { count: 1 };',
+    'if (flag) { mergedState.count += 2; }',
+    'if (mergedState.count >= 1) { clearTimeout(mergedTimer); }',
+    'const arithmeticTimer = setTimeout(() => outside.append(input), 0);',
+    'let arithmeticState = { count: 1 };',
+    'if (flag) { arithmeticState.count += 2; }',
+    'arithmeticState.count += 2;',
+    'if (arithmeticState.count >= 3) { clearTimeout(arithmeticTimer); }',
+    'const refinedTimer = setTimeout(() => outside.append(input), 0);',
+    'let refinedState = { count: 1 };',
+    'if (flag) { refinedState.count += 2; }',
+    'if (refinedState.count >= 3) {',
+    '  refinedState.count += 0;',
+    '} else {',
+    '  refinedState.count += 2;',
+    '}',
+    'if (refinedState.count >= 3) { clearTimeout(refinedTimer); }',
+    'const widenedTimer = setTimeout(() => outside.append(input), 0);',
+    'let widenedState = { count: 0 };',
+    'for (const key in { a: 1, b: 2 }) { widenedState.count++; }',
+    'if (widenedState.count >= 1) { clearTimeout(widenedTimer); }',
+    'const partialTimer = setTimeout(() => outside.append(input), 0);',
+    'let partialState = { count: 0 };',
+    'if (flag) { partialState.count += 3; }',
+    'if (partialState.count >= 3) { clearTimeout(partialTimer); }',
+    'const oscillatingTimer = setTimeout(() => outside.append(input), 0);',
+    'let oscillatingState = { count: 1 };',
+    'for (const key in { a: 1, b: 2 }) { oscillatingState.count *= -2; }',
+    'if (oscillatingState.count >= 1) { clearTimeout(oscillatingTimer); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-numeric-interval.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+      programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 3
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 2
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown numeric interval authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -15074,6 +15807,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
       programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+      programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
     },
   ));
 
