@@ -1912,9 +1912,14 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy = (
     options.programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy === true
+  );
   const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
   const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
   const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
+  const TEARDOWN_HEAP_RELATION_PREFIX = "@@teardown-heap-relation:";
+  const TEARDOWN_HEAP_AFFINE_PREFIX = "@@teardown-heap-affine:";
   const teardownHeapUnknownExpression = ts.factory.createIdentifier(
     "__teardown_heap_unknown__",
   );
@@ -5623,6 +5628,506 @@ function auditImperativeNavigation(source, path, options = {}) {
     return roots;
   }
 
+  function teardownHeapReferenceId(reference) {
+    return reference
+      ? JSON.stringify([reference.root, reference.path.map((part) => String(part))])
+      : null;
+  }
+
+  function teardownHeapReferenceFromId(id) {
+    if (typeof id !== "string") return null;
+    try {
+      const [root, path] = JSON.parse(id);
+      return (
+        typeof root === "string"
+        && Array.isArray(path)
+      )
+        ? { root, path: path.map((part) => String(part)) }
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function teardownCorrelationRelationKey(left, right) {
+    const leftId = teardownHeapReferenceId(left);
+    const rightId = teardownHeapReferenceId(right);
+    if (!leftId || !rightId || leftId === rightId) return null;
+    return TEARDOWN_HEAP_RELATION_PREFIX + JSON.stringify([leftId, rightId]);
+  }
+
+  function teardownCorrelationParseRelationKey(key) {
+    if (
+      typeof key !== "string"
+      || !key.startsWith(TEARDOWN_HEAP_RELATION_PREFIX)
+    ) return null;
+    try {
+      const [leftId, rightId] = JSON.parse(
+        key.slice(TEARDOWN_HEAP_RELATION_PREFIX.length),
+      );
+      const left = teardownHeapReferenceFromId(leftId);
+      const right = teardownHeapReferenceFromId(rightId);
+      return left && right ? { left, right, leftId, rightId } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function teardownCorrelationAffineKey(target) {
+    const targetId = teardownHeapReferenceId(target);
+    return targetId ? TEARDOWN_HEAP_AFFINE_PREFIX + targetId : null;
+  }
+
+  function teardownCorrelationParseAffineKey(key) {
+    if (
+      typeof key !== "string"
+      || !key.startsWith(TEARDOWN_HEAP_AFFINE_PREFIX)
+    ) return null;
+    const targetId = key.slice(TEARDOWN_HEAP_AFFINE_PREFIX.length);
+    const target = teardownHeapReferenceFromId(targetId);
+    return target ? { target, targetId } : null;
+  }
+
+  function teardownCorrelationIsSpecialKey(key) {
+    return Boolean(
+      typeof key === "string"
+      && (
+        key.startsWith(TEARDOWN_HEAP_RELATION_PREFIX)
+        || key.startsWith(TEARDOWN_HEAP_AFFINE_PREFIX)
+      )
+    );
+  }
+
+  function teardownHeapReferencesOverlap(left, right) {
+    if (!left || !right || left.root !== right.root) return false;
+    return (
+      teardownHeapPathStartsWith(left.path, right.path)
+      || teardownHeapPathStartsWith(right.path, left.path)
+    );
+  }
+
+  function teardownCorrelationReadDifference(left, right, env = new Map()) {
+    if (!left || !right) return null;
+    if (teardownHeapReferenceEquals(left, right)) {
+      return teardownNumericInterval(0, 0);
+    }
+
+    const directKey = teardownCorrelationRelationKey(left, right);
+    const direct = directKey ? env.get(directKey) : null;
+    if (teardownIsNumericInterval(direct)) return direct;
+
+    const reverseKey = teardownCorrelationRelationKey(right, left);
+    const reverse = reverseKey ? env.get(reverseKey) : null;
+    if (teardownIsNumericInterval(reverse)) {
+      return teardownNumericInterval(-reverse.max, -reverse.min);
+    }
+
+    return null;
+  }
+
+  function teardownCorrelationWriteDifference(
+    left,
+    right,
+    interval,
+    env = new Map(),
+  ) {
+    if (!left || !right || !interval) return true;
+    if (teardownHeapReferenceEquals(left, right)) {
+      return interval.min <= 0 && interval.max >= 0;
+    }
+    const key = teardownCorrelationRelationKey(left, right);
+    if (!key) return true;
+
+    const existing = teardownCorrelationReadDifference(left, right, env);
+    const min = existing ? Math.max(existing.min, interval.min) : interval.min;
+    const max = existing ? Math.min(existing.max, interval.max) : interval.max;
+    if (min > max) return false;
+
+    env.set(key, teardownNumericInterval(min, max));
+    const reverseKey = teardownCorrelationRelationKey(right, left);
+    if (reverseKey) env.delete(reverseKey);
+    return true;
+  }
+
+  function teardownCorrelationInvalidateReference(reference, env = new Map()) {
+    if (!reference) return;
+    for (const key of [...env.keys()]) {
+      const relation = teardownCorrelationParseRelationKey(key);
+      if (
+        relation
+        && (
+          teardownHeapReferencesOverlap(reference, relation.left)
+          || teardownHeapReferencesOverlap(reference, relation.right)
+        )
+      ) {
+        env.delete(key);
+        continue;
+      }
+      const affine = teardownCorrelationParseAffineKey(key);
+      if (!affine) continue;
+      const record = env.get(key);
+      if (
+        teardownHeapReferencesOverlap(reference, affine.target)
+        || (
+          record
+          && Array.isArray(record.terms)
+          && record.terms.some((term) =>
+            teardownHeapReferencesOverlap(reference, term.reference)
+          )
+        )
+      ) {
+        env.delete(key);
+      }
+    }
+  }
+
+  function teardownCorrelationInvalidateRoot(root, env = new Map()) {
+    if (typeof root !== "string") return;
+    for (const key of [...env.keys()]) {
+      const relation = teardownCorrelationParseRelationKey(key);
+      if (relation && (relation.left.root === root || relation.right.root === root)) {
+        env.delete(key);
+        continue;
+      }
+      const affine = teardownCorrelationParseAffineKey(key);
+      if (!affine) continue;
+      const record = env.get(key);
+      if (
+        affine.target.root === root
+        || (
+          record
+          && Array.isArray(record.terms)
+          && record.terms.some((term) => term.reference.root === root)
+        )
+      ) {
+        env.delete(key);
+      }
+    }
+  }
+
+  function teardownCorrelationShiftReference(
+    reference,
+    delta,
+    env = new Map(),
+  ) {
+    if (!reference || !Number.isFinite(delta)) {
+      teardownCorrelationInvalidateReference(reference, env);
+      return;
+    }
+
+    for (const [key, value] of [...env.entries()]) {
+      const relation = teardownCorrelationParseRelationKey(key);
+      if (relation && teardownIsNumericInterval(value)) {
+        const leftHit = teardownHeapReferenceEquals(reference, relation.left);
+        const rightHit = teardownHeapReferenceEquals(reference, relation.right);
+        if (leftHit && rightHit) continue;
+        if (leftHit || rightHit) {
+          const shift = leftHit ? delta : -delta;
+          env.set(
+            key,
+            teardownNumericInterval(value.min + shift, value.max + shift),
+          );
+        }
+        continue;
+      }
+
+      const affine = teardownCorrelationParseAffineKey(key);
+      if (!affine) continue;
+      const record = value;
+      if (!record || !Array.isArray(record.terms)) continue;
+
+      let constant = record.constant;
+      if (teardownHeapReferenceEquals(reference, affine.target)) {
+        constant += delta;
+      }
+      for (const term of record.terms) {
+        if (teardownHeapReferenceEquals(reference, term.reference)) {
+          constant -= term.coefficient * delta;
+        }
+      }
+      if (constant !== record.constant) {
+        env.set(key, { ...record, constant });
+      }
+    }
+  }
+
+  function teardownAffineExpression(expression, env = new Map()) {
+    if (!expression) return null;
+
+    const reference = teardownHeapReferenceForExpression(expression, env);
+    if (reference) {
+      return {
+        terms: [{ reference, coefficient: 1 }],
+        constant: 0,
+      };
+    }
+
+    let resolved = expression;
+    while (
+      resolved
+      && (
+        ts.isParenthesizedExpression(resolved)
+        || ts.isAsExpression(resolved)
+        || ts.isTypeAssertionExpression(resolved)
+        || ts.isNonNullExpression(resolved)
+      )
+    ) {
+      resolved = resolved.expression;
+    }
+    if (!resolved) return null;
+
+    if (
+      ts.isPrefixUnaryExpression(resolved)
+      && (
+        resolved.operator === ts.SyntaxKind.PlusToken
+        || resolved.operator === ts.SyntaxKind.MinusToken
+      )
+    ) {
+      const inner = teardownAffineExpression(resolved.operand, env);
+      if (!inner) return null;
+      if (resolved.operator === ts.SyntaxKind.PlusToken) return inner;
+      return {
+        terms: inner.terms.map((term) => ({
+          reference: term.reference,
+          coefficient: -term.coefficient,
+        })),
+        constant: -inner.constant,
+      };
+    }
+
+    if (
+      ts.isBinaryExpression(resolved)
+      && (
+        resolved.operatorToken.kind === ts.SyntaxKind.PlusToken
+        || resolved.operatorToken.kind === ts.SyntaxKind.MinusToken
+      )
+    ) {
+      const left = teardownAffineExpression(resolved.left, env);
+      const right = teardownAffineExpression(resolved.right, env);
+      if (!left || !right) return null;
+      const sign = resolved.operatorToken.kind === ts.SyntaxKind.MinusToken ? -1 : 1;
+      const combined = new Map();
+      for (const term of left.terms) {
+        const id = teardownHeapReferenceId(term.reference);
+        combined.set(id, {
+          reference: term.reference,
+          coefficient: (combined.get(id)?.coefficient ?? 0) + term.coefficient,
+        });
+      }
+      for (const term of right.terms) {
+        const id = teardownHeapReferenceId(term.reference);
+        combined.set(id, {
+          reference: term.reference,
+          coefficient: (combined.get(id)?.coefficient ?? 0) + sign * term.coefficient,
+        });
+      }
+      const terms = [...combined.values()].filter((term) => term.coefficient !== 0);
+      if (
+        terms.length > 3
+        || terms.some((term) => ![-1, 1].includes(term.coefficient))
+      ) return null;
+      return {
+        terms,
+        constant: left.constant + sign * right.constant,
+      };
+    }
+
+    const exact = teardownStaticNumber(resolved, env);
+    return exact === null
+      ? null
+      : { terms: [], constant: exact };
+  }
+
+  function teardownCorrelationRecordAssignment(
+    target,
+    rightExpression,
+    affine,
+    env = new Map(),
+  ) {
+    if (!target || !affine) return;
+    if (
+      affine.terms.some((term) =>
+        teardownHeapReferenceEquals(target, term.reference)
+      )
+    ) return;
+
+    if (
+      affine.terms.length === 1
+      && affine.terms[0].coefficient === 1
+    ) {
+      teardownCorrelationWriteDifference(
+        target,
+        affine.terms[0].reference,
+        teardownNumericInterval(affine.constant, affine.constant),
+        env,
+      );
+    }
+
+    const key = teardownCorrelationAffineKey(target);
+    if (key && affine.terms.length > 0) {
+      env.set(key, {
+        __teardownAffineEquality: true,
+        terms: affine.terms.map((term) => ({
+          reference: term.reference,
+          coefficient: term.coefficient,
+        })),
+        constant: affine.constant,
+      });
+    }
+  }
+
+  function teardownCorrelationAffineMatches(
+    target,
+    expression,
+    env = new Map(),
+  ) {
+    if (!target || !expression) return false;
+    const key = teardownCorrelationAffineKey(target);
+    const record = key ? env.get(key) : null;
+    if (!record || record.__teardownAffineEquality !== true) return false;
+
+    const candidate = teardownAffineExpression(expression, env);
+    if (!candidate) return false;
+    if (candidate.constant !== record.constant) return false;
+
+    const normalize = (terms) => terms
+      .map((term) => ({
+        id: teardownHeapReferenceId(term.reference),
+        coefficient: term.coefficient,
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id));
+
+    const left = normalize(record.terms);
+    const right = normalize(candidate.terms);
+    return (
+      left.length === right.length
+      && left.every((term, index) =>
+        term.id === right[index].id
+        && term.coefficient === right[index].coefficient
+      )
+    );
+  }
+
+  function teardownCorrelationDifferenceForOperator(operator) {
+    if (
+      operator === ts.SyntaxKind.LessThanToken
+      || operator === ts.SyntaxKind.LessThanEqualsToken
+    ) {
+      return teardownNumericInterval(-Infinity, 0);
+    }
+    if (
+      operator === ts.SyntaxKind.GreaterThanToken
+      || operator === ts.SyntaxKind.GreaterThanEqualsToken
+    ) {
+      return teardownNumericInterval(0, Infinity);
+    }
+    if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      return teardownNumericInterval(0, 0);
+    }
+    return null;
+  }
+
+  function teardownCorrelationComparison(
+    operator,
+    left,
+    right,
+    env = new Map(),
+  ) {
+    const difference = teardownCorrelationReadDifference(left, right, env);
+    if (!difference) return null;
+
+    if (operator === ts.SyntaxKind.LessThanToken) {
+      if (difference.max < 0) return true;
+      if (difference.min >= 0) return false;
+    } else if (operator === ts.SyntaxKind.LessThanEqualsToken) {
+      if (difference.max <= 0) return true;
+      if (difference.min > 0) return false;
+    } else if (operator === ts.SyntaxKind.GreaterThanToken) {
+      if (difference.min > 0) return true;
+      if (difference.max <= 0) return false;
+    } else if (operator === ts.SyntaxKind.GreaterThanEqualsToken) {
+      if (difference.min >= 0) return true;
+      if (difference.max < 0) return false;
+    } else if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken
+      || operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      if (difference.min === 0 && difference.max === 0) return true;
+      if (difference.max < 0 || difference.min > 0) return false;
+    } else if (
+      operator === ts.SyntaxKind.ExclamationEqualsEqualsToken
+      || operator === ts.SyntaxKind.ExclamationEqualsToken
+    ) {
+      const equal = teardownCorrelationComparison(
+        ts.SyntaxKind.EqualsEqualsEqualsToken,
+        left,
+        right,
+        env,
+      );
+      return equal === null ? null : !equal;
+    }
+
+    return null;
+  }
+
+  function teardownCorrelationMerge(parentEnv, branchEnvs) {
+    for (const key of [...parentEnv.keys()]) {
+      if (teardownCorrelationIsSpecialKey(key)) parentEnv.delete(key);
+    }
+    if (!branchEnvs.length) return;
+
+    const relationKeys = new Set();
+    const affineKeys = new Set();
+    for (const env of branchEnvs) {
+      for (const key of env.keys()) {
+        if (key.startsWith?.(TEARDOWN_HEAP_RELATION_PREFIX)) relationKeys.add(key);
+        if (key.startsWith?.(TEARDOWN_HEAP_AFFINE_PREFIX)) affineKeys.add(key);
+      }
+    }
+
+    for (const key of relationKeys) {
+      const values = branchEnvs.map((env) => env.get(key));
+      if (!values.every(teardownIsNumericInterval)) continue;
+      parentEnv.set(
+        key,
+        teardownNumericInterval(
+          Math.min(...values.map((value) => value.min)),
+          Math.max(...values.map((value) => value.max)),
+        ),
+      );
+    }
+
+    for (const key of affineKeys) {
+      const values = branchEnvs.map((env) => env.get(key));
+      if (values.some((value) => !value)) continue;
+      const fingerprint = (value) => JSON.stringify({
+        constant: value.constant,
+        terms: value.terms
+          .map((term) => [
+            teardownHeapReferenceId(term.reference),
+            term.coefficient,
+          ])
+          .sort(([left], [right]) => left.localeCompare(right)),
+      });
+      const first = fingerprint(values[0]);
+      if (values.every((value) => fingerprint(value) === first)) {
+        parentEnv.set(key, values[0]);
+      }
+    }
+  }
+
+  function teardownCorrelationCommit(parentEnv, childEnv) {
+    for (const key of [...parentEnv.keys()]) {
+      if (teardownCorrelationIsSpecialKey(key)) parentEnv.delete(key);
+    }
+    for (const [key, value] of childEnv) {
+      if (teardownCorrelationIsSpecialKey(key)) parentEnv.set(key, value);
+    }
+  }
+
   function teardownNumericInterval(min, max) {
     if (
       typeof min !== "number"
@@ -5738,6 +6243,9 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function teardownHeapInvalidateRoot(root, env = new Map()) {
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationInvalidateRoot(root, env);
+    }
     for (const key of [...env.keys()]) {
       const parsed = teardownHeapParsedValueKey(key);
       if (parsed?.root === root) env.delete(key);
@@ -5784,6 +6292,9 @@ function auditImperativeNavigation(source, path, options = {}) {
           parentEnv.set(key, value);
         }
       }
+    }
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationCommit(parentEnv, childEnv);
     }
   }
 
@@ -5840,6 +6351,10 @@ function auditImperativeNavigation(source, path, options = {}) {
       } else {
         parentEnv.delete(teardownHeapUnknownKey(root));
       }
+    }
+
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationMerge(parentEnv, branchEnvs);
     }
   }
 
@@ -5982,6 +6497,7 @@ function auditImperativeNavigation(source, path, options = {}) {
       }
 
       let invalidateRoot = false;
+      let rootChanged = false;
       for (const key of keys) {
         const parsed = teardownHeapParsedValueKey(key);
         if (!parsed || parsed.path.length === 0) continue;
@@ -5996,6 +6512,7 @@ function auditImperativeNavigation(source, path, options = {}) {
           === teardownHeapValueFingerprint(afterValue)
         ) continue;
 
+        rootChanged = true;
         const beforeRange = teardownNumericRange(beforeValue, beforeEnv);
         const afterRange = teardownNumericRange(afterValue, afterEnv);
         if (!beforeRange || !afterRange) {
@@ -6035,7 +6552,14 @@ function auditImperativeNavigation(source, path, options = {}) {
         teardownHeapWriteRange(reference, widened, targetEnv);
       }
 
-      if (invalidateRoot) teardownHeapInvalidateRoot(root, targetEnv);
+      if (invalidateRoot) {
+        teardownHeapInvalidateRoot(root, targetEnv);
+      } else if (
+        rootChanged
+        && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      ) {
+        teardownCorrelationInvalidateRoot(root, targetEnv);
+      }
     }
   }
 
@@ -6263,37 +6787,51 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     const reference = teardownHeapReferenceForExpression(expression.operand, env);
     if (!reference) return null;
+    const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
+
     if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
       const currentRange = teardownHeapReadRange(reference, env);
       if (!currentRange) {
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
         teardownHeapWritePath(reference.root, reference.path, null, env);
         return { handled: true, safe: false };
       }
-      const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
-      return {
-        handled: true,
-        safe: teardownHeapWriteRange(
-          reference,
-          teardownNumericInterval(
-            currentRange.min + delta,
-            currentRange.max + delta,
-          ),
-          env,
+      const safe = teardownHeapWriteRange(
+        reference,
+        teardownNumericInterval(
+          currentRange.min + delta,
+          currentRange.max + delta,
         ),
-      };
+        env,
+      );
+      if (
+        safe
+        && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      ) {
+        teardownCorrelationShiftReference(reference, delta, env);
+      }
+      return { handled: true, safe };
     }
 
     const current = teardownHeapReadNumber(reference, env);
     if (current === null) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+        teardownCorrelationInvalidateReference(reference, env);
+      }
       teardownHeapWritePath(reference.root, reference.path, null, env);
       return { handled: true, safe: false };
     }
 
-    const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
-    return {
-      handled: true,
-      safe: teardownHeapWriteNumber(reference, current + delta, env),
-    };
+    const safe = teardownHeapWriteNumber(reference, current + delta, env);
+    if (
+      safe
+      && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+    ) {
+      teardownCorrelationShiftReference(reference, delta, env);
+    }
+    return { handled: true, safe };
   }
 
   function teardownApplyHeapAssignmentStatement(
@@ -6313,10 +6851,28 @@ function auditImperativeNavigation(source, path, options = {}) {
       enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
       && expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
     ) {
+      const shiftOperator = (
+        expression.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
+        || expression.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+      );
+      const shiftAmount = shiftOperator
+        ? teardownStaticNumber(expression.right, env)
+        : null;
+      const signedShift = shiftAmount === null
+        ? null
+        : (
+          expression.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+            ? -shiftAmount
+            : shiftAmount
+        );
+
       if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
         const currentRange = teardownHeapReadRange(reference, env);
         const operandRange = teardownNumericRange(expression.right, env);
         if (!currentRange || !operandRange) {
+          if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+            teardownCorrelationInvalidateReference(reference, env);
+          }
           teardownHeapWritePath(reference.root, reference.path, null, env);
           return { handled: true, safe: false };
         }
@@ -6326,18 +6882,29 @@ function auditImperativeNavigation(source, path, options = {}) {
           operandRange,
         );
         if (!nextRange) {
+          if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+            teardownCorrelationInvalidateReference(reference, env);
+          }
           teardownHeapWritePath(reference.root, reference.path, null, env);
           return { handled: true, safe: false };
         }
-        return {
-          handled: true,
-          safe: teardownHeapWriteRange(reference, nextRange, env),
-        };
+        const safe = teardownHeapWriteRange(reference, nextRange, env);
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          if (safe && signedShift !== null) {
+            teardownCorrelationShiftReference(reference, signedShift, env);
+          } else {
+            teardownCorrelationInvalidateReference(reference, env);
+          }
+        }
+        return { handled: true, safe };
       }
 
       const current = teardownHeapReadNumber(reference, env);
       const operand = teardownStaticNumber(expression.right, env);
       if (current === null || operand === null) {
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
         teardownHeapWritePath(reference.root, reference.path, null, env);
         return { handled: true, safe: false };
       }
@@ -6347,13 +6914,21 @@ function auditImperativeNavigation(source, path, options = {}) {
         operand,
       );
       if (next === null) {
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
         teardownHeapWritePath(reference.root, reference.path, null, env);
         return { handled: true, safe: false };
       }
-      return {
-        handled: true,
-        safe: teardownHeapWriteNumber(reference, next, env),
-      };
+      const safe = teardownHeapWriteNumber(reference, next, env);
+      if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+        if (safe && signedShift !== null) {
+          teardownCorrelationShiftReference(reference, signedShift, env);
+        } else {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
+      }
+      return { handled: true, safe };
     }
 
     if (expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
@@ -6361,33 +6936,50 @@ function auditImperativeNavigation(source, path, options = {}) {
       return { handled: true, safe: false };
     }
 
+    const affine = enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      ? teardownAffineExpression(expression.right, env)
+      : null;
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationInvalidateReference(reference, env);
+    }
+
+    let safe = false;
     if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
       if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
         const range = teardownNumericRange(expression.right, env);
-        if (range) {
-          return {
-            handled: true,
-            safe: teardownHeapWriteRange(reference, range, env),
-          };
+        if (range) safe = teardownHeapWriteRange(reference, range, env);
+      }
+      if (!safe) {
+        const numeric = teardownStaticNumber(expression.right, env);
+        if (numeric !== null) {
+          safe = teardownHeapWriteNumber(reference, numeric, env);
         }
       }
-      const numeric = teardownStaticNumber(expression.right, env);
-      if (numeric !== null) {
-        return {
-          handled: true,
-          safe: teardownHeapWriteNumber(reference, numeric, env),
-        };
+    }
+
+    if (!safe) {
+      const concrete = teardownConcreteStructuredValue(expression.right, env);
+      if (!concrete) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
       }
+      teardownHeapWritePath(reference.root, reference.path, concrete, env);
+      safe = true;
     }
 
-    const concrete = teardownConcreteStructuredValue(expression.right, env);
-    if (!concrete) {
-      teardownHeapWritePath(reference.root, reference.path, null, env);
-      return { handled: true, safe: false };
+    if (
+      safe
+      && affine
+      && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+    ) {
+      teardownCorrelationRecordAssignment(
+        reference,
+        expression.right,
+        affine,
+        env,
+      );
     }
-
-    teardownHeapWritePath(reference.root, reference.path, concrete, env);
-    return { handled: true, safe: true };
+    return { handled: true, safe };
   }
 
   function teardownHeapPropagationSafeFunction(definition, env = new Map()) {
@@ -6986,6 +7578,22 @@ function auditImperativeNavigation(source, path, options = {}) {
     const leftReference = teardownHeapReferenceForExpression(expression.left, env);
     const rightReference = teardownHeapReferenceForExpression(expression.right, env);
 
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      && leftReference
+      && rightReference
+    ) {
+      const difference = teardownCorrelationDifferenceForOperator(operator);
+      if (difference) {
+        return teardownCorrelationWriteDifference(
+          leftReference,
+          rightReference,
+          difference,
+          env,
+        );
+      }
+    }
+
     if (leftReference && !rightReference) {
       return teardownRefineNumericReference(
         leftReference,
@@ -7043,6 +7651,52 @@ function auditImperativeNavigation(source, path, options = {}) {
         if (left === true) return true;
         if (left === false) return teardownStaticBoolean(resolved.right, env);
         return null;
+      }
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+        const leftReference = teardownHeapReferenceForExpression(resolved.left, env);
+        const rightReference = teardownHeapReferenceForExpression(resolved.right, env);
+
+        if (leftReference && rightReference) {
+          const correlated = teardownCorrelationComparison(
+            resolved.operatorToken.kind,
+            leftReference,
+            rightReference,
+            env,
+          );
+          if (correlated !== null) return correlated;
+        }
+
+        if (
+          resolved.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
+          || resolved.operatorToken.kind === ts.SyntaxKind.EqualsEqualsToken
+          || resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+          || resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsToken
+        ) {
+          let affineEqual = null;
+          if (leftReference) {
+            affineEqual = teardownCorrelationAffineMatches(
+              leftReference,
+              resolved.right,
+              env,
+            );
+          }
+          if (affineEqual !== true && rightReference) {
+            affineEqual = teardownCorrelationAffineMatches(
+              rightReference,
+              resolved.left,
+              env,
+            );
+          }
+          if (affineEqual === true) {
+            return (
+              resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+              || resolved.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsToken
+            )
+              ? false
+              : true;
+          }
+        }
       }
 
       if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
@@ -14550,6 +15204,109 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const assignmentTimer = setTimeout(() => outside.append(input), 0);',
+    'let assignmentState = { processed: 0, total: 0 };',
+    'if (flag) { assignmentState.total = 3; } else { assignmentState.total = 8; }',
+    'assignmentState.processed = assignmentState.total - 1;',
+    'if (assignmentState.processed <= assignmentState.total) { clearTimeout(assignmentTimer); }',
+    'const shiftTimer = setTimeout(() => outside.append(input), 0);',
+    'let shiftState = { processed: 0, total: 0 };',
+    'if (flag) { shiftState.total = 4; } else { shiftState.total = 9; }',
+    'shiftState.processed = shiftState.total - 1;',
+    'shiftState.processed += 2;',
+    'shiftState.total += 2;',
+    'if (shiftState.processed <= shiftState.total) { clearTimeout(shiftTimer); }',
+    'const refinementTimer = setTimeout(() => outside.append(input), 0);',
+    'let refinementState = { left: 0, right: 0 };',
+    'if (flag) { refinementState.left = 2; refinementState.right = 5; }',
+    'else { refinementState.left = 7; refinementState.right = 3; }',
+    'if (refinementState.left <= refinementState.right) {',
+    '  if (refinementState.left <= refinementState.right) { clearTimeout(refinementTimer); }',
+    '} else {',
+    '  if (refinementState.left >= refinementState.right) { clearTimeout(refinementTimer); }',
+    '}',
+    'const branchMergeTimer = setTimeout(() => outside.append(input), 0);',
+    'let mergeState = { processed: 0, total: 0 };',
+    'if (flag) { mergeState.total = 3; mergeState.processed = mergeState.total - 1; }',
+    'else { mergeState.total = 8; mergeState.processed = mergeState.total - 1; }',
+    'if (mergeState.processed <= mergeState.total) { clearTimeout(branchMergeTimer); }',
+    'const affineTimer = setTimeout(() => outside.append(input), 0);',
+    'let affineState = { earned: 0, withdrawn: 0, balance: 0 };',
+    'if (flag) { affineState.earned = 10; affineState.withdrawn = 3; }',
+    'else { affineState.earned = 20; affineState.withdrawn = 8; }',
+    'affineState.balance = affineState.earned - affineState.withdrawn;',
+    'if (affineState.balance === affineState.earned - affineState.withdrawn) { clearTimeout(affineTimer); }',
+    'const nonlinearTimer = setTimeout(() => outside.append(input), 0);',
+    'let nonlinearState = { processed: 0, total: 0 };',
+    'if (flag) { nonlinearState.total = 3; } else { nonlinearState.total = 8; }',
+    'nonlinearState.processed = nonlinearState.total - 1;',
+    'nonlinearState.processed *= 2;',
+    'if (nonlinearState.processed <= nonlinearState.total) { clearTimeout(nonlinearTimer); }',
+    'const externalTimer = setTimeout(() => outside.append(input), 0);',
+    'let externalState = { processed: 0, total: 0 };',
+    'if (flag) { externalState.total = 3; } else { externalState.total = 8; }',
+    'externalState.processed = externalState.total - 1;',
+    'mutateExternally(externalState);',
+    'if (externalState.processed <= externalState.total) { clearTimeout(externalTimer); }',
+    'const divergentTimer = setTimeout(() => outside.append(input), 0);',
+    'let divergentState = { processed: 0, total: 5 };',
+    'if (flag) { divergentState.processed = divergentState.total - 1; }',
+    'else { divergentState.processed = divergentState.total + 1; }',
+    'if (divergentState.processed <= divergentState.total) { clearTimeout(divergentTimer); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-correlated-heap.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+      programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
+      programmaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 4
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 3
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown correlated heap authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -15808,6 +16565,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
       programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
       programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
+      programmaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy: true,
     },
   ));
 
