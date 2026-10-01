@@ -14462,6 +14462,89 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const mergedTimer = setTimeout(() => outside.append(input), 0);',
+    'let mergedState = { count: 1 };',
+    'if (flag) { mergedState.count += 2; }',
+    'if (mergedState.count >= 1) { clearTimeout(mergedTimer); }',
+    'const arithmeticTimer = setTimeout(() => outside.append(input), 0);',
+    'let arithmeticState = { count: 1 };',
+    'if (flag) { arithmeticState.count += 2; }',
+    'arithmeticState.count += 2;',
+    'if (arithmeticState.count >= 3) { clearTimeout(arithmeticTimer); }',
+    'const refinedTimer = setTimeout(() => outside.append(input), 0);',
+    'let refinedState = { count: 1 };',
+    'if (flag) { refinedState.count += 2; }',
+    'if (refinedState.count >= 3) {',
+    '  refinedState.count += 0;',
+    '} else {',
+    '  refinedState.count += 2;',
+    '}',
+    'if (refinedState.count >= 3) { clearTimeout(refinedTimer); }',
+    'const widenedTimer = setTimeout(() => outside.append(input), 0);',
+    'let widenedState = { count: 0 };',
+    'for (const key in { a: 1, b: 2 }) { widenedState.count++; }',
+    'if (widenedState.count >= 1) { clearTimeout(widenedTimer); }',
+    'const partialTimer = setTimeout(() => outside.append(input), 0);',
+    'let partialState = { count: 0 };',
+    'if (flag) { partialState.count += 3; }',
+    'if (partialState.count >= 3) { clearTimeout(partialTimer); }',
+    'const oscillatingTimer = setTimeout(() => outside.append(input), 0);',
+    'let oscillatingState = { count: 1 };',
+    'for (const key in { a: 1, b: 2 }) { oscillatingState.count *= -2; }',
+    'if (oscillatingState.count >= 1) { clearTimeout(oscillatingTimer); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-numeric-interval.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+      programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+      programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 3
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 2
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown numeric interval authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -15719,6 +15802,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
       programmaticFormOwnershipCallbackTeardownHeapArithmeticPolicy: true,
+      programmaticFormOwnershipCallbackTeardownNumericIntervalPolicy: true,
     },
   ));
 
