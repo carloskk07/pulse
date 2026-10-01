@@ -1906,6 +1906,12 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy = (
     options.programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy === true
   );
+  const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
+  const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
+  const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
+  const teardownHeapUnknownExpression = ts.factory.createIdentifier(
+    "__teardown_heap_unknown__",
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -5503,13 +5509,6 @@ function auditImperativeNavigation(source, path, options = {}) {
     accumulated.continuing = continuing;
     return accumulated;
   }
-
-  const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
-  const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
-  const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
-  const teardownHeapUnknownExpression = ts.factory.createIdentifier(
-    "__teardown_heap_unknown__",
-  );
 
   function teardownHeapRootKey(name) {
     return TEARDOWN_HEAP_ROOT_PREFIX + name;
