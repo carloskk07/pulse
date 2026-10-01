@@ -5947,6 +5947,11 @@ function auditImperativeNavigation(source, path, options = {}) {
     env = new Map(),
   ) {
     if (!target || !affine) return;
+    if (
+      affine.terms.some((term) =>
+        teardownHeapReferenceEquals(target, term.reference)
+      )
+    ) return;
 
     if (
       affine.terms.length === 1
@@ -6775,37 +6780,51 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     const reference = teardownHeapReferenceForExpression(expression.operand, env);
     if (!reference) return null;
+    const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
+
     if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
       const currentRange = teardownHeapReadRange(reference, env);
       if (!currentRange) {
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
         teardownHeapWritePath(reference.root, reference.path, null, env);
         return { handled: true, safe: false };
       }
-      const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
-      return {
-        handled: true,
-        safe: teardownHeapWriteRange(
-          reference,
-          teardownNumericInterval(
-            currentRange.min + delta,
-            currentRange.max + delta,
-          ),
-          env,
+      const safe = teardownHeapWriteRange(
+        reference,
+        teardownNumericInterval(
+          currentRange.min + delta,
+          currentRange.max + delta,
         ),
-      };
+        env,
+      );
+      if (
+        safe
+        && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      ) {
+        teardownCorrelationShiftReference(reference, delta, env);
+      }
+      return { handled: true, safe };
     }
 
     const current = teardownHeapReadNumber(reference, env);
     if (current === null) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+        teardownCorrelationInvalidateReference(reference, env);
+      }
       teardownHeapWritePath(reference.root, reference.path, null, env);
       return { handled: true, safe: false };
     }
 
-    const delta = expression.operator === ts.SyntaxKind.PlusPlusToken ? 1 : -1;
-    return {
-      handled: true,
-      safe: teardownHeapWriteNumber(reference, current + delta, env),
-    };
+    const safe = teardownHeapWriteNumber(reference, current + delta, env);
+    if (
+      safe
+      && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+    ) {
+      teardownCorrelationShiftReference(reference, delta, env);
+    }
+    return { handled: true, safe };
   }
 
   function teardownApplyHeapAssignmentStatement(
@@ -6825,10 +6844,28 @@ function auditImperativeNavigation(source, path, options = {}) {
       enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy
       && expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken
     ) {
+      const shiftOperator = (
+        expression.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
+        || expression.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+      );
+      const shiftAmount = shiftOperator
+        ? teardownStaticNumber(expression.right, env)
+        : null;
+      const signedShift = shiftAmount === null
+        ? null
+        : (
+          expression.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken
+            ? -shiftAmount
+            : shiftAmount
+        );
+
       if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
         const currentRange = teardownHeapReadRange(reference, env);
         const operandRange = teardownNumericRange(expression.right, env);
         if (!currentRange || !operandRange) {
+          if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+            teardownCorrelationInvalidateReference(reference, env);
+          }
           teardownHeapWritePath(reference.root, reference.path, null, env);
           return { handled: true, safe: false };
         }
@@ -6838,18 +6875,29 @@ function auditImperativeNavigation(source, path, options = {}) {
           operandRange,
         );
         if (!nextRange) {
+          if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+            teardownCorrelationInvalidateReference(reference, env);
+          }
           teardownHeapWritePath(reference.root, reference.path, null, env);
           return { handled: true, safe: false };
         }
-        return {
-          handled: true,
-          safe: teardownHeapWriteRange(reference, nextRange, env),
-        };
+        const safe = teardownHeapWriteRange(reference, nextRange, env);
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          if (safe && signedShift !== null) {
+            teardownCorrelationShiftReference(reference, signedShift, env);
+          } else {
+            teardownCorrelationInvalidateReference(reference, env);
+          }
+        }
+        return { handled: true, safe };
       }
 
       const current = teardownHeapReadNumber(reference, env);
       const operand = teardownStaticNumber(expression.right, env);
       if (current === null || operand === null) {
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
         teardownHeapWritePath(reference.root, reference.path, null, env);
         return { handled: true, safe: false };
       }
@@ -6859,13 +6907,21 @@ function auditImperativeNavigation(source, path, options = {}) {
         operand,
       );
       if (next === null) {
+        if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
         teardownHeapWritePath(reference.root, reference.path, null, env);
         return { handled: true, safe: false };
       }
-      return {
-        handled: true,
-        safe: teardownHeapWriteNumber(reference, next, env),
-      };
+      const safe = teardownHeapWriteNumber(reference, next, env);
+      if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+        if (safe && signedShift !== null) {
+          teardownCorrelationShiftReference(reference, signedShift, env);
+        } else {
+          teardownCorrelationInvalidateReference(reference, env);
+        }
+      }
+      return { handled: true, safe };
     }
 
     if (expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
@@ -6873,33 +6929,50 @@ function auditImperativeNavigation(source, path, options = {}) {
       return { handled: true, safe: false };
     }
 
+    const affine = enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+      ? teardownAffineExpression(expression.right, env)
+      : null;
+    if (enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy) {
+      teardownCorrelationInvalidateReference(reference, env);
+    }
+
+    let safe = false;
     if (enforceProgrammaticFormOwnershipCallbackTeardownHeapArithmeticPolicy) {
       if (enforceProgrammaticFormOwnershipCallbackTeardownNumericIntervalPolicy) {
         const range = teardownNumericRange(expression.right, env);
-        if (range) {
-          return {
-            handled: true,
-            safe: teardownHeapWriteRange(reference, range, env),
-          };
+        if (range) safe = teardownHeapWriteRange(reference, range, env);
+      }
+      if (!safe) {
+        const numeric = teardownStaticNumber(expression.right, env);
+        if (numeric !== null) {
+          safe = teardownHeapWriteNumber(reference, numeric, env);
         }
       }
-      const numeric = teardownStaticNumber(expression.right, env);
-      if (numeric !== null) {
-        return {
-          handled: true,
-          safe: teardownHeapWriteNumber(reference, numeric, env),
-        };
+    }
+
+    if (!safe) {
+      const concrete = teardownConcreteStructuredValue(expression.right, env);
+      if (!concrete) {
+        teardownHeapWritePath(reference.root, reference.path, null, env);
+        return { handled: true, safe: false };
       }
+      teardownHeapWritePath(reference.root, reference.path, concrete, env);
+      safe = true;
     }
 
-    const concrete = teardownConcreteStructuredValue(expression.right, env);
-    if (!concrete) {
-      teardownHeapWritePath(reference.root, reference.path, null, env);
-      return { handled: true, safe: false };
+    if (
+      safe
+      && affine
+      && enforceProgrammaticFormOwnershipCallbackTeardownCorrelatedHeapPolicy
+    ) {
+      teardownCorrelationRecordAssignment(
+        reference,
+        expression.right,
+        affine,
+        env,
+      );
     }
-
-    teardownHeapWritePath(reference.root, reference.path, concrete, env);
-    return { handled: true, safe: true };
+    return { handled: true, safe };
   }
 
   function teardownHeapPropagationSafeFunction(definition, env = new Map()) {
