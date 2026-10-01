@@ -1903,6 +1903,15 @@ function auditImperativeNavigation(source, path, options = {}) {
   const enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy = (
     options.programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy === true
   );
+  const enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy = (
+    options.programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy === true
+  );
+  const TEARDOWN_HEAP_ROOT_PREFIX = "@@teardown-heap-root:";
+  const TEARDOWN_HEAP_VALUE_PREFIX = "@@teardown-heap-value:";
+  const TEARDOWN_HEAP_UNKNOWN_PREFIX = "@@teardown-heap-unknown:";
+  const teardownHeapUnknownExpression = ts.factory.createIdentifier(
+    "__teardown_heap_unknown__",
+  );
   const sourceFile = ts.createSourceFile(
     path,
     source,
@@ -5040,18 +5049,50 @@ function auditImperativeNavigation(source, path, options = {}) {
   }
 
   function functionEnvironment(definition, callExpression, parentEnv) {
-    const env = new Map();
+    const env = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      ? new Map(parentEnv)
+      : new Map();
     for (let index = 0; index < definition.parameters.length; index += 1) {
       const parameter = definition.parameters[index];
       if (!ts.isIdentifier(parameter.name)) continue;
       const argument = callExpression.arguments[index];
       if (!argument) continue;
-      env.set(
-        parameter.name.text,
-        enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
-          ? teardownResolveStructuredExpression(argument, parentEnv)
-          : resolveDataExpression(argument, parentEnv),
-      );
+
+      const resolved = enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
+        ? teardownResolveStructuredExpression(argument, parentEnv)
+        : resolveDataExpression(argument, parentEnv);
+      env.set(parameter.name.text, resolved);
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const reference = teardownHeapReferenceForExpression(argument, parentEnv);
+        if (reference) {
+          env.set(teardownHeapRootKey(parameter.name.text), reference);
+        } else {
+          env.delete(teardownHeapRootKey(parameter.name.text));
+          const concrete = teardownConcreteStructuredValue(argument, parentEnv);
+          if (
+            concrete
+            && (
+              ts.isObjectLiteralExpression(concrete)
+              || ts.isArrayLiteralExpression(concrete)
+            )
+          ) {
+            const root = (
+              "param:"
+              + definition.key
+              + ":"
+              + parameter.name.text
+              + "@"
+              + callExpression.pos
+            );
+            env.set(
+              teardownHeapRootKey(parameter.name.text),
+              { root, path: [] },
+            );
+            teardownHeapWritePath(root, [], concrete, env);
+          }
+        }
+      }
     }
     return env;
   }
@@ -5469,6 +5510,445 @@ function auditImperativeNavigation(source, path, options = {}) {
     return accumulated;
   }
 
+  function teardownHeapRootKey(name) {
+    return TEARDOWN_HEAP_ROOT_PREFIX + name;
+  }
+
+  function teardownHeapValueKey(root, path = []) {
+    return TEARDOWN_HEAP_VALUE_PREFIX + JSON.stringify([root, path]);
+  }
+
+  function teardownHeapUnknownKey(root) {
+    return TEARDOWN_HEAP_UNKNOWN_PREFIX + root;
+  }
+
+  function teardownHeapParsedValueKey(key) {
+    if (typeof key !== "string" || !key.startsWith(TEARDOWN_HEAP_VALUE_PREFIX)) {
+      return null;
+    }
+    try {
+      const [root, path] = JSON.parse(key.slice(TEARDOWN_HEAP_VALUE_PREFIX.length));
+      return (
+        typeof root === "string"
+        && Array.isArray(path)
+      )
+        ? { root, path: path.map((part) => String(part)) }
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function teardownHeapReferenceMarker(env, name) {
+    const marker = env.get(teardownHeapRootKey(name));
+    if (
+      marker
+      && typeof marker === "object"
+      && typeof marker.root === "string"
+      && Array.isArray(marker.path)
+    ) {
+      return {
+        root: marker.root,
+        path: marker.path.map((part) => String(part)),
+      };
+    }
+    return null;
+  }
+
+  function teardownHeapReferenceForExpression(expression, env = new Map()) {
+    if (!expression) return null;
+    let current = expression;
+    while (
+      current
+      && (
+        ts.isParenthesizedExpression(current)
+        || ts.isAsExpression(current)
+        || ts.isTypeAssertionExpression(current)
+        || ts.isNonNullExpression(current)
+      )
+    ) {
+      current = current.expression;
+    }
+    if (!current) return null;
+
+    if (ts.isIdentifier(current)) {
+      return teardownHeapReferenceMarker(env, current.text);
+    }
+
+    if (ts.isPropertyAccessExpression(current)) {
+      const owner = teardownHeapReferenceForExpression(current.expression, env);
+      return owner
+        ? { root: owner.root, path: [...owner.path, current.name.text] }
+        : null;
+    }
+
+    if (ts.isElementAccessExpression(current) && current.argumentExpression) {
+      const owner = teardownHeapReferenceForExpression(current.expression, env);
+      if (!owner) return null;
+      const argument = teardownResolveStructuredExpression(
+        current.argumentExpression,
+        env,
+      );
+      if (
+        !argument
+        || !(ts.isStringLiteralLike(argument) || ts.isNumericLiteral(argument))
+      ) return null;
+      return {
+        root: owner.root,
+        path: [...owner.path, argument.text],
+      };
+    }
+
+    return null;
+  }
+
+  function teardownHeapReachableRoots(env = new Map()) {
+    const roots = new Set();
+    for (const [key, value] of env) {
+      if (
+        typeof key !== "string"
+        || !key.startsWith(TEARDOWN_HEAP_ROOT_PREFIX)
+        || !value
+        || typeof value !== "object"
+        || typeof value.root !== "string"
+      ) continue;
+      roots.add(value.root);
+    }
+    return roots;
+  }
+
+  function teardownHeapValueFingerprint(value) {
+    if (value === null) return "<unknown>";
+    if (value === undefined) return "<absent>";
+    if (typeof value !== "object") return typeof value + ":" + String(value);
+    if (value === teardownHeapUnknownExpression) return "<unknown-expression>";
+    if (
+      ts.isStringLiteralLike(value)
+      || ts.isNumericLiteral(value)
+    ) return String(value.kind) + ":" + value.text;
+    if (
+      value.kind === ts.SyntaxKind.TrueKeyword
+      || value.kind === ts.SyntaxKind.FalseKeyword
+    ) return String(value.kind);
+    try {
+      if (
+        typeof value.pos === "number"
+        && value.pos >= 0
+        && typeof value.getText === "function"
+      ) {
+        return String(value.kind) + ":" + value.getText(sourceFile);
+      }
+    } catch {
+      // Synthetic or detached nodes fall through to a conservative identity.
+    }
+    return String(value.kind) + ":" + String(value.text ?? "");
+  }
+
+  function teardownHeapPathStartsWith(path, prefix) {
+    if (prefix.length > path.length) return false;
+    return prefix.every((part, index) => path[index] === part);
+  }
+
+  function teardownHeapReadPath(root, path, env = new Map()) {
+    const exactKey = teardownHeapValueKey(root, path);
+    if (env.has(exactKey)) {
+      return { found: true, value: env.get(exactKey) };
+    }
+
+    for (let prefixLength = path.length - 1; prefixLength >= 0; prefixLength -= 1) {
+      const prefix = path.slice(0, prefixLength);
+      const prefixKey = teardownHeapValueKey(root, prefix);
+      if (!env.has(prefixKey)) continue;
+      let value = env.get(prefixKey);
+      if (value === null) return { found: true, value: null };
+      for (const part of path.slice(prefixLength)) {
+        value = teardownStructuredPropertyValue(
+          value,
+          part,
+          env,
+          new Set(),
+        );
+        if (!value || value === teardownHeapUnknownExpression) {
+          return { found: true, value: null };
+        }
+      }
+      return { found: true, value };
+    }
+
+    if (env.get(teardownHeapUnknownKey(root)) === true) {
+      return { found: true, value: null };
+    }
+
+    return { found: false, value: null };
+  }
+
+  function teardownHeapWritePath(root, path, value, env = new Map()) {
+    for (const key of [...env.keys()]) {
+      const parsed = teardownHeapParsedValueKey(key);
+      if (
+        parsed
+        && parsed.root === root
+        && parsed.path.length > path.length
+        && teardownHeapPathStartsWith(parsed.path, path)
+      ) {
+        env.delete(key);
+      }
+    }
+    env.set(teardownHeapValueKey(root, path), value);
+    if (path.length === 0 && value !== null) {
+      env.delete(teardownHeapUnknownKey(root));
+    }
+  }
+
+  function teardownHeapInvalidateRoot(root, env = new Map()) {
+    for (const key of [...env.keys()]) {
+      const parsed = teardownHeapParsedValueKey(key);
+      if (parsed?.root === root) env.delete(key);
+    }
+    env.set(teardownHeapUnknownKey(root), true);
+  }
+
+  function teardownHeapInvalidateExpression(expression, env = new Map()) {
+    const reference = teardownHeapReferenceForExpression(expression, env);
+    if (reference) teardownHeapInvalidateRoot(reference.root, env);
+  }
+
+  function teardownHeapInvalidateCallReferences(call, env = new Map()) {
+    if (!call || !ts.isCallExpression(call)) return;
+    if (
+      ts.isPropertyAccessExpression(call.expression)
+      || ts.isElementAccessExpression(call.expression)
+    ) {
+      teardownHeapInvalidateExpression(propertyOwner(call.expression), env);
+    }
+    for (const argument of call.arguments) {
+      teardownHeapInvalidateExpression(argument, env);
+    }
+  }
+
+  function teardownHeapRootFromSpecialKey(key) {
+    if (typeof key !== "string") return null;
+    if (key.startsWith(TEARDOWN_HEAP_UNKNOWN_PREFIX)) {
+      return key.slice(TEARDOWN_HEAP_UNKNOWN_PREFIX.length);
+    }
+    return teardownHeapParsedValueKey(key)?.root ?? null;
+  }
+
+  function teardownHeapCommit(parentEnv, childEnv) {
+    const roots = teardownHeapReachableRoots(parentEnv);
+    for (const root of roots) {
+      for (const key of [...parentEnv.keys()]) {
+        if (teardownHeapRootFromSpecialKey(key) === root) {
+          parentEnv.delete(key);
+        }
+      }
+      for (const [key, value] of childEnv) {
+        if (teardownHeapRootFromSpecialKey(key) === root) {
+          parentEnv.set(key, value);
+        }
+      }
+    }
+  }
+
+  function teardownHeapMerge(parentEnv, branchEnvs) {
+    if (!branchEnvs.length) return;
+    const roots = teardownHeapReachableRoots(parentEnv);
+
+    for (const root of roots) {
+      const keys = new Set();
+      for (const env of branchEnvs) {
+        for (const key of env.keys()) {
+          if (teardownHeapRootFromSpecialKey(key) === root) keys.add(key);
+        }
+      }
+
+      for (const key of keys) {
+        if (key === teardownHeapUnknownKey(root)) continue;
+        const values = branchEnvs.map((env) =>
+          env.has(key) ? env.get(key) : undefined
+        );
+        const fingerprints = values.map(teardownHeapValueFingerprint);
+        const first = fingerprints[0];
+        if (fingerprints.every((value) => value === first)) {
+          if (values[0] === undefined) parentEnv.delete(key);
+          else parentEnv.set(key, values[0]);
+        } else {
+          parentEnv.set(key, null);
+        }
+      }
+
+      if (
+        branchEnvs.some((env) => env.get(teardownHeapUnknownKey(root)) === true)
+      ) {
+        parentEnv.set(teardownHeapUnknownKey(root), true);
+      } else {
+        parentEnv.delete(teardownHeapUnknownKey(root));
+      }
+    }
+  }
+
+  function teardownHeapRootStateFingerprint(root, env = new Map()) {
+    const entries = [];
+    for (const [key, value] of env) {
+      if (teardownHeapRootFromSpecialKey(key) !== root) continue;
+      entries.push([key, teardownHeapValueFingerprint(value)]);
+    }
+    entries.sort(([left], [right]) => left.localeCompare(right));
+    return JSON.stringify(entries);
+  }
+
+  function teardownHeapInvalidateChangedRoots(
+    targetEnv,
+    beforeEnv,
+    afterEnv,
+  ) {
+    const roots = teardownHeapReachableRoots(targetEnv);
+    for (const root of roots) {
+      if (
+        teardownHeapRootStateFingerprint(root, beforeEnv)
+        !== teardownHeapRootStateFingerprint(root, afterEnv)
+      ) {
+        teardownHeapInvalidateRoot(root, targetEnv);
+      }
+    }
+  }
+
+  function teardownHeapInitializeDeclaration(
+    declaration,
+    env = new Map(),
+  ) {
+    if (!ts.isIdentifier(declaration.name) || !declaration.initializer) return;
+
+    const aliasReference = teardownHeapReferenceForExpression(
+      declaration.initializer,
+      env,
+    );
+    const resolved = teardownResolveStructuredExpression(
+      declaration.initializer,
+      env,
+    );
+
+    if (aliasReference) {
+      env.set(declaration.name.text, resolved);
+      env.set(
+        teardownHeapRootKey(declaration.name.text),
+        aliasReference,
+      );
+      return;
+    }
+
+    const concrete = teardownConcreteStructuredValue(
+      declaration.initializer,
+      env,
+    );
+    if (!concrete) return;
+
+    env.set(declaration.name.text, concrete);
+    if (
+      ts.isObjectLiteralExpression(concrete)
+      || ts.isArrayLiteralExpression(concrete)
+    ) {
+      const root = declaration.name.text + "@" + declaration.pos;
+      env.set(
+        teardownHeapRootKey(declaration.name.text),
+        { root, path: [] },
+      );
+      env.delete(teardownHeapUnknownKey(root));
+      teardownHeapWritePath(root, [], concrete, env);
+    }
+  }
+
+  function teardownApplyHeapVariableStatement(statement, env = new Map()) {
+    if (!ts.isVariableStatement(statement)) return false;
+    for (const declaration of statement.declarationList.declarations) {
+      teardownHeapInitializeDeclaration(declaration, env);
+    }
+    return true;
+  }
+
+  function teardownApplyHeapAssignmentStatement(
+    statement,
+    env = new Map(),
+  ) {
+    if (
+      !ts.isExpressionStatement(statement)
+      || !ts.isBinaryExpression(statement.expression)
+    ) return null;
+
+    const expression = statement.expression;
+    const reference = teardownHeapReferenceForExpression(expression.left, env);
+    if (!reference) return null;
+
+    if (expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
+      teardownHeapInvalidateRoot(reference.root, env);
+      return { handled: true, safe: false };
+    }
+
+    const concrete = teardownConcreteStructuredValue(expression.right, env);
+    if (!concrete) {
+      teardownHeapWritePath(reference.root, reference.path, null, env);
+      return { handled: true, safe: false };
+    }
+
+    teardownHeapWritePath(reference.root, reference.path, concrete, env);
+    return { handled: true, safe: true };
+  }
+
+  function teardownHeapPropagationSafeFunction(definition, env = new Map()) {
+    if (!definition?.body || !ts.isBlock(definition.body)) return false;
+    let safe = true;
+
+    function scan(node) {
+      if (!safe || !node) return;
+      if (node !== definition.body && ts.isFunctionLike(node)) return;
+      if (
+        ts.isReturnStatement(node)
+        || ts.isThrowStatement(node)
+        || ts.isTryStatement(node)
+        || ts.isSwitchStatement(node)
+        || ts.isForStatement(node)
+        || ts.isForOfStatement(node)
+        || ts.isForInStatement(node)
+        || ts.isWhileStatement(node)
+        || ts.isDoStatement(node)
+        || ts.isBreakStatement(node)
+        || ts.isContinueStatement(node)
+        || ts.isAwaitExpression(node)
+        || ts.isYieldExpression(node)
+      ) {
+        safe = false;
+        return;
+      }
+      if (
+        ts.isIfStatement(node)
+        && teardownStaticBoolean(node.expression, env) === null
+      ) {
+        safe = false;
+        return;
+      }
+      ts.forEachChild(node, scan);
+    }
+
+    scan(definition.body);
+    return safe;
+  }
+
+  function teardownHeapPropagateLocalCall(
+    definition,
+    call,
+    parentEnv,
+    childEnv,
+  ) {
+    if (!enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      return;
+    }
+    if (teardownHeapPropagationSafeFunction(definition, childEnv)) {
+      teardownHeapCommit(parentEnv, childEnv);
+      return;
+    }
+    teardownHeapInvalidateCallReferences(call, parentEnv);
+  }
+
   function teardownUnwrapStructuredExpression(
     expression,
     env = new Map(),
@@ -5508,6 +5988,22 @@ function auditImperativeNavigation(source, path, options = {}) {
     env = new Map(),
     seen = new Set(),
   ) {
+    if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      const reference = teardownHeapReferenceForExpression(ownerExpression, env);
+      if (reference) {
+        const overlay = teardownHeapReadPath(
+          reference.root,
+          [...reference.path, String(key)],
+          env,
+        );
+        if (overlay.found) {
+          return overlay.value === null
+            ? teardownHeapUnknownExpression
+            : overlay.value;
+        }
+      }
+    }
+
     const owner = teardownResolveStructuredExpression(ownerExpression, env, seen);
     if (!owner || key === null || key === undefined) return null;
     const keyText = String(key);
@@ -6206,6 +6702,9 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     for (const value of plan.values) {
       if (active.length === 0) break;
+      const beforeIterationEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+        ? new Map(env)
+        : null;
       const iterationEnv = new Map(env);
       iterationEnv.set(
         plan.variableName,
@@ -6218,6 +6717,26 @@ function auditImperativeNavigation(source, path, options = {}) {
         iterationEnv,
         callStack,
       );
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const hasAbruptHeapTransfer = (
+          (bodyResult.exits ?? []).length > 0
+          || (bodyResult.breaks ?? []).length > 0
+          || (bodyResult.continues ?? []).length > 0
+          || [...(bodyResult.labeledBreaks ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+          || [...(bodyResult.labeledContinues ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+        );
+        teardownHeapCommit(env, iterationEnv);
+        if (hasAbruptHeapTransfer && beforeIterationEnv) {
+          teardownHeapInvalidateChangedRoots(
+            env,
+            beforeIterationEnv,
+            iterationEnv,
+          );
+        }
+      }
 
       const ownBreaks = teardownFlowTransferMapWithout(
         bodyResult.labeledBreaks,
@@ -6431,6 +6950,9 @@ function auditImperativeNavigation(source, path, options = {}) {
 
     for (const value of plan.values) {
       if (active.length === 0) break;
+      const beforeIterationEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+        ? new Map(env)
+        : null;
       const iterationEnv = new Map(env);
       if (
         enforceProgrammaticFormOwnershipCallbackTeardownStructuredIterablePolicy
@@ -6452,6 +6974,26 @@ function auditImperativeNavigation(source, path, options = {}) {
         iterationEnv,
         callStack,
       );
+
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const hasAbruptHeapTransfer = (
+          (bodyResult.exits ?? []).length > 0
+          || (bodyResult.breaks ?? []).length > 0
+          || (bodyResult.continues ?? []).length > 0
+          || [...(bodyResult.labeledBreaks ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+          || [...(bodyResult.labeledContinues ?? new Map()).values()]
+            .some((statuses) => statuses.length > 0)
+        );
+        teardownHeapCommit(env, iterationEnv);
+        if (hasAbruptHeapTransfer && beforeIterationEnv) {
+          teardownHeapInvalidateChangedRoots(
+            env,
+            beforeIterationEnv,
+            iterationEnv,
+          );
+        }
+      }
 
       const ownBreaks = teardownFlowTransferMapWithout(
         bodyResult.labeledBreaks,
@@ -6636,13 +7178,25 @@ function auditImperativeNavigation(source, path, options = {}) {
       };
     }
 
+    const loopBodyEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      ? new Map(env)
+      : env;
+    const loopEntryEnv = enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      ? new Map(env)
+      : null;
     const bodyResult = teardownFlowStatement(
       statement.statement,
       states,
       matchCall,
-      env,
+      loopBodyEnv,
       callStack,
     );
+    if (
+      enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy
+      && loopEntryEnv
+    ) {
+      teardownHeapInvalidateChangedRoots(env, loopEntryEnv, loopBodyEnv);
+    }
     const ownBreaks = teardownFlowTransferMapWithout(
       bodyResult.labeledBreaks,
       labelNames,
@@ -7043,6 +7597,18 @@ function auditImperativeNavigation(source, path, options = {}) {
     callStack = new Set(),
   ) {
     if (ts.isBlock(statement)) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const blockEnv = new Map(env);
+        const result = teardownFlowSequence(
+          statement.statements,
+          states,
+          matchCall,
+          blockEnv,
+          callStack,
+        );
+        teardownHeapCommit(env, blockEnv);
+        return result;
+      }
       return teardownFlowSequence(
         statement.statements,
         states,
@@ -7098,6 +7664,41 @@ function auditImperativeNavigation(source, path, options = {}) {
         }
       }
 
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const thenEnv = new Map(env);
+        const elseEnv = new Map(env);
+        const thenResult = teardownFlowStatement(
+          statement.thenStatement,
+          states,
+          matchCall,
+          thenEnv,
+          callStack,
+        );
+        const elseResult = statement.elseStatement
+          ? teardownFlowStatement(
+            statement.elseStatement,
+            states,
+            matchCall,
+            elseEnv,
+            callStack,
+          )
+          : {
+            continuing: [...states],
+            exits: [],
+            breaks: [],
+            continues: [],
+            labeledBreaks: new Map(),
+            labeledContinues: new Map(),
+            loopUncertainty: false,
+          };
+
+        const continuingEnvs = [];
+        if ((thenResult.continuing ?? []).length > 0) continuingEnvs.push(thenEnv);
+        if ((elseResult.continuing ?? []).length > 0) continuingEnvs.push(elseEnv);
+        teardownHeapMerge(env, continuingEnvs);
+        return teardownFlowMerge(thenResult, elseResult);
+      }
+
       const thenResult = teardownFlowStatement(
         statement.thenStatement,
         states,
@@ -7145,6 +7746,19 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (ts.isSwitchStatement(statement)) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const beforeEnv = new Map(env);
+        const switchEnv = new Map(env);
+        const result = teardownFlowSwitch(
+          statement,
+          states,
+          matchCall,
+          switchEnv,
+          callStack,
+        );
+        teardownHeapInvalidateChangedRoots(env, beforeEnv, switchEnv);
+        return result;
+      }
       return teardownFlowSwitch(
         statement,
         states,
@@ -7155,6 +7769,19 @@ function auditImperativeNavigation(source, path, options = {}) {
     }
 
     if (ts.isTryStatement(statement)) {
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        const beforeEnv = new Map(env);
+        const tryEnv = new Map(env);
+        const result = teardownFlowTry(
+          statement,
+          states,
+          matchCall,
+          tryEnv,
+          callStack,
+        );
+        teardownHeapInvalidateChangedRoots(env, beforeEnv, tryEnv);
+        return result;
+      }
       return teardownFlowTry(
         statement,
         states,
@@ -7256,6 +7883,35 @@ function auditImperativeNavigation(source, path, options = {}) {
       };
     }
 
+    if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+      const assignment = teardownApplyHeapAssignmentStatement(statement, env);
+      if (assignment?.handled) {
+        return assignment.safe
+          ? {
+            continuing: [...states],
+            exits: [],
+            breaks: [],
+            continues: [],
+            labeledBreaks: new Map(),
+            labeledContinues: new Map(),
+            loopUncertainty: false,
+          }
+          : teardownFlowUnknownStatement(states);
+      }
+
+      if (teardownApplyHeapVariableStatement(statement, env)) {
+        return {
+          continuing: [...states],
+          exits: [],
+          breaks: [],
+          continues: [],
+          labeledBreaks: new Map(),
+          labeledContinues: new Map(),
+          loopUncertainty: false,
+        };
+      }
+    }
+
     const call = directCallStatement(statement);
     if (call) {
       const matched = matchCall(call, env, callStack);
@@ -7309,6 +7965,9 @@ function auditImperativeNavigation(source, path, options = {}) {
           labeledContinues: new Map(),
           loopUncertainty: false,
         };
+      }
+      if (enforceProgrammaticFormOwnershipCallbackTeardownStructuredHeapPolicy) {
+        teardownHeapInvalidateCallReferences(call, env);
       }
       return teardownFlowUnknownStatement(states);
     }
@@ -7444,6 +8103,12 @@ function auditImperativeNavigation(source, path, options = {}) {
         childEnv,
         nextStack,
       );
+      teardownHeapPropagateLocalCall(
+        definition,
+        call,
+        callEnv,
+        childEnv,
+      );
       if (status === "guaranteed") return true;
       if (status === "loop-partial") return "loop-partial-teardown";
       if (status === "partial") return "partial-teardown";
@@ -7490,6 +8155,12 @@ function auditImperativeNavigation(source, path, options = {}) {
         addInfo,
         childEnv,
         nextStack,
+      );
+      teardownHeapPropagateLocalCall(
+        definition,
+        call,
+        callEnv,
+        childEnv,
       );
       if (status === "guaranteed") return true;
       if (status === "loop-partial") return "loop-partial-teardown";
@@ -12802,6 +13473,90 @@ function auditImperativeNavigation(source, path, options = {}) {
 
 {
   const selfTest = [
+    'const formA = document.createElement("form");',
+    'const outside = document.createElement("div");',
+    'const input = document.createElement("input");',
+    'formA.append(input);',
+    'const directMutation = setTimeout(() => outside.append(input), 0);',
+    'let directState = { stopped: false };',
+    'directState.stopped = true;',
+    'if (directState.stopped) { clearTimeout(directMutation); }',
+    'const aliasMutation = setTimeout(() => outside.append(input), 0);',
+    'let aliasState = { stopped: false };',
+    'const alias = aliasState;',
+    'alias.stopped = true;',
+    'if (aliasState.stopped) { clearTimeout(aliasMutation); }',
+    'const nestedMutation = setTimeout(() => outside.append(input), 0);',
+    'let nestedState = { meta: { stopped: false } };',
+    'nestedState.meta.stopped = true;',
+    'if (nestedState.meta.stopped) { clearTimeout(nestedMutation); }',
+    'const loopMutation = setTimeout(() => outside.append(input), 0);',
+    'let loopState = { stopped: false };',
+    'for (const item of [{ stop: false }, { stop: true }] as const) {',
+    '  if (item.stop) { loopState.stopped = true; }',
+    '  if (loopState.stopped) { clearTimeout(loopMutation); }',
+    '}',
+    'const helperMutation = setTimeout(() => outside.append(input), 0);',
+    'let helperState = { stopped: false };',
+    'function markStopped(target) { target.stopped = true; }',
+    'markStopped(helperState);',
+    'if (helperState.stopped) { clearTimeout(helperMutation); }',
+    'const branchUnknown = setTimeout(() => outside.append(input), 0);',
+    'let branchState = { stopped: false };',
+    'if (flag) { branchState.stopped = true; }',
+    'if (branchState.stopped) { clearTimeout(branchUnknown); }',
+    'const callUnknown = setTimeout(() => outside.append(input), 0);',
+    'let callState = { stopped: false };',
+    'callState.stopped = true;',
+    'mutateExternally(callState);',
+    'if (callState.stopped) { clearTimeout(callUnknown); }',
+    'input.disabled = true;',
+  ].join("\n");
+  const violations = auditImperativeNavigation(
+    selfTest,
+    "programmatic-ownership-callback-teardown-structured-heap.self-test.ts",
+    {
+      formControlParticipationPolicy: true,
+      formOwnershipProvenancePolicy: true,
+      formOwnershipLifecyclePolicy: true,
+      formOwnershipRelocationPolicy: true,
+      programmaticFormOwnershipStatePolicy: true,
+      programmaticFormOwnershipControlFlowPolicy: true,
+      programmaticFormOwnershipExecutionScopePolicy: true,
+      programmaticFormOwnershipCallbackSchedulingPolicy: true,
+      programmaticFormOwnershipCallbackLifetimePolicy: true,
+      programmaticFormOwnershipCallbackTeardownPathPolicy: true,
+      programmaticFormOwnershipCallbackTeardownControlFlowPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLoopPolicy: true,
+      programmaticFormOwnershipCallbackTeardownLabeledIterationPolicy: true,
+      programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
+      programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
+    },
+  );
+  const counts = violations.reduce((acc, violation) => {
+    acc[violation.kind] = (acc[violation.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  if (
+    violations.length !== 3
+    || counts["programmatic-ownership-scheduled-teardown-path-dynamic"] !== 2
+    || counts["programmatic-participation-weaken"] !== 1
+    || counts["programmatic-ownership-scheduled-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-teardown-loop-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-bounded-dynamic"] !== undefined
+    || counts["programmatic-ownership-scheduled-repeat-dynamic"] !== undefined
+  ) {
+    throw new Error(
+      "Programmatic ownership callback teardown structured heap authority self-test failed: "
+      + JSON.stringify(violations),
+    );
+  }
+}
+
+{
+  const selfTest = [
     'import { useEffect } from "react";',
     'const formA = document.createElement("form");',
     'const outside = document.createElement("div");',
@@ -14057,6 +14812,7 @@ const allImperativeNavigationViolations = ["app", "components", "lib", "provider
       programmaticFormOwnershipCallbackTeardownFixedPointPolicy: true,
       programmaticFormOwnershipCallbackTeardownConcreteIterablePolicy: true,
       programmaticFormOwnershipCallbackTeardownStructuredIterablePolicy: true,
+      programmaticFormOwnershipCallbackTeardownStructuredHeapPolicy: true,
     },
   ));
 
