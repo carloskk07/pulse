@@ -69,8 +69,8 @@ export default async function HomePage() {
               <em>Know what it is worth.</em>
             </h1>
             <p>
-              Claim a recurring faucet reward where each eligible claim can reveal a different value from the published
-              range. See the money value clearly before and after every draw. No purchase is required to join.
+              Claim a recurring faucet reward with the current reward conditions shown clearly before you claim.
+              See the money value clearly before and after every claim. No purchase is required to join.
             </p>
 
             <div className="pc-home-actions">
@@ -108,23 +108,23 @@ export default async function HomePage() {
             </div>
             <PulseCoreVisual
               state={publicLive ? "ready" : "limited"}
-              eyebrow={rewardVariable ? (publicLive ? "Live reward range" : "Launch reward range") : "Current reward rule"}
-              caption={rewardVariable ? `${publicLive ? "Variable draw" : "Prepared for launch"} · ${intervalLabel(pulseInterval)}` : `${payoutAsset} value · ${intervalLabel(pulseInterval)}`}
+              eyebrow={rewardVariable ? (publicLive ? "Current reward" : "Launch reward") : "Current reward rule"}
+              caption={rewardVariable ? `${publicLive ? "Hourly faucet" : "Prepared for launch"} · ${intervalLabel(pulseInterval)}` : `${payoutAsset} value · ${intervalLabel(pulseInterval)}`}
             >
               <span className="pulse-core-word pc-home-money-value">+{rewardDisplay}</span>
             </PulseCoreVisual>
             <div className="pc-home-core-status">
               <span><i className={publicLive ? "is-live" : "is-preparing"} /> {publicLive ? "Hourly reward available" : "Account access is open"}</span>
-              <small>{rewardVariable ? (publicLive ? "Each eligible claim reveals one value from the live range." : "The launch reward range is prepared; public claiming is still closed.") : "The active reward rule is shown before every eligible claim."}</small>
+              <small>{rewardVariable ? (publicLive ? "Current reward conditions are shown before every eligible claim." : "Launch reward conditions are prepared; public claiming is still closed.") : "The active reward rule is shown before every eligible claim."}</small>
             </div>
           </aside>
         </div>
 
         <div className="pc-v6-shell pc-home-value-strip" aria-label="Pulsercuit reward summary">
           <article>
-            <small>{rewardVariable ? (publicLive ? "Live reward range" : "Launch reward range") : "Current reward rule"}</small>
+            <small>{rewardVariable ? (publicLive ? "Current reward" : "Launch reward") : "Current reward rule"}</small>
             <strong>{rewardDisplay}</strong>
-            <span>{rewardVariable ? (publicLive ? "one value is revealed per eligible claim" : "ready for public claiming when access opens") : "the active rule can change over time"}</span>
+            <span>{rewardVariable ? (publicLive ? "current conditions shown before claim" : "ready for public claiming when access opens") : "current conditions shown before claim"}</span>
           </article>
           <article>
             <small>Return window</small>
@@ -160,8 +160,8 @@ export default async function HomePage() {
               <span>01</span>
               <h3>Claim the hourly reward</h3>
               <p>{rewardVariable
-                ? "When your timer opens, claim and reveal one reward from the published live range."
-                : "When your timer opens, the current reward rule is shown before you claim; it is not a permanent prize amount."}</p>
+                ? "When your timer opens, the current reward is settled and added to your balance."
+                : "When your timer opens, the current reward rule is shown before you claim."}</p>
             </article>
             <article>
               <div className="pc-home-step-icon"><Clock /></div>
