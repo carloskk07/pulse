@@ -16,12 +16,14 @@ import { getEarningExperience } from "@/lib/product-experience";
 import { isRecentAuthoritativeEvent } from "@/lib/product-experience-core";
 import { formatUsdFromCredits, getRewardSnapshot } from "@/lib/reward-state";
 import { getCurrentUserContext } from "@/lib/current-user-context";
+import { cleanOperationalReference } from "@/lib/operational-flow";
+import { hasTurnstileRuntimeAuthority } from "@/lib/turnstile";
 import { buildAyetOfferwallUrl, isAyetConfigured } from "@/providers/ayet";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Rewards" };
 
-type Props = { searchParams: Promise<{ claim?: string }> };
+type Props = { searchParams: Promise<{ claim?: string; ref?: string }> };
 
 const claimCopy: Record<string, string> = {
   success: "Reward claimed. Your balance and progress were updated.",
@@ -44,10 +46,10 @@ export default async function DashboardPage({ searchParams }: Props) {
   const payout = getFaucetPayPackConfig();
   const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
   const verificationConfigured = Boolean(
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-    && process.env.TURNSTILE_SECRET_KEY
+    hasTurnstileRuntimeAuthority()
     && process.env.SUPABASE_SERVICE_ROLE_KEY
   );
+  const operationalRef = cleanOperationalReference(params.ref, "claim");
   const canClaim = state.signedIn
     && state.claimReady
     && state.claimRewardCredits > 0
@@ -118,6 +120,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         {params.claim ? (
           <div className={`claim-message ${claimSucceeded ? "success" : "neutral"}`}>
             {params.claim === "success" && !claimSucceeded ? "Reward status refreshed. Your current balance is shown above." : claimCopy[params.claim] ?? "Circuit updated."}
+            {operationalRef ? <small>Support reference: {operationalRef}</small> : null}
             {claimSucceeded ? <Link href="/progress" transitionTypes={getRouteTransitionTypesForHref("home", "/progress")}>See progress <ArrowUpRight /></Link> : null}
           </div>
         ) : null}

@@ -5,6 +5,7 @@ import {
   recordAttributedPulseCompletion,
   RETENTION_ATTRIBUTION_COOKIE,
 } from "@/lib/retention-attribution";
+import { createOperationalReference, logOperationalIssue } from "@/lib/operational-flow";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { getProductRouteHref } from "@/lib/route-semantics";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -12,8 +13,28 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureFreshTreasuryBacking } from "@/lib/treasury-backing";
 import { verifyTurnstile } from "@/lib/turnstile";
 
-function dashboardRedirect(request: NextRequest, state: string) {
-  return NextResponse.redirect(new URL(getProductRouteHref("home", `?claim=${encodeURIComponent(state)}`), request.url), 303);
+function dashboardRedirect(
+  request: NextRequest,
+  state: string,
+  reference?: string,
+) {
+  const url = new URL(
+    getProductRouteHref("home", `?claim=${encodeURIComponent(state)}`),
+    request.url,
+  );
+  if (reference) url.searchParams.set("ref", reference);
+  return NextResponse.redirect(url, 303);
+}
+
+function claimIssueRedirect(
+  request: NextRequest,
+  state: string,
+  stage: string,
+  code?: string,
+) {
+  const reference = createOperationalReference("claim");
+  logOperationalIssue("claim", reference, { stage, status: state, code });
+  return dashboardRedirect(request, state, reference);
 }
 
 function revalidateRewardViews() {
@@ -87,7 +108,14 @@ export async function POST(request: NextRequest) {
     const { error: profileError } = await admin
       .from("profiles")
       .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
-    if (profileError) return dashboardRedirect(request, "failed");
+    if (profileError) {
+      return claimIssueRedirect(
+        request,
+        "failed",
+        "profile-self-heal",
+        profileError.code,
+      );
+    }
 
     ({ data, error } = await admin.rpc("claim_hourly_pulse", { p_user_id: userId }));
   }
@@ -110,7 +138,12 @@ export async function POST(request: NextRequest) {
     if (String(error.message ?? "").includes("pulse_backing_guard:")) {
       return dashboardRedirect(request, "budget-paused");
     }
-    return dashboardRedirect(request, "failed");
+    return claimIssueRedirect(
+      request,
+      "failed",
+      "claim-rpc",
+      error.code,
+    );
   }
 
   const result = (data ?? {}) as { status?: string };
@@ -123,5 +156,10 @@ export async function POST(request: NextRequest) {
     return dashboardRedirect(request, "budget-paused");
   }
 
-  return dashboardRedirect(request, "failed");
+  return claimIssueRedirect(
+    request,
+    "failed",
+    "unexpected-claim-status",
+    result.status,
+  );
 }
