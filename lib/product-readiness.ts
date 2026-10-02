@@ -42,10 +42,6 @@ export function hasProductSetupBlocker(readiness: ProductReadiness) {
   return readiness.checks.some((item) => PRODUCT_SETUP_CHECK_IDS.has(item.id) && !item.pass);
 }
 
-function configured(...keys: string[]) {
-  return keys.every((key) => Boolean(process.env[key]?.trim()));
-}
-
 function objectValue(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
