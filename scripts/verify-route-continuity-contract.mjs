@@ -1940,7 +1940,11 @@ function auditImperativeNavigation(source, path, options = {}) {
   const nextResponseBindings = importedBindingNames(sourceFile, "next/server", "NextResponse");
   const navigationBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getRouteNavigationHref");
   const productHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getProductRouteHref");
-  const externalHrefBindings = importedBindingNames(sourceFile, "@/lib/route-semantics", "getExternalNavigationHref");
+  const externalHrefBindings = new Set([
+    ...importedBindingNames(sourceFile, "@/lib/route-semantics", "getExternalNavigationHref"),
+    ...importedBindingNames(sourceFile, "@/lib/public-external-url", "cleanPublicExternalUrl"),
+    ...importedBindingNames(sourceFile, "@/lib/public-external-url", "parsePublicExternalUrl"),
+  ]);
   const projectImportBindings = new Set();
   const projectImportNamespaces = new Set();
 
@@ -1957,7 +1961,11 @@ function auditImperativeNavigation(source, path, options = {}) {
       || moduleName.startsWith("./")
       || moduleName.startsWith("../")
     );
-    if (!isProjectModule || moduleName === "@/lib/route-semantics") continue;
+    if (
+      !isProjectModule
+      || moduleName === "@/lib/route-semantics"
+      || moduleName === "@/lib/public-external-url"
+    ) continue;
 
     if (statement.importClause.name) {
       projectImportBindings.add(statement.importClause.name.text);
