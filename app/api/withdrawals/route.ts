@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { hasCurrentFaucetPayReadProof, hasCurrentFaucetPaySendScopeProof } from "@/lib/faucetpay-authority";
 import { recordFaucetPayPayoutProofById } from "@/lib/faucetpay-receipt-proof";
+import { createOperationalReference, logOperationalIssue } from "@/lib/operational-flow";
 import { recordReleaseEvidence } from "@/lib/release-evidence";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { getProductRouteHref } from "@/lib/route-semantics";
@@ -17,8 +18,34 @@ export const runtime = "nodejs";
 
 const PAYOUT_DISPATCH_RETRY_SECONDS = 30;
 
-function walletRedirect(request: NextRequest, state: string) {
-  return NextResponse.redirect(new URL(getProductRouteHref("wallet", `?withdraw=${encodeURIComponent(state)}`), request.url), 303);
+function walletRedirect(
+  request: NextRequest,
+  state: string,
+  reference?: string,
+) {
+  const url = new URL(
+    getProductRouteHref("wallet", `?withdraw=${encodeURIComponent(state)}`),
+    request.url,
+  );
+  if (reference) url.searchParams.set("ref", reference);
+  return NextResponse.redirect(url, 303);
+}
+
+function withdrawalIssueRedirect(
+  request: NextRequest,
+  state: string,
+  stage: string,
+  code?: string,
+  retryable = false,
+) {
+  const reference = createOperationalReference("withdrawal");
+  logOperationalIssue("withdrawal", reference, {
+    stage,
+    status: state,
+    code,
+    retryable,
+  });
+  return walletRedirect(request, state, reference);
 }
 
 type ReservedWithdrawal = {
@@ -165,7 +192,12 @@ async function executeReservedPayout(
   recovery: boolean,
 ) {
   if (!reserved.withdrawal_id || !reserved.idempotency_key || !reserved.destination || !reserved.asset || !reserved.payout_amount_units || !reserved.amount_credits) {
-    return walletRedirect(request, "reserve-failed");
+    return withdrawalIssueRedirect(
+      request,
+      "reserve-failed",
+      "reserved-payout-shape",
+      "missing-authoritative-fields",
+    );
   }
   const submittedRecovery = recovery && reserved.status === "submitted";
   const authorityValid = submittedRecovery
@@ -176,7 +208,15 @@ async function executeReservedPayout(
   }
 
   const claimed = await claimDispatch(admin, reserved.withdrawal_id);
-  if (claimed.error) return walletRedirect(request, "processing");
+  if (claimed.error) {
+    return withdrawalIssueRedirect(
+      request,
+      "processing",
+      "dispatch-claim",
+      claimed.error.code,
+      true,
+    );
+  }
 
   const dispatch = (claimed.data ?? {}) as DispatchClaimResult;
   if (dispatch.status === "paid") {
@@ -203,7 +243,13 @@ async function executeReservedPayout(
 
     const finalized = await finalize(admin, reserved.withdrawal_id, "paid", payout.externalId, recovery ? "FaucetPay payout recovered with the original idempotency key" : "FaucetPay payout completed");
     if (finalized.error || !authoritativePaidSettlement(finalized.data, payout.externalId)) {
-      return walletRedirect(request, "processing");
+      return withdrawalIssueRedirect(
+        request,
+        "processing",
+        "paid-finalize",
+        finalized.error?.code ?? "settlement-mismatch",
+        true,
+      );
     }
 
     if (await matchesCurrentPayoutAuthority(admin, reserved)) {
@@ -223,18 +269,38 @@ async function executeReservedPayout(
         null,
         message,
       );
-      if (failed.error) return walletRedirect(request, "processing");
-      return walletRedirect(request, "failed");
+      if (failed.error) {
+        return withdrawalIssueRedirect(
+          request,
+          "processing",
+          "failed-finalize",
+          failed.error.code,
+          true,
+        );
+      }
+      return withdrawalIssueRedirect(
+        request,
+        "failed",
+        "provider-send",
+        "non-retryable",
+        false,
+      );
     }
 
-    await finalize(
+    const submitted = await finalize(
       admin,
       reserved.withdrawal_id,
       "submitted",
       null,
       message,
     );
-    return walletRedirect(request, "processing");
+    return withdrawalIssueRedirect(
+      request,
+      "processing",
+      submitted.error ? "submitted-finalize" : "provider-send",
+      submitted.error?.code ?? "retryable",
+      true,
+    );
   }
 }
 
@@ -267,7 +333,15 @@ export async function POST(request: NextRequest) {
     .limit(1)
     .maybeSingle();
 
-  if (activeError) return walletRedirect(request, "reserve-failed");
+  if (activeError) {
+    return withdrawalIssueRedirect(
+      request,
+      "reserve-failed",
+      "active-withdrawal-read",
+      activeError.code,
+      true,
+    );
+  }
   const active = activeData as ActiveWithdrawalRow | null;
 
   if (active) {
@@ -345,7 +419,15 @@ export async function POST(request: NextRequest) {
     p_payout_amount_units: config.amountSmallestUnits,
   });
 
-  if (error) return walletRedirect(request, "reserve-failed");
+  if (error) {
+    return withdrawalIssueRedirect(
+      request,
+      "reserve-failed",
+      "reserve-withdrawal",
+      error.code,
+      true,
+    );
+  }
   const reserved = (data ?? {}) as ReservedWithdrawal;
   if (reserved.status === "insufficient") return walletRedirect(request, "insufficient");
   if (reserved.status === "free_window_used") return walletRedirect(request, "free-pass-used");
