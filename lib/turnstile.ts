@@ -40,6 +40,14 @@ function allowedHostnames() {
   return [...hostnames];
 }
 
+export function hasTurnstileRuntimeAuthority() {
+  return Boolean(
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()
+    && process.env.TURNSTILE_SECRET_KEY?.trim()
+    && allowedHostnames().length > 0
+  );
+}
+
 function actionMatches(actual: string | undefined, expected: string | string[]) {
   const allowed = Array.isArray(expected) ? expected : [expected];
   return Boolean(actual && allowed.includes(actual));
