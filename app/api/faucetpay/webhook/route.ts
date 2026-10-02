@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { readRequestBytesWithLimit } from "@/lib/request-security";
+import { getFaucetPayWebhookSecret } from "@/lib/faucetpay-webhook-authority";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -43,8 +44,8 @@ function positiveSafeInteger(value: unknown) {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.FAUCETPAY_WEBHOOK_SECRET?.trim() ?? "";
-  if (!secret || secret.length > 512) {
+  const secret = getFaucetPayWebhookSecret();
+  if (!secret) {
     return json(503, { status: "webhook-not-configured" });
   }
 

@@ -40,6 +40,15 @@ export function classifyGroup(values, keys) {
   return "PRESENT";
 }
 
+export function classifyStrongSecret(values, key, minLength = 32, maxLength = 512) {
+  const value = String(values.get(key) ?? "").trim();
+  const state = classifyValue(value);
+  if (state !== "PRESENT") return state;
+  return value.length >= minLength && value.length <= maxLength
+    ? "PRESENT"
+    : "INVALID";
+}
+
 export function classifyBuildVisibleGroup(values, keys) {
   const states = keys.map((key) => classifyValue(values.get(key)));
   if (states.includes("MISSING")) return "MISSING";
@@ -85,6 +94,9 @@ function runSelfTest() {
     [classifySupabasePublicConfig(publishableOnly), "PRESENT", "publishable-only Supabase config"],
     [classifySupabasePublicConfig(legacyOnly), "PRESENT", "legacy-only Supabase config"],
     [classifySupabasePublicConfig(noPublicKey), "MISSING", "Supabase config without a public key"],
+    [classifyStrongSecret(weakWebhook, "FAUCETPAY_WEBHOOK_SECRET"), "INVALID", "weak FaucetPay webhook secret"],
+    [classifyStrongSecret(strongWebhook, "FAUCETPAY_WEBHOOK_SECRET"), "PRESENT", "strong FaucetPay webhook secret"],
+    [classifyStrongSecret(managedWebhook, "FAUCETPAY_WEBHOOK_SECRET"), "SENSITIVE_MANAGED", "managed FaucetPay webhook secret"],
   ];
 
   for (const [actual, expected, label] of assertions) {
@@ -111,6 +123,7 @@ function audit(envPath) {
       "FAUCETPAY_PAYOUT_UNITS",
       "FAUCETPAY_PAYOUT_LABEL",
     ])],
+    ["faucetpay-webhook", classifyStrongSecret(values, "FAUCETPAY_WEBHOOK_SECRET")],
   ];
 
   const legalState = classifyGroup(values, [
@@ -125,9 +138,10 @@ function audit(envPath) {
   for (const [id, state] of checks) console.log(`Release config ${id}: ${state}`);
   console.log(`Release config legal-operator: ${legalDisplay}`);
 
-  const blocking = checks.filter(([, state]) => state === "MISSING" || state === "BUILD_VALUE_UNAVAILABLE");
+  const blocking = checks.filter(([, state]) => state === "MISSING" || state === "BUILD_VALUE_UNAVAILABLE" || state === "INVALID");
   const missing = blocking.filter(([, state]) => state === "MISSING").map(([id]) => id);
   const buildUnavailable = blocking.filter(([, state]) => state === "BUILD_VALUE_UNAVAILABLE").map(([id]) => id);
+  const invalid = blocking.filter(([, state]) => state === "INVALID").map(([id]) => id);
   const managedSensitive = checks.filter(([, state]) => state === "SENSITIVE_MANAGED").map(([id]) => id);
 
   if (missing.length) {
@@ -135,6 +149,9 @@ function audit(envPath) {
   }
   if (buildUnavailable.length) {
     console.log(`::error title=Pulsercuit public build configuration::Client-visible configuration is marked sensitive and cannot be embedded into the prebuilt browser bundle: ${buildUnavailable.join(", ")}. Store these NEXT_PUBLIC values as runner-readable production variables.`);
+  }
+  if (invalid.length) {
+    console.log(`::error title=Pulsercuit invalid release configuration::Configured values fail minimum security requirements: ${invalid.join(", ")}. Values are intentionally never printed.`);
   }
   if (managedSensitive.length) {
     console.log(`::notice title=Pulsercuit managed sensitive configuration::Server-only sensitive groups are configured in Vercel but their values are intentionally unavailable to the prebuilt runner: ${managedSensitive.join(", ")}. Runtime readiness is the authoritative post-deploy proof.`);
@@ -153,7 +170,7 @@ function audit(envPath) {
       ...checks.map(([id, state]) => `| ${id} | **${state}** |`),
       `| legal-operator | **${legalDisplay}** |`,
       "",
-      "PRESENT means the runner could inspect a non-empty value. SENSITIVE_MANAGED is accepted only for server-side secrets whose values Vercel intentionally withholds from the prebuilt runner. BUILD_VALUE_UNAVAILABLE means a client-visible NEXT_PUBLIC value is hidden from the build and blocks deployment. MISSING also blocks deployment. Runtime readiness remains authoritative for server-secret usability after deployment.",
+      "PRESENT means the runner could inspect a valid non-empty value. SENSITIVE_MANAGED is accepted only for server-side secrets whose values Vercel intentionally withholds from the prebuilt runner. INVALID means a visible value fails a security requirement and blocks deployment. BUILD_VALUE_UNAVAILABLE means a client-visible NEXT_PUBLIC value is hidden from the build and blocks deployment. MISSING also blocks deployment. Runtime readiness remains authoritative for managed server-secret usability after deployment.",
       "",
     ];
     appendFileSync(summaryPath, `${rows.join("\n")}\n`, "utf8");

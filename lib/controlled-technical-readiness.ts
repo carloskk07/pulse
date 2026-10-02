@@ -6,9 +6,12 @@ import {
   type FaucetPayPaidWithdrawal,
 } from "@/lib/faucetpay-receipt-proof";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
+import { hasFaucetPayWebhookRuntimeAuthority } from "@/lib/faucetpay-webhook-authority";
 import { getCurrentRewardContract } from "@/lib/reward-contract";
 import { isCanonicalProductionSiteUrl } from "@/lib/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getSupabasePublicConfig } from "@/lib/supabase/public-config";
+import { hasTurnstileRuntimeAuthority } from "@/lib/turnstile";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 
@@ -114,12 +117,15 @@ export async function getControlledTechnicalReadiness(): Promise<ControlledTechn
   const proofBlockers: string[] = [];
 
   if (!isCanonicalProductionSiteUrl()) setupBlockers.push("public-site");
-  if (!configured("NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY")) {
+  if (!getSupabasePublicConfig()) {
     setupBlockers.push("supabase-auth");
   }
   if (!configured("SUPABASE_SERVICE_ROLE_KEY")) setupBlockers.push("service-role");
-  if (!configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY")) {
+  if (!hasTurnstileRuntimeAuthority()) {
     setupBlockers.push("turnstile-config");
+  }
+  if (!hasFaucetPayWebhookRuntimeAuthority()) {
+    setupBlockers.push("faucetpay-webhook-secret");
   }
 
   const payout = getFaucetPayPackConfig();

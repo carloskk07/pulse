@@ -1,8 +1,11 @@
 import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
+import { hasFaucetPayWebhookRuntimeAuthority } from "@/lib/faucetpay-webhook-authority";
 import { getLegalOperatorIdentity } from "@/lib/legal-release";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { CANONICAL_SITE_ORIGIN, isCanonicalProductionSiteUrl } from "@/lib/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getSupabasePublicConfig } from "@/lib/supabase/public-config";
+import { hasTurnstileRuntimeAuthority } from "@/lib/turnstile";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
 import { getPrimaryConfiguredRewardProvider } from "@/providers/registry";
 
@@ -78,8 +81,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     siteReady ? `${CANONICAL_SITE_ORIGIN} is the configured production origin.` : `Set NEXT_PUBLIC_SITE_URL exactly to ${CANONICAL_SITE_ORIGIN}.`,
   ));
 
-  const authConfigured = configured("NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  checks.push(check("supabase-auth", "Supabase auth", authConfigured ? "pass" : "fail", authConfigured ? "Public auth configuration is present." : "Supabase URL and anon key are required."));
+  const authConfigured = Boolean(getSupabasePublicConfig());
+  checks.push(check("supabase-auth", "Supabase auth", authConfigured ? "pass" : "fail", authConfigured ? "Public auth configuration is present." : "Supabase URL plus a publishable or legacy anon key are required."));
 
   const serviceRoleConfigured = configured("SUPABASE_SERVICE_ROLE_KEY");
   checks.push(check("service-role", "Server financial authority", serviceRoleConfigured ? "pass" : "fail", serviceRoleConfigured ? "Service-role authority is available server-side." : "SUPABASE_SERVICE_ROLE_KEY is required for trusted financial writes."));
@@ -103,8 +106,8 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
       : "Add at least one valid Auth user to the protected admin_users allowlist.",
   ));
 
-  const turnstileConfigured = configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY");
-  checks.push(check("turnstile", "Human verification", turnstileConfigured ? "pass" : "fail", turnstileConfigured ? "Turnstile public and server keys are configured." : "Configure both Turnstile keys before enabling claims, signup and withdrawals."));
+  const turnstileConfigured = hasTurnstileRuntimeAuthority();
+  checks.push(check("turnstile", "Human verification", turnstileConfigured ? "pass" : "fail", turnstileConfigured ? "Turnstile keys and trusted hostname authority are configured." : "Configure both Turnstile keys plus trusted hostname authority before enabling claims, signup and withdrawals."));
 
   const legalIdentity = getLegalOperatorIdentity();
   checks.push(check(
@@ -139,6 +142,15 @@ export async function getReleaseReadiness(): Promise<ReleaseReadinessReport> {
     faucetPaySendAuthority.ready
       ? `Read/send credentials are separated and the expected provider daily cap is ${faucetPaySendAuthority.dailyLimitUsd?.toLocaleString("en-US")} USD (${faucetPaySendAuthority.dailyLimitSource === "configured_override" ? "explicit override" : "one payout pack/day safety policy"}).`
       : "Configure distinct read/send credentials and a valid payout pack before attesting send authority.",
+  ));
+  const faucetPayWebhookReady = hasFaucetPayWebhookRuntimeAuthority();
+  checks.push(check(
+    "faucetpay-webhook",
+    "FaucetPay webhook signing authority",
+    faucetPayWebhookReady ? "pass" : "fail",
+    faucetPayWebhookReady
+      ? "Webhook reconciliation is protected by a strong server-only HMAC secret."
+      : "Configure FAUCETPAY_WEBHOOK_SECRET with 32–512 characters before payout reconciliation is release-ready.",
   ));
 
   if (!admin) {
