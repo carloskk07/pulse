@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parsePublicHttpsDestination } from "@/lib/external-destination";
 import { getProductRouteHref } from "@/lib/route-semantics";
 import { getCurrentUserContext } from "@/lib/current-user-context";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
@@ -15,24 +16,6 @@ type TrackingResult = {
   destination_url?: string;
   tracking_param?: string;
 };
-
-function safeDestination(value: string) {
-  try {
-    const url = new URL(value);
-    const hostname = url.hostname.toLowerCase();
-    if (
-      url.protocol !== "https:"
-      || url.username
-      || url.password
-      || !hostname
-      || hostname === "localhost"
-      || hostname.endsWith(".local")
-    ) return null;
-    return url;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(request: NextRequest) {
   if (!isTrustedSameOriginMutation(request)) {
@@ -72,7 +55,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(new URL(getProductRouteHref("earn", `?cashback=${reason}`), request.url), 303);
   }
 
-  const destination = safeDestination(result.destination_url ?? "");
+  const destination = parsePublicHttpsDestination(result.destination_url ?? "");
   const trackingParam = result.tracking_param ?? "";
   if (!destination || !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trackingParam)) {
     return NextResponse.redirect(new URL(getProductRouteHref("earn", "?cashback=unavailable"), request.url), 303);
