@@ -13,11 +13,13 @@ import { getPulseEcosystemSnapshot } from "@/lib/pulse-ecosystem";
 import { getRouteNavigationHref } from "@/lib/route-semantics";
 import { formatUsdFromCredits } from "@/lib/reward-state";
 import { getWalletState } from "@/lib/wallet-state";
+import { cleanOperationalReference } from "@/lib/operational-flow";
+import { hasTurnstileRuntimeAuthority } from "@/lib/turnstile";
 import { getFaucetPayPackConfig } from "@/providers/faucetpay";
 
 export const metadata = { title: "Balance & payout" };
 
-type Props = { searchParams: Promise<{ withdraw?: string }> };
+type Props = { searchParams: Promise<{ withdraw?: string; ref?: string }> };
 const withdrawalCopy: Record<string, string> = {
   paid: "Payment complete.",
   processing: "Your payout is processing safely.",
@@ -70,7 +72,8 @@ export default async function WalletPage({ searchParams }: Props) {
   } = wallet;
   const payout = getFaucetPayPackConfig();
   const payoutCredits = payout.ready && payout.amountCredits ? Number(payout.amountCredits) : null;
-  const turnstileReady = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
+  const turnstileReady = hasTurnstileRuntimeAuthority();
+  const operationalRef = cleanOperationalReference(params.ref, "withdrawal");
   const serviceReady = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   const activePackMatches = Boolean(
@@ -213,6 +216,7 @@ export default async function WalletPage({ searchParams }: Props) {
           {params.withdraw === "paid" && !paidConfirmed
             ? "Payment status refreshed. The authoritative payout state is shown below."
             : withdrawalCopy[params.withdraw] ?? "Payment state updated."}
+          {operationalRef ? <small>Support reference: {operationalRef}</small> : null}
         </div>
       ) : null}
 
