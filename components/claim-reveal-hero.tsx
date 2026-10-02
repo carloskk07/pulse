@@ -38,17 +38,17 @@ export function ClaimRevealHero({
             <span className="pc-v8-success-mark"><Check /></span>
             <span>{revealLabel}</span>
           </div>
-          <span className="app-eyebrow">{variableReward ? "Your draw" : "Done"}</span>
+          <span className="app-eyebrow">{variableReward ? "Reward settled" : "Done"}</span>
           <h1 id="claim-victory-title">
             {variableReward
-              ? <>You revealed.<br /><span className="pc-v8-reveal-value">+{rewardValue}</span></>
+              ? <>Reward added.<br /><span className="pc-v8-reveal-value">+{rewardValue}</span></>
               : <>Reward added.<br />Your next claim is scheduled.</>}
           </h1>
           <p className="pc-v8-victory-lead">{revealLead}</p>
 
           <div className="pc-v8-reward-line">
             <div>
-              <small>{variableReward ? "Revealed now" : "Added now"}</small>
+              <small>Added now</small>
               <strong>+{rewardValue}</strong>
               {probabilityLabel ? <span className="pc-v8-band-odds">{probabilityLabel}</span> : null}
             </div>
@@ -64,7 +64,7 @@ export function ClaimRevealHero({
           </div>
 
           <div className="pc-v8-proof-pills" aria-label="Claim integrity">
-            {variableReward ? <span><Spark /> Variable draw settled</span> : null}
+            {variableReward ? <span><Spark /> Claim settled</span> : null}
             {topReward ? <span><Spark /> Highest launch reward</span> : null}
             <span><Shield /> Funded reward</span>
             <span>Balance updated</span>
@@ -81,7 +81,7 @@ export function ClaimRevealHero({
                   ? "top launch reward"
                   : boostedReward
                     ? "above minimum band"
-                    : "reward revealed"
+                    : "reward settled"
                 : "available now"}</small>
             </div>
           </div>
