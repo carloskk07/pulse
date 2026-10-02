@@ -66,6 +66,7 @@ export default async function WalletPage({ searchParams }: Props) {
     state,
     rows,
     activeWithdrawal,
+    recentPaidWithdrawal,
     withdrawalPilotAllowed,
     readProofReady,
     sendScopeProofReady,
@@ -117,15 +118,24 @@ export default async function WalletPage({ searchParams }: Props) {
   const extraWithdrawalFeeLabel = extraWithdrawalFeeCredits > 0
     ? formatUsdFromCredits(extraWithdrawalFeeCredits)
     : null;
-  const paidRow = params.withdraw === "paid"
+  const recentPaidSettlement = params.withdraw === "paid"
+    && recentPaidWithdrawal
+    && isRecentAuthoritativeEvent(
+      recentPaidWithdrawal.updated_at,
+      Date.parse(state.observedAt),
+      10 * 60_000,
+    )
+    ? recentPaidWithdrawal
+    : null;
+  const paidConfirmed = Boolean(recentPaidSettlement);
+  const paidRow = recentPaidSettlement
     ? rows.find((row) =>
       row.label === "Withdrawal"
       && row.state === "withdrawn"
       && row.credits < 0
-      && isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)
+      && Math.abs(row.credits) === recentPaidSettlement.amount_credits
     ) ?? null
     : null;
-  const paidConfirmed = Boolean(paidRow);
   const recentPositiveCredit = rows.find((row) =>
     row.credits > 0
     && isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)
@@ -169,15 +179,20 @@ export default async function WalletPage({ searchParams }: Props) {
   const payoutReadyTargetLabel = requiredWithdrawalCredits
     ? formatUsdFromCredits(requiredWithdrawalCredits)
     : payoutPackLabel;
-  const eventCue = paidRow
+  const eventCue = recentPaidSettlement
     ? {
-      id: `ledger:${paidRow.id}`,
+      id: `withdrawal:${recentPaidSettlement.id}`,
       kind: "payout-complete" as const,
       kicker: "Payment confirmed",
       title: "Payout complete",
-      value: formatUsdFromCredits(Math.abs(paidRow.credits)),
-      detail: "The completed withdrawal is recorded in your ledger.",
-      markers: [`Balance ${formatUsdFromCredits(state.availableCredits)}`, "Ledger confirmed"],
+      value: formatUsdFromCredits(recentPaidSettlement.amount_credits),
+      detail: paidRow
+        ? "The paid withdrawal and its ledger movement are both confirmed."
+        : "The withdrawal settlement is confirmed by the authoritative payout record.",
+      markers: [
+        `Balance ${formatUsdFromCredits(state.availableCredits)}`,
+        `${recentPaidSettlement.asset} paid`,
+      ],
     }
     : payoutReadyEvent && recentPositiveCredit
       ? {
