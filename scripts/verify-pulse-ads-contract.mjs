@@ -222,6 +222,7 @@ requireAll(".env.example", [
 ]);
 
 const advertised = requireAll("app/advertise/page.tsx", [
+  "One billable click per user per campaign/day",
   'action="https://faucetpay.io/merchant/webscr"',
   'name="merchant_username"',
   'name="callback_url"',
@@ -232,6 +233,9 @@ const advertised = requireAll("app/advertise/page.tsx", [
 ]);
 if (!advertised.includes("users are never paid to click") && !advertised.includes("Users are never paid to click")) {
   throw new Error("Advertiser surface must state that sponsored clicks are not user rewards.");
+}
+if (advertised.includes("One billable click per user/day")) {
+  throw new Error("Advertiser surface must not imply the per-campaign billing cap is global.");
 }
 
 requireAll("app/dashboard/claimed/page.tsx", [
