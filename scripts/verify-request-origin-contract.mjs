@@ -30,6 +30,7 @@ const sameOriginRoutes = [
   "app/api/direct/start/route.ts",
   "app/api/cashback/start/route.ts",
   "app/api/return-reminder/route.ts",
+  "app/api/daily-pulse/route.ts",
 ];
 
 for (const routePath of sameOriginRoutes) {
