@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAdminAccess } from "@/lib/admin-authorization";
 import { getProductRouteHref } from "@/lib/route-semantics";
+import { cleanPublicExternalUrl } from "@/lib/public-external-url";
 import {
   activateDirectCampaign,
   createDirectCampaign,
@@ -51,24 +52,6 @@ function csv(raw: FormDataEntryValue | null, pattern: RegExp, maxItems: number) 
   return [...new Set(items)];
 }
 
-function safeHttps(value: string) {
-  try {
-    const url = new URL(value);
-    const host = url.hostname.toLowerCase();
-    if (
-      url.protocol !== "https:"
-      || url.username
-      || url.password
-      || !host
-      || host === "localhost"
-      || host.endsWith(".local")
-    ) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 export async function createDirectCampaignAction(
   _previous: DirectCreateState,
   formData: FormData,
@@ -81,7 +64,7 @@ export async function createDirectCampaignAction(
   const category = textValue(formData, "category", 80) ?? "other";
   const actionType = String(formData.get("action_type") ?? "").trim();
   const destinationRaw = textValue(formData, "destination_url", 2_000);
-  const destinationUrl = destinationRaw ? safeHttps(destinationRaw) : null;
+  const destinationUrl = destinationRaw ? cleanPublicExternalUrl(destinationRaw) : null;
   const pricePerActionUsdMicros = parseUsdMicros(formData.get("price_per_action_usd"));
   const rewardCredits = positiveInt(formData, "reward_credits", 1_000_000);
   const maxCompletions = positiveInt(formData, "max_completions", 1_000_000);
