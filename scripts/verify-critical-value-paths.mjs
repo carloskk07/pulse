@@ -32,6 +32,15 @@ function requireOrder(path, first, second) {
   }
 }
 
+function requireOrderBeforeLast(path, first, second) {
+  const source = read(path);
+  const a = source.indexOf(first);
+  const b = source.lastIndexOf(second);
+  if (a < 0 || b < 0 || a >= b) {
+    throw new Error(`${path} must persist new authority before first-attempt settlement`);
+  }
+}
+
 const claim = requireFragments("app/api/pulse/claim/route.ts", [
   "isTrustedSameOriginMutation(request)",
   "supabase.auth.getClaims()",
@@ -123,7 +132,7 @@ requireFragments("app/api/ads/merchant/callback/route.ts", [
   ".upsert({",
   "settlePersistedAuthority(admin, hash",
 ]);
-requireOrder(
+requireOrderBeforeLast(
   "app/api/ads/merchant/callback/route.ts",
   'const { error: proofError } = await admin',
   "return settlePersistedAuthority(admin, hash",
