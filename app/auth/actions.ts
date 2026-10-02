@@ -182,8 +182,18 @@ export async function requestPasswordReset(formData: FormData) {
   callback.searchParams.set("flow", "recovery");
   callback.searchParams.set("next", "/auth/update-password");
 
-  // Intentionally return the same result whether or not the address exists.
-  await supabase.auth.resetPasswordForEmail(email, { redirectTo: callback.toString() });
+  // Preserve account-enumeration resistance: provider failures are classified
+  // by infrastructure state only, never by whether the submitted address exists.
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: callback.toString(),
+  });
+  if (error) {
+    if (isAuthRateLimited(error)) {
+      redirect("/auth/recover?error=auth-rate-limited");
+    }
+    redirect("/auth/recover?error=recovery-unavailable");
+  }
+
   redirect("/auth/recover?message=check-email");
 }
 
