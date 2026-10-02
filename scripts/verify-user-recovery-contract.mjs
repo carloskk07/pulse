@@ -131,4 +131,22 @@ requireFragments("app/api/withdrawals/route.ts", [
   'url.searchParams.set("ref", reference)',
 ]);
 
+requireFragments("app/auth/actions.ts", [
+  'const { error } = await supabase.auth.resetPasswordForEmail(email, {',
+  "if (isAuthRateLimited(error))",
+  'redirect("/auth/recover?error=auth-rate-limited")',
+  'redirect("/auth/recover?error=recovery-unavailable")',
+  'redirect("/auth/recover?message=check-email")',
+]);
+
+const recoveryCopy = copyKeys("app/auth/recover/page.tsx", "errorCopy");
+for (const state of [
+  "auth-rate-limited",
+  "recovery-unavailable",
+]) {
+  if (!recoveryCopy.has(state)) {
+    throw new Error(`Recovery page is missing truthful delivery copy for ${state}`);
+  }
+}
+
 console.log("User recovery and operational observability contract PASS");

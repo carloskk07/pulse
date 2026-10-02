@@ -191,6 +191,61 @@ requireFragments("app/dashboard/page.tsx", [
 ]);
 requireFragments("app/wallet/page.tsx", [
   "hasTurnstileRuntimeAuthority()",
+  "recentPaidWithdrawal",
+  "recentPaidWithdrawal.updated_at",
+  "const paidConfirmed = Boolean(recentPaidSettlement)",
+  'id: `withdrawal:${recentPaidSettlement.id}`',
+]);
+forbidFragments("app/wallet/page.tsx", [
+  "isRecentAuthoritativeEvent(row.createdAt, Date.parse(state.observedAt), 10 * 60_000)",
+]);
+
+requireFragments("lib/wallet-state.ts", [
+  'export type RecentPaidWithdrawal = {',
+  'status: "paid";',
+  'recentPaidWithdrawal: RecentPaidWithdrawal | null;',
+  '.from("withdrawals")',
+  '.eq("user_id", user.id)',
+  '.eq("status", "paid")',
+  '.order("updated_at", { ascending: false })',
+  "recentPaidWithdrawalFromPayload(paidWithdrawalResult.data)",
+]);
+
+requireFragments("lib/external-destination.ts", [
+  'import { isIP } from "node:net";',
+  "export function parsePublicHttpsDestination(",
+  'url.protocol !== "https:"',
+  "url.username",
+  "url.password",
+  "url.port",
+  '!hostname.includes(".")',
+  "BLOCKED_EXACT_HOSTS.has(hostname)",
+  "BLOCKED_SUFFIXES.some",
+  "isIP(hostname) !== 0",
+]);
+
+requireFragments("app/api/ads/campaigns/route.ts", [
+  'import { cleanPublicHttpsDestination } from "@/lib/external-destination";',
+  "cleanPublicHttpsDestination(",
+]);
+forbidFragments("app/api/ads/campaigns/route.ts", [
+  "function cleanHttpsUrl(",
+]);
+
+requireFragments("app/api/ads/click/route.ts", [
+  'import { parsePublicHttpsDestination } from "@/lib/external-destination";',
+  "parsePublicHttpsDestination(destination)",
+]);
+forbidFragments("app/api/ads/click/route.ts", [
+  'if (url.protocol === "https:")',
+]);
+
+requireFragments("app/api/cashback/start/route.ts", [
+  'import { parsePublicHttpsDestination } from "@/lib/external-destination";',
+  "parsePublicHttpsDestination(result.destination_url ?? \"\")",
+]);
+forbidFragments("app/api/cashback/start/route.ts", [
+  "function safeDestination(",
 ]);
 
 const pkg = JSON.parse(read("package.json"));
