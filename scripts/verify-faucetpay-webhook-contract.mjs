@@ -22,7 +22,17 @@ function forbidAll(path, fragments) {
   }
 }
 
+requireAll("lib/faucetpay-webhook-authority.ts", [
+  "FAUCETPAY_WEBHOOK_SECRET_MIN_LENGTH = 32",
+  "FAUCETPAY_WEBHOOK_SECRET_MAX_LENGTH = 512",
+  "process.env.FAUCETPAY_WEBHOOK_SECRET",
+  "getFaucetPayWebhookSecret",
+  "hasFaucetPayWebhookRuntimeAuthority",
+]);
+
 requireAll("app/api/faucetpay/webhook/route.ts", [
+  "@/lib/faucetpay-webhook-authority",
+  "getFaucetPayWebhookSecret()",
   'request.headers.get("x-faucetpay-signature")',
   'createHmac("sha256", secret).update(rawBody).digest("hex")',
   "timingSafeEqual",
