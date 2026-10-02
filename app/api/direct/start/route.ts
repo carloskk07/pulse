@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
+import { parsePublicExternalUrl } from "@/lib/public-external-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -60,13 +61,8 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  let target: URL;
-  try {
-    target = new URL(destination);
-  } catch {
-    return json(400, { status: "destination-error" });
-  }
-  if (target.protocol !== "https:") return json(400, { status: "destination-error" });
+  const target = parsePublicExternalUrl(destination);
+  if (!target) return json(400, { status: "destination-error" });
 
   // Only pseudonymous campaign/session identifiers leave PulseCircuit.
   target.searchParams.set("pulse_session_id", sessionId);
