@@ -437,7 +437,9 @@ if (/\nas \$\n/.test(migration0082) || /\n\$;\n/.test(migration0082)) {
 requireAll("app/api/direct/start/route.ts", [
   "isTrustedSameOriginMutation(request)",
   'return json(401, { status: "auth-required" })',
-  'target.protocol !== "https:"',
+  "@/lib/public-external-url",
+  "parsePublicExternalUrl(destination)",
+  "if (!target)",
   "destination: target.toString()",
 ]);
 

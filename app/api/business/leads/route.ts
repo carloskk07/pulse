@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
+import { cleanPublicExternalUrl } from "@/lib/public-external-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 
@@ -17,19 +18,6 @@ function businessRedirect(request: NextRequest, state: string) {
 
 function text(form: URLSearchParams, key: string, max: number) {
   return String(form.get(key) ?? "").trim().slice(0, max);
-}
-
-function normalizeWebsite(raw: string) {
-  if (!raw) return null;
-  try {
-    const value = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    const url = new URL(value);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    if (url.username || url.password) return null;
-    return url.toString().slice(0, 500);
-  } catch {
-    return null;
-  }
 }
 
 function sha256(value: string) {
@@ -49,7 +37,7 @@ export async function POST(request: NextRequest) {
   const contactName = text(form, "contact_name", 120);
   const email = text(form, "work_email", 254).toLowerCase();
   const websiteRaw = text(form, "website", 500);
-  const website = normalizeWebsite(websiteRaw);
+  const website = websiteRaw ? cleanPublicExternalUrl(/^https?:\/\//i.test(websiteRaw) ? websiteRaw : `https://${websiteRaw}`, { allowHttp: true }) : null;
   const objective = text(form, "objective", 40);
   const budgetRange = text(form, "budget_range", 40);
   const targetCountries = text(form, "target_countries", 300);

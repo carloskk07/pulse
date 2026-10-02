@@ -125,8 +125,9 @@ requireAll("app/api/ads/click/route.ts", [
   "export async function POST",
   "isTrustedSameOriginMutation(request)",
   "clickPulseAd(campaignId, userId)",
-  'url.protocol === "https:"',
-  "NextResponse.json({ ok: true, destination: url.toString() })",
+  "@/lib/public-external-url",
+  "cleanPublicExternalUrl(destination)",
+  "NextResponse.json({ ok: true, destination: safeDestination })",
 ]);
 forbidAll("app/api/ads/click/route.ts", [
   "export async function GET",

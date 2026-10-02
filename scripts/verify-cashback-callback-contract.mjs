@@ -96,7 +96,8 @@ requireAll("app/api/cashback/start/route.ts", [
   "isTrustedSameOriginMutation(request)",
   "readUrlEncodedFormWithLimit(request, 1_024)",
   'admin.rpc("create_cashback_tracking_session"',
-  "safeDestination",
+  "@/lib/public-external-url",
+  "parsePublicExternalUrl",
   'destination.searchParams.set(trackingParam, result.tracking_id!)',
 ]);
 

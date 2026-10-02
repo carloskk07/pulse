@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPulseAdCampaign } from "@/lib/pulse-ads";
+import { cleanPublicExternalUrl } from "@/lib/public-external-url";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
 
 function redirectState(request: NextRequest, state: string) {
   return NextResponse.redirect(new URL(`/advertise?state=${encodeURIComponent(state)}`, request.url), 303);
-}
-
-function cleanHttpsUrl(value: string) {
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === "https:" ? url.toString() : null;
-  } catch {
-    return null;
-  }
 }
 
 function cleanCountries(value: string) {
@@ -52,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   const title = String(formData.get("title") ?? "").trim().slice(0, 90);
   const body = String(formData.get("body") ?? "").trim().slice(0, 220);
-  const destinationUrl = cleanHttpsUrl(String(formData.get("destinationUrl") ?? ""));
+  const destinationUrl = cleanPublicExternalUrl(String(formData.get("destinationUrl") ?? ""));
   const budgetUsd = Number(formData.get("budgetUsd"));
   const countryCodes = cleanCountries(String(formData.get("countryCodes") ?? ""));
   const devicePlatforms = ["mobile", "desktop"].filter((device) => formData.get(device) === "on");
