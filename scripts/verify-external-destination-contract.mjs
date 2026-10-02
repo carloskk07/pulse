@@ -22,10 +22,10 @@ function loadAuthority() {
     fileName: filename,
   }).outputText;
 
-  const module = { exports: {} };
+  const sandboxModule = { exports: {} };
   const sandbox = {
-    module,
-    exports: module.exports,
+    module: sandboxModule,
+    exports: sandboxModule.exports,
     require(specifier) {
       if (specifier === "server-only") return {};
       if (specifier === "node:net") return { isIP };
@@ -40,7 +40,7 @@ function loadAuthority() {
   };
 
   vm.runInNewContext(transpiled, sandbox, { filename: "public-external-url.js" });
-  return module.exports;
+  return sandboxModule.exports;
 }
 
 const authority = loadAuthority();
