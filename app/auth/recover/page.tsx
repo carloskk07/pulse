@@ -20,6 +20,8 @@ const errorCopy: Record<string, string> = {
   "verification-unavailable": "Human verification is temporarily unavailable. Try again shortly.",
   "verification-token-invalid": "Human verification returned an invalid token. Refresh and try again.",
   "verification-failed": "Human verification failed. Please try again.",
+  "auth-rate-limited": "Too many recovery requests were made recently. Wait a moment, then try again.",
+  "recovery-unavailable": "The recovery email service is temporarily unavailable. Try again shortly.",
 };
 
 export default async function RecoverPage({ searchParams }: Props) {
