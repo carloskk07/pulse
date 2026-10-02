@@ -1,7 +1,10 @@
 import { getFaucetPayReceiptProofState } from "@/lib/faucetpay-receipt-proof";
+import { hasFaucetPayWebhookRuntimeAuthority } from "@/lib/faucetpay-webhook-authority";
 import { releaseEvidenceMatches } from "@/lib/release-evidence";
 import { getCurrentRewardContract } from "@/lib/reward-contract";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getSupabasePublicConfig } from "@/lib/supabase/public-config";
+import { hasTurnstileRuntimeAuthority } from "@/lib/turnstile";
 import { deriveTreasuryDailyFundingState } from "@/lib/treasury";
 import { getCanonicalFaucetPayPackAuthority, getTreasuryBackingGuard } from "@/lib/treasury-backing";
 import { getFaucetPayPackConfig, getFaucetPaySendAuthorityConfig } from "@/providers/faucetpay";
@@ -29,6 +32,7 @@ const PRODUCT_SETUP_CHECK_IDS = new Set([
   "payout-pack",
   "payout-pack-authority",
   "send-authority-config",
+  "faucetpay-webhook",
   "database",
   "hourly-pulse-config",
   "treasury",
@@ -61,14 +65,14 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
   checks.push({
     id: "auth",
     label: "Production authentication",
-    pass: configured("NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
-    detail: "Supabase public auth and trusted server authority must be configured.",
+    pass: Boolean(getSupabasePublicConfig() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
+    detail: "Supabase public auth (publishable or legacy anon key) and trusted server authority must be configured.",
   });
   checks.push({
     id: "turnstile-config",
     label: "Human verification configuration",
-    pass: configured("TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY"),
-    detail: "Turnstile must be configured for production claims and sensitive actions.",
+    pass: hasTurnstileRuntimeAuthority(),
+    detail: "Turnstile keys and a trusted production hostname authority must be configured for claims and sensitive actions.",
   });
   checks.push({
     id: "payout-pack",
@@ -83,6 +87,15 @@ export async function getProductReadiness(): Promise<ProductReadiness> {
     detail: sendAuthority.ready
       ? `Read/send credentials are separated and the expected provider daily cap is ${sendAuthority.dailyLimitUsd?.toLocaleString("en-US")} USD (${sendAuthority.dailyLimitSource === "configured_override" ? "explicit override" : "one payout pack/day safety policy"}).`
       : "Configure distinct read/send credentials and a valid payout pack before any payout authority can be attested.",
+  });
+  const faucetPayWebhookReady = hasFaucetPayWebhookRuntimeAuthority();
+  checks.push({
+    id: "faucetpay-webhook",
+    label: "FaucetPay webhook signing authority",
+    pass: faucetPayWebhookReady,
+    detail: faucetPayWebhookReady
+      ? "FaucetPay webhook HMAC authority uses a strong server-only secret."
+      : "Configure FAUCETPAY_WEBHOOK_SECRET with 32–512 characters before payout reconciliation is release-ready.",
   });
 
   const admin = createSupabaseAdminClient();
