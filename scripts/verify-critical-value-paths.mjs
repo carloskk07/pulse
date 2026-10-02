@@ -179,10 +179,18 @@ requireFragments("app/api/daily-pulse/route.ts", [
 ]);
 
 requireFragments("lib/turnstile.ts", [
+  "export function hasTurnstileRuntimeAuthority()",
   'const hostnames = allowedHostnames();',
   "if (hostnames.length === 0)",
   'errorCodes: ["hostname-policy-not-configured"]',
   'errorCodes: ["hostname-mismatch"]',
+]);
+
+requireFragments("app/dashboard/page.tsx", [
+  "hasTurnstileRuntimeAuthority()",
+]);
+requireFragments("app/wallet/page.tsx", [
+  "hasTurnstileRuntimeAuthority()",
 ]);
 
 const pkg = JSON.parse(read("package.json"));
