@@ -21,14 +21,52 @@ export type ActiveWithdrawal = {
   created_at: string;
 };
 
+export type RecentPaidWithdrawal = {
+  id: string;
+  status: "paid";
+  amount_credits: number;
+  asset: string;
+  updated_at: string;
+};
+
 export type WalletState = {
   state: RewardSnapshot;
   rows: LedgerItem[];
   activeWithdrawal: ActiveWithdrawal | null;
+  recentPaidWithdrawal: RecentPaidWithdrawal | null;
   withdrawalPilotAllowed: boolean;
   readProofReady: boolean;
   sendScopeProofReady: boolean;
 };
+
+function recentPaidWithdrawalFromPayload(value: unknown): RecentPaidWithdrawal | null {
+  const row = objectValue(value);
+  if (row.status !== "paid") return null;
+
+  const id = typeof row.id === "string" ? row.id : "";
+  const asset = typeof row.asset === "string" ? row.asset : "";
+  const updatedAt = typeof row.updated_at === "string" ? row.updated_at : "";
+  const amountCredits = Number(row.amount_credits);
+  const updatedAtMs = Date.parse(updatedAt);
+
+  if (
+    !id
+    || !asset
+    || !Number.isFinite(amountCredits)
+    || amountCredits <= 0
+    || !Number.isFinite(updatedAtMs)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    status: "paid",
+    amount_credits: amountCredits,
+    asset,
+    updated_at: new Date(updatedAtMs).toISOString(),
+  };
+}
 
 function activeWithdrawalFromPayload(value: unknown): ActiveWithdrawal | null {
   const row = objectValue(value);
@@ -78,6 +116,7 @@ export async function getWalletState(): Promise<WalletState> {
       state: disconnectedSnapshot,
       rows: [],
       activeWithdrawal: null,
+      recentPaidWithdrawal: null,
       withdrawalPilotAllowed: false,
       readProofReady: false,
       sendScopeProofReady: false,
@@ -88,6 +127,7 @@ export async function getWalletState(): Promise<WalletState> {
       state: { ...disconnectedSnapshot, preview: false },
       rows: [],
       activeWithdrawal: null,
+      recentPaidWithdrawal: null,
       withdrawalPilotAllowed: false,
       readProofReady: false,
       sendScopeProofReady: false,
@@ -95,10 +135,20 @@ export async function getWalletState(): Promise<WalletState> {
   }
 
   const admin = createSupabaseAdminClient();
-  const [userResult, runtimeResult] = await Promise.all([
+  const [userResult, runtimeResult, paidWithdrawalResult] = await Promise.all([
     supabase.rpc("current_user_wallet_state"),
     admin
       ? admin.rpc("current_wallet_runtime_state", { p_user_id: user.id })
+      : Promise.resolve({ data: null, error: null }),
+    admin
+      ? admin
+        .from("withdrawals")
+        .select("id,status,amount_credits,asset,updated_at")
+        .eq("user_id", user.id)
+        .eq("status", "paid")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
   ]);
 
@@ -115,6 +165,9 @@ export async function getWalletState(): Promise<WalletState> {
     ),
     rows: ledgerItemsFromRows(scopedUser.ledger),
     activeWithdrawal: activeWithdrawalFromPayload(scopedUser.active_withdrawal),
+    recentPaidWithdrawal: paidWithdrawalResult.error
+      ? null
+      : recentPaidWithdrawalFromPayload(paidWithdrawalResult.data),
     withdrawalPilotAllowed: rawRuntime.withdrawal_pilot_allowed === true,
     readProofReady: releaseEvidenceMatches(proof, "faucetpay_read"),
     sendScopeProofReady: releaseEvidenceMatches(proof, "faucetpay_send_scope"),
