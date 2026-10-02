@@ -46,9 +46,9 @@ export default async function FaucetPage() {
       <section className="pc-faucet-hero shell">
         <div className="pc-faucet-copy">
           <div className="eyebrow"><span className="live-dot" /> Free crypto faucet</div>
-          <h1>{!launch.publicClaimsOpen ? <>A clearer way to <em>earn free crypto.</em></> : rewardVariable ? <>Claim every hour. <em>Reveal your reward.</em></> : <>Earn crypto <em>every hour.</em></>}</h1>
+          <h1>{!launch.publicClaimsOpen ? <>A clearer way to <em>earn free crypto.</em></> : rewardVariable ? <>Claim every hour. <em>See your reward.</em></> : <>Earn crypto <em>every hour.</em></>}</h1>
           <p>
-            {rewardVariable ? <>{launch.publicClaimsOpen ? "The live" : "The launch"} faucet range is <strong>{rewardDisplay}</strong>. Each eligible claim reveals one value from that published range.</> : <>The current reward rule is <strong>{rewardDisplay}</strong> per eligible claim.</>}
+            {rewardVariable ? <>The current faucet reward is <strong>{rewardDisplay}</strong>. Your claim screen shows the current conditions before you claim.</> : <>The current reward rule is <strong>{rewardDisplay}</strong> per eligible claim.</>}
             {" "}Your balance stays visible in money terms, and payouts use {payoutAsset} through FaucetPay.
           </p>
 
@@ -62,7 +62,7 @@ export default async function FaucetPage() {
           </div>
 
           <div className="pc-faucet-trust">
-            <span><Check /> {rewardVariable ? "Live reward range shown before claim" : "Current reward rule shown before claim"}</span>
+            <span><Check /> Current reward shown before claim</span>
             <span><Wallet /> {payoutAsset} through FaucetPay</span>
             <span><Shield /> No purchase required</span>
           </div>
@@ -70,13 +70,13 @@ export default async function FaucetPage() {
 
         <aside className={"pc-faucet-live-card " + (launch.publicClaimsOpen ? "is-open" : "is-limited")}>
           <div className="pc-faucet-live-head">
-            <span>{rewardVariable ? (launch.publicClaimsOpen ? "Live reward range" : "Launch reward range") : "Current reward rule"}</span>
+            <span>{rewardVariable ? (launch.publicClaimsOpen ? "Current reward" : "Launch reward") : "Current reward rule"}</span>
             <i />
           </div>
           <PulseCoreVisual
             state={launch.publicClaimsOpen ? "ready" : "limited"}
-            eyebrow={rewardVariable ? "Variable reward draw" : "Per eligible claim"}
-            caption={rewardVariable ? `Published range · returns ${intervalLabel}` : `${payoutAsset} value · returns ${intervalLabel}`}
+            eyebrow={rewardVariable ? "Current reward" : "Per eligible claim"}
+            caption={rewardVariable ? `Current conditions · returns ${intervalLabel}` : `${payoutAsset} value · returns ${intervalLabel}`}
           >
             <span className="pulse-core-word pc-faucet-money-value">+{rewardDisplay}</span>
           </PulseCoreVisual>
@@ -84,12 +84,12 @@ export default async function FaucetPage() {
             {launch.publicClaimsOpen ? (
               <>
                 <b>CLAIMING OPEN</b>
-                <span>{rewardVariable ? "Sign in to see your timer and reveal the reward for this claim." : "Sign in to see your timer and claim under the current live rule."}</span>
+                <span>{rewardVariable ? "Sign in to see your timer and current reward." : "Sign in to see your timer and claim under the current live rule."}</span>
               </>
             ) : (
               <>
                 <b>EARLY ACCESS</b>
-                <span>{rewardVariable ? `Launch reward range: ${rewardDisplay}. Claiming remains closed until public access opens.` : "Create your account now. Your live eligibility appears inside the app as access opens."}</span>
+                <span>{rewardVariable ? `Launch reward: ${rewardDisplay}. Claiming remains closed until public access opens.` : "Create your account now. Your live eligibility appears inside the app as access opens."}</span>
               </>
             )}
           </div>
@@ -97,11 +97,11 @@ export default async function FaucetPage() {
       </section>
 
       {rewardVariable && launch.rewardBands.length > 0 ? (
-        <section className="pc-faucet-bands shell" aria-label="Variable faucet reward bands">
+        <section className="pc-faucet-bands shell" aria-label="Faucet reward details">
           <div className="pc-faucet-bands-head">
-            <span className="section-kicker">{launch.publicClaimsOpen ? "Live reward bands" : "Launch reward bands"}</span>
-            <h2>One claim. Different possible rewards.</h2>
-            <p>Every eligible claim resolves one value from the published distribution.</p>
+            <span className="section-kicker">{launch.publicClaimsOpen ? "Current reward details" : "Launch reward details"}</span>
+            <h2>See the current reward terms.</h2>
+            <p>Published reward bands and probabilities stay visible here.</p>
           </div>
           <div className="pc-faucet-band-grid">
             {launch.rewardBands.map((band) => (
@@ -128,7 +128,7 @@ export default async function FaucetPage() {
           <h2>A faucet should make the reward obvious.</h2>
         </div>
         <div className="pc-faucet-difference-grid">
-          <article><strong>Variable reward draw</strong><p>Each eligible claim can reveal a different value from the published reward range. The result is settled before it reaches your balance.</p></article>
+          <article><strong>Clear reward terms</strong><p>The current reward conditions are shown before you claim, and the settled amount is added to your balance.</p></article>
           <article><strong>Optional earning paths</strong><p>The hourly faucet stays central. Higher-value tasks and partner rewards are separate choices, not a wall before your claim.</p></article>
           <article><strong>Public payout evidence</strong><p>The Proof Center separates credited rewards from completed withdrawals instead of blending both into one marketing number.</p></article>
         </div>
