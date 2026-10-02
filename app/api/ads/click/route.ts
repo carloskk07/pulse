@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parsePublicHttpsDestination } from "@/lib/external-destination";
 import { clickPulseAd } from "@/lib/pulse-ads";
 import { isTrustedSameOriginMutation, readUrlEncodedFormWithLimit } from "@/lib/request-security";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -26,15 +27,9 @@ export async function POST(request: NextRequest) {
 
   const result = await clickPulseAd(campaignId, userId);
   const destination = typeof result.destination_url === "string" ? result.destination_url : "";
+  const url = parsePublicHttpsDestination(destination);
 
-  try {
-    const url = new URL(destination);
-    if (url.protocol === "https:") {
-      return NextResponse.json({ ok: true, destination: url.toString() });
-    }
-  } catch {
-    // Fail closed if a stored destination ever drifts.
-  }
-
-  return failure(400);
+  return url
+    ? NextResponse.json({ ok: true, destination: url.toString() })
+    : failure(400);
 }
