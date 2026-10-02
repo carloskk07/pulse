@@ -86,11 +86,17 @@ export async function verifyTurnstile(
     }
 
     const hostnames = allowedHostnames();
-    if (hostnames.length > 0) {
-      const hostname = payload.hostname ? normalizeHostname(payload.hostname) : "";
-      if (!hostname || !hostnames.includes(hostname)) {
-        return { success: false, errorCodes: ["hostname-mismatch"] };
-      }
+    if (hostnames.length === 0) {
+      return {
+        success: false,
+        missingConfig: process.env.NODE_ENV === "production",
+        errorCodes: ["hostname-policy-not-configured"],
+      };
+    }
+
+    const hostname = payload.hostname ? normalizeHostname(payload.hostname) : "";
+    if (!hostname || !hostnames.includes(hostname)) {
+      return { success: false, errorCodes: ["hostname-mismatch"] };
     }
 
     return { success: true, errorCodes: [] };
