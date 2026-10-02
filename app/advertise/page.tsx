@@ -69,7 +69,7 @@ export default async function AdvertisePage({ searchParams }: Props) {
             <div className="pc-ads-principles" aria-label="Pulse Ads principles">
               <span><Check /> Native placement after the claim</span>
               <span><Shield /> Prepaid, capped budget</span>
-              <span><Trend /> One billable click per user/day</span>
+              <span><Trend /> One billable click per user per campaign/day</span>
             </div>
             <div className="pc-ads-hero-actions">
               <Link className="button button-light" href={user ? "#campaign-builder" : "#launch-interest"}>
